@@ -16,7 +16,7 @@ A naval fleet-command game in the spirit of Starsector, set on a fictional sea f
 - **Story.** Five Concord Admiralty missions out of Norfolk, plus bounties on raider captains.
 - **Technology eras.** Spend research points (RP) to move from late-war gunnery (Era I) through jets and guided missiles (Era II) to CIWS and area air defence (Era III). The Halvard Enclaves sell research data.
 - **Economy.** Six trade goods with local surpluses and shortages that vary by faction. Fuel is burned while underway, crew eat food and draw wages, and undermanned ships fight worse.
-- **Ships.** 13 hulls modeled on real designs. Fleets hold up to 10 ships.
+- **Ships and shipbuilders.** 13 ship classes in 52 designs from seven fictional yards (Tidewater, Clydemouth & Tyne, Ostsee-Werke, Neva Admiralty, Seto Arsenal, Cantieri del Tirreno, Combine Marine). Each design is modelled on a real ship, such as the Iowa, Yamato, Bismarck, King George V, Littorio, Fletcher, Kagero, Liberty ship or Forrestal, under a fictional class name. Each has its real length, beam, displacement, speed, belt armour and turning circle. Every flag buys from its own yards, newer designs unlock as your research reaches each era, and enemy squadrons mix older designs with their newest ones. Fleets hold up to 10 ships.
 - **Refits, officers and prizes.** Choose the weapon in each mount. Officers level up and specialise. Enemies battered below 12% hull strike their colours, and you can take them as prizes.
 
 ## Chart controls
@@ -34,7 +34,7 @@ A day lasts 10 seconds at ×1.
 
 ## Combat
 
-Combat is real-time and top-down. Turrets traverse on their own, within their firing arcs, and lead your locked target. Shells fly in arcs and land with dispersion, so a target showing you its long side is easier to hit. Armour stops small shells. Torpedoes, carrier strikes (torpedo bombers and dive bombers), anti-ship missiles with SAM and CIWS interception, submarines that can dive, and depth charges from sonar ships are all modelled.
+Combat is real-time and top-down, at true scale: one unit is one metre. Ships make their real speed in knots, take minutes to work up to full power, need about ten seconds to put the rudder over, and turn on their real tactical diameter, losing way in a hard turn. A dashed track ahead of your flagship shows where the present rudder will take her. The battle clock runs at twice real time by default, and you can set it from real time to ×16. Gun ranges are compressed to about a fifth of real maximum range (16-inch guns reach 6 km) so that a fight fits a readable chart. Reload times are the real ones, and turrets train at their real rates. A battleship's main battery takes the best part of a minute to swing across. Squadrons sight each other about 9 km apart. A ship that opens the range beyond 11 km escapes, and an action with no hits for fifteen battle minutes ends with contact lost. Turrets traverse on their own, within their firing arcs, and lead your locked target. Shells fly in arcs and land with dispersion, so a target showing you its long side is easier to hit. Armour stops small shells. Torpedoes, carrier strikes (torpedo bombers and dive bombers), anti-ship missiles with SAM and CIWS interception, submarines that can dive, and depth charges from sonar ships are all modelled.
 
 | Key | Action |
 | --- | --- |
@@ -43,14 +43,14 @@ Combat is real-time and top-down. Turrets traverse on their own, within their fi
 | X | Main-gun autofire at the locked target |
 | T / Q / F | Torpedoes at the cursor / missiles at the target / carrier air strike |
 | C | Dive or surface (submarines) |
-| 1 / 2 / 3 | Fleet orders: engage / escort / retreat off the south edge |
+| 1 / 2 / 3 | Fleet orders: engage / escort / retreat (open the range and break contact) |
 | Tab | Take command of another ship |
 | P, wheel | Pause, zoom |
-| − / = | Battle time ½× / 1× / 2× / 4× |
+| − / = | Battle clock ×1 (real time) / ×2 / ×4 / ×8 / ×16 |
 
 ## Art
 
-All ship sprites are drawn in code as top-down vector art, and turrets are separate parts so they can rotate. Each faction gets its own palette. Sprites are pre-rendered once per hull and palette (`hullSprite` and `drawHullArt` in `src/game.html`), so swapping in PNG art later only means replacing those functions.
+Ships are drawn as top-down deck plans at true proportions, in the spirit of Rule the Waves 3. Every plan is generated in code from its design's data (`DESIGN_LIST` and `drawPlan` in `src/game.html`). That data covers the hull form (bow entry, cruiser or transom stern), teak, linoleum or steel decks, tiered superstructure, funnels, tripod, pole or lattice masts, boats, cranes, catapults, flight decks with ranged aircraft, and submarine sails. Turrets, AA mounts and torpedo tubes are drawn to scale as separate parts so they can train. Each flag has one muted paint scheme that covers hull, superstructure and turrets alike. Light comes from directly overhead, and shadows on the water are cast in world space, so lighting stays consistent at any heading. Plans are pre-rendered once per design and flag (`hullSprite`). Swapping in PNG art later only means replacing that function.
 
 ## Development
 

@@ -1,0 +1,1112 @@
+<title>Broadside Reach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: full-bleed canvas (chart table) with brass-and-parchment panels floating above it */
+:root{
+  --sea:#0e3039; --sea-deep:#0a242c; --ink:#eadfc4; --ink-dim:#b6ab92;
+  --panel:#122a30; --panel-2:#183840; --line:#355a5e; --brass:#d6a14a;
+  --danger:#d0644b; --good:#86bd8f;
+  --display:'IM Fell English SC', Georgia, 'Times New Roman', serif;
+  --body:'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--body);font-size:15px;overflow:hidden}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+button{font:inherit;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--brass);color:#fff}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--brass);color:#1b1408;border-color:var(--brass);font-weight:700}
+button.primary:hover:not(:disabled){background:#e8b862;color:#1b1408}
+button.danger{border-color:var(--danger);color:#f3c2b6}
+#top{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:8px max(14px,env(safe-area-inset-left,0px));background:linear-gradient(var(--sea-deep),rgba(10,36,44,0));font-variant-numeric:tabular-nums;pointer-events:none}
+#top .stat{display:flex;gap:6px;align-items:baseline}
+#top .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+#top .v{font-weight:700}
+#top .btns{margin-left:auto;display:flex;gap:6px;pointer-events:auto}
+#top .btns button{padding:4px 10px;font-size:13px}
+#panel{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(5,18,22,.55)}
+#panel .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.5);width:min(860px,100%);max-height:calc(100% - 20px);overflow:auto;padding:22px 24px}
+#panel h1,#panel h2{font-family:var(--display);font-weight:400;margin:0 0 4px;text-wrap:balance}
+#panel h1{font-size:44px;color:var(--brass);letter-spacing:.02em}
+#panel h2{font-size:28px;color:var(--brass)}
+#panel h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin:18px 0 8px;font-weight:500}
+#panel p{line-height:1.5;max-width:65ch;margin:6px 0}
+.sub{color:var(--ink-dim)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 4px;border-bottom:1px solid var(--line)}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--ink-dim)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--brass)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);text-align:left;font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid rgba(53,90,94,.45);vertical-align:middle}
+td.n{text-align:right}
+td .b{padding:3px 8px;font-size:13px;margin:1px}
+.tag{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink-dim)}
+.tag.cheap{color:var(--good);border-color:var(--good)}
+.tag.dear{color:var(--danger);border-color:var(--danger)}
+.bar{height:6px;background:#0b1e22;border-radius:3px;overflow:hidden;width:90px;display:inline-block;vertical-align:middle}
+.bar i{display:block;height:100%;background:var(--good)}
+.starts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px}
+.start{text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px}
+.start b{font-family:var(--display);font-size:20px;color:var(--brass);font-weight:400}
+.start span{color:var(--ink-dim);font-size:14px;line-height:1.4}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+kbd{font-family:var(--body);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 6px;background:var(--panel-2)}
+#toasts{position:fixed;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;pointer-events:none;max-width:min(420px,calc(100% - 28px))}
+#toasts div{background:rgba(18,42,48,.92);border-left:3px solid var(--brass);padding:7px 12px;border-radius:3px;font-size:14px;animation:tin .25s ease-out}
+@keyframes tin{from{opacity:0;transform:translateY(6px)}}
+#dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+#touch{position:fixed;inset:auto 0 calc(10px + env(safe-area-inset-bottom,0px)) 0;display:flex;justify-content:space-between;padding:0 max(10px,env(safe-area-inset-left,0px));pointer-events:none}
+#touch .pad{display:grid;grid-template-columns:repeat(3,52px);gap:6px;pointer-events:auto}
+#touch button{height:52px;padding:0;font-size:13px;background:rgba(24,56,64,.85)}
+@media (prefers-reduced-motion:reduce){#toasts div{animation:none}}
+</style>
+
+<canvas id="cv"></canvas>
+<div id="top" hidden></div>
+<button id="dock" class="primary" hidden></button>
+<div id="toasts"></div>
+<div id="touch" hidden>
+  <div class="pad">
+    <span></span><button data-t="up" aria-label="More sail">▲</button><span></span>
+    <button data-t="left" aria-label="Turn to port">◀</button><button data-t="down" aria-label="Less sail">▼</button><button data-t="right" aria-label="Turn to starboard">▶</button>
+  </div>
+  <div class="pad">
+    <button data-t="port">Port</button><button data-t="bow">Bow</button><button data-t="star">Stbd</button>
+    <button data-t="o1">Engage</button><button data-t="o2">Escort</button><button data-t="o3">Retreat</button>
+  </div>
+</div>
+<div id="panel" hidden><div class="card" id="card"></div></div>
+
+<script>
+'use strict';
+/* ============================== utilities ============================== */
+const $ = s => document.querySelector(s);
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const dist = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = Math.random;
+const ri = (a, b) => Math.floor(a + R() * (b - a + 1));
+const pick = arr => arr[Math.floor(R() * arr.length)];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const hash2 = (i, j) => (((i * 73856093) ^ (j * 19349663)) >>> 0);
+function shuffle(a, r = R) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ============================== data ============================== */
+const GOODS = [
+  { id: 'prov', name: 'Provisions', base: 12 },
+  { id: 'timber', name: 'Timber', base: 30 },
+  { id: 'cloth', name: 'Sailcloth', base: 44 },
+  { id: 'rum', name: 'Rum', base: 55 },
+  { id: 'powder', name: 'Gunpowder', base: 78 },
+  { id: 'spice', name: 'Spice', base: 115 },
+];
+const HULLS = {
+  cutter:     { name: 'Cutter',          cls: 'Light',   len: 66,  beam: 21, hull: 320,  armor: 30,  speed: 128, turn: 1.9,  cargo: 30,  price: 3500,  guns: 2,  gun: 'light', bow: true,  masts: 1, upkeep: 0.4 },
+  sloop:      { name: 'Sloop of War',    cls: 'Light',   len: 84,  beam: 26, hull: 480,  armor: 50,  speed: 116, turn: 1.55, cargo: 45,  price: 7500,  guns: 3,  gun: 'light', bow: true,  masts: 1, upkeep: 0.6 },
+  fluyt:      { name: 'Fluyt',           cls: 'Medium',  len: 111,  beam: 36, hull: 700,  armor: 50,  speed: 88,  turn: 0.95, cargo: 260, price: 12000, guns: 2,  gun: 'light', bow: false, masts: 3, upkeep: 0.9 },
+  brig:       { name: 'Brig',            cls: 'Medium',  len: 105,  beam: 32, hull: 780,  armor: 80,  speed: 102, turn: 1.2,  cargo: 80,  price: 15000, guns: 5,  gun: 'med',   bow: true,  masts: 2, upkeep: 1.0 },
+  frigate:    { name: 'Frigate',         cls: 'Heavy',   len: 138,  beam: 38, hull: 1250, armor: 120, speed: 97,  turn: 0.95, cargo: 120, price: 32000, guns: 8,  gun: 'med',   bow: true,  masts: 3, upkeep: 1.6 },
+  ironclad:   { name: 'Ironclad Ram',    cls: 'Heavy',   len: 126,  beam: 39, hull: 1900, armor: 280, speed: 82,  turn: 0.85, cargo: 60,  price: 58000, guns: 3,  gun: 'heavy', bow: true,  masts: 0, upkeep: 2.2, steam: true, ram: true },
+  lineship:   { name: 'Ship of the Line',cls: 'Capital', len: 183, beam: 50, hull: 2900, armor: 180, speed: 72,  turn: 0.55, cargo: 180, price: 85000, guns: 13, gun: 'med',   bow: true,  masts: 3, upkeep: 3.0 },
+};
+const GUNS = {
+  light: { name: '6-pounders',  dmg: 28,  range: 380, reload: 3.2, speed: 560, spread: 0.06 },
+  med:   { name: '18-pounders', dmg: 45,  range: 430, reload: 4.2, speed: 580, spread: 0.05 },
+  heavy: { name: 'Rifled 9-inch', dmg: 110, range: 500, reload: 5.5, speed: 640, spread: 0.03 },
+  bow:   { name: 'Bow chaser',  dmg: 22,  range: 480, reload: 2.4, speed: 640, spread: 0.03 },
+};
+const SHIP_NAMES = ['Gannet','Resolute','Marigold','Kestrel','Saltpenny','Wren','Valiant','Osprey','Harrow','Dauntless','Lark','Tempest','Cormorant','Bramble','Halcyon','Merrow','Tern','Constance','Thrift','Ardent','Bellwether','Petrel','Sable Rose','Fortitude','Quillon','Starling'];
+const PIRATE_NAMES = ['Black Moth','Cutthroat Jenny','Gallows Bird','Red Tide','Ravener','Scourge','Widow\'s Due','Rattlebones','Hangman\'s Luck','Bilge Rat','Grinning Meg','Carrion','Salt Wraith','Dead Reckoning'];
+const CAPTAINS = ['"Hook-Eye" Marlowe','Ysolde Crane','"Bosun" Teague','Anika Vell','Black Corwin','Mother Grist','"Lantern" Pike','Severin Oakes'];
+const PORT_NAMES = ['Port Calloway','Saltmere','Greyhaven Roads','Ambergris Key','Tallow Point','Sorrow\'s Cay','Blackwater Hole'];
+const SHIP_ORDER = ['cutter','sloop','fluyt','brig','frigate','ironclad','lineship'];
+const MW = 3600, MH = 2400;
+const SAVE_KEY = 'broadside-reach-save-v1';
+
+/* ============================== canvas & input ============================== */
+const cvs = $('#cv'), ctx = cvs.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = cvs.clientWidth; H = cvs.clientHeight; cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR); }
+window.addEventListener('resize', resize); resize();
+
+const keys = {};
+const mouse = { x: 0, y: 0 };
+let G = null, mode = 'title', C = null;
+let panelOpen = false, mapZoom = 0.6, tNow = 0;
+const touchHeld = {};
+
+/* ============================== sound ============================== */
+let AC = null, noiseBuf = null, muted = false, lastBoom = 0;
+function initAudio() {
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.6, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  } catch (e) { AC = null; }
+}
+function boom(vol, freq = 420) {
+  if (muted || !AC || vol < 0.02) return;
+  const now = AC.currentTime; if (now - lastBoom < 0.035) return; lastBoom = now;
+  const s = AC.createBufferSource(); s.buffer = noiseBuf; s.playbackRate.value = 0.7 + Math.random() * 0.4;
+  const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq + Math.random() * 200;
+  const g = AC.createGain(); g.gain.value = Math.min(0.5, vol);
+  s.connect(f).connect(g).connect(AC.destination); s.start(now);
+}
+
+/* ============================== world helpers ============================== */
+function makeIsland(x, y, r, rand) {
+  const n = 28, rad = []; const p1 = rand() * TAU, p2 = rand() * TAU, p3 = rand() * TAU;
+  for (let i = 0; i < n; i++) { const t = i / n * TAU; rad.push(r * (0.78 + 0.16 * Math.sin(t * 2 + p1) + 0.1 * Math.sin(t * 5 + p2) + 0.05 * Math.sin(t * 9 + p3) + 0.06 * rand())); }
+  return { x, y, r, rad };
+}
+function islandR(is, ang) { const n = is.rad.length; const t = (((ang % TAU) + TAU) % TAU) / TAU * n; const i = Math.floor(t) % n, f = t - Math.floor(t); return lerp(is.rad[i], is.rad[(i + 1) % n], f); }
+function inIsland(is, x, y, pad = 0) { const dx = x - is.x, dy = y - is.y; const d = Math.hypot(dx, dy); if (d > is.r * 1.3 + pad) return false; return d < islandR(is, Math.atan2(dy, dx)) + pad; }
+function landAt(list, x, y, pad = 0) { for (const is of list) if (inIsland(is, x, y, pad)) return is; return null; }
+function islandPath(is, k = 1, pad = 0) {
+  ctx.beginPath(); const n = is.rad.length;
+  for (let i = 0; i <= n; i++) { const t = i / n * TAU; const r = is.rad[i % n] * k + pad; const x = is.x + Math.cos(t) * r, y = is.y + Math.sin(t) * r; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.closePath();
+}
+function drawIsland(is, z) {
+  islandPath(is, 1, 22); ctx.fillStyle = 'rgba(70,150,150,0.22)'; ctx.fill();
+  islandPath(is, 1, 9); ctx.fillStyle = 'rgba(90,170,160,0.25)'; ctx.fill();
+  islandPath(is, 1); ctx.fillStyle = '#cdb47e'; ctx.fill(); ctx.strokeStyle = '#8f7a4c'; ctx.lineWidth = 1.2 / z; ctx.stroke();
+  islandPath(is, 0.84); ctx.fillStyle = '#5a7442'; ctx.fill();
+  islandPath(is, 0.5); ctx.fillStyle = '#466036'; ctx.fill();
+  islandPath(is, 0.22); ctx.fillStyle = '#6e6b52'; ctx.fill();
+}
+function windFactor(def, heading, wind) {
+  if (def.steam) return 0.92;
+  const t = (1 - Math.cos(angDiff(heading, wind.a))) / 2; // 0 running before the wind, 1 straight into it
+  return (0.4 + 0.6 * (1 - t * t)) * (0.8 + 0.35 * wind.s);
+}
+function strength(ships) { return ships.reduce((s, sh) => s + HULLS[sh.type].price * (0.35 + 0.65 * sh.hullFrac), 0); }
+function cargoCap() { return G.fleet.reduce((s, sh) => s + HULLS[sh.type].cargo, 0); }
+function cargoUsed() { return GOODS.reduce((s, g) => s + Math.floor(G.cargo[g.id] || 0), 0); }
+function upkeep() { return G.fleet.reduce((s, sh) => s + HULLS[sh.type].upkeep, 0); }
+function newShip(type, name) { return { id: Math.random().toString(36).slice(2, 9), type, name: name || pick(SHIP_NAMES), hullFrac: 1 }; }
+function waterPoint(pad = 40, near = null, rad = 0) {
+  for (let i = 0; i < 200; i++) {
+    let x, y;
+    if (near) { const a = R() * TAU, d = R() * rad; x = near.x + Math.cos(a) * d; y = near.y + Math.sin(a) * d; }
+    else { x = 120 + R() * (MW - 240); y = 120 + R() * (MH - 240); }
+    if (x < 60 || y < 60 || x > MW - 60 || y > MH - 60) continue;
+    if (!landAt(G.islands, x, y, pad)) return { x, y };
+  }
+  return { x: MW / 2, y: MH / 2 };
+}
+
+/* ============================== new game ============================== */
+function genWorld(seed) {
+  const rand = rng(seed); const islands = [];
+  let tries = 0;
+  while (islands.length < 19 && tries < 800) {
+    tries++; const r = 60 + rand() * 140; const x = 220 + rand() * (MW - 440), y = 220 + rand() * (MH - 440);
+    if (islands.some(o => Math.hypot(o.x - x, o.y - y) < o.r + r + 150)) continue;
+    islands.push(makeIsland(x, y, r, rand));
+  }
+  const order = shuffle(islands.map((_, i) => i), rand).slice(0, PORT_NAMES.length);
+  const ports = order.map((isi, i) => {
+    const is = islands[isi]; const ang = rand() * TAU; const cr = islandR(is, ang);
+    const haven = i >= 5;
+    const mod = {}, drift = {};
+    const goods = shuffle(GOODS.filter(g => g.id !== 'prov').map(g => g.id), rand);
+    const prod = goods.slice(0, 2), dem = goods.slice(2, 4);
+    for (const g of GOODS) {
+      let m = 0.85 + rand() * 0.35;
+      if (g.id === 'prov') m = 0.8 + rand() * 0.35;
+      if (prod.includes(g.id)) m = 0.5 + rand() * 0.18;
+      if (dem.includes(g.id)) m = 1.4 + rand() * 0.4;
+      mod[g.id] = m; drift[g.id] = 0;
+    }
+    let yard;
+    if (haven) yard = ['cutter', 'sloop', 'brig', rand() < 0.6 ? 'frigate' : 'fluyt'];
+    else {
+      yard = shuffle(['cutter', 'sloop', 'fluyt', 'brig', 'frigate'], rand).slice(0, 3);
+      if (i === 0) yard = ['cutter', 'sloop', 'fluyt', 'brig'];
+      if (i === 2) yard.push('lineship');
+      if (i === 3) yard.push('ironclad');
+      yard = SHIP_ORDER.filter(t => yard.includes(t));
+    }
+    return { id: i, name: PORT_NAMES[i], haven, x: is.x + Math.cos(ang) * (cr + 16), y: is.y + Math.sin(ang) * (cr + 16), ang, mod, drift, yard };
+  });
+  return { islands, ports };
+}
+const STARTS = {
+  privateer: { label: 'Letter of Marque', blurb: 'A Sloop of War and a Cutter, 6,000 coin. Built to hunt corsairs for bounty money.', fleet: [['sloop', 'Kestrel'], ['cutter', 'Wren']], credits: 6000, cargo: { prov: 30, powder: 10 } },
+  trader: { label: 'Merchant Venture', blurb: 'A roomy Fluyt with a Cutter escort, 9,000 coin and a hold of spice. Buy low, sell high, avoid trouble.', fleet: [['fluyt', 'Marigold'], ['cutter', 'Tern']], credits: 9000, cargo: { prov: 40, spice: 20 } },
+  navy: { label: 'Navy Castoff', blurb: 'A decommissioned Brig, 3,000 coin. Heavy guns and a thin purse.', fleet: [['brig', 'Ardent']], credits: 3000, cargo: { prov: 30 } },
+};
+function newGame(startKey) {
+  const st = STARTS[startKey]; const seed = Math.floor(Math.random() * 1e9);
+  const w = genWorld(seed);
+  G = { seed, islands: w.islands, ports: w.ports, day: 1, dayF: 0, credits: st.credits, rep: 0,
+    fleet: st.fleet.map(([t, n]) => newShip(t, n)), cargo: {}, fleets: [], wind: { a: R() * TAU, s: 0.6 }, nextId: 1, kills: 0 };
+  for (const g of GOODS) G.cargo[g.id] = st.cargo[g.id] || 0;
+  const p0 = G.ports[0];
+  const sea = { x: p0.x + Math.cos(p0.ang) * 50, y: p0.y + Math.sin(p0.ang) * 50 };
+  G.player = { x: sea.x, y: sea.y, h: p0.ang, tx: null, ty: null, cool: 3, destPort: null, follow: null };
+  for (let i = 0; i < 4; i++) spawnFleet('corsair', true);
+  for (let i = 0; i < 3; i++) spawnFleet('merchant', true);
+  for (let i = 0; i < 2; i++) spawnFleet('bounty', true);
+  closePanel(); mode = 'map'; $('#top').hidden = false;
+  toast('You weigh anchor at ' + p0.name + '. Click the sea to set a course.');
+  toast('Click a port to sail there and dock. Space pauses.');
+  save();
+}
+
+/* ============================== map fleets ============================== */
+function spawnFleet(kind, initial = false) {
+  const P = G.player;
+  let pos;
+  for (let i = 0; i < 20; i++) {
+    if (kind === 'merchant') { const lp = pick(G.ports.filter(p => !p.haven)); pos = { x: lp.x + Math.cos(lp.ang) * 40, y: lp.y + Math.sin(lp.ang) * 40, from: lp.id }; }
+    else if (kind === 'corsair' && R() < 0.6) { const hv = pick(G.ports.filter(p => p.haven)); pos = waterPoint(30, hv, 500); }
+    else pos = waterPoint(40);
+    if (dist(pos.x, pos.y, P.x, P.y) > (initial ? 600 : 750)) break;
+  }
+  const f = { id: G.nextId++, kind, x: pos.x, y: pos.y, h: R() * TAU, tx: null, ty: null, cool: 0, home: { x: pos.x, y: pos.y }, ships: [], cargo: {} };
+  const scale = 1 + G.day / 40;
+  if (kind === 'corsair') {
+    f.name = 'Corsair band';
+    let budget = (5000 + R() * 9000) * scale;
+    const pool = G.day > 25 ? ['cutter', 'sloop', 'brig', 'frigate', 'ironclad'] : ['cutter', 'sloop', 'sloop', 'brig', 'frigate'];
+    while (budget > 3000 && f.ships.length < 6) { const opts = pool.filter(t => HULLS[t].price <= budget); if (!opts.length) break; const t = pick(opts); f.ships.push(newShip(t, pick(PIRATE_NAMES))); budget -= HULLS[t].price; }
+    if (!f.ships.length) f.ships.push(newShip('cutter', pick(PIRATE_NAMES)));
+  } else if (kind === 'merchant') {
+    f.name = 'League convoy';
+    const n = ri(1, 3); for (let i = 0; i < n; i++) f.ships.push(newShip('fluyt'));
+    const esc = ri(0, 2); for (let i = 0; i < esc; i++) f.ships.push(newShip(pick(['sloop', 'brig'])));
+    const dests = G.ports.filter(p => !p.haven && p.id !== pos.from); const d = pick(dests);
+    f.dest = d.id; f.tx = d.x + Math.cos(d.ang) * 40; f.ty = d.y + Math.sin(d.ang) * 40;
+    for (const g of GOODS) if (g.id !== 'prov' && R() < 0.5) f.cargo[g.id] = ri(10, 40) * n;
+  } else {
+    f.captain = pick(CAPTAINS); f.name = 'Bounty: ' + f.captain;
+    let budget = (16000 + R() * 16000) * scale;
+    const flag = budget > 40000 ? 'ironclad' : budget > 30000 ? 'frigate' : 'brig';
+    f.ships.push(newShip(flag, pick(PIRATE_NAMES))); budget -= HULLS[flag].price;
+    while (budget > 3500 && f.ships.length < 6) { const opts = ['cutter', 'sloop', 'brig', 'frigate'].filter(t => HULLS[t].price <= budget); if (!opts.length) break; const t = pick(opts); f.ships.push(newShip(t, pick(PIRATE_NAMES))); budget -= HULLS[t].price; }
+    f.reward = Math.round(strength(f.ships) * 0.45 / 100) * 100;
+  }
+  G.fleets.push(f); return f;
+}
+function fleetMapSpeed(ships, ang) { let m = Infinity; for (const s of ships) m = Math.min(m, HULLS[s.type].speed * windFactor(HULLS[s.type], ang, G.wind) * (0.75 + 0.25 * s.hullFrac)); return m * 0.55; }
+function moveOnMap(o, ang, step) {
+  for (const off of [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35]) {
+    const a = ang + off; const nx = o.x + Math.cos(a) * step, ny = o.y + Math.sin(a) * step;
+    if (nx < 30 || ny < 30 || nx > MW - 30 || ny > MH - 30) continue;
+    if (!landAt(G.islands, nx, ny, 6)) { o.x = nx; o.y = ny; o.h = a; return true; }
+  }
+  return false;
+}
+function nearestPort(maxD) { let best = null, bd = maxD; for (const p of G.ports) { const d = dist(p.x, p.y, G.player.x, G.player.y); if (d < bd) { bd = d; best = p; } } return best; }
+
+function newDay() {
+  G.day++;
+  G.cargo.prov -= upkeep();
+  if (G.cargo.prov < 0) {
+    G.cargo.prov = 0;
+    for (const s of G.fleet) s.hullFrac = Math.max(0, s.hullFrac - 0.04);
+    const lost = G.fleet.filter(s => s.hullFrac <= 0.01);
+    if (lost.length) { G.fleet = G.fleet.filter(s => s.hullFrac > 0.01); toast(lost.map(s => s.name).join(', ') + ' foundered. The crew could not keep her afloat.'); }
+    else toast('Provisions are gone. Hungry crews neglect the pumps and every hull suffers.');
+    if (!G.fleet.length) return gameOver('Your last crew starved at sea.');
+  } else if (G.cargo.prov < upkeep() * 3) toast('Provisions run low: about ' + Math.floor(G.cargo.prov / upkeep()) + ' days left.');
+  for (const p of G.ports) for (const g of GOODS) p.drift[g.id] = clamp(p.drift[g.id] * 0.93 + (R() - 0.5) * 0.05, -0.3, 0.45);
+  G.wind.s = clamp(G.wind.s + (R() - 0.5) * 0.25, 0.15, 1);
+  G.wind.a += (R() - 0.5) * 0.7;
+  const count = k => G.fleets.filter(f => f.kind === k).length;
+  if (count('corsair') < 4 + Math.min(3, Math.floor(G.day / 20)) && R() < 0.45) spawnFleet('corsair');
+  if (count('merchant') < 3 && R() < 0.5) spawnFleet('merchant');
+  if (count('bounty') < 2 && R() < 0.15) { const f = spawnFleet('bounty'); toast('New bounty posted on ' + f.captain + ': ' + fmt(f.reward) + ' coin.'); }
+}
+
+function updateMap(dt) {
+  if (panelOpen || G.paused) return;
+  G.dayF += dt * 0.25;
+  while (G.dayF >= 1 && mode === 'map') { G.dayF -= 1; newDay(); }
+  if (mode !== 'map') return;
+  G.wind.a += Math.sin(tNow * 0.05) * 0.01 * dt;
+  const P = G.player; P.cool = Math.max(0, P.cool - dt);
+  if (P.follow) { const f = G.fleets.find(x => x.id === P.follow); if (f) { P.tx = f.x; P.ty = f.y; } else P.follow = null; }
+  if (P.tx != null) {
+    const d = dist(P.x, P.y, P.tx, P.ty);
+    if (d < 5) { P.tx = null; arrive(); }
+    else {
+      const ang = Math.atan2(P.ty - P.y, P.tx - P.x);
+      const sp = fleetMapSpeed(G.fleet, ang);
+      if (!moveOnMap(P, ang, Math.min(d, sp * dt))) { P.tx = null; P.destPort = null; toast('Land ahead blocks the way. Set a course around the island.'); }
+      if (P.destPort != null) { const p = G.ports[P.destPort]; if (dist(P.x, P.y, p.x, p.y) < 45) { P.tx = null; arrive(); } }
+    }
+  }
+  const ps = strength(G.fleet);
+  for (const f of [...G.fleets]) {
+    f.cool = Math.max(0, f.cool - dt);
+    const dP = dist(f.x, f.y, P.x, P.y);
+    let tx = null, ty = null, rate = 0.6;
+    if (f.kind !== 'merchant' && f.cool <= 0 && P.cool <= 0 && dP < 420) {
+      const fs = strength(f.ships);
+      if (fs > ps * 0.55) { tx = P.x; ty = P.y; rate = 1; f.chasing = true; }
+      else { tx = f.x + (f.x - P.x); ty = f.y + (f.y - P.y); rate = 0.95; f.chasing = false; }
+    } else f.chasing = false;
+    if (tx == null) {
+      if (f.tx == null || dist(f.x, f.y, f.tx, f.ty) < 20) {
+        if (f.kind === 'merchant') { G.fleets.splice(G.fleets.indexOf(f), 1); continue; }
+        const w = waterPoint(30, f.home, f.kind === 'bounty' ? 320 : 600); f.tx = w.x; f.ty = w.y;
+      }
+      tx = f.tx; ty = f.ty;
+    }
+    const ang = Math.atan2(ty - f.y, tx - f.x);
+    if (!moveOnMap(f, ang, fleetMapSpeed(f.ships, ang) * rate * dt)) { f.tx = null; if (f.kind === 'merchant') { G.fleets.splice(G.fleets.indexOf(f), 1); continue; } }
+    if (dP < 30 && f.cool <= 0 && P.cool <= 0) { showEncounter(f); return; }
+  }
+  const np = nearestPort(70);
+  const dock = $('#dock');
+  if (np && !panelOpen) { dock.hidden = false; dock.textContent = 'Dock at ' + np.name; dock.dataset.port = np.id; } else dock.hidden = true;
+}
+function arrive() {
+  const P = G.player;
+  if (P.destPort != null) { const p = G.ports[P.destPort]; P.destPort = null; if (dist(P.x, P.y, p.x, p.y) < 70) openPort(p); }
+}
+
+/* ============================== map render ============================== */
+function drawWaves(cx, cy, z, alpha) {
+  const ts = 150;
+  const x0 = Math.floor((cx - W / 2 / z) / ts) - 1, x1 = Math.ceil((cx + W / 2 / z) / ts) + 1;
+  const y0 = Math.floor((cy - H / 2 / z) / ts) - 1, y1 = Math.ceil((cy + H / 2 / z) / ts) + 1;
+  ctx.strokeStyle = 'rgba(190,230,222,' + alpha + ')'; ctx.lineWidth = 1.4 / z; ctx.beginPath();
+  for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) {
+    const h = hash2(i, j); const px = i * ts + (h % 97) / 97 * ts, py = j * ts + ((h >> 8) % 89) / 89 * ts;
+    const ph = Math.sin(tNow * 1.2 + (h % 628) / 100); const len = 8 + (h % 11);
+    ctx.moveTo(px - len, py + ph * 2); ctx.quadraticCurveTo(px, py - 4 + ph * 2, px + len, py + ph * 2);
+  }
+  ctx.stroke();
+}
+function drawWindRose(x, y, wind, label) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(10,36,44,.75)'; ctx.beginPath(); ctx.arc(0, 0, 34, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(214,161,74,.6)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#b6ab92'; ctx.font = '10px "Alegreya Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', 0, -25); ctx.fillText('S', 0, 25); ctx.fillText('E', 25, 0); ctx.fillText('W', -25, 0);
+  ctx.rotate(wind.a);
+  const L = 10 + 12 * wind.s;
+  ctx.strokeStyle = '#eadfc4'; ctx.fillStyle = '#eadfc4'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(L, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(L + 5, 0); ctx.lineTo(L - 3, -5); ctx.lineTo(L - 3, 5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#b6ab92'; ctx.font = '11px "Alegreya Sans", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(label, x, y + 48);
+}
+function fleetIcon(x, y, h, color, size, z) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(h); ctx.scale(1 / z, 1 / z);
+  ctx.fillStyle = color; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(size, 0); ctx.quadraticCurveTo(size * 0.2, -size * 0.55, -size * 0.8, -size * 0.4); ctx.lineTo(-size * 0.8, size * 0.4); ctx.quadraticCurveTo(size * 0.2, size * 0.55, size, 0); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f4ecd6'; ctx.fillRect(-1, -size * 0.7, 3, size * 1.4);
+  ctx.restore();
+}
+function renderMap() {
+  const P = G.player, z = mapZoom;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#081d24'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-P.x, -P.y);
+  ctx.fillStyle = '#0e3039'; ctx.fillRect(0, 0, MW, MH);
+  drawWaves(P.x, P.y, z, 0.09);
+  // chart grid
+  ctx.strokeStyle = 'rgba(214,161,74,.12)'; ctx.lineWidth = 1 / z; ctx.beginPath();
+  for (let x = 0; x <= MW; x += 300) { ctx.moveTo(x, 0); ctx.lineTo(x, MH); }
+  for (let y = 0; y <= MH; y += 300) { ctx.moveTo(0, y); ctx.lineTo(MW, y); }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(214,161,74,.4)'; ctx.font = (11 / z) + 'px "Alegreya Sans", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  for (let x = 0; x < MW; x += 300) ctx.fillText((61 + x / 300).toFixed(0) + '°W', x + 4 / z, 4 / z);
+  for (let y = 300; y < MH; y += 300) ctx.fillText((24 - y / 300).toFixed(0) + '°N', 4 / z, y + 4 / z);
+  ctx.strokeStyle = 'rgba(214,161,74,.5)'; ctx.lineWidth = 3 / z; ctx.strokeRect(0, 0, MW, MH);
+  for (const is of G.islands) drawIsland(is, z);
+  // ports
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  for (const p of G.ports) {
+    const hostile = !p.haven && G.rep < -30;
+    ctx.fillStyle = p.haven ? '#1a1a1a' : '#f1e6c8'; ctx.strokeStyle = p.haven ? '#d0644b' : '#2d5a74'; ctx.lineWidth = 3 / z;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 9 / z, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = hostile ? '#d0644b' : '#eadfc4'; ctx.font = (14 / z) + 'px "IM Fell English SC", Georgia, serif';
+    ctx.fillText(p.name, p.x, p.y - 13 / z);
+    ctx.fillStyle = '#b6ab92'; ctx.font = (10 / z) + 'px "Alegreya Sans", sans-serif'; ctx.textBaseline = 'top';
+    ctx.fillText(p.haven ? 'corsair haven' : hostile ? 'closed to you' : 'League port', p.x, p.y + 12 / z); ctx.textBaseline = 'bottom';
+  }
+  // course
+  if (P.tx != null) {
+    ctx.setLineDash([8 / z, 8 / z]); ctx.strokeStyle = 'rgba(234,223,196,.6)'; ctx.lineWidth = 1.5 / z;
+    ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.lineTo(P.tx, P.ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(P.tx, P.ty, 6 / z, 0, TAU); ctx.stroke();
+  }
+  // fleets
+  for (const f of G.fleets) {
+    const col = f.kind === 'merchant' ? '#9cc48a' : f.kind === 'bounty' ? '#e2563c' : '#c9573f';
+    if (f.kind !== 'merchant' && f.chasing) { ctx.strokeStyle = 'rgba(208,100,75,.35)'; ctx.lineWidth = 1 / z; ctx.beginPath(); ctx.arc(f.x, f.y, 420, 0, TAU); ctx.stroke(); }
+    fleetIcon(f.x, f.y, f.h, col, 8 + Math.min(6, f.ships.length * 1.5), z);
+    ctx.fillStyle = col; ctx.font = (12 / z) + 'px "Alegreya Sans", sans-serif'; ctx.textBaseline = 'top';
+    const lab = f.kind === 'bounty' ? f.captain + ' · ' + fmt(f.reward) : f.name + ' (' + f.ships.length + ')';
+    ctx.fillText(lab, f.x, f.y + 14 / z);
+  }
+  fleetIcon(P.x, P.y, P.h, '#f1d79a', 13, z);
+  ctx.fillStyle = '#f1d79a'; ctx.font = (12 / z) + 'px "Alegreya Sans", sans-serif'; ctx.textBaseline = 'top';
+  ctx.fillText('Your fleet', P.x, P.y + 16 / z);
+  ctx.restore();
+  drawWindRose(W - 54, 96, G.wind, 'Wind ' + ['light', 'moderate', 'fresh', 'strong'][Math.min(3, Math.floor(G.wind.s * 4))]);
+  if (G.paused) { ctx.fillStyle = 'rgba(234,223,196,.9)'; ctx.font = '28px "IM Fell English SC", Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Becalmed (paused) · Space to resume', W / 2, H / 2 - 80); }
+  updateTop();
+}
+function updateTop() {
+  const t = $('#top');
+  const s = (k, v) => '<div class="stat"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+  const html = s('Day', G.day) + s('Coin', fmt(G.credits)) + s('Provisions', Math.floor(G.cargo.prov) + ' <span class="sub">(' + Math.floor(G.cargo.prov / Math.max(0.1, upkeep())) + 'd)</span>') +
+    s('Hold', cargoUsed() + '/' + cargoCap()) + s('Ships', G.fleet.length) + s('League standing', (G.rep > 0 ? '+' : '') + G.rep) +
+    '<div class="btns"><button data-act="fleet">Fleet &amp; hold</button><button data-act="pause">' + (G.paused ? 'Resume' : 'Pause') + '</button><button data-act="mute">' + (muted ? 'Sound off' : 'Sound on') + '</button></div>';
+  if (t._h !== html) { t.innerHTML = html; t._h = html; }
+}
+
+/* ============================== panels ============================== */
+let curPort = null, portTab = 'market';
+function openPanel(html) { $('#card').innerHTML = html; $('#panel').hidden = false; panelOpen = true; $('#dock').hidden = true; const b = $('#card').querySelector('button.primary') || $('#card').querySelector('button'); if (b) b.focus({ preventScroll: true }); }
+function closePanel() { $('#panel').hidden = true; panelOpen = false; curPort = null; }
+function toast(msg) { const d = document.createElement('div'); d.textContent = msg; const t = $('#toasts'); t.appendChild(d); while (t.children.length > 5) t.firstChild.remove(); setTimeout(() => d.remove(), 6500); }
+
+function showTitle() {
+  mode = 'title'; $('#top').hidden = true;
+  let has = false; try { has = !!localStorage.getItem(SAVE_KEY); } catch (e) {}
+  openPanel(`<h1>Broadside Reach</h1>
+  <p class="sub">An archipelago of trade winds, corsairs and League gold. Build a fleet, run cargo between ports, take bounties, and win battles by keeping your broadside to the enemy and the wind at your back.</p>
+  ${has ? '<div class="row"><button class="primary" data-act="continue">Continue voyage</button></div>' : ''}
+  <h3>Choose your start</h3>
+  <div class="starts">${Object.entries(STARTS).map(([k, s]) => `<button class="start" data-act="new" data-start="${k}"><b>${s.label}</b><span>${s.blurb}</span></button>`).join('')}</div>
+  <h3>How battles work</h3>
+  <div class="keys">
+    <span><kbd>W</kbd> <kbd>S</kbd></span><span>Raise or reef sail (four throttle steps). Ships need way on to steer.</span>
+    <span><kbd>A</kbd> <kbd>D</kbd></span><span>Rudder to port or starboard</span>
+    <span>Click</span><span>Fire the broadside facing the cursor, or the bow chaser if the cursor is ahead</span>
+    <span><kbd>Q</kbd> <kbd>E</kbd> <kbd>F</kbd></span><span>Fire port broadside, starboard broadside, bow chaser</span>
+    <span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></span><span>Fleet orders: engage, escort the flagship, retreat (sail off the bottom edge)</span>
+    <span><kbd>Tab</kbd></span><span>Take command of another of your ships</span>
+    <span><kbd>P</kbd></span><span>Pause. Mouse wheel zooms.</span>
+  </div>
+  <p class="sub">Sailing ships are fastest running before the wind and crawl into it. Ironclads ignore the wind and can ram. Armor soaks small shot, so strip it with heavy guns before you go for the hull.</p>`);
+}
+
+function portPrice(p, gid) { const g = GOODS.find(x => x.id === gid); return Math.max(1, Math.round(g.base * p.mod[gid] * (1 + p.drift[gid]))); }
+function buyPrice(p, gid) { return Math.ceil(portPrice(p, gid) * (p.haven ? 1.12 : 1.06) * (G.rep < 0 && !p.haven ? 1 + Math.min(0.2, -G.rep / 150) : 1)); }
+function sellPrice(p, gid) { return Math.floor(portPrice(p, gid) * (p.haven ? 0.86 : 0.93)); }
+function repairCost(s) { return Math.ceil((1 - s.hullFrac) * HULLS[s.type].price * 0.22); }
+function sellShipValue(s) { return Math.floor(HULLS[s.type].price * 0.45 * (0.4 + 0.6 * s.hullFrac)); }
+function shipPrice(p, t) { return Math.round(HULLS[t].price * (p.haven ? 0.9 : 1)); }
+
+function openPort(p) {
+  if (!p.haven && G.rep < -30) {
+    openPanel(`<h2>${p.name}</h2><p>The harbormaster's launch meets you at the mole. The League has posted your name, and no ship of yours will be berthed here. Improve your standing by sinking corsairs, or trade at a corsair haven.</p><div class="row"><button class="primary" data-act="leave">Stand off</button></div>`);
+    return;
+  }
+  curPort = p; portTab = 'market'; renderPort(); save();
+}
+function renderPort() {
+  const p = curPort; if (!p) return;
+  const tabs = [['market', 'Market'], ['yard', 'Shipyard'], ['fleet', 'Repairs & fleet']];
+  if (!p.haven) tabs.push(['bounty', 'Bounty board']);
+  let body = '';
+  if (portTab === 'market') {
+    const free = cargoCap() - cargoUsed();
+    body = `<p class="sub">Hold space: ${cargoUsed()} / ${cargoCap()} · Coin ${fmt(G.credits)} · Your fleet eats ${upkeep().toFixed(1)} provisions a day.</p>
+    <div class="tbl-wrap"><table><tr><th>Good</th><th></th><th class="n">Buy</th><th class="n">Sell</th><th class="n">Held</th><th></th></tr>
+    ${GOODS.map(g => {
+      const m = p.mod[g.id] * (1 + p.drift[g.id]); const tag = m < 0.75 ? '<span class="tag cheap">plentiful</span>' : m > 1.3 ? '<span class="tag dear">in demand</span>' : '';
+      const bp = buyPrice(p, g.id), sp = sellPrice(p, g.id), held = Math.floor(G.cargo[g.id]);
+      return `<tr><td>${g.name}</td><td>${tag}</td><td class="n">${bp}</td><td class="n">${sp}</td><td class="n">${held}</td><td>
+      <button class="b" data-act="buy" data-g="${g.id}" data-n="1" ${G.credits < bp || free < 1 ? 'disabled' : ''}>Buy 1</button><button class="b" data-act="buy" data-g="${g.id}" data-n="10" ${G.credits < bp || free < 1 ? 'disabled' : ''}>Buy 10</button><button class="b" data-act="buy" data-g="${g.id}" data-n="max" ${G.credits < bp || free < 1 ? 'disabled' : ''}>Max</button>
+      <button class="b" data-act="sell" data-g="${g.id}" data-n="10" ${held < 1 ? 'disabled' : ''}>Sell 10</button><button class="b" data-act="sell" data-g="${g.id}" data-n="all" ${held < 1 ? 'disabled' : ''}>Sell all</button></td></tr>`;
+    }).join('')}</table></div>
+    <p class="sub">Prices move as you trade: buying pushes the local price up and selling pushes it down.</p>`;
+  } else if (portTab === 'yard') {
+    body = `<p class="sub">Coin ${fmt(G.credits)} · Fleet ${G.fleet.length} / 8 ships</p><div class="tbl-wrap"><table><tr><th>Hull</th><th>Class</th><th class="n">Hull</th><th class="n">Armor</th><th class="n">Speed</th><th>Guns</th><th class="n">Cargo</th><th class="n">Price</th><th></th></tr>
+    ${p.yard.map(t => { const h = HULLS[t]; const pr = shipPrice(p, t); return `<tr><td>${h.name}</td><td>${h.cls}${h.steam ? ' · steam' : ''}</td><td class="n">${h.hull}</td><td class="n">${h.armor}</td><td class="n">${h.speed}</td><td>${h.guns}× ${GUNS[h.gun].name} a side${h.bow ? ', bow chaser' : ''}${h.ram ? ', ram' : ''}</td><td class="n">${h.cargo}</td><td class="n">${fmt(pr)}</td><td><button class="b" data-act="buyship" data-t="${t}" ${G.credits < pr || G.fleet.length >= 8 ? 'disabled' : ''}>Buy</button></td></tr>`; }).join('')}
+    </table></div>`;
+  } else if (portTab === 'fleet') {
+    const total = G.fleet.reduce((s, x) => s + repairCost(x), 0);
+    body = `<p class="sub">Coin ${fmt(G.credits)}. The first ship listed is your flagship and leads in battle.</p><div class="tbl-wrap"><table><tr><th>Ship</th><th>Hull</th><th>Condition</th><th class="n">Repair</th><th></th></tr>
+    ${G.fleet.map((s, i) => { const rc = repairCost(s); return `<tr><td>${i === 0 ? '★ ' : ''}${s.name}</td><td>${HULLS[s.type].name}</td><td><span class="bar"><i style="width:${Math.round(s.hullFrac * 100)}%;background:${s.hullFrac < 0.4 ? 'var(--danger)' : 'var(--good)'}"></i></span> ${Math.round(s.hullFrac * 100)}%</td><td class="n">${rc ? fmt(rc) : '·'}</td><td>
+    <button class="b" data-act="repair" data-i="${i}" ${!rc || G.credits < rc ? 'disabled' : ''}>Repair</button>${i ? `<button class="b" data-act="flag" data-i="${i}">Make flagship</button>` : ''}<button class="b danger" data-act="sellship" data-i="${i}" ${G.fleet.length < 2 ? 'disabled' : ''}>Sell for ${fmt(sellShipValue(s))}</button></td></tr>`; }).join('')}
+    </table></div><div class="row"><button data-act="repairall" ${!total || G.credits < total ? 'disabled' : ''}>Repair all (${fmt(total)})</button></div>`;
+  } else if (portTab === 'bounty') {
+    const bs = G.fleets.filter(f => f.kind === 'bounty');
+    body = `<p class="sub">The League pays for the sinking of these captains' entire squadrons. Their positions are marked on your chart in red.</p>
+    ${bs.length ? `<div class="tbl-wrap"><table><tr><th>Captain</th><th>Squadron</th><th class="n">Distance</th><th class="n">Reward</th></tr>${bs.map(f => `<tr><td>${f.captain}</td><td>${f.ships.map(s => HULLS[s.type].name).join(', ')}</td><td class="n">${fmt(dist(f.x, f.y, p.x, p.y) / 10)} nm</td><td class="n">${fmt(f.reward)}</td></tr>`).join('')}</table></div>` : '<p>No bounties posted today. Check back in a few days.</p>'}
+    <p class="sub">Sinking any corsair also raises your League standing.</p>`;
+  }
+  openPanel(`<h2>${p.name}</h2><p class="sub">${p.haven ? 'Corsair haven. No questions asked, and nothing comes cheap.' : 'Harbor League port.'} Day ${G.day}.</p>
+  <div class="tabs">${tabs.map(([k, l]) => `<button class="${k === portTab ? 'on' : ''}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</div>
+  ${body}<div class="row"><button class="primary" data-act="leave">Set sail</button></div>`);
+}
+function showFleet() {
+  openPanel(`<h2>Fleet &amp; hold</h2>
+  <div class="tbl-wrap"><table><tr><th>Ship</th><th>Hull</th><th>Condition</th><th>Guns</th><th class="n">Speed</th><th class="n">Cargo</th></tr>
+  ${G.fleet.map((s, i) => { const h = HULLS[s.type]; return `<tr><td>${i === 0 ? '★ ' : ''}${s.name}</td><td>${h.name}</td><td><span class="bar"><i style="width:${Math.round(s.hullFrac * 100)}%;background:${s.hullFrac < 0.4 ? 'var(--danger)' : 'var(--good)'}"></i></span> ${Math.round(s.hullFrac * 100)}%</td><td>${h.guns}× ${GUNS[h.gun].name}</td><td class="n">${h.speed}</td><td class="n">${h.cargo}</td></tr>`; }).join('')}</table></div>
+  <h3>Hold · ${cargoUsed()} / ${cargoCap()}</h3>
+  <div class="tbl-wrap"><table>${GOODS.map(g => `<tr><td>${g.name}</td><td class="n">${Math.floor(G.cargo[g.id])}</td></tr>`).join('')}</table></div>
+  <p class="sub">${G.kills} enemy ships sunk so far. Upkeep is ${upkeep().toFixed(1)} provisions a day.</p>
+  <div class="row"><button class="primary" data-act="leave">Close</button><button class="danger" data-act="quit">Save and return to title</button></div>`);
+}
+function showEncounter(f) {
+  G.player.tx = null; G.player.follow = null;
+  const comp = f.ships.map(s => HULLS[s.type].name).join(', ');
+  const ratio = strength(f.ships) / strength(G.fleet);
+  const odds = ratio > 1.6 ? 'They badly outgun you.' : ratio > 1.1 ? 'They have the heavier fleet.' : ratio > 0.75 ? 'It would be an even fight.' : 'You outgun them.';
+  const myS = fleetMapSpeed(G.fleet, 0), thS = fleetMapSpeed(f.ships, 0);
+  const evade = Math.round(clamp(0.4 + (myS - thS) / 50, 0.1, 0.9) * 100);
+  if (f.kind === 'merchant') {
+    openPanel(`<h2>${f.name}</h2><p>A League convoy crosses your bow: ${comp}. Their holds ride low in the water.</p><p class="sub">${odds} Attacking will cost 15 League standing.</p>
+    <div class="row"><button class="primary" data-act="pass" data-f="${f.id}">Let them pass</button><button class="danger" data-act="attack" data-f="${f.id}">Run out the guns</button></div>`);
+  } else {
+    const who = f.kind === 'bounty' ? `${f.captain}'s squadron, wanted for ${fmt(f.reward)} coin` : 'A corsair band';
+    openPanel(`<h2>Sails on the horizon</h2><p>${who} bears down on you: ${comp}.</p><p class="sub">${odds}</p>
+    <div class="row"><button class="primary" data-act="engage" data-f="${f.id}">Clear for action</button><button data-act="evade" data-f="${f.id}" data-p="${evade}">Try to slip away (${evade}%)</button></div>`);
+  }
+}
+function showAftermath(r) {
+  let html = `<h2>${r.victory ? 'Victory' : r.retreated ? 'Disengaged' : 'Defeat'}</h2>`;
+  html += `<p>${r.victory ? 'The enemy is broken.' : r.retreated ? 'Your surviving ships make their escape.' : 'The day is lost.'}</p>`;
+  if (r.sunk.length) html += `<p><b>Enemy ships sunk:</b> ${r.sunk.map(s => s.name + ' (' + HULLS[s.type].name + ')').join(', ')}</p>`;
+  if (r.lost.length) html += `<p style="color:#f3c2b6"><b>Lost:</b> ${r.lost.map(s => s.name + ' (' + HULLS[s.type].name + ')').join(', ')}</p>`;
+  if (r.coin) html += `<p><b>Plunder:</b> ${fmt(r.coin)} coin${r.goods ? ' and ' + r.goods : ''}.</p>`;
+  if (r.bounty) html += `<p><b>Bounty paid:</b> ${fmt(r.bounty)} coin from the League.</p>`;
+  if (r.salvage.length) {
+    html += `<h3>Refloat a wreck</h3><p class="sub">Some hulls are still sound enough to tow into service at 30% condition.</p><div class="tbl-wrap"><table>${r.salvage.map((s, i) => `<tr><td>${s.name}</td><td>${HULLS[s.type].name}</td><td class="n">${fmt(s.cost)}</td><td><button class="b" data-act="salvage" data-i="${i}" ${s.taken || G.credits < s.cost || G.fleet.length >= 8 ? 'disabled' : ''}>${s.taken ? 'Taken' : 'Refloat'}</button></td></tr>`).join('')}</table></div>`;
+  }
+  html += `<div class="row"><button class="primary" data-act="leave">Return to the chart</button></div>`;
+  lastResult = r; openPanel(html);
+}
+let lastResult = null;
+function gameOver(why) {
+  mode = 'over'; C = null; $('#toasts').hidden = false; try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  $('#touch').hidden = true;
+  openPanel(`<h2>Lost at sea</h2><p>${why}</p><p class="sub">You survived ${G.day} days and sank ${G.kills} enemy ships.</p><div class="row"><button class="primary" data-act="title">New voyage</button></div>`);
+}
+
+function act(a, d) {
+  initAudio();
+  const P = G && G.player;
+  switch (a) {
+    case 'new': newGame(d.start); break;
+    case 'continue': if (load()) { closePanel(); mode = 'map'; $('#top').hidden = false; toast('Welcome back, captain. Day ' + G.day + '.'); } break;
+    case 'title': showTitle(); break;
+    case 'quit': save(); showTitle(); break;
+    case 'leave': closePanel(); if (P) P.cool = Math.max(P.cool, 2.5); break;
+    case 'fleet': if (mode === 'map' && !panelOpen) showFleet(); break;
+    case 'pause': if (mode === 'map') G.paused = !G.paused; break;
+    case 'mute': muted = !muted; break;
+    case 'tab': portTab = d.tab; renderPort(); break;
+    case 'buy': {
+      const p = curPort, bp = buyPrice(p, d.g); const free = cargoCap() - cargoUsed();
+      let n = d.n === 'max' ? Math.min(free, Math.floor(G.credits / bp)) : Math.min(+d.n, free, Math.floor(G.credits / bp));
+      if (n > 0) { G.credits -= n * bp; G.cargo[d.g] += n; p.drift[d.g] = Math.min(0.6, p.drift[d.g] + n * 0.004); }
+      renderPort(); break;
+    }
+    case 'sell': {
+      const p = curPort; const held = Math.floor(G.cargo[d.g]); const n = d.n === 'all' ? held : Math.min(+d.n, held);
+      let got = 0; for (let i = 0; i < n; i++) { got += sellPrice(p, d.g); p.drift[d.g] = Math.max(-0.5, p.drift[d.g] - 0.004); }
+      G.credits += got; G.cargo[d.g] -= n; renderPort(); break;
+    }
+    case 'buyship': { const pr = shipPrice(curPort, d.t); if (G.credits >= pr && G.fleet.length < 8) { G.credits -= pr; const s = newShip(d.t); G.fleet.push(s); toast('The ' + s.name + ' joins your fleet.'); } renderPort(); break; }
+    case 'sellship': { const s = G.fleet[+d.i]; if (s && G.fleet.length > 1) { G.credits += sellShipValue(s); G.fleet.splice(+d.i, 1); trimCargo(); } renderPort(); break; }
+    case 'repair': { const s = G.fleet[+d.i]; const c = repairCost(s); if (G.credits >= c) { G.credits -= c; s.hullFrac = 1; } renderPort(); break; }
+    case 'repairall': { const c = G.fleet.reduce((t, s) => t + repairCost(s), 0); if (G.credits >= c) { G.credits -= c; G.fleet.forEach(s => s.hullFrac = 1); } renderPort(); break; }
+    case 'flag': { const [s] = G.fleet.splice(+d.i, 1); G.fleet.unshift(s); renderPort(); break; }
+    case 'pass': { const f = G.fleets.find(x => x.id === +d.f); if (f) f.cool = 8; P.cool = 3; closePanel(); break; }
+    case 'attack': { const f = G.fleets.find(x => x.id === +d.f); if (f) { G.rep -= 15; toast('League standing −15. Word will spread.'); closePanel(); startCombat(f); } break; }
+    case 'engage': { const f = G.fleets.find(x => x.id === +d.f); if (f) { closePanel(); startCombat(f); } break; }
+    case 'evade': {
+      const f = G.fleets.find(x => x.id === +d.f); if (!f) break;
+      if (R() * 100 < +d.p) { f.cool = 7; P.cool = 4; closePanel(); toast('You catch a better wind and leave them wallowing astern.'); }
+      else openPanel(`<h2>They have the weather gauge</h2><p>The enemy cuts across your wake. There is no running from this one.</p><div class="row"><button class="primary" data-act="engage" data-f="${f.id}">Clear for action</button></div>`);
+      break;
+    }
+    case 'salvage': { const s = lastResult.salvage[+d.i]; if (s && !s.taken && G.credits >= s.cost && G.fleet.length < 8) { G.credits -= s.cost; s.taken = true; const ns = newShip(s.type, s.name); ns.hullFrac = 0.3; G.fleet.push(ns); toast('The ' + s.name + ' is pumped out and sails under your flag.'); } showAftermath(lastResult); break; }
+  }
+}
+function trimCargo() { let over = cargoUsed() - cargoCap(); if (over <= 0) return; for (const g of [...GOODS].reverse()) { const take = Math.min(over, Math.floor(G.cargo[g.id])); G.cargo[g.id] -= take; over -= take; if (over <= 0) break; } toast('Your hold overflowed, so cargo went over the side.'); }
+document.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && !b.disabled) act(b.dataset.act, b.dataset); });
+$('#dock').addEventListener('click', () => { initAudio(); const p = G.ports[+$('#dock').dataset.port]; if (p) openPort(p); });
+
+/* ============================== save / load ============================== */
+function save() { if (!G) return; try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
+function load() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return false; G = JSON.parse(s); G.paused = false; return true; } catch (e) { return false; } }
+
+/* ============================== combat ============================== */
+function startCombat(f) {
+  const AW = 2800, AH = 2100;
+  C = { AW, AH, ships: [], balls: [], parts: [], islands: [], order: 'engage', fleet: f, zoom: Math.min(1, Math.max(0.55, Math.min(W, H) / 1100)), cam: { x: AW / 2, y: AH - 300 }, t: 0, endT: 0, paused: false, wind: G.wind, msg: 'Battle stations!', msgT: 3 };
+  const n = ri(1, 4);
+  for (let i = 0, tries = 0; i < n && tries < 50; tries++) { const r = 70 + R() * 110, x = 400 + R() * (AW - 800), y = 650 + R() * (AH - 1300); if (C.islands.some(o => dist(o.x, o.y, x, y) < o.r + r + 250)) continue; C.islands.push(makeIsland(x, y, r, R)); i++; }
+  const place = (list, side) => list.forEach((rec, i) => {
+    const k = list.length; const x = AW / 2 + (i - (k - 1) / 2) * 230 + (R() - 0.5) * 40; const y = side ? 240 + (i % 2) * 90 : AH - 240 - (i % 2) * 90;
+    C.ships.push(makeCShip(rec, side, x, y, side ? Math.PI / 2 : -Math.PI / 2));
+  });
+  place(G.fleet, 0); place(f.ships, 1);
+  C.flag = C.ships[0];
+  for (const s of C.ships) if (s.side === 1 && f.kind === 'merchant' && s.def === HULLS.fluyt) s.flee = true;
+  mode = 'combat'; $('#top').hidden = true; $('#dock').hidden = true; $('#toasts').hidden = true;
+  $('#touch').hidden = !matchMedia('(pointer: coarse)').matches;
+  boom(0.3, 300);
+}
+function makeCShip(rec, side, x, y, a) {
+  const def = HULLS[rec.type];
+  return { rec, def, side, x, y, a, v: def.speed * 0.5, throttle: 2, rudder: 0, maxHull: def.hull, hull: def.hull * rec.hullFrac, armor: def.armor, rl: R(), rr: R(), rb: 0, queue: [], alive: true, escaped: false, sink: 0, prefSide: R() < 0.5 ? 1 : -1, sideT: 0, wakeT: 0, smokeT: 0, ramT: 0, flee: false, target: null };
+}
+function toWorld(i, s, lx, ly) { return { x: s.x + Math.cos(s.a) * lx - Math.sin(s.a) * ly, y: s.y + Math.sin(s.a) * lx + Math.cos(s.a) * ly }; }
+function fireSide(s, side, aimAng) {
+  const key = side < 0 ? 'rl' : 'rr'; if (s[key] > 0) return false;
+  const g = GUNS[s.def.gun]; s[key] = g.reload * (1.25 - 0.25 * (s.hull / s.maxHull));
+  const beam = s.a + side * Math.PI / 2;
+  const aim = aimAng == null ? beam : beam + clamp(angDiff(aimAng, beam), -0.3, 0.3);
+  const n = s.def.guns;
+  for (let i = 0; i < n; i++) { const lx = n === 1 ? 0 : lerp(-s.def.len * 0.32, s.def.len * 0.3, i / (n - 1)); s.queue.push({ t: i * 0.07 + R() * 0.04, lx, ly: side * s.def.beam * 0.5, ang: aim, g }); }
+  return true;
+}
+function fireBow(s, aimAng) {
+  if (!s.def.bow || s.rb > 0) return false;
+  const g = GUNS.bow; s.rb = g.reload;
+  const aim = aimAng == null ? s.a : s.a + clamp(angDiff(aimAng, s.a), -0.35, 0.35);
+  s.queue.push({ t: 0, lx: s.def.len * 0.5, ly: 0, ang: aim, g });
+  return true;
+}
+function spawnBall(s, q) {
+  const p = toWorld(0, s, q.lx, q.ly); const a = q.ang + (R() - 0.5) * 2 * q.g.spread;
+  C.balls.push({ x: p.x, y: p.y, vx: Math.cos(a) * q.g.speed + Math.cos(s.a) * s.v * 0.4, vy: Math.sin(a) * q.g.speed + Math.sin(s.a) * s.v * 0.4, life: q.g.range / q.g.speed, dmg: q.g.dmg, side: s.side, big: q.g.dmg > 60 });
+  for (let i = 0; i < 4; i++) C.parts.push({ type: 'smoke', x: p.x + Math.cos(q.ang) * 6, y: p.y + Math.sin(q.ang) * 6, vx: Math.cos(q.ang + (R() - 0.5)) * (20 + R() * 30) + Math.cos(s.a) * s.v * 0.5, vy: Math.sin(q.ang + (R() - 0.5)) * (20 + R() * 30) + Math.sin(s.a) * s.v * 0.5, life: 0, max: 1.2 + R(), size: 6 + R() * 6 });
+  C.parts.push({ type: 'flash', x: p.x, y: p.y, life: 0, max: 0.12, size: 8 });
+  const d = dist(p.x, p.y, C.cam.x, C.cam.y); boom(0.28 * clamp(1 - d / 1400, 0, 1) * (q.g.dmg > 60 ? 1.4 : 1), q.g.dmg > 60 ? 260 : 420);
+}
+function damage(s, dmg, by) {
+  if (!s.alive) return;
+  const hd = Math.max(dmg * 0.15, dmg * dmg / (dmg + s.armor));
+  s.armor = Math.max(0, s.armor - dmg * 0.35);
+  s.hull -= hd;
+  if (s.side === 1 && !s.flee && s.hull / s.maxHull < 0.2 && R() < 0.5) s.flee = true;
+  if (s.hull <= 0) {
+    s.hull = 0; s.alive = false; s.sink = 0.001;
+    for (let i = 0; i < 18; i++) C.parts.push({ type: i % 3 ? 'smoke' : 'debris', x: s.x + (R() - 0.5) * s.def.len * 0.6, y: s.y + (R() - 0.5) * s.def.beam, vx: (R() - 0.5) * 60, vy: (R() - 0.5) * 60, life: 0, max: 2 + R() * 2, size: 8 + R() * 10 });
+    C.msg = (s.side ? 'Enemy ' : 'Our ') + s.def.name + ' ' + s.rec.name + ' is going down!'; C.msgT = 3;
+    boom(0.5, 200);
+    if (s === C.flag) { const next = C.ships.find(x => x.side === 0 && x.alive && !x.escaped); if (next) { C.flag = next; C.msg = 'Flagship lost! You shift your flag to the ' + next.rec.name + '.'; C.msgT = 4; } }
+  }
+}
+function nearestEnemy(s, maxD = Infinity) {
+  let best = null, bd = maxD;
+  for (const o of C.ships) { if (o.side === s.side || !o.alive || o.escaped) continue; const d = dist(s.x, s.y, o.x, o.y); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function steerAvoid(s, desired) {
+  const look = s.def.len * 0.5 + 110;
+  for (const is of C.islands) {
+    for (const k of [0.4, 1]) {
+      if (inIsland(is, s.x + Math.cos(desired) * look * k, s.y + Math.sin(desired) * look * k, 35)) { const toC = Math.atan2(is.y - s.y, is.x - s.x); return desired + (angDiff(desired, toC) >= 0 ? 1 : -1) * 1.0; }
+    }
+  }
+  return desired;
+}
+function aiShip(s, dt) {
+  const retreat = s.side === 0 ? C.order === 'retreat' : s.flee;
+  if (retreat) {
+    const goal = s.side === 0 ? Math.PI / 2 : -Math.PI / 2;
+    s.rudder = clamp(angDiff(steerAvoid(s, goal), s.a) * 2.5, -1, 1); s.throttle = 3;
+    const e = nearestEnemy(s, GUNS[s.def.gun].range); if (e) tryFire(s, e);
+    return;
+  }
+  let t = nearestEnemy(s);
+  if (s.side === 0 && C.order === 'escort' && C.flag && C.flag !== s) {
+    const close = nearestEnemy(s, 380);
+    if (!close) {
+      const idx = C.ships.filter(x => x.side === 0).indexOf(s);
+      const off = (idx % 2 ? 1 : -1) * (150 + 80 * Math.floor(idx / 2));
+      const gx = C.flag.x + Math.cos(C.flag.a + Math.PI / 2) * off - Math.cos(C.flag.a) * 60, gy = C.flag.y + Math.sin(C.flag.a + Math.PI / 2) * off - Math.sin(C.flag.a) * 60;
+      const d = dist(s.x, s.y, gx, gy);
+      const desired = d > 60 ? Math.atan2(gy - s.y, gx - s.x) : C.flag.a;
+      s.rudder = clamp(angDiff(steerAvoid(s, desired), s.a) * 2.5, -1, 1);
+      s.throttle = d > 200 ? 3 : d > 60 ? Math.max(1, C.flag.throttle) : C.flag.throttle;
+      const e = nearestEnemy(s, GUNS[s.def.gun].range); if (e) tryFire(s, e);
+      return;
+    }
+    t = close;
+  }
+  if (!t) { s.throttle = 1; s.rudder = 0; return; }
+  const g = GUNS[s.def.gun]; const pref = g.range * 0.7;
+  const d = dist(s.x, s.y, t.x, t.y); const to = Math.atan2(t.y - s.y, t.x - s.x);
+  s.sideT -= dt;
+  if (s.sideT <= 0) { s.sideT = 3 + R() * 2; const a1 = to + Math.PI / 2, a2 = to - Math.PI / 2; s.prefSide = Math.abs(angDiff(a1, s.a)) < Math.abs(angDiff(a2, s.a)) ? -1 : 1; }
+  let desired;
+  if (s.def.ram && d < 450 && s.hull / s.maxHull > 0.35) desired = to;
+  else if (d > pref + 90) desired = to - s.prefSide * 0.35;
+  else if (d < pref * 0.5) desired = to + Math.PI - s.prefSide * 0.6;
+  else desired = to - s.prefSide * Math.PI / 2;
+  const m = 160;
+  if (s.x < m || s.x > C.AW - m || s.y < m || s.y > C.AH - m) { const c = Math.atan2(C.AH / 2 - s.y, C.AW / 2 - s.x); desired = c; }
+  desired = steerAvoid(s, desired);
+  s.rudder = clamp(angDiff(desired, s.a) * 2.5, -1, 1);
+  s.throttle = d > pref + 200 ? 3 : 2;
+  tryFire(s, null);
+}
+function inArc(s, o, center, half, range) { const d = dist(s.x, s.y, o.x, o.y); if (d > range) return false; return Math.abs(angDiff(Math.atan2(o.y - s.y, o.x - s.x), center)) < half; }
+function tryFire(s) {
+  const g = GUNS[s.def.gun];
+  for (const o of C.ships) {
+    if (o.side === s.side || !o.alive || o.escaped) continue;
+    const to = Math.atan2(o.y - s.y, o.x - s.x);
+    if (s.rr <= 0 && inArc(s, o, s.a + Math.PI / 2, 0.32, g.range * 0.92)) fireSide(s, 1, to);
+    if (s.rl <= 0 && inArc(s, o, s.a - Math.PI / 2, 0.32, g.range * 0.92)) fireSide(s, -1, to);
+    if (s.rb <= 0 && s.def.bow && inArc(s, o, s.a, 0.3, GUNS.bow.range * 0.9)) fireBow(s, to);
+  }
+}
+function playerControl(s, dt) {
+  let rud = 0;
+  if (keys.KeyA || keys.ArrowLeft || touchHeld.left) rud -= 1;
+  if (keys.KeyD || keys.ArrowRight || touchHeld.right) rud += 1;
+  s.rudder = rud;
+}
+function mouseWorld() { return { x: (mouse.x - W / 2) / C.zoom + C.cam.x, y: (mouse.y - H / 2) / C.zoom + C.cam.y }; }
+function playerFireAtMouse(which) {
+  const s = C.flag; if (!s || !s.alive) return;
+  const m = mouseWorld(); const to = Math.atan2(m.y - s.y, m.x - s.x);
+  if (which === 'port') return fireSide(s, -1, to);
+  if (which === 'star') return fireSide(s, 1, to);
+  if (which === 'bow') return fireBow(s, to);
+  const rel = angDiff(to, s.a);
+  if (Math.abs(rel) < 0.4 && s.def.bow) fireBow(s, to);
+  else if (rel > 0) fireSide(s, 1, to); else fireSide(s, -1, to);
+}
+function updateCombat(dt) {
+  if (C.paused) return;
+  C.t += dt; C.msgT -= dt;
+  const flag = C.flag;
+  for (const s of C.ships) {
+    if (!s.alive) { s.sink += dt; continue; }
+    if (s.escaped) continue;
+    s.rl = Math.max(0, s.rl - dt); s.rr = Math.max(0, s.rr - dt); s.rb = Math.max(0, s.rb - dt); s.ramT = Math.max(0, s.ramT - dt);
+    if (s === flag) playerControl(s, dt); else aiShip(s, dt);
+    for (let i = s.queue.length - 1; i >= 0; i--) { const q = s.queue[i]; q.t -= dt; if (q.t <= 0) { spawnBall(s, q); s.queue.splice(i, 1); } }
+    const hf = s.hull / s.maxHull;
+    const maxV = s.def.speed * windFactor(s.def, s.a, C.wind) * (s.throttle / 3) * (0.55 + 0.45 * hf);
+    const acc = s.def.speed * (s.def.steam ? 0.35 : 0.22);
+    s.v += clamp(maxV - s.v, -acc * 1.4 * dt, acc * dt);
+    const steer = s.def.turn * (0.25 + 0.75 * Math.min(1, s.v / (s.def.speed * 0.45)));
+    s.a += s.rudder * steer * dt;
+    s.x += Math.cos(s.a) * s.v * dt; s.y += Math.sin(s.a) * s.v * dt;
+    // land
+    for (const is of C.islands) if (inIsland(is, s.x, s.y, s.def.beam * 0.6)) {
+      const ang = Math.atan2(s.y - is.y, s.x - is.x); const r = islandR(is, ang) + s.def.beam * 0.6 + 1;
+      s.x = is.x + Math.cos(ang) * r; s.y = is.y + Math.sin(ang) * r;
+      if (s.v > 25 && s.ramT <= 0) { damage(s, s.v * 0.8); s.ramT = 1; if (s === flag) { C.msg = 'We have run aground!'; C.msgT = 2; } }
+      s.v *= 0.4;
+    }
+    // edges
+    const retreating = s.side === 0 ? C.order === 'retreat' : s.flee;
+    if (retreating && ((s.side === 0 && s.y > C.AH + 30) || (s.side === 1 && s.y < -30))) { s.escaped = true; C.msg = s.rec.name + (s.side ? ' escapes the battle.' : ' has withdrawn safely.'); C.msgT = 2.5; if (s === C.flag) { const nx = C.ships.find(x => x.side === 0 && x.alive && !x.escaped); if (nx) C.flag = nx; } continue; }
+    s.x = clamp(s.x, 20, C.AW - 20);
+    if (!(retreating && s.side === 0)) s.y = Math.min(s.y, C.AH - 20);
+    if (!(retreating && s.side === 1)) s.y = Math.max(s.y, 20);
+    // wake & smoke
+    s.wakeT -= dt;
+    if (s.wakeT <= 0 && s.v > 10) { s.wakeT = 0.06; const p = toWorld(0, s, -s.def.len * 0.5, 0); C.parts.push({ type: 'wake', x: p.x, y: p.y, vx: 0, vy: 0, life: 0, max: 2.2, size: s.def.beam * 0.4 }); }
+    if (s.def.steam) { s.smokeT -= dt; if (s.smokeT <= 0) { s.smokeT = 0.08; C.parts.push({ type: 'coal', x: s.x, y: s.y, vx: Math.cos(C.wind.a) * 30 * C.wind.s, vy: Math.sin(C.wind.a) * 30 * C.wind.s, life: 0, max: 2.5, size: 6 }); } }
+    if (hf < 0.4 && R() < dt * 6) C.parts.push({ type: 'fire', x: s.x + (R() - 0.5) * s.def.len * 0.5, y: s.y + (R() - 0.5) * s.def.beam * 0.6, vx: Math.cos(C.wind.a) * 15, vy: Math.sin(C.wind.a) * 15, life: 0, max: 0.9, size: 5 });
+  }
+  // ship-ship collisions & ramming
+  const live = C.ships.filter(s => s.alive && !s.escaped);
+  for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+    const a = live[i], b = live[j]; const ra = a.def.len * 0.32, rb = b.def.len * 0.32; const d = dist(a.x, a.y, b.x, b.y);
+    if (d < ra + rb && d > 0.01) {
+      const nx = (b.x - a.x) / d, ny = (b.y - a.y) / d, ov = (ra + rb - d) / 2;
+      a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
+      const rv = Math.abs((Math.cos(a.a) * a.v - Math.cos(b.a) * b.v) * nx + (Math.sin(a.a) * a.v - Math.sin(b.a) * b.v) * ny);
+      if (a.side !== b.side && rv > 30 && a.ramT <= 0 && b.ramT <= 0) {
+        damage(b, rv * a.def.len * 0.05 * (a.def.ram ? 4 : 1)); damage(a, rv * b.def.len * 0.05 * (b.def.ram ? 4 : 1) * (a.def.ram ? 0.3 : 1));
+        a.ramT = b.ramT = 1.2; a.v *= 0.5; b.v *= 0.5; boom(0.4, 180);
+        if (a.def.ram || b.def.ram) { C.msg = 'Rammed!'; C.msgT = 1.5; }
+      }
+    }
+  }
+  // balls
+  for (let i = C.balls.length - 1; i >= 0; i--) {
+    const b = C.balls[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    let gone = false;
+    if (b.life <= 0) { C.parts.push({ type: 'splash', x: b.x, y: b.y, life: 0, max: 0.8, size: b.big ? 14 : 9 }); gone = true; }
+    else if (landAt(C.islands, b.x, b.y)) { C.parts.push({ type: 'dust', x: b.x, y: b.y, vx: 0, vy: 0, life: 0, max: 0.8, size: 10 }); gone = true; }
+    else for (const s of C.ships) {
+      if (s.side === b.side || !s.alive || s.escaped) continue;
+      const dx = b.x - s.x, dy = b.y - s.y; const lx = dx * Math.cos(s.a) + dy * Math.sin(s.a), ly = -dx * Math.sin(s.a) + dy * Math.cos(s.a);
+      if (Math.abs(lx) < s.def.len / 2 && Math.abs(ly) < s.def.beam / 2 + 2) {
+        damage(s, b.dmg);
+        for (let k = 0; k < 5; k++) C.parts.push({ type: k < 2 ? 'debris' : 'spark', x: b.x, y: b.y, vx: (R() - 0.5) * 120, vy: (R() - 0.5) * 120, life: 0, max: 0.5 + R() * 0.6, size: 3 + R() * 3 });
+        gone = true; break;
+      }
+    }
+    if (gone) C.balls.splice(i, 1);
+  }
+  for (let i = C.parts.length - 1; i >= 0; i--) { const p = C.parts[i]; p.life += dt; if (p.vx) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy *= 0.97; } if (p.life >= p.max) C.parts.splice(i, 1); }
+  if (C.parts.length > 1800) C.parts.splice(0, C.parts.length - 1800);
+  // camera
+  if (C.flag) { C.cam.x = lerp(C.cam.x, C.flag.x + Math.cos(C.flag.a) * 80, Math.min(1, dt * 3)); C.cam.y = lerp(C.cam.y, C.flag.y + Math.sin(C.flag.a) * 80, Math.min(1, dt * 3)); }
+  // end conditions
+  const mine = C.ships.filter(s => s.side === 0 && s.alive && !s.escaped).length;
+  const theirs = C.ships.filter(s => s.side === 1 && s.alive && !s.escaped).length;
+  if (!mine || !theirs) { C.endT += dt; if (!C.endMsg) { C.endMsg = true; C.msg = !theirs ? 'The enemy is beaten!' : 'Battle over.'; C.msgT = 3; } if (C.endT > 2.2) endCombat(); }
+}
+function endCombat() {
+  const f = C.fleet; const r = { victory: false, retreated: false, sunk: [], lost: [], coin: 0, goods: '', bounty: 0, salvage: [] };
+  for (const s of C.ships) {
+    if (s.side === 0) { if (!s.alive) r.lost.push(s.rec); else s.rec.hullFrac = Math.max(0.05, s.hull / s.maxHull); }
+    else { if (!s.alive) r.sunk.push(s.rec); else s.rec.hullFrac = Math.max(0.05, s.hull / s.maxHull); }
+  }
+  G.fleet = G.fleet.filter(s => !r.lost.includes(s));
+  f.ships = f.ships.filter(s => !r.sunk.includes(s));
+  const enemyLeft = C.ships.some(s => s.side === 1 && s.alive && !s.escaped);
+  const mineLeft = C.ships.some(s => s.side === 0 && s.alive && !s.escaped);
+  r.victory = !enemyLeft && G.fleet.length > 0;
+  r.retreated = !mineLeft && G.fleet.length > 0;
+  G.kills += r.sunk.length;
+  for (const s of r.sunk) {
+    r.coin += HULLS[s.type].price * (0.08 + R() * 0.08);
+    if (R() < 0.3) r.salvage.push({ type: s.type, name: s.name, cost: Math.round(HULLS[s.type].price * 0.3 / 50) * 50 });
+  }
+  r.coin = Math.round(r.coin / 10) * 10;
+  if (f.kind !== 'merchant') G.rep = Math.min(100, G.rep + r.sunk.length * 2);
+  if (r.victory && f.kind === 'merchant') {
+    const got = []; let free = cargoCap() - cargoUsed();
+    for (const [g, n] of Object.entries(f.cargo)) { const take = Math.min(free, Math.floor(n * (0.4 + R() * 0.4))); if (take > 0) { G.cargo[g] += take; free -= take; got.push(take + ' ' + GOODS.find(x => x.id === g).name.toLowerCase()); } }
+    r.goods = got.join(', ');
+  }
+  if (!f.ships.length) { G.fleets = G.fleets.filter(x => x !== f); if (f.kind === 'bounty') r.bounty = f.reward; }
+  else f.cool = 8;
+  G.credits += r.coin + r.bounty;
+  G.player.cool = 5;
+  C = null; $('#touch').hidden = true; $('#toasts').hidden = false;
+  if (!G.fleet.length) return gameOver('Your last ship slipped beneath the waves.');
+  if (r.victory) r.salvage = r.salvage.filter(() => true); else r.salvage = [];
+  mode = 'map'; $('#top').hidden = false; save(); showAftermath(r);
+}
+
+/* ============================== combat render ============================== */
+const SIDE_COL = [{ sail: '#f2ead2', flag: '#3f7fb0', hull: '#6b4a2e', deck: '#a8845a' }, { sail: '#2c2a29', flag: '#c9452f', hull: '#3d2a1e', deck: '#6f5640' }];
+function drawShip(s) {
+  const L = s.def.len, B = s.def.beam, col = SIDE_COL[s.side];
+  ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.a);
+  if (!s.alive) { const k = Math.min(1, s.sink / 3); ctx.globalAlpha = 1 - k; ctx.scale(1 - 0.25 * k, 1 - 0.25 * k); ctx.rotate(k * 0.3); }
+  ctx.beginPath(); ctx.moveTo(L / 2, 0); ctx.quadraticCurveTo(L * 0.28, -B / 2, -L * 0.08, -B / 2); ctx.lineTo(-L / 2, -B * 0.38); ctx.lineTo(-L / 2, B * 0.38); ctx.lineTo(-L * 0.08, B / 2); ctx.quadraticCurveTo(L * 0.28, B / 2, L / 2, 0); ctx.closePath();
+  ctx.fillStyle = s.def.steam ? '#41464b' : col.hull; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(L * 0.4, 0); ctx.quadraticCurveTo(L * 0.22, -B * 0.36, -L * 0.08, -B * 0.36); ctx.lineTo(-L * 0.44, -B * 0.28); ctx.lineTo(-L * 0.44, B * 0.28); ctx.lineTo(-L * 0.08, B * 0.36); ctx.quadraticCurveTo(L * 0.22, B * 0.36, L * 0.4, 0); ctx.closePath();
+  ctx.fillStyle = s.def.steam ? '#5d646a' : col.deck; ctx.fill();
+  ctx.fillStyle = '#16100b';
+  const n = s.def.guns;
+  for (let i = 0; i < n; i++) { const lx = n === 1 ? 0 : lerp(-L * 0.32, L * 0.3, i / (n - 1)); ctx.fillRect(lx - 1.5, -B / 2 - 0.5, 3, 2.2); ctx.fillRect(lx - 1.5, B / 2 - 1.7, 3, 2.2); }
+  if (s.def.steam) { ctx.fillStyle = '#1d1f21'; ctx.beginPath(); ctx.arc(0, 0, B * 0.22, 0, TAU); ctx.fill(); ctx.fillStyle = '#2b2e31'; ctx.fillRect(L * 0.18, -B * 0.2, L * 0.12, B * 0.4); }
+  const masts = s.def.masts;
+  const rel = clamp(angDiff(C.wind.a, s.a), -1.2, 1.2) * 0.6;
+  const bulge = 6 * (s.throttle / 3);
+  for (let m = 0; m < masts; m++) {
+    const mx = masts === 1 ? L * 0.06 : lerp(L * 0.24, -L * 0.24, m / (masts - 1));
+    ctx.save(); ctx.translate(mx, 0); ctx.rotate(rel);
+    const w = B * (1.5 - 0.1 * Math.abs(m - (masts - 1) / 2));
+    if (s.throttle > 0) { ctx.beginPath(); ctx.moveTo(0, -w / 2); ctx.quadraticCurveTo(bulge, 0, 0, w / 2); ctx.lineTo(-2.5, w / 2); ctx.quadraticCurveTo(bulge - 2.5, 0, -2.5, -w / 2); ctx.closePath(); ctx.fillStyle = col.sail; ctx.globalAlpha *= 0.95; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 0.8; ctx.stroke(); }
+    else { ctx.fillStyle = col.sail; ctx.fillRect(-1.5, -w / 2, 3, w); }
+    ctx.restore();
+    ctx.fillStyle = '#2a1c10'; ctx.beginPath(); ctx.arc(mx, 0, 2, 0, TAU); ctx.fill();
+  }
+  ctx.fillStyle = col.flag; ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(-L / 2 - 10, -3 + Math.sin(tNow * 8 + s.x) * 1.5); ctx.lineTo(-L / 2 - 10, 3 + Math.sin(tNow * 8 + s.x) * 1.5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawParts(layer) {
+  for (const p of C.parts) {
+    const k = p.life / p.max;
+    if (layer === 0) {
+      if (p.type === 'wake') { ctx.fillStyle = 'rgba(220,240,235,' + (0.16 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2.5), 0, TAU); ctx.fill(); }
+      else if (p.type === 'splash') { ctx.strokeStyle = 'rgba(235,248,245,' + (0.8 * (1 - k)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + k * 1.6), 0, TAU); ctx.stroke(); if (k < 0.3) { ctx.fillStyle = 'rgba(240,250,250,.8)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.5 * (1 - k * 3), 0, TAU); ctx.fill(); } }
+      else if (p.type === 'debris') { ctx.fillStyle = 'rgba(90,60,35,' + (1 - k) + ')'; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 4, p.size, p.size / 2); }
+    } else {
+      if (p.type === 'smoke') { ctx.fillStyle = 'rgba(205,200,190,' + (0.45 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2), 0, TAU); ctx.fill(); }
+      else if (p.type === 'coal') { ctx.fillStyle = 'rgba(30,30,32,' + (0.5 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 3), 0, TAU); ctx.fill(); }
+      else if (p.type === 'dust') { ctx.fillStyle = 'rgba(200,180,130,' + (0.6 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k), 0, TAU); ctx.fill(); }
+      else if (p.type === 'flash') { ctx.fillStyle = 'rgba(255,220,140,' + (1 - k) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
+      else if (p.type === 'spark' || p.type === 'fire') { ctx.fillStyle = 'rgba(255,' + Math.round(170 - 100 * k) + ',60,' + (1 - k) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 - k * 0.5), 0, TAU); ctx.fill(); }
+    }
+  }
+}
+function bar(x, y, w, h, f, col) { ctx.fillStyle = 'rgba(8,24,28,.8)'; ctx.fillRect(x, y, w, h); ctx.fillStyle = col; ctx.fillRect(x, y, w * clamp(f, 0, 1), h); }
+function renderCombat() {
+  const z = C.zoom;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#081d24'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-C.cam.x, -C.cam.y);
+  ctx.fillStyle = '#103641'; ctx.fillRect(0, 0, C.AW, C.AH);
+  drawWaves(C.cam.x, C.cam.y, z, 0.12);
+  ctx.fillStyle = 'rgba(63,127,176,.10)'; ctx.fillRect(0, C.AH - 60, C.AW, 60);
+  ctx.fillStyle = 'rgba(201,69,47,.10)'; ctx.fillRect(0, 0, C.AW, 60);
+  for (const is of C.islands) drawIsland(is, z);
+  drawParts(0);
+  const s = C.flag;
+  if (s && s.alive) {
+    ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(241,215,154,.6)'; ctx.lineWidth = 1.5 / z; ctx.beginPath(); ctx.arc(s.x, s.y, s.def.len * 0.62, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    const g = GUNS[s.def.gun];
+    for (const side of [-1, 1]) {
+      const c = s.a + side * Math.PI / 2; const ready = (side < 0 ? s.rl : s.rr) <= 0;
+      ctx.fillStyle = ready ? 'rgba(134,189,143,.08)' : 'rgba(208,100,75,.05)'; ctx.strokeStyle = ready ? 'rgba(134,189,143,.35)' : 'rgba(208,100,75,.25)'; ctx.lineWidth = 1 / z;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.arc(s.x, s.y, g.range, c - 0.3, c + 0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    const m = mouseWorld(); ctx.strokeStyle = 'rgba(241,215,154,.25)'; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+  }
+  for (const sh of C.ships) if (!sh.alive && !sh.escaped) drawShip(sh);
+  for (const sh of C.ships) if (sh.alive && !sh.escaped) drawShip(sh);
+  ctx.fillStyle = '#111'; for (const b of C.balls) { ctx.beginPath(); ctx.arc(b.x, b.y, b.big ? 3.5 : 2.4, 0, TAU); ctx.fill(); }
+  drawParts(1);
+  for (const sh of C.ships) {
+    if (!sh.alive || sh.escaped) continue;
+    const w = Math.max(30, sh.def.len * 0.7); const y = sh.y - sh.def.len * 0.55 - 10;
+    ctx.save(); ctx.translate(sh.x, y); ctx.scale(1 / z, 1 / z);
+    bar(-w / 2, 0, w, 4, sh.hull / sh.maxHull, sh.side ? '#d0644b' : '#86bd8f');
+    bar(-w / 2, 5, w, 2, sh.armor / sh.def.armor, '#b6ab92');
+    if (sh.side === 1 || sh === C.flag) { ctx.fillStyle = sh.side ? '#f3c2b6' : '#f1d79a'; ctx.font = '11px "Alegreya Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(sh.rec.name + (sh.flee ? ' (fleeing)' : ''), 0, -4); }
+    ctx.restore();
+  }
+  ctx.restore();
+  // HUD
+  drawWindRose(W - 54, 54, C.wind, 'Wind');
+  if (s) {
+    const x = 16, y = H - 118 - (matchMedia('(pointer: coarse)').matches ? 130 : 0);
+    ctx.fillStyle = 'rgba(10,36,44,.85)'; ctx.fillRect(x, y, 270, 104); ctx.strokeStyle = 'rgba(214,161,74,.5)'; ctx.strokeRect(x + 0.5, y + 0.5, 270, 104);
+    ctx.fillStyle = '#d6a14a'; ctx.font = '18px "IM Fell English SC", Georgia, serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(s.rec.name, x + 10, y + 8);
+    ctx.fillStyle = '#b6ab92'; ctx.font = '12px "Alegreya Sans", sans-serif'; ctx.fillText(s.def.name + ' · ' + ['All stop', 'Reefed', 'Half sail', 'Full sail'][s.throttle] + ' · ' + Math.round(s.v) + ' kn', x + 10, y + 30);
+    ctx.fillText('Hull', x + 10, y + 50); bar(x + 60, y + 52, 200, 7, s.hull / s.maxHull, '#86bd8f');
+    ctx.fillText('Armor', x + 10, y + 64); bar(x + 60, y + 66, 200, 5, s.armor / s.def.armor, '#b6ab92');
+    const g = GUNS[s.def.gun]; const rl = s.rl / g.reload, rr = s.rr / g.reload;
+    ctx.fillText('Port', x + 10, y + 82); bar(x + 40, y + 85, 55, 5, 1 - rl, rl <= 0 ? '#86bd8f' : '#d6a14a');
+    ctx.fillText('Stbd', x + 102, y + 82); bar(x + 134, y + 85, 55, 5, 1 - rr, rr <= 0 ? '#86bd8f' : '#d6a14a');
+    if (s.def.bow) { ctx.fillText('Bow', x + 196, y + 82); bar(x + 224, y + 85, 36, 5, 1 - s.rb / GUNS.bow.reload, s.rb <= 0 ? '#86bd8f' : '#d6a14a'); }
+  }
+  // orders
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = '13px "Alegreya Sans", sans-serif';
+  const ords = [['1', 'Engage', 'engage'], ['2', 'Escort', 'escort'], ['3', 'Retreat', 'retreat']];
+  ords.forEach(([k, l, o], i) => { const on = C.order === o; ctx.fillStyle = on ? '#d6a14a' : 'rgba(234,223,196,.6)'; ctx.fillText((on ? '▸ ' : '  ') + k + ' ' + l, 16, 16 + i * 18); });
+  ctx.fillStyle = 'rgba(234,223,196,.45)'; ctx.fillText('W/S sail · A/D rudder · click fire · Tab switch ship · P pause', 16, 74);
+  // fleet roster
+  let ry = 110;
+  for (const side of [0, 1]) {
+    ctx.fillStyle = side ? '#f3c2b6' : '#eadfc4'; ctx.fillText(side ? 'Enemy' : 'Your fleet', 16, ry); ry += 18;
+    for (const sh of C.ships.filter(x => x.side === side)) {
+      ctx.fillStyle = !sh.alive ? 'rgba(234,223,196,.3)' : sh.escaped ? 'rgba(234,223,196,.45)' : sh === C.flag ? '#f1d79a' : '#eadfc4';
+      ctx.fillText((sh === C.flag ? '★ ' : '') + sh.rec.name + (!sh.alive ? ' · sunk' : sh.escaped ? ' · withdrew' : ''), 16, ry);
+      if (sh.alive && !sh.escaped) bar(160, ry + 5, 60, 5, sh.hull / sh.maxHull, side ? '#d0644b' : '#86bd8f');
+      ry += 16;
+      if (ry > H - 260) break;
+    }
+    ry += 8;
+  }
+  // minimap
+  const mw = 170, mh = mw * C.AH / C.AW, mx = W - mw - 16, my = H - mh - 16 - (matchMedia('(pointer: coarse)').matches ? 130 : 0);
+  ctx.fillStyle = 'rgba(10,36,44,.85)'; ctx.fillRect(mx, my, mw, mh); ctx.strokeStyle = 'rgba(214,161,74,.5)'; ctx.strokeRect(mx + 0.5, my + 0.5, mw, mh);
+  const k = mw / C.AW;
+  ctx.fillStyle = '#5a7442'; for (const is of C.islands) { ctx.beginPath(); ctx.arc(mx + is.x * k, my + is.y * k, is.r * k, 0, TAU); ctx.fill(); }
+  for (const sh of C.ships) { if (!sh.alive || sh.escaped) continue; ctx.fillStyle = sh === C.flag ? '#f1d79a' : sh.side ? '#d0644b' : '#86bd8f'; ctx.fillRect(mx + sh.x * k - 2, my + sh.y * k - 2, 4, 4); }
+  ctx.strokeStyle = 'rgba(234,223,196,.4)'; ctx.strokeRect(mx + (C.cam.x - W / 2 / z) * k, my + (C.cam.y - H / 2 / z) * k, W / z * k, H / z * k);
+  if (C.msgT > 0) { ctx.fillStyle = 'rgba(234,223,196,' + Math.min(1, C.msgT) + ')'; ctx.font = '26px "IM Fell English SC", Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText(C.msg, W / 2, 70); }
+  if (C.paused) { ctx.fillStyle = 'rgba(5,18,22,.5)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#eadfc4'; ctx.font = '34px "IM Fell English SC", Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Paused · P to resume', W / 2, H / 2); }
+}
+
+/* ============================== input ============================== */
+window.addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input,textarea')) return;
+  keys[e.code] = true;
+  if (mode === 'combat' && C) {
+    const s = C.flag;
+    if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+    if (e.repeat) return;
+    initAudio();
+    if ((e.code === 'KeyW' || e.code === 'ArrowUp') && s) s.throttle = Math.min(3, s.throttle + 1);
+    if ((e.code === 'KeyS' || e.code === 'ArrowDown') && s) s.throttle = Math.max(0, s.throttle - 1);
+    if (e.code === 'KeyQ') playerFireAtMouse('port');
+    if (e.code === 'KeyE') playerFireAtMouse('star');
+    if (e.code === 'KeyF') playerFireAtMouse('bow');
+    if (e.code === 'Space') playerFireAtMouse();
+    if (e.code === 'Digit1') C.order = 'engage';
+    if (e.code === 'Digit2') C.order = 'escort';
+    if (e.code === 'Digit3') { C.order = 'retreat'; C.msg = 'All ships, withdraw! Make for the southern edge.'; C.msgT = 2.5; }
+    if (e.code === 'KeyP' || e.code === 'Escape') C.paused = !C.paused;
+    if (e.code === 'Tab') { const mine = C.ships.filter(x => x.side === 0 && x.alive && !x.escaped); if (mine.length > 1) { C.flag = mine[(mine.indexOf(C.flag) + 1) % mine.length]; C.msg = 'You take command of the ' + C.flag.rec.name + '.'; C.msgT = 1.5; } }
+  } else if (mode === 'map' && G) {
+    if (e.code === 'Space' && !panelOpen) { e.preventDefault(); G.paused = !G.paused; }
+    if (e.code === 'Escape' && panelOpen && !lastResultPending()) act('leave', {});
+  }
+});
+function lastResultPending() { return false; }
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+cvs.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+cvs.addEventListener('contextmenu', e => e.preventDefault());
+cvs.addEventListener('pointerdown', e => {
+  initAudio(); mouse.x = e.clientX; mouse.y = e.clientY;
+  if (mode === 'combat' && C) { if (e.pointerType === 'touch') return; if (e.button === 2) playerFireAtMouse('bow'); else playerFireAtMouse(); return; }
+  if (mode !== 'map' || panelOpen) return;
+  const P = G.player; const wx = (e.clientX - W / 2) / mapZoom + P.x, wy = (e.clientY - H / 2) / mapZoom + P.y;
+  P.destPort = null; P.follow = null;
+  for (const p of G.ports) if (dist(p.x, p.y, wx, wy) < 26 / mapZoom) { if (dist(p.x, p.y, P.x, P.y) < 70) { openPort(p); return; } P.destPort = p.id; P.tx = p.x; P.ty = p.y; return; }
+  for (const f of G.fleets) if (dist(f.x, f.y, wx, wy) < 20 / mapZoom) { P.follow = f.id; P.tx = f.x; P.ty = f.y; toast('Setting a course to intercept the ' + f.name.toLowerCase() + '.'); return; }
+  if (landAt(G.islands, wx, wy, 4)) { toast('That is dry land. Pick a point on the water.'); return; }
+  P.tx = clamp(wx, 30, MW - 30); P.ty = clamp(wy, 30, MH - 30); G.paused = false;
+});
+cvs.addEventListener('wheel', e => {
+  e.preventDefault(); const f = Math.exp(-e.deltaY * 0.0012);
+  if (mode === 'combat' && C) C.zoom = clamp(C.zoom * f, 0.35, 1.6);
+  else if (mode === 'map') mapZoom = clamp(mapZoom * f, 0.25, 1.4);
+}, { passive: false });
+document.querySelectorAll('#touch button').forEach(b => {
+  const t = b.dataset.t;
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio(); if (!C) return; const s = C.flag;
+    if (t === 'left' || t === 'right') touchHeld[t] = true;
+    if (t === 'up' && s) s.throttle = Math.min(3, s.throttle + 1);
+    if (t === 'down' && s) s.throttle = Math.max(0, s.throttle - 1);
+    if (t === 'port' && s) fireSide(s, -1, null);
+    if (t === 'star' && s) fireSide(s, 1, null);
+    if (t === 'bow' && s) fireBow(s, null);
+    if (t === 'o1') C.order = 'engage'; if (t === 'o2') C.order = 'escort'; if (t === 'o3') C.order = 'retreat';
+  });
+  const up = () => { touchHeld[t] = false; };
+  b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up);
+});
+
+/* ============================== loop ============================== */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; tNow += dt;
+  if (mode === 'combat' && C) { updateCombat(dt); if (C) renderCombat(); }
+  else if (G && (mode === 'map' || mode === 'over')) { if (mode === 'map') updateMap(dt); renderMap(); }
+  else renderTitleBg(dt);
+  requestAnimationFrame(frame);
+}
+function renderTitleBg() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#0e3039'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(W / 2, H / 2); drawWaves(0, tNow * 12, 1, 0.12); ctx.restore();
+}
+
+// Boot. Keeps an in-progress voyage across live page updates.
+function start(data) {
+  if (data && data.G) { G = data.G; mode = 'map'; $('#top').hidden = false; closePanel(); toast('The chart has been redrawn. Your voyage continues.'); }
+  else showTitle();
+  requestAnimationFrame(frame);
+}
+window.claude?.hot?.snapshot?.(() => (G && mode !== 'title' && mode !== 'over') ? { G } : {});
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>

@@ -526,6 +526,58 @@ function planePlan(g, x, y, a, span, col) {
   g.fillRect(-s * 0.8, -s * 0.34, s * 0.12, s * 0.68);                                            // tailplane
   g.restore();
 }
+// Fine detail, placed with a generator seeded from the design so every ship of a class looks the same.
+const seedOf = id => { let h = 2166136261; for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+function occupied(d, x, y, pad) { // true where guns, superstructure, funnels or boats already stand
+  const p = d.p;
+  for (const s of d.slots) { const w = WEAPONS[s.def]; const r = (w && w.tw ? w.tw * 0.7 : 3) + pad; if (Math.hypot(x - s.x, y - s.y) < r) return true; }
+  for (const [sx, len, w] of p.sup || []) if (Math.abs(x - sx) < len / 2 + pad + 1 && Math.abs(y) < w / 2 + pad + 1) return true;
+  for (const [fx, rx, ry, fy = 0] of p.fun || []) if (Math.abs(x - fx) < rx + pad + 1 && Math.abs(y - fy) < ry + pad + 1) return true;
+  for (const [bx] of p.boats || []) if (Math.abs(x - bx) < 10 && Math.abs(Math.abs(y) - d.B * 0.31) < 3) return true;
+  return false;
+}
+function insideHull(d, x, y, pad) { const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr = (d.p.run || .2) * d.L; let half = d.B / 2;
+  if (x > h - fe) half *= Math.sqrt(Math.max(0, (h - x) / fe)); else if (x < -h + fr) half *= Math.max(d.p.stern === 't' ? (d.p.tw || .5) : 0, Math.sqrt(Math.max(0, (x + h) / fr))); return Math.abs(y) < half - pad; }
+function detailDeck(g, d, P, deckCol, inset) {
+  const r = rng(seedOf(d.id)), L = d.L, B = d.B, h = L / 2, b = B / 2, p = d.p;
+  // weathering: faint streaks and stains, clipped to the deck
+  g.save(); hullPath(g, d, inset); g.clip();
+  for (let i = 0; i < L * B / 12; i++) { const x = (r() - 0.5) * L, y = (r() - 0.5) * B, l = 2 + r() * 7, w = 0.08 + r() * 0.18; g.fillStyle = r() < 0.6 ? 'rgba(0,0,0,' + (0.015 + r() * 0.025) + ')' : 'rgba(255,255,255,' + (0.012 + r() * 0.02) + ')'; g.beginPath(); g.ellipse(x, y, l / 2, w, 0, 0, TAU); g.fill(); }
+  g.restore();
+  // rails: a dotted line of stanchions just inside the deck edge
+  g.save(); g.setLineDash([0.12, 0.9]); g.strokeStyle = 'rgba(225,225,215,.35)'; g.lineWidth = 0.1; hullPath(g, d, inset + 0.35); g.stroke(); g.restore();
+  // ventilators, hatches and lockers wherever the deck is clear
+  const n = Math.round(L / 6);
+  for (let i = 0, tries = 0; i < n && tries < n * 12; tries++) {
+    const x = (r() - 0.5) * L * 0.9, y = (r() - 0.5) * B * 0.8; if (!insideHull(d, x, y, 1.2) || occupied(d, x, y, 0.8)) continue; i++;
+    const kind = r();
+    if (kind < 0.45) { const rr = 0.35 + r() * 0.35; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fillStyle = shade(P.sup, -0.05); g.fill(); g.beginPath(); g.arc(x + rr * 0.15, y, rr * 0.55, 0, TAU); g.fillStyle = '#25282a'; g.fill(); }
+    else if (kind < 0.75) { const w = 1 + r() * 1.4, hh = 0.8 + r() * 0.8; g.fillStyle = shade(deckCol, -0.28); g.fillRect(x - w / 2, y - hh / 2, w, hh); g.strokeStyle = 'rgba(255,255,255,.1)'; g.lineWidth = 0.08; g.strokeRect(x - w / 2, y - hh / 2, w, hh); }
+    else { const w = 1.6 + r() * 1.8; rrect(g, x - w / 2, y - 0.45, w, 0.9, 0.2); g.fillStyle = shade(P.sup, -0.08); g.fill(); }
+  }
+  // capstans, hawse and anchors
+  const fe = (p.bow || .33) * L, ax = h - fe * 0.16;
+  g.fillStyle = shade(P.hull, -0.45); for (const sy of [-1, 1]) { g.save(); g.translate(ax, sy * b * 0.22); g.rotate(sy * 0.4); g.fillRect(-1, -0.25, 2, 0.5); g.fillRect(-0.9, -0.6, 0.3, 1.2); g.restore(); }
+  // depth-charge racks on the quarterdeck of sonar ships
+  if (d.sonar && d.kind === 'war' && L < 170) { const sx = -h + 2.2; g.fillStyle = shade(P.sup, -0.3); for (const sy of [-1, 1]) { g.fillRect(sx, sy * b * 0.45 - 0.35, 7, 0.7); g.fillStyle = shade(P.sup, -0.05); for (let k = 0; k < 5; k++) { g.beginPath(); g.arc(sx + 0.7 + k * 1.3, sy * b * 0.45, 0.42, 0, TAU); g.fill(); } g.fillStyle = shade(P.sup, -0.3); } }
+}
+function detailSup(g, d, P) {
+  const p = d.p, b = d.B / 2; const r = rng(seedOf(d.id) ^ 0x5bd1);
+  (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
+    // life rafts along the sides of the deckhouse
+    if (w > 5 && d.L > 70) for (const sy of [-1, 1]) for (let k = 0; k < Math.floor(len / 6); k++) { const rx = x - len / 2 + 2 + k * 5.5, ry = sy * (w / 2 + 0.55); rrect(g, rx, ry - 0.45, 2.2, 0.9, 0.35); g.fillStyle = shade(P.sup, 0.22); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.06; g.stroke(); }
+    // bridge wings on the forward block
+    if (bi === 0 && tiers >= 3) { const wx = x + len * 0.5 - len * 0.22, ww = Math.min(b * 1.7, w * 1.25); rrect(g, wx - 1, -ww / 2, 2, ww, 0.4); g.fillStyle = shade(P.sup, 0.05); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.08; g.stroke(); }
+    // directors, searchlights and vents on the upper decks
+    const top = tiers - 1, ll = len * (1 - top * 0.17), ww = w * (1 - top * 0.14), xx = x + len * 0.06 * top;
+    if (tiers >= 3) { const s = Math.min(3.2, ww * 0.45); g.fillStyle = shade(P.sup, -0.1); rrect(g, xx - s / 2, -s / 2, s, s, 0.4); g.fill(); g.fillStyle = shade(P.sup, -0.35); g.fillRect(xx - 0.25, -s * 0.85, 0.5, s * 1.7); }
+    for (let k = 0; k < Math.min(4, tiers); k++) { const sx = x - len * 0.3 + r() * len * 0.6, sy = (r() < 0.5 ? -1 : 1) * w * 0.32; g.beginPath(); g.arc(sx, sy, 0.45, 0, TAU); g.fillStyle = '#d6d8d2'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.06; g.stroke(); }
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 0.06; g.beginPath(); for (let k = 1; k < tiers; k++) { const l2 = len * (1 - k * 0.17); g.moveTo(x + len * 0.06 * k - l2 / 2, -w * 0.48 * (1 - k * 0.14)); g.lineTo(x + len * 0.06 * k + l2 / 2, -w * 0.48 * (1 - k * 0.14)); } g.stroke();
+  });
+  // funnel bands, steam pipes and platforms
+  for (const [x, rx, ry, y = 0] of p.fun || []) { g.strokeStyle = shade(P.sup, -0.2); g.lineWidth = 0.12; g.beginPath(); g.ellipse(x, y, rx * 0.92, ry * 0.88, 0, 0, TAU); g.stroke();
+    g.fillStyle = shade(P.sup, -0.4); for (const sy of [-0.35, 0.35]) { g.beginPath(); g.arc(x + rx * 0.82, y + sy * ry, Math.max(0.15, ry * 0.1), 0, TAU); g.fill(); } }
+}
 function drawPlan(g, d, P) {
   const p = d.p || {}, L = d.L, B = d.B, h = L / 2, b = B / 2;
   const deckCol = p.deck === 'teak' ? TEAK : p.deck === 'lino' ? LINO : P.deck;
@@ -554,6 +606,7 @@ function drawPlan(g, d, P) {
   g.restore();
   g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 0.2; hullPath(g, d, inset + 0.25); g.stroke();
   if (d.kind === 'carrier') return drawFlightDeck(g, d, P);
+  detailDeck(g, d, P, deckCol, inset);
   const fe = (p.bow || .33) * L, guns = d.slots.filter(s => GUN_SIZES.includes(s.s) && s.y === 0 && s.x > 0);
   // ground tackle: hawse pipes, cables and windlass
   const cx = h - fe * 0.42; g.strokeStyle = 'rgba(20,22,24,.7)'; g.lineWidth = Math.max(0.12, B * 0.012);
@@ -592,6 +645,7 @@ function drawPlan(g, d, P) {
       if (t === tiers - 1 && tiers >= 4) { g.fillStyle = shade(P.sup, -0.32); g.fillRect(xx - 0.5, -ww * 0.42, 1, ww * 0.84); g.beginPath(); g.arc(xx + ll * 0.2, 0, Math.min(1.4, ww * 0.18), 0, TAU); g.fill(); } // rangefinder and director
     }
   }
+  detailSup(g, d, P);
   // boats in their crutches, cranes and catapults
   for (const [x, n] of p.boats || []) for (let i = 0; i < n; i++) for (const sy of [-1, 1]) {
     const bl = Math.min(9, 4 + L * 0.025), bwd = bl * 0.27, bx = x - (i - (n - 1) / 2) * (bl + 1.5), by = sy * (b * 0.62);
@@ -646,11 +700,13 @@ function spriteWide(d) { const f = d.p && d.p.fd; return f ? Math.max(d.B, f.w *
 // withMounts bakes the standard armament at rest, for the chart and menus where turrets do not move.
 function hullSprite(type, pal, withMounts) {
   const key = type + '|' + pal + (withMounts ? '|m' : ''); if (sprCache[key]) return sprCache[key];
-  const d = HULLS[type], P = PAL[pal] || PAL.player, wide = spriteWide(d), spr = clamp(700 / d.L, 3, 12);
+  const d = HULLS[type], P = PAL[pal] || PAL.player, wide = spriteWide(d), spr = clamp(1500 / d.L, 4, 16);
   const c = document.createElement('canvas'); c.width = Math.ceil((d.L + 8) * spr); c.height = Math.ceil((wide + 8) * spr);
   const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.scale(spr, spr); drawPlan(g, d, P);
   if (withMounts) d.slots.forEach(s => { if (d.kind === 'sub' && s.s === 'T') return; g.save(); g.translate(s.x, s.y); drawMount(g, s.def, s.arcs[0][0], P, 0, d.kind === 'sub'); g.restore(); });
-  return (sprCache[key] = { c, w: c.width / spr, h: c.height / spr });
+  const mip = (src0, f) => { const m = document.createElement('canvas'); m.width = Math.max(1, Math.round(src0.width / f)); m.height = Math.max(1, Math.round(src0.height / f)); const mg = m.getContext('2d'); mg.imageSmoothingQuality = 'high'; mg.drawImage(src0, 0, 0, m.width, m.height); return m; };
+  const lo = mip(c, 4), lo2 = mip(lo, 4);
+  return (sprCache[key] = { c, lo, lo2, spr, w: c.width / spr, h: c.height / spr });
 }
 // Guns, AA mounts and torpedo tubes, drawn to scale with barrels along +x. shadow draws only the silhouette.
 function drawMount(g, wid, ta, P, recoil, stowed, shadow) {
@@ -675,6 +731,9 @@ function drawMount(g, wid, ta, P, recoil, stowed, shadow) {
         crownFill(g, P.sup, tw / 2, -0.03); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = Math.max(0.08, tw * 0.02); g.stroke();
         g.strokeStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.moveTo(front - tl * 0.35, -tw * 0.46); g.lineTo(front - tl * 0.35, tw * 0.46); g.stroke();
         g.fillStyle = shade(P.sup, -0.28); for (const sy of [-1, 1]) g.fillRect(front - tl * 0.22, sy * tw * 0.3 - tw * 0.05, tl * 0.09, tw * 0.1);           // sighting hoods
+        g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = Math.max(0.04, tw * 0.008); g.beginPath(); for (const fy of [-0.18, 0.18]) { g.moveTo(rear + tl * 0.12, fy * tw); g.lineTo(front - tl * 0.38, fy * tw); } g.stroke(); // roof plates
+        g.fillStyle = shade(P.sup, -0.18); g.beginPath(); g.arc(rear + tl * 0.3, 0, tw * 0.07, 0, TAU); g.fill();                                                       // access hatch
+        if (tw > 6) { g.fillStyle = '#2a2d2f'; for (const sy of [-1, 1]) { g.beginPath(); g.arc(rear + tl * 0.48, sy * tw * 0.2, tw * 0.035, 0, TAU); g.fill(); } }       // vents
         if (w.size === 'H' || w.size === 'L') { g.fillStyle = shade(P.sup, -0.12); for (const sy of [-1, 1]) g.fillRect(rear + tl * 0.16, sy > 0 ? tw / 2 - 0.1 : -tw / 2 - tw * 0.07 + 0.1, tl * 0.16, tw * 0.07); } // rangefinder ends
       }
     }
@@ -1468,7 +1527,7 @@ function showTitle() {
   <h3>Battle controls</h3>
   <div class="keys">
     <span><kbd>W</kbd> <kbd>S</kbd> · <kbd>A</kbd> <kbd>D</kbd></span><span>Engine telegraph (stop to flank) · rudder. Ships answer slowly: way builds over minutes and each hull turns on its real tactical diameter, shown as a dashed track ahead of you.</span>
-    <span>Mouse · hold click</span><span>Aim and fire main guns. Click an enemy to lock it, and the turrets lead it automatically.</span>
+    <span>Mouse · hold click</span><span>Click an enemy to lock it and open fire with the main battery; the turrets lead it automatically. Hold the button on open water to fire at that spot instead. Right-click open water to cease fire. The reticle shows how many turrets bear, which are still training (heavy turrets take a while), and when they are out of range.</span>
     <span><kbd>X</kbd></span><span>Toggle main-gun autofire at the locked target</span>
     <span><kbd>T</kbd> · <kbd>Q</kbd> · <kbd>F</kbd></span><span>Torpedoes at the cursor · missiles at the locked target · launch a carrier air strike</span>
     <span><kbd>C</kbd></span><span>Dive or surface (submarines)</span>
@@ -1789,6 +1848,7 @@ function visibleTo(s, side) { return s.side === side || !s.sub || detectedBy(s, 
 function speedMult(s) { return (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.maxHull); }
 function gunRange(s, w) { return w.range * (s.tech.includes('radar') && w.kind === 'gun' ? 1.15 : 1) * (w.kind === 'sam' && s.tech.includes('aegis') ? 1.4 : 1); }
 function maxGunRange(s) { let r = 0; for (const m of s.mounts) if (m.w.kind === 'gun' && m.w.size !== 'S') r = Math.max(r, gunRange(s, m.w)); if (!r) for (const m of s.mounts) if (m.w.kind === 'gun') r = Math.max(r, gunRange(s, m.w)); return r || 2000; }
+function mainSize(s) { return s.mainSz || (s.mainSz = GUN_SIZES[Math.max(0, ...s.mounts.filter(m => m.w.kind === 'gun').map(m => GUN_SIZES.indexOf(m.w.size)))]); }
 function hasKind(s, k) { return s.mounts.some(m => m.w.kind === k); }
 function arcCheck(slot, localAng) {
   let best = null, bd = Infinity;
@@ -1827,9 +1887,9 @@ function fireGun(s, m, aim, w) {
   }
   m.recoil = 1;
   const mz = { x: p.x + Math.cos(ang) * (w.tl * 0.42 + w.bl), y: p.y + Math.sin(ang) * (w.tl * 0.42 + w.bl) };
-  C.parts.push({ type: 'flash', x: mz.x, y: mz.y, life: 0, max: 0.12, size: { S: 7, M: 11, L: 18, H: 30 }[w.size] });
+  C.parts.push({ type: 'flash', x: mz.x, y: mz.y, a: ang, life: 0, max: 0.16, size: { S: 6, M: 10, L: 16, H: 26 }[w.size] });
   const n = { S: 1, M: 2, L: 3, H: 5 }[w.size];
-  for (let i = 0; i < n; i++) C.parts.push({ type: 'smoke', x: mz.x, y: mz.y, vx: Math.cos(ang) * (40 + R() * 50) + (R() - 0.5) * 25, vy: Math.sin(ang) * (40 + R() * 50) + (R() - 0.5) * 25, life: 0, max: 1.6 + R() * 1.6, size: { S: 5, M: 8, L: 13, H: 22 }[w.size] });
+  for (let i = 0; i < n; i++) { const sp = 30 + R() * 60; C.parts.push({ type: 'cordite', x: mz.x, y: mz.y, vx: Math.cos(ang) * sp + (R() - 0.5) * 20, vy: Math.sin(ang) * sp + (R() - 0.5) * 20, w: 1, life: 0, max: 3 + R() * 2.5, size: { S: 4, M: 7, L: 11, H: 18 }[w.size], v: ri(0, 3) }); }
   boom(camVol(p.x, p.y, { S: 0.1, M: 0.16, L: 0.26, H: 0.42 }[w.size]), { S: 700, M: 520, L: 350, H: 220 }[w.size]);
 }
 function fireTorps(s, m, aim) {
@@ -1870,10 +1930,12 @@ function updateWeapons(s, dt) {
       if (sm || (s.sub && s.dive > 0.1)) continue;
       const range = gunRange(s, w);
       let aim = null, manual = false;
-      if (isPlayer && w.size !== 'S') {
+      if (isPlayer && w.size === mainSize(s)) { // you lay the main battery; secondaries pick their own targets
         manual = true;
-        if (C.lock && engageable(C.lock) && visibleTo(C.lock, 0) && (C.autofire || !mouse.down || dist(C.lock.x, C.lock.y, mouseWorld().x, mouseWorld().y) < C.lock.def.L)) aim = leadPoint(p, C.lock, w.speed);
-        else aim = mouseWorld();
+        // with a target locked the guns lead it; holding the mouse on open water overrides that and fires at the spot
+        const mw = mouseWorld(), lockOK = C.lock && engageable(C.lock) && visibleTo(C.lock, 0);
+        const overLock = lockOK && dist(C.lock.x, C.lock.y, mw.x, mw.y) < Math.max(C.lock.def.L * 0.7, 30 / C.zoom);
+        if (lockOK && (!mouse.down || overLock)) { aim = leadPoint(p, C.lock, w.speed); aim.lock = true; } else aim = mw;
       } else {
         m.tgtT -= dt;
         if (m.tgtT <= 0 || !m.tgt || !engageable(m.tgt) || !visibleTo(m.tgt, s.side)) {
@@ -1896,8 +1958,9 @@ function updateWeapons(s, dt) {
       const trav = TRAV[w.size];
       const diff = angDiff(ac.ang, m.ta); m.ta += clamp(diff, -trav * dt, trav * dt);
       const aligned = Math.abs(angDiff(want, m.ta)) < 0.04 && ac.ok;
-      const inRange = dist(p.x, p.y, aim.x, aim.y) < range * (manual ? 1.6 : 1);
-      const trigger = manual ? (mouse.down || C.autofire && C.lock) : true;
+      const inRange = dist(p.x, p.y, aim.x, aim.y) < range;
+      const trigger = manual ? (mouse.down || C.autofire && aim.lock) : true;
+      if (manual) { m.st = !ac.ok ? 'arc' : !inRange ? 'range' : !aligned ? 'train' : m.cd > 0 ? 'reload' : 'ready'; m.err = Math.abs(angDiff(want, m.ta)); C.gunAim = aim; }
       if (aligned && inRange && trigger && m.cd <= 0) {
         if (aim.air) { m.cd = w.rel; flak(s, m, aim.air, w.aa * 1.2); }
         else { m.cd = w.rel; fireGun(s, m, aim, w); }
@@ -1948,7 +2011,7 @@ function flak(s, m, sq, chance) {
 }
 function nearestAir(side, p, range) { let best = null, bd = range; for (const q of C.air) { if (q.side === side || q.n <= 0) continue; const d = dist(p.x, p.y, q.x, q.y); if (d < bd) { bd = d; best = q; } } return best; }
 function nearestMissile(side, p, range, forSam) { let best = null, bd = range; for (const q of C.missiles) { if (q.side === side || q.kind !== 'ssm' || q.delay > 0) continue; if (forSam && (q.engaged || 0) >= 2) continue; const d = dist(p.x, p.y, q.x, q.y); if (d < bd) { bd = d; best = q; } } return best; }
-function killMissile(ms) { ms.dead = true; C.parts.push({ type: 'boom', x: ms.x, y: ms.y, life: 0, max: 0.5, size: 18 }); }
+function killMissile(ms) { ms.dead = true; fxBoom(ms.x, ms.y, 18, 0.5); }
 
 /* ================================================================ combat: damage */
 function damage(s, dmg, type) {
@@ -1964,8 +2027,9 @@ function damage(s, dmg, type) {
   if (s.side === 1 && !s.flee && s.hull / s.maxHull < 0.25 && R() < 0.3) s.flee = true;
   if (s.hull <= 0) {
     s.hull = 0; s.alive = false; s.sink = 0.001;
-    for (let i = 0; i < 24; i++) C.parts.push({ type: i % 3 ? 'smoke' : 'fire', x: s.x + (R() - 0.5) * s.def.L * 0.6, y: s.y + (R() - 0.5) * s.def.B, vx: (R() - 0.5) * 40, vy: (R() - 0.5) * 40, life: 0, max: 2 + R() * 3, size: 10 + R() * 18 });
-    C.parts.push({ type: 'boom', x: s.x, y: s.y, life: 0, max: 1, size: s.def.L * 0.5 });
+    C.parts.push({ type: 'oil', x: s.x, y: s.y, life: 0, max: 60, size: s.def.L * 0.45, v: ri(0, 3) });
+    for (let i = 0; i < 24; i++) C.parts.push({ type: i % 3 ? 'smoke' : 'fire', w: 1, v: ri(0, 3), x: s.x + (R() - 0.5) * s.def.L * 0.6, y: s.y + (R() - 0.5) * s.def.B, vx: (R() - 0.5) * 40, vy: (R() - 0.5) * 40, life: 0, max: 2 + R() * 3, size: 10 + R() * 18 });
+    fxBoom(s.x, s.y, s.def.L * 0.5, 1);
     say((s.side ? 'Enemy ' : 'Our ') + s.def.name.toLowerCase() + ' ' + s.rec.name + ' is sinking!');
     boom(camVol(s.x, s.y, 0.6), 160, 0.6);
     if (C.lock === s) C.lock = null;
@@ -2082,7 +2146,7 @@ const TELEGRAPH = [0, 0.3, 0.55, 0.8, 1]; // stop, slow, half, full, flank: frac
 function updateCombat(dtv) {
   if (C.paused) return;
   const dt = dtv * BT;
-  C.t += dt; C.msgT -= dtv;
+  C.t += dt; C.vt = (C.vt || 0) + dtv;
   const flag = C.flag;
   for (const s of C.ships) {
     if (!s.alive) { s.sink += dtv; continue; }
@@ -2119,15 +2183,15 @@ function updateCombat(dtv) {
       }
     }
     s.x = clamp(s.x, 100, C.AW - 100); s.y = clamp(s.y, 100, C.AH - 100);
-    // wakes: a turbulent band astern and the two diverging arms of the Kelvin wave pattern
+    recordTrail(s, dtv);
     s.wakeT -= dtv;
-    if (s.wakeT <= 0 && s.v > 1) {
-      s.wakeT = 0.12; const p = worldPt(s, -s.def.L * 0.48, 0), k = Math.min(1, s.v / 15);
-      C.parts.push({ type: sm ? 'swake' : 'wake', x: p.x, y: p.y, life: 0, max: sm ? 3 : 7, size: s.def.B * 0.5, k });
-      if (!sm) { const sp = s.v * BT * 0.36; for (const sd of [-1, 1]) { const b = worldPt(s, s.def.L * 0.42, sd * s.def.B * 0.4); C.parts.push({ type: 'kel', x: b.x, y: b.y, a: s.a, vx: -Math.sin(s.a) * sd * sp, vy: Math.cos(s.a) * sd * sp, nd: true, life: 0, max: 6, size: s.def.B * 0.5, k }); } }
+    if (s.wakeT <= 0 && s.v > 1 && sm) {
+      s.wakeT = 0.4; const p = worldPt(s, -s.def.L * 0.48, 0);
+      C.parts.push({ type: 'swake', x: p.x, y: p.y, life: 0, max: 3, size: s.def.B * 0.5 });
     }
-    if (!s.sub && (s.def.p.fun || []).length && (s.smokeT -= dtv) <= 0) { s.smokeT = 0.2; for (const [fx, , , fy = 0] of s.def.p.fun) { const p = worldPt(s, fx, fy); C.parts.push({ type: 'funnel', x: p.x, y: p.y, vx: -Math.cos(s.a) * 6 + 4, vy: -Math.sin(s.a) * 6 + 3, life: 0, max: 3, size: 2 + s.def.B * 0.12 }); } }
-    if (s.hull / s.maxHull < 0.4 && R() < dtv * 5) { const p = worldPt(s, (R() - 0.5) * s.def.L * 0.6, (R() - 0.5) * s.def.B * 0.5); C.parts.push({ type: 'fire', x: p.x, y: p.y, vx: 0, vy: -3, life: 0, max: 0.9, size: 3 + s.def.B * 0.15 }); C.parts.push({ type: 'smoke', x: p.x, y: p.y, vx: (R() - 0.5) * 6 + 5, vy: -6, life: 0, max: 4, size: 5 + s.def.B * 0.25 }); }
+    if (!s.sub && (s.def.p.fun || []).length && (s.smokeT -= dtv) <= 0) { s.smokeT = 0.2; for (const [fx, , , fy = 0] of s.def.p.fun) { const p = worldPt(s, fx, fy); C.parts.push({ type: 'funnel', x: p.x, y: p.y, vx: -Math.cos(s.a) * 3, vy: -Math.sin(s.a) * 3, w: 1, life: 0, max: 5, size: 2 + s.def.B * 0.14, v: ri(0, 3) }); } }
+    // fires: hits below 40% hull leave burning compartments that pour smoke downwind
+    if (s.hull / s.maxHull < 0.4 && R() < dtv * 6) { const p = worldPt(s, (R() - 0.5) * s.def.L * 0.5, (R() - 0.5) * s.def.B * 0.4); C.parts.push({ type: 'fire', x: p.x, y: p.y, life: 0, max: 0.8 + R() * 0.6, size: 2 + s.def.B * 0.18 }); C.parts.push({ type: 'smoke', x: p.x, y: p.y, vx: 0, vy: 0, w: 1, life: 0, max: 7 + R() * 4, size: 4 + s.def.B * 0.3, v: ri(0, 3) }); }
   }
   C.wantTorp = false; C.wantMsl = false;
   // collisions between surface ships
@@ -2151,9 +2215,9 @@ function updateCombat(dtv) {
       if (Math.abs(lx) < s.def.L / 2 + 3 && Math.abs(ly) < s.def.B / 2 + 3) { hit = s; break; }
     }
     const sz = { S: 1, M: 1.5, L: 2.3, H: 3.4 }[sh.size];
-    if (hit) { damage(hit, sh.dmg, 'shell'); C.parts.push({ type: 'boom', x: sh.x, y: sh.y, life: 0, max: 0.6, size: 7 * sz }); for (let k2 = 0; k2 < 3; k2++) C.parts.push({ type: 'spark', x: sh.x, y: sh.y, vx: (R() - 0.5) * 60, vy: (R() - 0.5) * 60, life: 0, max: 0.4 + R() * 0.4, size: 1 + sz * 0.6 }); boom(camVol(sh.x, sh.y, 0.12 * sz), 600); }
+    if (hit) { damage(hit, sh.dmg, 'shell'); fxBoom(sh.x, sh.y, 7 * sz, 0.6); for (let k2 = 0; k2 < 3; k2++) C.parts.push({ type: 'spark', x: sh.x, y: sh.y, vx: (R() - 0.5) * 60, vy: (R() - 0.5) * 60, life: 0, max: 0.4 + R() * 0.4, size: 1 + sz * 0.6 }); boom(camVol(sh.x, sh.y, 0.12 * sz), 600); }
     else if (landAt(C.islands, sh.x, sh.y)) C.parts.push({ type: 'dust', x: sh.x, y: sh.y, life: 0, max: 1.6, size: 9 * sz });
-    else C.parts.push({ type: 'splash', x: sh.x, y: sh.y, life: 0, max: 1.8, size: 6 * sz }); // a 16-inch shell throws a column some 20 m across
+    else fxSplash(sh.x, sh.y, 6 * sz); // a 16-inch shell throws a column some 20 m across
   }
   // torpedoes
   for (let i = C.torps.length - 1; i >= 0; i--) {
@@ -2161,13 +2225,13 @@ function updateCombat(dtv) {
     if (t.homing && t.arm <= 0) { const tg = nearestEnemyShip({ x: t.x, y: t.y, side: t.side }, 1200, o => !submerged(o) && Math.abs(angDiff(Math.atan2(o.y - t.y, o.x - t.x), t.a)) < 0.7); if (tg) t.a += clamp(angDiff(Math.atan2(tg.y - t.y, tg.x - t.x), t.a), -0.15 * dt, 0.15 * dt); }
     t.x += Math.cos(t.a) * t.speed * dt; t.y += Math.sin(t.a) * t.speed * dt;
     let gone = t.life <= 0;
-    if (!gone && landAt(C.islands, t.x, t.y)) { gone = true; C.parts.push({ type: 'boom', x: t.x, y: t.y, life: 0, max: 0.6, size: 20 }); }
+    if (!gone && landAt(C.islands, t.x, t.y)) { gone = true; fxBoom(t.x, t.y, 20, 0.6); }
     if (!gone && t.arm <= 0) for (const s of C.ships) {
       if (s.side === t.side || !active(s) || submerged(s)) continue;
       const dx = t.x - s.x, dy = t.y - s.y; const lx = dx * Math.cos(s.a) + dy * Math.sin(s.a), ly = -dx * Math.sin(s.a) + dy * Math.cos(s.a);
       if (Math.abs(lx) < s.def.L / 2 && Math.abs(ly) < s.def.B / 2 + 2) { damage(s, t.dmg, 'torp'); C.parts.push({ type: 'geyser', x: t.x, y: t.y, life: 0, max: 1.6, size: 40 }); boom(camVol(t.x, t.y, 0.5), 200, 0.7); gone = true; break; }
     }
-    if (!gone && R() < dtv * 10) C.parts.push({ type: 'twake', x: t.x, y: t.y, life: 0, max: 4, size: 1.5 });
+    if (!gone && R() < dtv * 4) C.parts.push({ type: 'twake', x: t.x, y: t.y, life: 0, max: 4, size: 1.5 });
     if (gone) C.torps.splice(i, 1);
   }
   // missiles
@@ -2181,11 +2245,11 @@ function updateCombat(dtv) {
     if (alive) { const t = m.target; const turn = m.kind === 'sam' ? 4 : 2.2; m.a += clamp(angDiff(Math.atan2(t.y - m.y, t.x - m.x), m.a), -turn * dt, turn * dt);
       const d = dist(m.x, m.y, t.x, t.y);
       if (m.kind === 'sam' && d < 40) { if (R() < m.p) { if (t.kind === 'ssm') killMissile(t); else { t.n -= 2; C.parts.push({ type: 'fall', x: t.x, y: t.y, life: 0, max: 1.4, size: 6 }); } } C.parts.push({ type: 'flak', x: m.x, y: m.y, life: 0, max: 0.5, size: 14 }); C.missiles.splice(i, 1); continue; }
-      if (m.kind === 'ssm' && d < Math.max(20, t.def.B)) { damage(t, m.dmg, 'missile'); C.parts.push({ type: 'boom', x: m.x, y: m.y, life: 0, max: 0.9, size: 40 }); C.parts.push({ type: 'fire', x: m.x, y: m.y, vx: 0, vy: 0, life: 0, max: 2, size: 12 }); boom(camVol(m.x, m.y, 0.5), 220); C.missiles.splice(i, 1); continue; }
+      if (m.kind === 'ssm' && d < Math.max(20, t.def.B)) { damage(t, m.dmg, 'missile'); fxBoom(m.x, m.y, 40, 0.9); C.parts.push({ type: 'fire', x: m.x, y: m.y, vx: 0, vy: 0, life: 0, max: 2, size: 12 }); boom(camVol(m.x, m.y, 0.5), 220); C.missiles.splice(i, 1); continue; }
     }
     m.x += Math.cos(m.a) * m.v * dt; m.y += Math.sin(m.a) * m.v * dt;
     if (R() < dtv * 30) C.parts.push({ type: m.kind === 'sam' ? 'mtrail2' : 'mtrail', x: m.x, y: m.y, life: 0, max: m.kind === 'sam' ? 1 : 2, size: 4 });
-    if (m.life <= 0) { if (m.kind === 'ssm') C.parts.push({ type: 'splash', x: m.x, y: m.y, life: 0, max: 1, size: 14 }); C.missiles.splice(i, 1); }
+    if (m.life <= 0) { if (m.kind === 'ssm') fxSplash(m.x, m.y, 14); C.missiles.splice(i, 1); }
   }
   updateAir(dt);
   // depth charges resolve
@@ -2193,15 +2257,15 @@ function updateCombat(dtv) {
     p.done = true; boom(camVol(p.x, p.y, 0.25), 150, 0.6);
     for (const s of C.ships) if (s.sub && active(s) && s.side !== p.side && dist(s.x, s.y, p.x, p.y) < 60) { damage(s, 160, 'dc'); s.revealT = 30; }
   }
-  for (let i = C.parts.length - 1; i >= 0; i--) { const p = C.parts[i]; p.life += dtv; if (p.vx) { p.x += p.vx * dtv; p.y += p.vy * dtv; if (!p.nd) { const k = Math.pow(0.16, dtv); p.vx *= k; p.vy *= k; } } if (p.life >= p.max) C.parts.splice(i, 1); }
-  if (C.parts.length > 2600) C.parts.splice(0, C.parts.length - 2600);
+  for (let i = C.parts.length - 1; i >= 0; i--) { const p = C.parts[i]; p.life += dtv; if (p.w && p.life > 0) { p.x += WIND.x * dtv; p.y += WIND.y * dtv; } if (p.vx) { p.x += p.vx * dtv; p.y += p.vy * dtv; if (!p.nd) { const k = Math.pow(0.16, dtv); p.vx *= k; p.vy *= k; } } if (p.life >= p.max) C.parts.splice(i, 1); }
+  if (C.parts.length > 1800) C.parts.splice(0, C.parts.length - 1800);
   for (let i = C.tracers.length - 1; i >= 0; i--) { C.tracers[i].life -= dtv; if (C.tracers[i].life <= 0) C.tracers.splice(i, 1); }
   if (C.flag) { const f = C.flag, look = Math.min(W, H) * 0.18 / C.zoom; C.cam.x = lerp(C.cam.x, f.x + Math.cos(f.a) * look, Math.min(1, dtv * 1.5)); C.cam.y = lerp(C.cam.y, f.y + Math.sin(f.a) * look, Math.min(1, dtv * 1.5)); }
   const mine = C.ships.filter(s => s.side === 0 && engageable(s)).length;
   const theirs = C.ships.filter(s => s.side === 1 && engageable(s)).length;
   // fifteen battle minutes without a hit, and nothing in the air or the water, means the squadrons have lost contact
   const quiet = C.t - (C.lastHit || 0) > 900 && !C.shells.length && !C.torps.length && !C.missiles.length && !C.air.length;
-  if (!mine || !theirs || quiet) { C.endT += dtv; if (!C.endMsg) { C.endMsg = true; say(!theirs ? 'The enemy is beaten!' : mine && theirs ? 'Contact lost.' : 'Action over.', 3); } if (C.endT > 2.5) endCombat(); }
+  if (!mine || !theirs || quiet) { C.endT += dtv / Math.max(0.5, combatSpeed); if (!C.endMsg) { C.endMsg = true; say(!theirs ? 'The enemy is beaten!' : mine && theirs ? 'Contact lost.' : 'Action over.', 3); } if (C.endT > 2.5) endCombat(); }
 }
 function endCombat() {
   const f = C.fleet; const r = { victory: false, retreated: false, sunk: [], lost: [], prizes: [], coin: 0, rp: 0, goods: '', bounty: 0, casualties: 0, notes: [] };
@@ -2254,23 +2318,131 @@ function endCombat() {
 }
 
 /* ================================================================ combat render */
+/* ================================================================ combat effects */
+// Soft sprites: a round puff and lumpy clouds, tinted by colour, drawn with alpha. Fire and flashes add light.
+const puffCache = {};
+function puffSprite(rgb, v = -1) {
+  const key = rgb + v; if (puffCache[key]) return puffCache[key];
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const blob = (x, y, r, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); gr.addColorStop(0.5, 'rgba(' + rgb + ',' + a * 0.5 + ')'); gr.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); };
+  if (v < 0) blob(32, 32, 32, 1);
+  else { const r = rng(17 + v * 31); for (let i = 0; i < 7; i++) { const a = r() * TAU, d = r() * 12; blob(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, 12 + r() * 10, 0.55); } }
+  return (puffCache[key] = c);
+}
+function drawPuff(rgb, x, y, r, a, v = -1) { if (a <= 0.02 || r * C.zoom < 0.6) return; ctx.globalAlpha = Math.min(1, a); ctx.drawImage(puffSprite(rgb, v), x - r, y - r, 2 * r, 2 * r); }
+const WIND = { x: 7, y: 3.5 }; // metres per visual second: smoke drifts the same way all battle
+function fxBoom(x, y, size, max = 0.6) {
+  C.parts.push({ type: 'boom', x, y, life: 0, max, size });
+  for (let i = 0; i < 2; i++) C.parts.push({ type: 'smoke', x: x + (R() - 0.5) * size * 0.5, y: y + (R() - 0.5) * size * 0.5, vx: (R() - 0.5) * 6, vy: (R() - 0.5) * 6, w: 1, life: -0.15, max: 5 + R() * 3, size: size * 0.7, v: ri(0, 3) });
+}
+function fxSplash(x, y, size, max = 1.8) {
+  C.parts.push({ type: 'splash', x, y, life: 0, max, size });
+  C.parts.push({ type: 'foam', x, y, life: 0, max: 10, size: size * 1.5, v: ri(0, 3) });
+}
+let foamPat = null, waterPat = null, vignette = null;
+function foamPattern() {
+  if (foamPat) return foamPat;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const r = rng(7);
+  for (let i = 0; i < 700; i++) { const x = r() * 128, y = r() * 128, s = 0.4 + r() * 2.2; g.fillStyle = 'rgba(245,250,250,' + (0.2 + r() * 0.6) + ')'; g.beginPath(); g.ellipse(x, y, s * 1.6, s, 0, 0, TAU); g.fill(); }
+  foamPat = ctx.createPattern(c, 'repeat'); return foamPat;
+}
+// Smooth two-octave value noise as light and dark alpha, laid over the sea at two scales.
+function waterPattern() {
+  if (waterPat) return waterPat;
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d');
+  const oct = (n, seed) => { const s = document.createElement('canvas'); s.width = s.height = n; const sg = s.getContext('2d'); const d = sg.createImageData(n, n); const r = rng(seed); for (let i = 0; i < n * n; i++) { const v = r() * 255; d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = v; d.data[i * 4 + 3] = 255; } sg.putImageData(d, 0, 0); return s; };
+  g.imageSmoothingEnabled = true; g.filter = 'blur(3px)'; g.globalAlpha = 1; g.drawImage(oct(8, 3), 0, 0, N, N); g.globalAlpha = 0.5; g.drawImage(oct(32, 5), 0, 0, N, N); g.globalAlpha = 0.25; g.drawImage(oct(64, 9), 0, 0, N, N);
+  // tile seamlessly: mirror into a 2x canvas
+  const m = document.createElement('canvas'); m.width = m.height = N * 2; const mg = m.getContext('2d');
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { mg.save(); mg.translate(sx < 0 ? N * 2 : 0, sy < 0 ? N * 2 : 0); mg.scale(sx, sy); mg.drawImage(c, 0, 0); mg.restore(); }
+  const d = mg.getImageData(0, 0, N * 2, N * 2), px = d.data; let lo = 255, hi = 0; for (let i = 0; i < px.length; i += 4) { lo = Math.min(lo, px[i]); hi = Math.max(hi, px[i]); }
+  for (let i = 0; i < px.length; i += 4) { const v = (px[i] - lo) / (hi - lo) - 0.5; if (v > 0) { px[i] = 200; px[i + 1] = 235; px[i + 2] = 235; px[i + 3] = v * 150; } else { px[i] = 0; px[i + 1] = 10; px[i + 2] = 18; px[i + 3] = -v * 190; } }
+  mg.putImageData(d, 0, 0); waterPat = m; return m;
+}
+// The sea is smooth noise, so it is rendered at quarter resolution and scaled up: a sixteenth of the fill cost.
+let waterCv = null;
+function drawWater(z) {
+  const tex = waterPattern(), q = 4, w = Math.ceil(W / q), h = Math.ceil(H / q);
+  if (!waterCv || waterCv.width !== w || waterCv.height !== h) { waterCv = document.createElement('canvas'); waterCv.width = w; waterCv.height = h; waterCv.pats = null; }
+  const g = waterCv.getContext('2d'); if (!waterCv.pats) waterCv.pats = [g.createPattern(tex, 'repeat'), g.createPattern(tex, 'repeat')];
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#17414b'; g.fillRect(0, 0, w, h);
+  g.setTransform(z / q, 0, 0, z / q, w / 2 - C.cam.x * z / q, h / 2 - C.cam.y * z / q);
+  const x0 = C.cam.x - W / 2 / z, y0 = C.cam.y - H / 2 / z;
+  // broad swell, 40 m a texel, and fine chop, 3 m a texel, which drifts and fades out when zoomed far out
+  [[40, 0.32, 0.6], [3, clamp((z - 0.15) / 0.5, 0, 1) * 0.18, 4]].forEach(([sc, al, drift], i) => {
+    if (al <= 0.01) return; const p = waterCv.pats[i], off = tNow * drift * BT;
+    p.setTransform(new DOMMatrix([sc, 0, 0, sc, off, off * 0.4])); g.globalAlpha = al; g.fillStyle = p; g.fillRect(x0, y0, W / z, H / z);
+  });
+  g.globalAlpha = 1;
+  ctx.save(); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(waterCv, 0, 0, w * q, h * q); ctx.restore();
+}
+function drawVignette() {
+  if (!vignette || vignette.w !== W || vignette.h !== H) { const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.hypot(W, H) * 0.6); g.addColorStop(0, 'rgba(2,10,14,0)'); g.addColorStop(1, 'rgba(2,10,14,.5)'); vignette = { g, w: W, h: H }; }
+  ctx.fillStyle = vignette.g; ctx.fillRect(0, 0, W, H);
+}
+// Wakes: the churned band astern widens and fades over a minute or so of battle time, and the two arms of the
+// Kelvin pattern spread from the bow at about 19.5 degrees to the track.
+function recordTrail(s, dtv) {
+  s.trailT = (s.trailT || 0) - dtv; if (s.trailT > 0) return; s.trailT = 0.25;
+  const st = worldPt(s, -s.def.L * 0.48, 0), bw = worldPt(s, s.def.L * 0.48, 0);
+  (s.trail = s.trail || []).push({ x: st.x, y: st.y, bx: bw.x, by: bw.y, a: s.a, t: C.vt, v: s.v, sm: submerged(s) });
+  while (s.trail.length && C.vt - s.trail[0].t > 16) s.trail.shift();
+}
+function drawWake(s) {
+  const tr = s.trail; if (!tr || tr.length < 2) return; const now = C.vt, MAXA = 16, B = s.def.B, z = C.zoom;
+  const head = active(s) ? (() => { const st = worldPt(s, -s.def.L * 0.48, 0), bw = worldPt(s, s.def.L * 0.48, 0); return { x: st.x, y: st.y, bx: bw.x, by: bw.y, a: s.a, t: now, v: s.v, sm: submerged(s) }; })() : null;
+  const pts = (head ? [head] : []).concat(tr.slice().reverse()).filter(p => !p.sm);
+  if (pts.length < 2) return;
+  const wdt = p => B * (0.5 + (now - p.t) * 0.09), last = pts[pts.length - 1];
+  const strength = clamp(pts[0].v / 9, 0.15, 1);
+  // turbulent band
+  ctx.beginPath(); pts.forEach((p, i) => { const w = wdt(p); const x = p.x - Math.sin(p.a) * w, y = p.y + Math.cos(p.a) * w; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i], w = wdt(p); ctx.lineTo(p.x + Math.sin(p.a) * w, p.y - Math.cos(p.a) * w); } ctx.closePath();
+  const fade = 1 - (now - last.t) / MAXA, gr = ctx.createLinearGradient(pts[0].x, pts[0].y, last.x, last.y);
+  gr.addColorStop(0, 'rgba(225,240,240,' + 0.38 * strength + ')'); gr.addColorStop(0.35, 'rgba(210,232,234,' + 0.16 * strength + ')'); gr.addColorStop(1, 'rgba(200,228,230,' + Math.max(0, 0.04 * fade) * strength + ')');
+  ctx.fillStyle = gr; ctx.fill();
+  if (z > 0.15) { const fp = foamPattern(); fp.setTransform(new DOMMatrix([0.35, 0, 0, 0.35, 0, 0])); ctx.save(); ctx.clip(); ctx.globalAlpha = 0.22 * strength; ctx.fillStyle = fp; ctx.fill(); ctx.restore(); ctx.globalAlpha = 1; }
+  // Kelvin arms
+  ctx.lineCap = 'round';
+  for (const sd of [-1, 1]) {
+    ctx.beginPath(); pts.forEach((p, i) => { const age = now - p.t, off = B * 0.5 + age * p.v * BT * 0.36; const x = p.bx - Math.sin(p.a) * sd * off, y = p.by + Math.cos(p.a) * sd * off; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    const kg = ctx.createLinearGradient(pts[0].bx, pts[0].by, last.bx, last.by); kg.addColorStop(0, 'rgba(235,246,246,' + 0.5 * strength + ')'); kg.addColorStop(1, 'rgba(235,246,246,0)');
+    ctx.strokeStyle = kg; ctx.lineWidth = Math.max(2 / z, B * 0.4); ctx.globalAlpha = 0.1; ctx.stroke(); ctx.lineWidth = Math.max(0.7 / z, B * 0.035); ctx.globalAlpha = 0.45; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  ctx.lineCap = 'butt';
+}
+// Soft shadow silhouettes, blurred once per design and cached with the sprite.
+function shadowSprite(d) {
+  const key = 'sh|' + d.id; if (sprCache[key]) return sprCache[key];
+  const spr = 2, pad = 8, wide = spriteWide(d); const w = Math.ceil((d.L + pad * 2) * spr), h = Math.ceil((wide + pad * 2) * spr);
+  const a = document.createElement('canvas'); a.width = w; a.height = h; const g = a.getContext('2d'); g.translate(w / 2, h / 2); g.scale(spr, spr); g.fillStyle = '#000';
+  if (d.p.fd) { const f = d.p.fd; g.fillRect((f.x || 0) - d.L * f.len / 2, -f.w / 2, d.L * f.len, f.w); hullPath(g, d); g.fill(); } else { hullPath(g, d); g.fill(); for (const [x, len, ww] of d.p.sup || []) { g.fillRect(x - len / 2, -ww / 2, len, ww); } }
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const cg = c.getContext('2d'); cg.filter = 'blur(' + Math.max(2, d.B * 0.12 * spr) + 'px)'; cg.drawImage(a, 0, 0);
+  return (sprCache[key] = { c, w: w / spr, h: h / spr });
+}
+
 // Light falls from the same quarter for every ship, so shadows on the water are offset in world space, not ship space.
 const SUN = { x: 0.55, y: 0.85 };
+function spriteFor(sp, px) { return px < sp.spr / 6 && sp.lo2 ? sp.lo2 : px < sp.spr / 1.6 && sp.lo ? sp.lo : sp.c; } // pick a mip level for the zoom
 function drawCShip(s) {
-  const sp = hullSprite(s.rec.type, s.pal); const P = PAL[s.pal] || PAL.player; const d = s.def;
+  const sp = hullSprite(s.rec.type, s.pal); const P = PAL[s.pal] || PAL.player; const d = s.def, z = C.zoom;
   const sm = s.sub ? s.dive : 0;
   let alpha = 1, k = 0;
   if (!s.alive) { k = Math.min(1, s.sink / 4); alpha = 1 - k; } else if (sm) alpha = 1 - 0.65 * sm;
-  const fb = d.kind === 'sub' ? 0.5 : d.kind === 'carrier' ? 9 : clamp(d.B * 0.2, 1, 6); // height of the deck edge above the water
-  if (!sm && alpha > 0.05) {
-    ctx.save(); ctx.globalAlpha = alpha * 0.3; ctx.translate(s.x + SUN.x * fb, s.y + SUN.y * fb); ctx.rotate(s.a + k * 0.25); ctx.fillStyle = '#000';
-    if (d.p.fd) { const f = d.p.fd; ctx.fillRect((f.x || 0) - d.L * f.len / 2, -f.w / 2, d.L * f.len, f.w); } else { hullPath(ctx, d); ctx.fill(); }
-    ctx.restore();
+  const fb = d.kind === 'sub' ? 0.6 : d.kind === 'carrier' ? 10 : clamp(d.B * 0.25, 1.2, 8); // height of the deck edge above the water
+  if (!sm && alpha > 0.05) { const sh = shadowSprite(d); ctx.save(); ctx.globalAlpha = alpha * 0.55; ctx.translate(s.x + SUN.x * fb, s.y + SUN.y * fb); ctx.rotate(s.a + k * 0.25); ctx.drawImage(sh.c, -sh.w / 2, -sh.h / 2, sh.w, sh.h); ctx.restore(); }
+  ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.a);
+  // bow wave and stern wash, stronger with speed
+  const sk = s.alive && !sm ? clamp(s.v / (d.kn * KN), 0, 1) : 0;
+  if (sk > 0.05) {
+    const h = d.L / 2, b = d.B / 2; ctx.strokeStyle = 'rgba(240,248,248,' + 0.55 * sk + ')'; ctx.lineWidth = Math.max(1 / z, d.B * 0.12); ctx.lineCap = 'round';
+    for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(h + 0.5, 0); ctx.quadraticCurveTo(h - d.L * 0.05, sd * (b + d.B * 0.25 * sk), h - d.L * (0.12 + 0.1 * sk), sd * (b + d.B * 0.45 * sk)); ctx.stroke(); }
+    ctx.lineCap = 'butt'; drawPuff('235,245,245', -h, 0, d.B * (0.8 + 0.6 * sk), 0.35 * sk); ctx.globalAlpha = 1;
   }
-  ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.globalAlpha = alpha;
+  ctx.globalAlpha = alpha;
   if (!s.alive) { ctx.rotate(k * 0.25); ctx.scale(1 - 0.2 * k, 1 - 0.2 * k); }
-  ctx.drawImage(sp.c, -sp.w / 2, -sp.h / 2, sp.w, sp.h);
-  if (!(s.sub && s.dive > 0.1) && C.zoom * d.L > 30) { // turrets are only worth drawing once the ship is a few dozen pixels long
+  ctx.drawImage(spriteFor(sp, z), -sp.w / 2, -sp.h / 2, sp.w, sp.h);
+  if (!(s.sub && s.dive > 0.1) && z * d.L > 30) { // turrets are only worth drawing once the ship is a few dozen pixels long
     const ca = Math.cos(s.a), sa = Math.sin(s.a), lx = (ca * SUN.x + sa * SUN.y) * 1.4, ly = (-sa * SUN.x + ca * SUN.y) * 1.4;
     for (const pass of [1, 0]) for (const m of s.mounts) {
       if (m.w.kind === 'ssm' || m.w.kind === 'sam') continue;
@@ -2278,32 +2450,46 @@ function drawCShip(s) {
     }
   }
   if (s.struck) { ctx.fillStyle = '#e8e8e0'; ctx.fillRect(-d.L / 2 - 6, -2, 5, 4); }
-  ctx.restore();
+  ctx.restore(); ctx.globalAlpha = 1;
 }
 function drawParts(layer) {
+  const z = C.zoom, mn = 1 / z, vx0 = C.cam.x - W / 2 / z - 300, vx1 = C.cam.x + W / 2 / z + 300, vy0 = C.cam.y - H / 2 / z - 300, vy1 = C.cam.y + H / 2 / z + 300;
+  const vis = p => p.x > vx0 && p.x < vx1 && p.y > vy0 && p.y < vy1; // skip what is off screen
   for (const p of C.parts) {
-    if (p.life < 0) continue; const k = p.life / p.max;
+    if (p.life < 0 || !vis(p)) continue; const k = p.life / p.max, t = p.type;
     if (layer === 0) {
-      if (p.type === 'wake') { ctx.fillStyle = 'rgba(225,240,240,' + (0.16 * (1 - k) * (p.k || 1)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.7 + k * 2.2), 0, TAU); ctx.fill(); }
-      else if (p.type === 'kel') { ctx.strokeStyle = 'rgba(225,240,240,' + (0.2 * (1 - k) * (p.k || 1)) + ')'; ctx.lineWidth = Math.max(0.8 / C.zoom, 0.6); const l = p.size * (0.35 + k * 0.6); ctx.beginPath(); ctx.moveTo(p.x - Math.cos(p.a) * l, p.y - Math.sin(p.a) * l); ctx.lineTo(p.x + Math.cos(p.a) * l, p.y + Math.sin(p.a) * l); ctx.stroke(); }
-      else if (p.type === 'swake') { ctx.strokeStyle = 'rgba(225,240,240,' + (0.12 * (1 - k)) + ')'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2), 0, TAU); ctx.stroke(); }
-      else if (p.type === 'bow') { ctx.strokeStyle = 'rgba(235,245,245,' + (0.22 * (1 - k)) + ')'; ctx.lineWidth = 1; ctx.beginPath(); const r = p.size * (0.8 + k * 2.2); ctx.arc(p.x, p.y, r, p.a + PI * 0.55, p.a + PI * 1.45); ctx.stroke(); }
-      else if (p.type === 'twake') { ctx.fillStyle = 'rgba(235,245,245,' + (0.5 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k), 0, TAU); ctx.fill(); }
-      else if (p.type === 'splash' || p.type === 'geyser') { ctx.strokeStyle = 'rgba(235,248,248,' + (0.8 * (1 - k)) + ')'; ctx.lineWidth = Math.max(1.5 / C.zoom, p.size * 0.12); ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.3 + k * 1.4), 0, TAU); ctx.stroke(); if (k < 0.45) { ctx.fillStyle = 'rgba(245,250,250,' + (0.9 - k * 2) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.6 * (1 - k * 2), 0, TAU); ctx.fill(); } }
-      else if (p.type === 'dc') { ctx.fillStyle = 'rgba(240,250,250,' + (0.8 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + k), 0, TAU); ctx.fill(); }
+      if (t === 'foam' && z < 0.12) continue; // too faint to see that far out
+      if (t === 'foam') drawPuff('220,236,236', p.x, p.y, p.size * (1 + k), 0.3 * (1 - k), p.v);
+      else if (t === 'oil') drawPuff('12,16,18', p.x, p.y, p.size * (0.6 + k * 0.8), 0.45 * (1 - k * k), p.v);
+      else if (t === 'swake') { ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(225,240,240,' + (0.12 * (1 - k)) + ')'; ctx.lineWidth = Math.max(mn, 1.5); ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2), 0, TAU); ctx.stroke(); }
+      else if (t === 'twake') drawPuff('235,245,245', p.x, p.y, Math.max(p.size * (1 + k * 3), 1.2 * mn), 0.5 * (1 - k));
+      else if (t === 'splash' || t === 'geyser') {
+        const r = Math.max(p.size, 2 * mn); drawPuff('248,252,252', p.x, p.y, r * (0.5 + 0.9 * Math.sqrt(k)), 0.95 * (1 - k) * (1 - k));
+        ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(235,248,248,' + (0.6 * (1 - k)) + ')'; ctx.lineWidth = Math.max(mn, r * 0.08); ctx.beginPath(); ctx.arc(p.x, p.y, r * (0.4 + k * 1.6), 0, TAU); ctx.stroke();
+      }
+      else if (t === 'dc') drawPuff('245,250,250', p.x, p.y, p.size * (0.5 + k * 1.2), 0.9 * (1 - k));
     } else {
-      if (p.type === 'smoke') { ctx.fillStyle = 'rgba(200,200,195,' + (0.4 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2), 0, TAU); ctx.fill(); }
-      else if (p.type === 'funnel') { ctx.fillStyle = 'rgba(60,62,64,' + (0.16 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2), 0, TAU); ctx.fill(); }
-      else if (p.type === 'dust') { ctx.fillStyle = 'rgba(190,170,120,' + (0.6 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k), 0, TAU); ctx.fill(); }
-      else if (p.type === 'flash') { ctx.fillStyle = 'rgba(255,225,150,' + (1 - k) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
-      else if (p.type === 'boom') { ctx.fillStyle = 'rgba(255,' + Math.round(200 - 140 * k) + ',70,' + (0.9 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.5 + k * 0.8), 0, TAU); ctx.fill(); }
-      else if (p.type === 'spark' || p.type === 'fire') { ctx.fillStyle = 'rgba(255,' + Math.round(170 - 100 * k) + ',50,' + (1 - k) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 - k * 0.5), 0, TAU); ctx.fill(); }
-      else if (p.type === 'flak') { ctx.fillStyle = 'rgba(30,30,30,' + (0.7 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.5 + k), 0, TAU); ctx.fill(); }
-      else if (p.type === 'fall') { ctx.fillStyle = 'rgba(255,140,50,' + (1 - k) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y + k * 20, p.size * (1 - k * 0.5), 0, TAU); ctx.fill(); }
-      else if (p.type === 'mtrail') { ctx.fillStyle = 'rgba(230,230,225,' + (0.5 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k * 2), 0, TAU); ctx.fill(); }
-      else if (p.type === 'mtrail2') { ctx.fillStyle = 'rgba(230,230,225,' + (0.35 * (1 - k)) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + k), 0, TAU); ctx.fill(); }
+      if (t === 'smoke') drawPuff('62,62,64', p.x, p.y, p.size * (1 + k * 2.2), 0.5 * (1 - k) * Math.min(1, p.life * 4), p.v);
+      else if (t === 'cordite') drawPuff('196,186,164', p.x, p.y, p.size * (1 + k * 2.5), 0.45 * (1 - k), p.v);
+      else if (t === 'funnel') drawPuff('82,82,86', p.x, p.y, p.size * (1 + k * 2), 0.2 * (1 - k), p.v);
+      else if (t === 'dust') drawPuff('184,164,124', p.x, p.y, p.size * (1 + k), 0.6 * (1 - k), p.v);
+      else if (t === 'flak') drawPuff('34,34,34', p.x, p.y, Math.max(p.size, 2 * mn) * (0.5 + k), 0.75 * (1 - k), p.v);
+      else if (t === 'mtrail' || t === 'mtrail2') drawPuff('230,230,226', p.x, p.y, Math.max(p.size, 1.2 * mn) * (1 + k * 2), (t === 'mtrail' ? 0.5 : 0.35) * (1 - k), p.v);
     }
   }
+  if (layer === 1) { // light-emitting effects add to what is beneath them
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of C.parts) {
+      if (p.life < 0 || !vis(p)) continue; const k = p.life / p.max, t = p.type;
+      if (t === 'flash') { const r = Math.max(p.size, 5 * mn); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a || 0); ctx.scale(1.9, 1); drawPuff('255,200,120', r * 0.3, 0, r * (0.7 + k), 1 - k); drawPuff('255,250,230', r * 0.2, 0, r * 0.4, 1 - k); ctx.restore(); }
+      else if (t === 'boom') { const r = Math.max(p.size, 4 * mn); drawPuff('255,150,50', p.x, p.y, r * (0.5 + k * 0.9), 1 - k); drawPuff('255,235,190', p.x, p.y, r * 0.45 * (1 - k), 1 - k); }
+      else if (t === 'fire') { const fl = 0.75 + 0.25 * Math.sin(tNow * 31 + p.x); drawPuff('255,120,30', p.x, p.y, Math.max(p.size, 1.5 * mn) * (1 - k * 0.4), 0.9 * (1 - k) * fl); }
+      else if (t === 'spark') drawPuff('255,190,90', p.x, p.y, Math.max(p.size, 0.8 * mn) * (1 - k * 0.5), 1 - k);
+      else if (t === 'fall') drawPuff('255,140,50', p.x, p.y + k * 20, Math.max(p.size, mn) * (1 - k * 0.5), 1 - k);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.globalAlpha = 1;
 }
 function drawPlane(x, y, a, col, jet) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(a); const ps = Math.max(1, 1.6 / C.zoom); ctx.scale(ps, ps);
@@ -2319,9 +2505,10 @@ function renderCombat() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = '#081418'; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-C.cam.x, -C.cam.y);
-  ctx.fillStyle = '#163a44'; ctx.fillRect(0, 0, C.AW, C.AH);
-  drawWaves(C.cam.x, C.cam.y, z, 0.08, Math.max(170, 110 / z));
+  drawWater(z);
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2 / z; ctx.strokeRect(0, 0, C.AW, C.AH);
   for (const is of C.islands) drawIsland(is, z, false);
+  for (const sh of C.ships) if (!submerged(sh) || sh.side === 0 || detectedBy(sh, 0)) drawWake(sh);
   drawParts(0);
   for (const t of C.torps) { const vis = t.side === 0 || t.arm < -20 || dist(t.x, t.y, C.flag ? C.flag.x : 0, C.flag ? C.flag.y : 0) < 2500; if (!vis) continue; ctx.strokeStyle = t.side ? 'rgba(255,170,150,.9)' : 'rgba(240,250,250,.9)'; ctx.lineWidth = Math.max(2 / z, 0.6); const tl = Math.max(8, 10 / z); ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(t.x - Math.cos(t.a) * tl, t.y - Math.sin(t.a) * tl); ctx.stroke(); }
   const s = C.flag;
@@ -2332,7 +2519,10 @@ function renderCombat() {
       for (let i = 0; i < 30; i++) { const dd = 2; pr += clamp(s.rudder - pr, -dd / 10, dd / 10); pw += (pr * s.v / (s.def.td / 2) - pw) * Math.min(1, dd / yawLag(s)); pa += pw * dd; px += Math.cos(pa) * s.v * dd; py += Math.sin(pa) * s.v * dd; ctx.lineTo(px, py); }
       ctx.stroke(); ctx.setLineDash([]); }
     const r = maxGunRange(s); ctx.strokeStyle = 'rgba(227,178,60,.18)'; ctx.lineWidth = 1 / z; ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.stroke();
-    const m = mouseWorld(); ctx.strokeStyle = 'rgba(227,178,60,.22)'; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+    // where each main turret is actually laid: green when bearing, amber while training, red when it cannot reach
+    const main = mainSize(s);
+    for (const m of s.mounts) { if (m.w.kind !== 'gun' || m.w.size !== main || !m.st) continue; const p = worldPt(s, m.slot.x, m.slot.y), a = s.a + m.ta, L = gunRange(s, m.w) * 0.5;
+      ctx.strokeStyle = GUNCOL[m.st] + '.30)'; ctx.lineWidth = 1 / z; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(a) * L, p.y + Math.sin(a) * L); ctx.stroke(); }
   }
   for (const sh of C.ships) if (!sh.alive && sh.sink < 4) drawCShip(sh);
   for (const sh of C.ships) if (active(sh) && sh.sub && sh.dive > 0.3 && (sh.side === 0 || detectedBy(sh, 0))) drawCShip(sh);
@@ -2354,14 +2544,35 @@ function renderCombat() {
     ctx.restore();
   }
   ctx.restore();
+  drawVignette();
+  drawGunnery();
   renderHud();
+}
+const GUNCOL = { ready: 'rgba(127,191,142,', reload: 'rgba(127,191,142,', train: 'rgba(227,178,60,', range: 'rgba(217,97,74,', arc: 'rgba(217,97,74,' };
+// Gun-laying reticle at the point the main battery is aimed, with a plain-words state of the guns.
+function drawGunnery() {
+  const s = C.flag; if (!s || !s.alive || !C.gunAim) return;
+  const ms = s.mounts.filter(m => m.w.kind === 'gun' && m.w.size === mainSize(s) && m.st); if (!ms.length) return;
+  const n = st => ms.filter(m => m.st === st).length, bearing = n('ready') + n('reload'), training = n('train'), out = n('range') + n('arc');
+  const a = C.gunAim; let sx = (a.x - C.cam.x) * C.zoom + W / 2, sy = (a.y - C.cam.y) * C.zoom + H / 2;
+  const off = sx < 30 || sx > W - 330 || sy < 110 || sy > H - 60; sx = clamp(sx, 30, W - 330); sy = clamp(sy, 110, H - 60); // off-screen targets pin the reticle to the edge
+  const col = bearing ? '#7fbf8e' : training ? '#e3b23c' : '#d9614a';
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, 13, 0, TAU);
+  for (const q of [0, 1, 2, 3]) { const ang = q * PI / 2; ctx.moveTo(sx + Math.cos(ang) * 8, sy + Math.sin(ang) * 8); ctx.lineTo(sx + Math.cos(ang) * 19, sy + Math.sin(ang) * 19); } ctx.stroke();
+  const rng0 = dist(s.x, s.y, a.x, a.y), maxR = maxGunRange(s), rel = Math.min(...ms.filter(m => m.st === 'reload').map(m => m.cd / reloadMult(s, m.w)), 999);
+  const train = Math.max(0, ...ms.filter(m => m.st === 'train').map(m => m.err / TRAV[m.w.size]));
+  const lines = [(off ? '↗ off screen · ' : '') + (a.lock ? (C.autofire ? 'Engaging ' : 'Laid on ') + C.lock.rec.name : mouse.down ? 'Firing at the point' : 'Aiming') + ' · ' + (rng0 / 1000).toFixed(1) + ' of ' + (maxR / 1000).toFixed(1) + ' km',
+    bearing + ' of ' + ms.length + ' turrets bearing' + (n('ready') ? ' · ready' : bearing ? ' · reloading ' + Math.ceil(rel) + ' s' : '') + (training ? ' · ' + training + ' training, ~' + Math.ceil(train) + ' s' : '') + (n('range') ? ' · out of range' : '') + (n('arc') ? ' · ' + n('arc') + ' masked' : '')];
+  if (!C.autofire && !mouse.down && a.lock) lines.push('Click the target or press X to open fire');
+  ctx.font = '12px "IBM Plex Sans Condensed", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  lines.forEach((l, i) => { ctx.fillStyle = 'rgba(6,16,20,.7)'; ctx.fillRect(sx + 22, sy + 4 + i * 15, ctx.measureText(l).width + 8, 15); ctx.fillStyle = i ? col : '#e4e7e3'; ctx.fillText(l, sx + 26, sy + 5 + i * 15); });
 }
 function renderHud() {
   const s = C.flag; const pad = coarse() ? 130 : 0;
   ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = '13px "IBM Plex Sans Condensed", sans-serif';
   [['1', 'Engage', 'engage'], ['2', 'Escort', 'escort'], ['3', 'Retreat (break contact)', 'retreat']].forEach(([k, l, o], i) => { const on = C.order === o; ctx.fillStyle = on ? '#e3b23c' : 'rgba(228,231,227,.55)'; ctx.fillText((on ? '▸ ' : '  ') + k + ' ' + l, 16, 16 + i * 18); });
   const clock = Math.floor(C.t / 60) + ':' + String(Math.floor(C.t % 60)).padStart(2, '0');
-  ctx.fillStyle = 'rgba(228,231,227,.45)'; ctx.fillText('Battle clock ' + clock + ' · time ×' + (combatSpeed * BT) + ' (−/=) · W/S engines · A/D rudder · click guns/lock · X autofire' + (C.autofire ? ' (ON)' : '') + ' · T torps · Q missiles · F air · C dive · Tab ship · P pause', 16, 74);
+  ctx.fillStyle = 'rgba(228,231,227,.45)'; ctx.fillText('Battle clock ' + clock + ' · time ×' + (combatSpeed * BT) + ' (−/=) · W/S engines · A/D rudder · click enemy to engage · hold on water to fire there · right-click water: cease fire · X autofire' + (C.autofire ? ' (ON)' : '') + ' · T torps · Q missiles · F air · C dive · Tab ship · P pause', 16, 74);
   let ry = 104;
   for (const side of [0, 1]) {
     ctx.fillStyle = side ? '#f2c0b4' : '#e4e7e3'; ctx.fillText(side ? 'Enemy' : 'Task force', 16, ry); ry += 18;
@@ -2402,6 +2613,7 @@ function renderHud() {
   for (const sh of C.ships) { if (!active(sh) || (sh.side === 1 && !visibleTo(sh, 0))) continue; ctx.fillStyle = sh === C.flag ? '#e3b23c' : sh.side ? '#d9614a' : '#7fbf8e'; const r = clamp(sh.def.L / 60, 2, 5); ctx.fillRect(mx + sh.x * k - r / 2, my + sh.y * k - r / 2, r, r); }
   for (const q of C.air) { ctx.fillStyle = q.side ? '#f2c0b4' : '#f3e2a8'; ctx.fillRect(mx + q.x * k - 1, my + q.y * k - 1, 2, 2); }
   ctx.strokeStyle = 'rgba(228,231,227,.4)'; ctx.strokeRect(mx + (C.cam.x - W / 2 / C.zoom) * k, my + (C.cam.y - H / 2 / C.zoom) * k, W / C.zoom * k, H / C.zoom * k);
+  C.msgT -= rdt; // messages fade on the real clock, whatever the battle speed
   if (C.msgT > 0) { ctx.fillStyle = 'rgba(228,231,227,' + Math.min(1, C.msgT) + ')'; ctx.font = '26px "Saira Stencil One", Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(C.msg.toUpperCase(), W / 2, 60); }
   if (C.paused) { ctx.fillStyle = 'rgba(4,12,16,.5)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#e4e7e3'; ctx.font = '34px "Saira Stencil One", Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('PAUSED · P TO RESUME', W / 2, H / 2); }
 }
@@ -2410,7 +2622,7 @@ function renderHud() {
 function lockAtMouse() {
   const m = mouseWorld(); let best = null, bd = Infinity;
   for (const o of C.ships) { if (o.side !== 1 || !engageable(o) || !visibleTo(o, 0)) continue; const d = dist(o.x, o.y, m.x, m.y); if (d < Math.max(30 / C.zoom, o.def.L * 0.6) && d < bd) { bd = d; best = o; } }
-  if (best) { C.lock = best; say('Target: ' + best.rec.name, 1.2); }
+  if (best) { C.lock = best; C.autofire = true; say('Main battery: engage ' + best.rec.name + '!', 1.6); }
   return best;
 }
 function combatKey(code) {
@@ -2457,8 +2669,8 @@ cvs.addEventListener('pointerdown', e => {
   initAudio(); mouse.x = e.clientX; mouse.y = e.clientY;
   if (mode === 'combat' && C) {
     if (e.pointerType === 'touch') { lockAtMouse(); return; }
-    if (e.button === 2) { lockAtMouse(); return; }
-    lockAtMouse(); mouse.down = true; return;
+    if (e.button === 2) { if (!lockAtMouse() && (C.lock || C.autofire)) { C.lock = null; C.autofire = false; say('Check fire.', 1.4); } return; }
+    if (!lockAtMouse()) mouse.down = true; return; // click an enemy to engage it; hold on open water to fire at that spot
   }
   if (mode !== 'map' || panelOpen) return;
   mapDrag = { x: e.clientX, y: e.clientY, vx: mapCam ? mapCam.x : G.player.x, vy: mapCam ? mapCam.y : G.player.y, moved: false };
@@ -2505,8 +2717,9 @@ document.querySelectorAll('#touch button').forEach(b => {
 
 /* ================================================================ loop & boot */
 let last = performance.now();
+let rdt = 0.016; // real seconds since the last frame
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; tNow += dt;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; tNow += dt; rdt = dt;
   if (mode === 'map' && G && !panelOpen) {
     const px = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0), py = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0);
     if (px || py) { if (!mapView.free) { mapView.x = G.player.x; mapView.y = G.player.y; } mapView.free = true; mapView.x = wrapX(mapView.x + px * 600 * dt / mapZoom); mapView.y = clamp(mapView.y + py * 600 * dt / mapZoom, 0, MH); }

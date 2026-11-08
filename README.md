@@ -39,7 +39,8 @@ Combat is real-time and top-down, at true scale: one unit is one metre. Ships ma
 | Key | Action |
 | --- | --- |
 | W / S, A / D | Engine telegraph, rudder |
-| Mouse, hold click | Aim and fire main guns. Clicking an enemy locks it as the target. |
+| Click an enemy | Lock it and open fire with the main battery (secondaries pick their own targets) |
+| Hold click on open water | Fire the main battery at that spot · right-click open water to cease fire |
 | X | Main-gun autofire at the locked target |
 | T / Q / F | Torpedoes at the cursor / missiles at the target / carrier air strike |
 | C | Dive or surface (submarines) |

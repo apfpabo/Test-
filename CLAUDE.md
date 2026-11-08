@@ -4,3 +4,4 @@
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) holds the gap analysis, the owner's standing feedback (grounded rather than arcade, Rule the Waves 3 art reference, no boarding) and the order of work. Keep it up to date as features land.
 - The game is a single file, `src/game.html` (an HTML fragment). Run `./build.sh` to produce the standalone `index.html`, and commit both.
 - Ships, factions and names are fictional, though ships are modelled on real designs. Do not copy assets from Starsector, Rule the Waves or any other game.
+- The world map uses 1 map unit = 0.05°, equirectangular projection from 82°N to 78°S, wrapping east-west. Always use `wdx`, `mdist` and `mang` for map distances and angles, never raw `dist`. Use `onLand` for collision, and `setCourse` + `routeMove` to move fleets.

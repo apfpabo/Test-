@@ -8,6 +8,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 - **Art reference: Rule the Waves 3.** Realistic top-down ship plans at true proportions, with one consistent paint and lighting scheme across hull, superstructure and turrets. No cartoon outlines or bright decorative colours. Wakes on both the map and in battle.
 - **Ship variety by era and manufacturer**, as in Starsector. Several yards each field their own design per class, modelled on real ships (Iowa, Yamato, Bismarck, KGV, Fletcher and so on) under fictional names.
 - **No boarding.** Capturing ships that strike their colours is fine.
+- **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 
 ## Current build vs. the creative direction
 
@@ -16,7 +17,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 | Alternate Earth, global oceans | **Done (first pass):** a global ocean map from real coastlines, wrapping east-west, with 5 theatres, 32 real ports, 7 factions plus raiders, 16 survey sites (wrecks, abandoned bases, black sites), seasonal pack ice and A* sea routes | Port control and capture, more points of interest, regional weather, hand-crafted sites |
 | Start 1944–52 tech, research-driven eras | 3 eras, 8 techs; RP from kills, captures and missions; enemies modernise over time | A 4th Modern era; RP from salvage, captured officers and documents, surveys and research enclaves; regional tech disparity |
 | Ship classes | Escorts, cruisers, battleship, carriers, subs, freighter. One design per class, no yards | Battlecruisers, auxiliaries (tankers, ammunition ships, repair ships, troop transports), several manufacturers per class |
-| Combat feel | Turrets with arcs, shell dispersion, armour, torpedoes, aircraft, missiles with SAM/CIWS, sonar detection | Ammunition types and magazine depth, weather, time of day, radar horizon, formation discipline. Pace is too fast |
+| Combat feel | Turrets with arcs, shell dispersion, armour (belt wears to no less than 40%), size-aware target choice for heavy guns, torpedoes, aircraft, missiles with SAM/CIWS, sonar detection. Interim pace fix: ships at 45% speed with slower turning, 60% slower reloads, ½×–4× battle time | Ammunition types and magazine depth, weather, time of day, radar horizon, formation discipline. A full pace rework built on real knots and turning circles |
 | Logistics | Fuel, food, crew, wages, repairs | Ammunition supply, crew fatigue, supply lines, auxiliaries that resupply at sea |
 | Factions and diplomacy | 7 factions modeled on the direction's archetypes, per-faction reputation, a fixed list of wars | Inter-faction relations, wars and ceasefires, commissions, betrayal, corporations, revolutionaries, enclaves |
 | Found your own flag | Not started | Claim ports, run them, attract officers and ships |

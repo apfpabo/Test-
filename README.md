@@ -19,6 +19,19 @@ A naval fleet-command game in the spirit of Starsector, set on a fictional sea f
 - **Ships.** 13 hulls modeled on real designs. Fleets hold up to 10 ships.
 - **Refits, officers and prizes.** Choose the weapon in each mount. Officers level up and specialise. Enemies battered below 12% hull strike their colours, and you can take them as prizes.
 
+## Chart controls
+
+| Input | Action |
+| --- | --- |
+| Click the sea, a port or a survey site | Plot a sea route there |
+| Click a fleet | Lock an intercept course. You steer for where it is heading and make contact automatically |
+| Drag, or arrow keys / WASD | Pan the chart (camera unlocks from your fleet) |
+| C / Home, or **Centre** | Recentre on your fleet |
+| Wheel, or + / − | Zoom from the whole world down to ship level (beyond 2× every ship in a fleet is drawn) |
+| Space, or 1 / 2 / 3 / 4 | Pause, or time ×1 / ×2 / ×4 / ×8 (also the buttons in the top bar) |
+
+A day lasts 10 seconds at ×1.
+
 ## Combat
 
 Combat is real-time and top-down. Turrets traverse on their own, within their firing arcs, and lead your locked target. Shells fly in arcs and land with dispersion, so a target showing you its long side is easier to hit. Armour stops small shells. Torpedoes, carrier strikes (torpedo bombers and dive bombers), anti-ship missiles with SAM and CIWS interception, submarines that can dive, and depth charges from sonar ships are all modelled.
@@ -33,6 +46,7 @@ Combat is real-time and top-down. Turrets traverse on their own, within their fi
 | 1 / 2 / 3 | Fleet orders: engage / escort / retreat off the south edge |
 | Tab | Take command of another ship |
 | P, wheel | Pause, zoom |
+| − / = | Battle time ½× / 1× / 2× / 4× |
 
 ## Art
 

@@ -29,6 +29,11 @@ button.danger{border-color:var(--danger);color:#f2c0b4}
 #top .v{font-family:var(--mono);font-size:14px}
 #top .btns{margin-left:auto;display:flex;gap:6px;pointer-events:auto}
 #top .btns button{padding:4px 10px;font-size:13px}
+#top .seg{display:flex}
+#top .seg button{border-radius:0;margin-left:-1px;min-width:34px;font-family:var(--mono)}
+#top .seg button:first-child{border-radius:3px 0 0 3px}
+#top .seg button:last-child{border-radius:0 3px 3px 0}
+#top button.on{background:var(--signal);color:#1a1404;border-color:var(--signal)}
 #panel{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(4,12,16,.6)}
 #panel .card{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--signal);border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.5);width:min(940px,100%);max-height:calc(100% - 20px);overflow:auto;padding:22px 24px}
 #panel h1,#panel h2{font-family:var(--display);font-weight:400;margin:0 0 4px;text-wrap:balance;letter-spacing:.02em}
@@ -145,8 +150,8 @@ const WEAPONS = {
   aa20: { name: 'Oerlikon 20 mm',          size: 'A', kind: 'aa',   dmg: 3,   range: 300,  rel: .15, aa: .02, pd: .04, barrels: 1, price: 500 },
   aa40: { name: 'Bofors 40 mm quad',      size: 'A', kind: 'aa',   dmg: 6,   range: 430,  rel: .3,  aa: .045, pd: .07, barrels: 4, price: 1800 },
   ciws: { name: 'CIWS gatling',           size: 'A', kind: 'aa',   dmg: 4,   range: 380,  rel: .08, aa: .05, pd: .3,  barrels: 1, price: 14000, tech: 'ciws' },
-  tor:  { name: '533 mm torpedoes',       size: 'T', kind: 'torp', dmg: 650, range: 1300, rel: 18, speed: 150, count: 3, price: 4000 },
-  torh: { name: 'Homing torpedoes',       size: 'T', kind: 'torp', dmg: 560, range: 1450, rel: 18, speed: 140, count: 2, homing: true, price: 9000, tech: 'homing' },
+  tor:  { name: '533 mm torpedoes',       size: 'T', kind: 'torp', dmg: 650, range: 1300, rel: 18, speed: 95, count: 3, price: 4000 },
+  torh: { name: 'Homing torpedoes',       size: 'T', kind: 'torp', dmg: 560, range: 1450, rel: 18, speed: 88, count: 2, homing: true, price: 9000, tech: 'homing' },
   ssm:  { name: 'Anti-ship missiles',     size: 'V', kind: 'ssm',  dmg: 430, range: 2300, rel: 12, speed: 480, count: 2, price: 20000, tech: 'missiles' },
   sam:  { name: 'SAM launcher',           size: 'V', kind: 'sam',  dmg: 0,   range: 1500, rel: 2.2, speed: 700, aa: .55, pd: .6, price: 18000, tech: 'missiles' },
 };
@@ -372,7 +377,7 @@ function hullSprite(type, pal) {
   const key = type + '|' + pal; if (sprCache[key]) return sprCache[key];
   const d = HULLS[type]; const wide = d.kind === 'carrier' ? d.B * 1.3 : d.B;
   const c = document.createElement('canvas'); c.width = Math.ceil((d.L + 8) * SPR); c.height = Math.ceil((wide + 8) * SPR);
-  const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.scale(SPR, SPR); drawHullArt(g, d, PAL[pal]);
+  const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.scale(SPR, SPR); drawHullArt(g, d, PAL[pal] || PAL.player);
   return (sprCache[key] = { c, w: c.width / SPR, h: c.height / SPR });
 }
 const MOUNT = { S: [3.4, 10, 1.2], M: [5.2, 14, 1.5], L: [7.6, 22, 2], H: [10.2, 31, 2.8] };
@@ -813,8 +818,8 @@ function maintainFleets(initial) {
   if (count('bounty') < 2 && (initial || R() < 0.08)) { const f = spawnFleet('bounty', 'raiders', initial); if (!initial) toast('Bounty posted on ' + f.captain + ': ' + fmt(f.reward) + '.'); }
 }
 // Cruise speed on the chart in map units per second. 1 knot ≈ 44 km a day ≈ 8 units a day, and a day is 4 seconds.
-function fleetMapSpeed(ships) { let m = Infinity; for (const s of ships) m = Math.min(m, HULLS[s.type].speed * (0.75 + 0.25 * s.hullFrac)); return m * 0.3; }
-function fleetTurnRate(ships) { let L = 0; for (const s of ships) L = Math.max(L, HULLS[s.type].L); return clamp(1.1 - L / 400, 0.3, 0.9); }
+function fleetMapSpeed(ships) { let m = Infinity; for (const s of ships) m = Math.min(m, HULLS[s.type].speed * (0.75 + 0.25 * s.hullFrac)); return m * 0.12; } // ≈ 0.8 map units per second per 10 knots
+function fleetTurnRate(ships) { let L = 0; for (const s of ships) L = Math.max(L, HULLS[s.type].L); return clamp(0.55 - L / 800, 0.15, 0.45); }
 // Fleets travel along planned routes. Corners are rounded into arcs that stay at sea; speed builds and bleeds off
 // gradually, ships slow for sharp bends and on the final approach, and the bow swings at the fleet's own turn rate.
 function buildRoute(o, pts) {
@@ -853,7 +858,7 @@ function routeMove(o, maxSp, turn, dt) {
   for (let i = o.ri + 1; i < r.length && look > 0; i++) { const h = Math.atan2(r[i].y - py, r[i].x - px); bend += Math.abs(angDiff(h, ph)); look -= Math.hypot(r[i].x - px, r[i].y - py); px = r[i].x; py = r[i].y; ph = h; }
   const rem = routeRemaining(o);
   let target = maxSp * clamp(1 - bend / 1.6, 0.3, 1);
-  target = Math.min(target, Math.sqrt(2 * maxSp * 0.5 * rem) + 1);                      // brake for the destination
+  if (!o.noBrake) target = Math.min(target, Math.sqrt(2 * maxSp * 0.5 * rem) + 0.4);   // brake for the destination
   o.h += clamp(angDiff(segH, o.h), -turn * dt, turn * dt);
   target *= Math.max(0.12, Math.cos(clamp(angDiff(segH, o.h), -PI / 2, PI / 2)));       // swing the bow before working up speed
   o.v = (o.v || 0) + clamp(target - o.v, -maxSp * 0.6 * dt, maxSp * 0.3 * dt);
@@ -866,7 +871,7 @@ function routeMove(o, maxSp, turn, dt) {
   if (o.ri >= r.length - 1) { o.route = null; return true; }
   return false;
 }
-function coast(o, dt) { o.v = Math.max(0, (o.v || 0) - 20 * dt); }
+function coast(o, dt) { o.v = Math.max(0, (o.v || 0) - 8 * dt); }
 function nearestPort(maxD) { let best = null, bd = maxD; for (const p of G.ports) { const d = mdist(p.sx, p.sy, G.player.x, G.player.y); if (d < bd) { bd = d; best = p; } } return best; }
 function nearestPoi(maxD) { let best = null, bd = maxD; for (const p of G.pois) { const d = mdist(p.x, p.y, G.player.x, G.player.y); if (d < bd) { bd = d; best = p; } } return best; }
 
@@ -888,19 +893,30 @@ function newDay(moved) {
   maintainFleets(false);
   const era = enemyEra(); if (era > (G.seenEra || 1)) { G.seenEra = era; toast('Intelligence: Directorate yards are fielding ' + ERA_NAME[era].split('· ')[1].toLowerCase() + '.'); }
 }
-const mapWakes = []; let wakeT = 0, mapCam = null;
+const mapWakes = []; let wakeT = 0, mapCam = null, mapSpeed = 1, combatSpeed = 1, mapDrag = null;
+const mapView = { x: 0, y: 0, free: false }; // camera; free once the player drags the chart
 function updateMap(dt) {
   if (panelOpen || G.paused) return;
   const P = G.player; P.cool = Math.max(0, P.cool - dt);
-  G.dayF += dt * 0.25;
+  G.dayF += dt * 0.1;
   if (G.dayF >= 1) { G.dayF -= 1; newDay(G.movedToday); G.movedToday = false; if (mode !== 'map') return; }
-  if (P.follow) { const f = G.fleets.find(x => x.id === P.follow); P.repathT = (P.repathT || 0) - dt; if (!f) P.follow = null; else if (P.repathT <= 0) { P.repathT = 1.5; setCourse(P, f.x, f.y); } }
+  P.noBrake = !!P.follow;
+  if (P.follow) {
+    const f = G.fleets.find(x => x.id === P.follow); P.repathT = (P.repathT || 0) - dt;
+    if (!f) { P.follow = null; toast('Contact lost.'); }
+    else if (P.repathT <= 0) {
+      const d = mdist(P.x, P.y, f.x, f.y); P.repathT = d > 300 ? 2 : 0.6;
+      const lead = Math.min(d / Math.max(0.5, fleetMapSpeed(G.fleet)), 12); // aim where the target will be
+      const lx = f.x + Math.cos(f.h) * (f.v || 0) * lead, ly = f.y + Math.sin(f.h) * (f.v || 0) * lead;
+      if (!setCourse(P, onLand(lx, ly) ? f.x : lx, onLand(lx, ly) ? f.y : ly)) setCourse(P, f.x, f.y);
+    }
+  }
   const ice = inIce(P.y, P.x);
   if (P.route) {
     const noFuel = G.cargo.fuel <= 0 && fuelUse() > 0;
     const sp = fleetMapSpeed(G.fleet) * (noFuel ? 0.2 : 1) * (ice ? 0.4 : 1);
     G.movedToday = true;
-    if (routeMove(P, sp, fleetTurnRate(G.fleet), dt)) { P.tx = null; P.route = null; if (!P.follow) arrive(); }
+    if (routeMove(P, sp, fleetTurnRate(G.fleet), dt)) { P.tx = null; P.route = null; if (!P.follow) arrive(); else P.repathT = 0; }
   } else coast(P, dt);
   const ps = strength(G.fleet);
   for (const f of [...G.fleets]) {
@@ -923,13 +939,13 @@ function updateMap(dt) {
     }
     const fsp = fleetMapSpeed(f.ships) * rate * (inIce(f.y, f.x) ? 0.4 : 1);
     if (f.route && routeMove(f, fsp, fleetTurnRate(f.ships), dt)) f.route = null;
-    if (dP < 12 && f.cool <= 0 && P.cool <= 0 && (hos || P.follow === f.id)) { showEncounter(f); return; }
+    if (dP < 16 && f.cool <= 0 && P.cool <= 0 && (hos || P.follow === f.id)) { showEncounter(f); return; }
   }
   // wakes
   wakeT -= dt;
   if (wakeT <= 0) {
     wakeT = 0.07;
-    const add = o => { if ((o.v || 0) > 2) mapWakes.push({ x: o.x - Math.cos(o.h) * 3, y: o.y - Math.sin(o.h) * 3, h: o.h, t: 0, s: Math.min(1, o.v / 40) }); };
+    const add = o => { if ((o.v || 0) > 0.8) mapWakes.push({ x: o.x - Math.cos(o.h) * 0.6, y: o.y - Math.sin(o.h) * 0.6, h: o.h, t: 0, s: Math.min(1, o.v / 16) }); };
     add(P); for (const f of G.fleets) if (mdist(f.x, f.y, P.x, P.y) < W / mapZoom) add(f);
   }
   for (let i = mapWakes.length - 1; i >= 0; i--) { mapWakes[i].t += dt; if (mapWakes[i].t > 3) mapWakes.splice(i, 1); }
@@ -988,7 +1004,8 @@ function getIcePattern() {
 }
 function renderMap() {
   const P = G.player, z = mapZoom;
-  const cam = { x: P.x, y: clamp(P.y, H / 2 / z - 40, MH - H / 2 / z + 40) };
+  if (!mapView.free) { mapView.x = P.x; mapView.y = P.y; }
+  const cam = { x: mapView.x, y: clamp(mapView.y, H / 2 / z - 40, MH - H / 2 / z + 40) };
   if (H / z > MH) cam.y = MH / 2;
   mapCam = cam;
   const halfW = W / 2 / z, halfH = H / 2 / z;
@@ -1057,9 +1074,9 @@ function renderMap() {
   // wakes
   for (const w of mapWakes) {
     const x = rx(w.x); if (Math.abs(x - cam.x) > halfW + 20) continue;
-    const k = w.t / 3; const spread = 1.5 + w.t * 5; const nx = -Math.sin(w.h), ny = Math.cos(w.h);
+    const zb = z > 1 ? Math.pow(z, 0.75) : 1; const k = w.t / 3; const spread = (1.5 + w.t * 5) * Math.min(zb, 3); const nx = -Math.sin(w.h), ny = Math.cos(w.h);
     ctx.fillStyle = 'rgba(225,240,240,' + (0.45 * (1 - k) * w.s) + ')';
-    const r = Math.max(0.6, 1.1 / z * (1 - k * 0.5));
+    const r = Math.max(0.6, 1.1 * zb / z * (1 - k * 0.5));
     ctx.beginPath(); ctx.arc(x + nx * spread, w.y + ny * spread, r, 0, TAU); ctx.arc(x - nx * spread, w.y - ny * spread, r, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(225,240,240,' + (0.18 * (1 - k) * w.s) + ')'; ctx.beginPath(); ctx.arc(x, w.y, r * 1.6, 0, TAU); ctx.fill();
   }
@@ -1069,24 +1086,36 @@ function renderMap() {
     ctx.setLineDash([8 / z, 8 / z]); ctx.strokeStyle = 'rgba(228,231,227,.6)'; ctx.lineWidth = 1.5 / z;
     ctx.beginPath(); ctx.moveTo(P.x, P.y); for (let i = P.ri + 1; i < P.route.length; i++) ctx.lineTo(P.x + (P.route[i].x - P.rx), P.route[i].y); ctx.stroke(); ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(tx, end.y, 5 / z, 0, TAU); ctx.stroke();
-    const days = routeRemaining(P) / Math.max(1, fleetMapSpeed(G.fleet)) * 0.25;
+    const days = routeRemaining(P) / Math.max(0.5, fleetMapSpeed(G.fleet)) * 0.1;
     label(days < 1 ? 'under a day' : '≈ ' + Math.ceil(days) + ' days', tx, end.y, '11px ' + MONO, 'rgba(228,231,227,.75)', 'center', 'top', 0, 8);
   }
   // fleets
-  const iconScale = L => (22 + L * 0.07) / (L * z);
+  const boost = z > 1 ? Math.pow(z, 0.75) : 1; // ships grow as you zoom in
+  const iconScale = L => (22 + L * 0.07) * boost / (L * z);
+  // Past 2x zoom every ship of a fleet is drawn, steaming in a staggered column behind the largest.
+  const drawFleet = (ships, pal, x, y, h) => {
+    const sorted = [...ships].sort((a, b) => HULLS[b.type].L - HULLS[a.type].L);
+    const n = z >= 2 ? sorted.length : 1; let back = 0;
+    for (let k = 0; k < n; k++) {
+      const L = HULLS[sorted[k].type].L, sc = iconScale(L) * (k ? 0.9 : 1), len = L * sc;
+      if (k) back += len * 1.35;
+      const side = k ? (k % 2 ? 1 : -1) * len * 0.35 : 0;
+      drawSpriteAt(sorted[k].type, pal, x - Math.cos(h) * back - Math.sin(h) * side, y - Math.sin(h) * back + Math.cos(h) * side, h, sc);
+    }
+  };
   for (const f of G.fleets) {
     const x = rx(f.x); if (Math.abs(x - cam.x) > halfW + 60) continue;
     const col = f.mission ? '#e3b23c' : FAC[f.fac].map; const hos = hostile(f.fac);
     if (z < 0.32) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x + Math.cos(f.h) * 7 / z, f.y + Math.sin(f.h) * 7 / z); ctx.lineTo(x + Math.cos(f.h + 2.5) * 4 / z, f.y + Math.sin(f.h + 2.5) * 4 / z); ctx.lineTo(x + Math.cos(f.h - 2.5) * 4 / z, f.y + Math.sin(f.h - 2.5) * 4 / z); ctx.closePath(); ctx.fill(); continue; }
     if (f.chasing) { ctx.strokeStyle = 'rgba(217,97,74,.28)'; ctx.lineWidth = 1 / z; ctx.beginPath(); ctx.arc(x, f.y, 160, 0, TAU); ctx.stroke(); }
-    if (hos || f.mission) { ctx.strokeStyle = col; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5 / z; ctx.beginPath(); ctx.arc(x, f.y, 16 / z, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (hos || f.mission || P.follow === f.id) { ctx.strokeStyle = P.follow === f.id ? '#e3b23c' : col; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5 / z; ctx.beginPath(); ctx.arc(x, f.y, 16 * boost / z, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
     const lead = f.ships.reduce((a, s) => HULLS[s.type].L > HULLS[a.type].L ? s : a, f.ships[0]);
-    drawSpriteAt(lead.type, f.fac, x, f.y, f.h, iconScale(HULLS[lead.type].L));
-    if (z >= 0.6 || hos || f.mission || f.kind === 'bounty') label(f.kind === 'bounty' ? f.captain + ' · ' + fmt(f.reward) : f.name + ' (' + f.ships.length + ')', x, f.y, '11.5px ' + SANS, col, 'center', 'top', 0, 18);
+    drawFleet(f.ships, f.fac, x, f.y, f.h);
+    if (z >= 0.6 || hos || f.mission || f.kind === 'bounty') label((P.follow === f.id ? '◎ ' : '') + (f.kind === 'bounty' ? f.captain + ' · ' + fmt(f.reward) : f.name + ' (' + f.ships.length + ')'), x, f.y, '11.5px ' + SANS, col, 'center', 'top', 0, 18 * boost);
   }
-  ctx.strokeStyle = '#e3b23c'; ctx.lineWidth = 2 / z; ctx.beginPath(); ctx.arc(P.x, P.y, 17 / z, 0, TAU); ctx.stroke();
-  if (G.fleet[0]) drawSpriteAt(G.fleet[0].type, 'player', P.x, P.y, P.h, iconScale(HULLS[G.fleet[0].type].L) * 1.1);
-  label('Your task force · ' + Math.round(P.v / 2) + ' kn', P.x, P.y, '12px ' + SANS, '#e3b23c', 'center', 'top', 0, 21);
+  ctx.strokeStyle = '#e3b23c'; ctx.lineWidth = 2 / z; ctx.beginPath(); ctx.arc(P.x, P.y, 17 * boost / z, 0, TAU); ctx.stroke();
+  if (G.fleet.length) drawFleet(G.fleet, 'player', P.x, P.y, P.h);
+  label('Your task force · ' + Math.round(P.v / 0.8) + ' kn', P.x, P.y, '12px ' + SANS, '#e3b23c', 'center', 'top', 0, 21 * boost);
   ctx.restore();
   // screen-space labels
   for (const [t, x, y, font, color, align, base, dx, dy] of labels) {
@@ -1098,6 +1127,7 @@ function renderMap() {
   const lat = yLat(P.y), lon = xLon(P.x);
   ctx.fillStyle = 'rgba(228,231,227,.7)'; ctx.font = '12px ' + MONO; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
   ctx.fillText(Math.abs(lat).toFixed(1) + '°' + (lat >= 0 ? 'N ' : 'S ') + Math.abs(lon).toFixed(1) + '°' + (lon >= 0 ? 'E' : 'W') + (inIce(P.y, P.x) ? ' · PACK ICE' : ''), W - 16, H - 14);
+  if (mapView.free) { ctx.fillStyle = 'rgba(227,178,60,.85)'; ctx.font = '12px ' + MONO; ctx.textAlign = 'right'; ctx.fillText('Free camera · C to centre on your fleet', W - 16, H - 32); }
   if (G.paused) { ctx.fillStyle = 'rgba(228,231,227,.9)'; ctx.font = '28px ' + STEN; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('PAUSED · SPACE TO RESUME', W / 2, H / 2 - 90); }
   updateTop();
 }
@@ -1107,7 +1137,7 @@ function updateTop() {
   const days = fuelUse() ? Math.floor(G.cargo.fuel / fuelUse()) + 'd' : '∞';
   const html = s('Date', dateStr(G.day)) + s('Funds', fmt(G.credits)) + s('Fuel', Math.floor(G.cargo.fuel) + ' (' + days + ')') + s('Crew', fmt(G.crew) + '/' + fmt(crewNeed())) +
     s('Hold', cargoUsed() + '/' + cargoCap()) + s('Research', G.rp + ' RP') +
-    '<div class="btns"><button data-act="command">Command</button><button data-act="pause">' + (G.paused ? 'Resume' : 'Pause') + '</button><button data-act="mute">' + (muted ? 'Sound off' : 'Sound on') + '</button></div>';
+    '<div class="btns"><span class="seg" role="group" aria-label="Time speed">' + [[0, '❚❚'], [1, '1×'], [2, '2×'], [4, '4×'], [8, '8×']].map(([v, l]) => '<button data-act="tspeed" data-s="' + v + '" class="' + ((v === 0 ? G.paused : !G.paused && mapSpeed === v) ? 'on' : '') + '" title="' + (v ? 'Time ' + v + '× (key ' + [0, 1, 2, 0, 3, 0, 0, 0, 4][v] + ')' : 'Pause (Space)') + '">' + l + '</button>').join('') + '</span><button data-act="center" title="Centre on your fleet (C)"' + (mapView.free ? ' class="on"' : '') + '>Centre</button><button data-act="command">Command</button><button data-act="mute">' + (muted ? 'Sound off' : 'Sound on') + '</button></div>';
   if (t._h !== html) { t.innerHTML = html; t._h = html; }
 }
 
@@ -1306,6 +1336,8 @@ function act(a, d) {
     case 'leave': closePanel(); if (P) P.cool = Math.max(P.cool, 2.5); break;
     case 'command': if (mode === 'map' && !panelOpen) { showCommand(); } break;
     case 'pause': if (mode === 'map') G.paused = !G.paused; break;
+    case 'tspeed': { const v = +d.s; if (v === 0) G.paused = !G.paused; else { mapSpeed = v; G.paused = false; } break; }
+    case 'center': mapView.free = false; break;
     case 'mute': muted = !muted; break;
     case 'tab': portTab = d.tab; renderPort(); break;
     case 'ctab': cmdTab = d.tab; showCommand(); break;
@@ -1402,7 +1434,7 @@ function startCombat(f) {
   for (let i = 0, tries = 0; i < n && tries < 80; tries++) { const r = 90 + R() * 200, x = 600 + R() * (AW - 1200), y = 1100 + R() * (AH - 2200); if (C.islands.some(o => dist(o.x, o.y, x, y) < o.r + r + 500)) continue; C.islands.push(makeIsland(x, y, r, R)); i++; }
   const etl = enemyTech(enemyEra());
   const place = (list, side) => { const k = list.length; list.forEach((rec, i) => {
-    const x = AW / 2 + (i - (k - 1) / 2) * 340 + (R() - 0.5) * 60; const y = side ? 500 + (i % 2) * 200 : AH - 500 - (i % 2) * 200;
+    const x = AW / 2 + (i - (k - 1) / 2) * 340 + (R() - 0.5) * 60; const y = side ? 900 + (i % 2) * 200 : AH - 900 - (i % 2) * 200;
     C.ships.push(makeCShip(rec, side, x, y, side ? PI / 2 : -PI / 2, side ? etl : G.tech));
   }); };
   place(G.fleet, 0); place(f.ships, 1);
@@ -1414,7 +1446,7 @@ function startCombat(f) {
 function makeCShip(rec, side, x, y, a, techList) {
   const def = HULLS[rec.type]; const off = side === 0 ? officerOf(rec) : null;
   const sk = off ? off.sk : { gun: side ? Math.min(2, Math.floor(G.day / 80)) : 0, helm: 0, dc: 0, ord: 0 };
-  const s = { rec, def, pal: side ? rec.pal : 'player', side, x, y, a, v: def.speed * 0.5, throttle: 3, rudder: 0, maxHull: def.hull, hull: def.hull * rec.hullFrac, armor: def.armor * (0.6 + 0.4 * rec.hullFrac),
+  const s = { rec, def, pal: side ? rec.pal : 'player', side, x, y, a, v: def.speed * 0.2, throttle: 3, rudder: 0, maxHull: def.hull, hull: def.hull * rec.hullFrac, armor: def.armor * (0.6 + 0.4 * rec.hullFrac),
     alive: true, escaped: false, struck: false, sink: 0, prefSide: R() < 0.5 ? 1 : -1, sideT: 0, wakeT: 0, smokeT: 0, ramT: 0, dcT: 0, flee: false, target: null, tgtT: 0, dmgTaken: 0,
     sk, off, tech: techList, cf: side ? 1 : crewFrac(), sub: def.kind === 'sub', dive: 0, wantDive: false, revealT: 0, mounts: [], squads: [] };
   s.mounts = def.slots.map((sl, i) => rec.fit[i] ? { slot: sl, wid: rec.fit[i], w: WEAPONS[rec.fit[i]], ta: sl.arcs[0][0], cd: R() * 2, recoil: 0, tgt: null, tgtT: 0 } : null).filter(Boolean);
@@ -1447,6 +1479,14 @@ function leadPoint(from, t, speed) {
   for (let i = 0; i < 3; i++) { const tt = dist(from.x, from.y, px, py) / speed; px = t.x + vx * tt; py = t.y + vy * tt; }
   return { x: px, y: py };
 }
+// Heavy guns weigh targets by size: a battleship's main battery should go for cruisers, not chase destroyers.
+function bestTarget(s, maxD, filt, heavy) {
+  let best = null, bs = Infinity;
+  for (const o of C.ships) { if (o.side === s.side || !engageable(o) || !visibleTo(o, s.side)) continue; if (filt && !filt(o)) continue; const d = dist(s.x, s.y, o.x, o.y); if (d > maxD) continue;
+    const sc = heavy ? d / clamp(o.def.L / 110, 0.5, 2.6) : d; if (sc < bs) { bs = sc; best = o; } }
+  return best;
+}
+const heavyGuns = s => s.mounts.some(m => m.w.kind === 'gun' && (m.w.size === 'L' || m.w.size === 'H'));
 function nearestEnemyShip(s, maxD = Infinity, filt) {
   let best = null, bd = maxD;
   for (const o of C.ships) { if (o.side === s.side || !engageable(o) || !visibleTo(o, s.side)) continue; if (filt && !filt(o)) continue; const d = dist(s.x, s.y, o.x, o.y); if (d < bd) { bd = d; best = o; } }
@@ -1491,8 +1531,9 @@ function fireSam(s, m, tgt) {
   C.missiles.push({ x: p.x, y: p.y, a: Math.atan2(tgt.y - p.y, tgt.x - p.x), v: 300, speed: m.w.speed, life: 4, dmg: 0, side: s.side, target: tgt, kind: 'sam', p: m.w.pd, delay: 0, climb: 0 });
   boom(camVol(p.x, p.y, 0.08), 1400, 0.8);
 }
+const RELOAD_K = 1 / 1.6; // global firing tempo: slower, more deliberate gunnery
 function reloadMult(s, w) {
-  let r = (0.5 + 0.5 * s.cf);
+  let r = (0.5 + 0.5 * s.cf) * RELOAD_K;
   if (w.kind === 'gun') r *= 1 + 0.08 * s.sk.gun;
   if (w.kind === 'torp' || w.kind === 'ssm') r *= 1 + 0.12 * s.sk.ord;
   return r;
@@ -1515,7 +1556,8 @@ function updateWeapons(s, dt) {
         if (m.tgtT <= 0 || !m.tgt || !engageable(m.tgt) || !visibleTo(m.tgt, s.side)) {
           m.tgtT = 0.6; m.tgt = null;
           const pri = s.target && engageable(s.target) && visibleTo(s.target, s.side) && dist(p.x, p.y, s.target.x, s.target.y) < range && arcCheck(m.slot, angDiff(Math.atan2(s.target.y - p.y, s.target.x - p.x), s.a)).ok ? s.target : null;
-          m.tgt = pri || nearestEnemyShip({ x: p.x, y: p.y, side: s.side }, range, o => arcCheck(m.slot, angDiff(Math.atan2(o.y - p.y, o.x - p.x), s.a)).ok && !submerged(o));
+          const heavy = w.size === 'L' || w.size === 'H';
+          m.tgt = (heavy ? null : pri) || bestTarget({ x: p.x, y: p.y, side: s.side }, range, o => arcCheck(m.slot, angDiff(Math.atan2(o.y - p.y, o.x - p.x), s.a)).ok && !submerged(o), heavy) || pri;
           if (!m.tgt && w.aa) m.air = nearestAir(s.side, p, range * 0.7); else m.air = null;
         }
         if (m.tgt) aim = leadPoint(p, m.tgt, w.speed);
@@ -1585,10 +1627,10 @@ function killMissile(ms) { ms.dead = true; C.parts.push({ type: 'boom', x: ms.x,
 function damage(s, dmg, type) {
   if (!s.alive) return;
   let hd;
-  if (type === 'shell') { const eff = dmg / (dmg + s.armor); hd = dmg * Math.max(0.03, eff); s.armor = Math.max(0, s.armor - dmg * 0.25 * eff); }
+  if (type === 'shell') { const eff = dmg / (dmg + s.armor); hd = dmg * Math.max(0.03, eff); s.armor = Math.max(s.def.armor * 0.4, s.armor - dmg * 0.25 * eff); } // belt armour wears but never disappears
   else if (type === 'torp') hd = dmg * (1 - Math.min(0.45, s.def.armor / 700));
   else if (type === 'missile') hd = dmg * (1 - Math.min(0.55, s.armor / 550));
-  else if (type === 'bomb') { hd = dmg * dmg / (dmg + s.armor * 0.7); s.armor = Math.max(0, s.armor - dmg * 0.15); }
+  else if (type === 'bomb') { hd = dmg * dmg / (dmg + s.armor * 0.7); s.armor = Math.max(s.def.armor * 0.4, s.armor - dmg * 0.15); }
   else hd = dmg;
   hd *= 1 - 0.07 * s.sk.dc;
   s.hull -= hd; s.dmgTaken += hd;
@@ -1622,7 +1664,7 @@ function aiShip(s, dt) {
   const retreat = s.side === 0 ? C.order === 'retreat' : s.flee;
   if (retreat) { const goal = s.side === 0 ? PI / 2 : -PI / 2; s.rudder = clamp(angDiff(steerAvoid(s, goal), s.a) * 2.5, -1, 1); s.throttle = 4; return; }
   s.tgtT -= dt;
-  if (s.tgtT <= 0 || !s.target || !engageable(s.target) || !visibleTo(s.target, s.side)) { s.tgtT = 2; s.target = nearestEnemyShip(s); }
+  if (s.tgtT <= 0 || !s.target || !engageable(s.target) || !visibleTo(s.target, s.side)) { s.tgtT = 2; s.target = heavyGuns(s) ? bestTarget(s, Infinity, null, true) : nearestEnemyShip(s); }
   let t = s.target;
   if (s.side === 0 && C.order === 'escort' && C.flag && C.flag !== s) {
     const close = nearestEnemyShip(s, 700);
@@ -1674,7 +1716,7 @@ function launchStrike(s, tgt) {
 }
 function updateAir(dt) {
   for (let i = C.air.length - 1; i >= 0; i--) {
-    const q = C.air[i]; const sp = q.jet ? 470 : 270;
+    const q = C.air[i]; const sp = q.jet ? 280 : 160;
     if (q.n <= 0) { q.sq.n = 0; q.sq.state = 'lost'; C.air.splice(i, 1); continue; }
     if (q.state === 'out' && (!q.target || !engageable(q.target))) { q.target = nearestEnemyShip({ x: q.x, y: q.y, side: q.side }, 5000, o => !submerged(o)); if (!q.target) q.state = 'home'; }
     let gx, gy;
@@ -1683,7 +1725,7 @@ function updateAir(dt) {
       const d = dist(q.x, q.y, t.x, t.y);
       if (q.type === 'tb' && d < 520 && Math.abs(angDiff(Math.atan2(t.y - q.y, t.x - q.x), q.a)) < 0.35) {
         const lp = leadPoint(q, t, 160);
-        for (let k = 0; k < q.n; k++) C.torps.push({ x: q.x + (R() - 0.5) * 60, y: q.y + (R() - 0.5) * 60, a: Math.atan2(lp.y - q.y, lp.x - q.x) + (k - q.n / 2) * 0.05, speed: 170, life: 5, dmg: q.jet ? 520 : 420, side: q.side, homing: false, arm: 0.4 });
+        for (let k = 0; k < q.n; k++) C.torps.push({ x: q.x + (R() - 0.5) * 60, y: q.y + (R() - 0.5) * 60, a: Math.atan2(lp.y - q.y, lp.x - q.x) + (k - q.n / 2) * 0.05, speed: 100, life: 8, dmg: q.jet ? 520 : 420, side: q.side, homing: false, arm: 0.4 });
         q.state = 'home'; boom(camVol(q.x, q.y, 0.1), 900);
       } else if (q.type === 'db' && d < 40) {
         for (let k = 0; k < q.n; k++) { const hit = R() < (q.jet ? 0.55 : 0.4); const bx = t.x + (R() - 0.5) * (hit ? t.def.L * 0.4 : 160), by = t.y + (R() - 0.5) * (hit ? t.def.B : 160); if (hit) damage(t, q.jet ? 260 : 230, 'bomb'); C.parts.push({ type: hit ? 'boom' : 'splash', x: bx, y: by, life: -k * 0.12, max: 0.8, size: hit ? 26 : 22 }); }
@@ -1698,6 +1740,7 @@ function updateAir(dt) {
 
 /* ================================================================ combat: update */
 function mouseWorld() { return { x: (mouse.x - W / 2) / C.zoom + C.cam.x, y: (mouse.y - H / 2) / C.zoom + C.cam.y }; }
+const CSPEED = 0.45; // ships steam at 45% of their nominal combat speed: heavier, more deliberate manoeuvring
 function updateCombat(dt) {
   if (C.paused) return;
   C.t += dt; C.msgT -= dt;
@@ -1712,10 +1755,10 @@ function updateCombat(dt) {
     updateWeapons(s, dt);
     const sm = submerged(s);
     const top = sm ? (s.def.subSpeed || s.def.speed * 0.7) : s.def.speed;
-    const maxV = top * (s.throttle / 4) * speedMult(s);
-    const acc = s.def.speed * clamp(0.32 - s.def.L / 1400, 0.1, 0.3);
+    const maxV = top * CSPEED * (s.throttle / 4) * speedMult(s);
+    const acc = s.def.speed * CSPEED * clamp(0.32 - s.def.L / 1400, 0.1, 0.3);
     s.v += clamp(maxV - s.v, -acc * 1.5 * dt, acc * dt);
-    const steer = s.def.turn * (1 + 0.1 * s.sk.helm) * (0.25 + 0.75 * Math.min(1, s.v / (s.def.speed * 0.4)));
+    const steer = s.def.turn * 0.6 * (1 + 0.1 * s.sk.helm) * (0.25 + 0.75 * Math.min(1, s.v / (s.def.speed * CSPEED * 0.4)));
     s.a += s.rudder * steer * dt;
     s.x += Math.cos(s.a) * s.v * dt; s.y += Math.sin(s.a) * s.v * dt;
     for (const is of C.islands) if (inIsland(is, s.x, s.y, s.def.B * 0.6)) {
@@ -1733,7 +1776,7 @@ function updateCombat(dt) {
     if (!(retreating && s.side === 0)) s.y = Math.min(s.y, C.AH - 30);
     if (!(retreating && s.side === 1)) s.y = Math.max(s.y, 30);
     s.wakeT -= dt;
-    if (s.wakeT <= 0 && s.v > 12) { s.wakeT = 0.07; const p = worldPt(s, -s.def.L * 0.48, 0); C.parts.push({ type: sm ? 'swake' : 'wake', x: p.x, y: p.y, life: 0, max: sm ? 1.2 : 2.6, size: s.def.B * 0.45 }); if (!sm && s.v > s.def.speed * 0.5) { const b = worldPt(s, s.def.L * 0.45, 0); C.parts.push({ type: 'bow', x: b.x, y: b.y, a: s.a, life: 0, max: 0.9, size: s.def.B * 0.6 }); } }
+    if (s.wakeT <= 0 && s.v > 5) { s.wakeT = 0.07; const p = worldPt(s, -s.def.L * 0.48, 0); C.parts.push({ type: sm ? 'swake' : 'wake', x: p.x, y: p.y, life: 0, max: sm ? 1.2 : 2.6, size: s.def.B * 0.45 }); if (!sm && s.v > s.def.speed * CSPEED * 0.5) { const b = worldPt(s, s.def.L * 0.45, 0); C.parts.push({ type: 'bow', x: b.x, y: b.y, a: s.a, life: 0, max: 0.9, size: s.def.B * 0.6 }); } }
     if (!s.sub && s.def.fun.length && (s.smokeT -= dt) <= 0) { s.smokeT = 0.12; for (const [fx] of s.def.fun) { const p = worldPt(s, fx, 0); C.parts.push({ type: 'funnel', x: p.x, y: p.y, vx: -Math.cos(s.a) * 15, vy: -Math.sin(s.a) * 15, life: 0, max: 1.6, size: 4 + s.def.B * 0.12 }); } }
     if (s.hull / s.maxHull < 0.4 && R() < dt * 5) { const p = worldPt(s, (R() - 0.5) * s.def.L * 0.6, (R() - 0.5) * s.def.B * 0.5); C.parts.push({ type: 'fire', x: p.x, y: p.y, vx: 0, vy: -8, life: 0, max: 0.9, size: 5 }); C.parts.push({ type: 'smoke', x: p.x, y: p.y, vx: (R() - 0.5) * 10, vy: -12, life: 0, max: 2.5, size: 8 }); }
   }
@@ -1950,7 +1993,7 @@ function renderHud() {
   const s = C.flag; const pad = coarse() ? 130 : 0;
   ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = '13px "IBM Plex Sans Condensed", sans-serif';
   [['1', 'Engage', 'engage'], ['2', 'Escort', 'escort'], ['3', 'Retreat (south edge)', 'retreat']].forEach(([k, l, o], i) => { const on = C.order === o; ctx.fillStyle = on ? '#e3b23c' : 'rgba(228,231,227,.55)'; ctx.fillText((on ? '▸ ' : '  ') + k + ' ' + l, 16, 16 + i * 18); });
-  ctx.fillStyle = 'rgba(228,231,227,.45)'; ctx.fillText('W/S engines · A/D rudder · click guns/lock · X autofire' + (C.autofire ? ' (ON)' : '') + ' · T torps · Q missiles · F air · C dive · Tab ship · P pause', 16, 74);
+  ctx.fillStyle = 'rgba(228,231,227,.45)'; ctx.fillText('Time ' + (combatSpeed < 1 ? '½' : combatSpeed) + '× (−/=) · W/S engines · A/D rudder · click guns/lock · X autofire' + (C.autofire ? ' (ON)' : '') + ' · T torps · Q missiles · F air · C dive · Tab ship · P pause', 16, 74);
   let ry = 104;
   for (const side of [0, 1]) {
     ctx.fillStyle = side ? '#f2c0b4' : '#e4e7e3'; ctx.fillText(side ? 'Enemy' : 'Task force', 16, ry); ry += 18;
@@ -1968,7 +2011,7 @@ function renderHud() {
     ctx.fillStyle = 'rgba(14,26,30,.9)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(227,178,60,.55)'; ctx.strokeRect(x + 0.5, y + 0.5, w, h);
     ctx.fillStyle = '#e3b23c'; ctx.font = '20px "Saira Stencil One", Impact, sans-serif'; ctx.fillText(s.rec.name.toUpperCase(), x + 10, y + 7);
     ctx.fillStyle = '#9fabaa'; ctx.font = '12px "IBM Plex Sans Condensed", sans-serif';
-    ctx.fillText(s.def.name + ' · ' + ['All stop', 'Slow ahead', 'Half ahead', 'Full ahead', 'Flank speed'][s.throttle] + ' · ' + Math.round(s.v / 4) + ' kn' + (s.sub ? (submerged(s) ? ' · SUBMERGED' : s.wantDive ? ' · diving' : ' · surfaced') : '') + (s.off ? ' · Capt. ' + s.off.name : ''), x + 10, y + 32);
+    ctx.fillText(s.def.name + ' · ' + ['All stop', 'Slow ahead', 'Half ahead', 'Full ahead', 'Flank speed'][s.throttle] + ' · ' + Math.round(s.v / (4.8 * CSPEED)) + ' kn' + (s.sub ? (submerged(s) ? ' · SUBMERGED' : s.wantDive ? ' · diving' : ' · surfaced') : '') + (s.off ? ' · Capt. ' + s.off.name : ''), x + 10, y + 32);
     ctx.fillText('Hull', x + 10, y + 52); bar(x + 60, y + 54, 260, 7, s.hull / s.maxHull, '#7fbf8e');
     ctx.fillText('Armour', x + 10, y + 66); bar(x + 60, y + 68, 260, 5, s.armor / Math.max(1, s.def.armor), '#9fabaa');
     const groups = {}; for (const m of s.mounts) { const k = m.w.name; (groups[k] = groups[k] || []).push(m); }
@@ -2015,6 +2058,8 @@ function combatKey(code) {
   if (code === 'Digit2') C.order = 'escort';
   if (code === 'Digit3') { C.order = 'retreat'; say('All ships withdraw! Make for the southern edge.', 2.5); }
   if (code === 'KeyP' || code === 'Escape') C.paused = !C.paused;
+  if (code === 'Equal' || code === 'NumpadAdd' || code === 'Period') { combatSpeed = Math.min(4, combatSpeed * 2); say('Time ' + (combatSpeed < 1 ? '½' : combatSpeed) + '×', 1); }
+  if (code === 'Minus' || code === 'NumpadSubtract' || code === 'Comma') { combatSpeed = Math.max(0.5, combatSpeed / 2); say('Time ' + (combatSpeed < 1 ? '½' : combatSpeed) + '×', 1); }
   if (code === 'Tab') { const mine = C.ships.filter(x => x.side === 0 && engageable(x)); if (mine.length > 1) { C.flag = mine[(mine.indexOf(C.flag) + 1) % mine.length]; say('You take command of the ' + C.flag.rec.name + '.', 1.5); } }
 }
 window.addEventListener('keydown', e => {
@@ -2025,6 +2070,12 @@ window.addEventListener('keydown', e => {
     if (e.repeat) return; initAudio(); combatKey(e.code);
   } else if (mode === 'map' && G) {
     if (e.code === 'Space' && !panelOpen) { e.preventDefault(); G.paused = !G.paused; }
+    if (!panelOpen) {
+      const sp = { Digit1: 1, Digit2: 2, Digit3: 4, Digit4: 8 }[e.code]; if (sp) { mapSpeed = sp; G.paused = false; }
+      if (e.code === 'KeyC' || e.code === 'Home') mapView.free = false;
+      if (e.code === 'Equal' || e.code === 'NumpadAdd') mapZoom = clamp(mapZoom * 1.25, 0.14, 14);
+      if (e.code === 'Minus' || e.code === 'NumpadSubtract') mapZoom = clamp(mapZoom / 1.25, 0.14, 14);
+    }
     if (e.code === 'Escape' && panelOpen && !lastResultOpen()) act('leave', {});
   }
 });
@@ -2041,18 +2092,35 @@ cvs.addEventListener('pointerdown', e => {
     lockAtMouse(); mouse.down = true; return;
   }
   if (mode !== 'map' || panelOpen) return;
-  const P = G.player; const cam = mapCam || { x: P.x, y: P.y }; const wx = wrapX((e.clientX - W / 2) / mapZoom + cam.x), wy = (e.clientY - H / 2) / mapZoom + cam.y;
+  mapDrag = { x: e.clientX, y: e.clientY, vx: mapCam ? mapCam.x : G.player.x, vy: mapCam ? mapCam.y : G.player.y, moved: false };
+});
+window.addEventListener('pointermove', e => {
+  if (!mapDrag || mode !== 'map') return;
+  const dx = e.clientX - mapDrag.x, dy = e.clientY - mapDrag.y;
+  if (!mapDrag.moved && Math.hypot(dx, dy) < 6) return;
+  mapDrag.moved = true; mapView.free = true;
+  mapView.x = wrapX(mapDrag.vx - dx / mapZoom); mapView.y = clamp(mapDrag.vy - dy / mapZoom, 0, MH);
+});
+window.addEventListener('pointerup', e => {
+  const d = mapDrag; mapDrag = null;
+  if (!d || d.moved || mode !== 'map' || panelOpen || e.target !== cvs) return;
+  mapClick(e.clientX, e.clientY);
+});
+function mapClick(cx, cy) {
+  const P = G.player; const cam = mapCam || { x: P.x, y: P.y }; const wx = wrapX((cx - W / 2) / mapZoom + cam.x), wy = (cy - H / 2) / mapZoom + cam.y;
+  const near = (x, y, r) => mdist(x, y, wx, wy) < r / Math.min(mapZoom, 1.5);
   P.destPort = null; P.follow = null; G.paused = false;
-  for (const p of G.ports) if (mdist(p.x, p.y, wx, wy) < 14 / mapZoom || mdist(p.sx, p.sy, wx, wy) < 10 / mapZoom) { if (mdist(p.sx, p.sy, P.x, P.y) < 28) { openPort(p); return; } P.destPort = p.id; if (!setCourse(P, p.sx, p.sy)) { P.tx = null; toast('No sea route to ' + p.name + '.'); } return; }
-  for (const q of G.pois) if (mdist(q.x, q.y, wx, wy) < 12 / mapZoom) { if (mdist(q.x, q.y, P.x, P.y) < 22) { openSurvey(q); return; } setCourse(P, q.x, q.y); return; }
-  for (const f of G.fleets) if (mdist(f.x, f.y, wx, wy) < 16 / mapZoom) { P.follow = f.id; P.repathT = 0; setCourse(P, f.x, f.y); toast('Setting an intercept course for the ' + f.name.toLowerCase() + '.'); return; }
+  const boost = mapZoom > 1 ? Math.pow(mapZoom, 0.75) : 1;
+  for (const f of G.fleets) if (near(f.x, f.y, 16 * boost)) { P.follow = f.id; P.repathT = 0; f.cool = 0; toast('Intercept course locked on the ' + f.name.toLowerCase() + '. You will close and make contact.'); return; }
+  for (const p of G.ports) if (near(p.x, p.y, 14) || near(p.sx, p.sy, 10)) { if (mdist(p.sx, p.sy, P.x, P.y) < 28) { openPort(p); return; } P.destPort = p.id; if (!setCourse(P, p.sx, p.sy)) { P.tx = null; toast('No sea route to ' + p.name + '.'); } return; }
+  for (const q of G.pois) if (near(q.x, q.y, 12)) { if (mdist(q.x, q.y, P.x, P.y) < 22) { openSurvey(q); return; } setCourse(P, q.x, q.y); return; }
   if (onLand(wx, wy)) { toast('That is land. Pick a point on the water.'); return; }
   if (!setCourse(P, wx, clamp(wy, 4, MH - 4))) { P.tx = null; toast('No sea route to that point.'); }
-});
+}
 cvs.addEventListener('wheel', e => {
   e.preventDefault(); const f = Math.exp(-e.deltaY * 0.0012);
   if (mode === 'combat' && C) C.zoom = clamp(C.zoom * f, 0.18, 1.6);
-  else if (mode === 'map') mapZoom = clamp(mapZoom * f, 0.14, 3);
+  else if (mode === 'map') mapZoom = clamp(mapZoom * f, 0.14, 14);
 }, { passive: false });
 document.querySelectorAll('#touch button').forEach(b => {
   const t = b.dataset.t;
@@ -2070,9 +2138,13 @@ document.querySelectorAll('#touch button').forEach(b => {
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; tNow += dt;
+  if (mode === 'map' && G && !panelOpen) {
+    const px = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0), py = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0);
+    if (px || py) { if (!mapView.free) { mapView.x = G.player.x; mapView.y = G.player.y; } mapView.free = true; mapView.x = wrapX(mapView.x + px * 600 * dt / mapZoom); mapView.y = clamp(mapView.y + py * 600 * dt / mapZoom, 0, MH); }
+  }
   try {
-    if (mode === 'combat' && C) { updateCombat(dt); if (C) renderCombat(); }
-    else if (G && (mode === 'map' || mode === 'over')) { if (mode === 'map') updateMap(dt); renderMap(); }
+    if (mode === 'combat' && C) { if (combatSpeed < 1) updateCombat(dt * combatSpeed); else for (let i = 0; i < combatSpeed && C; i++) updateCombat(dt); if (C) renderCombat(); }
+    else if (G && (mode === 'map' || mode === 'over')) { if (mode === 'map') for (let i = 0; i < mapSpeed && mode === 'map' && !panelOpen; i++) updateMap(dt); renderMap(); }
     else renderTitleBg();
   } catch (err) { console.error(err); }
   requestAnimationFrame(frame);

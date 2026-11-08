@@ -46,6 +46,7 @@ Combat is real-time and top-down, at true scale: one unit is one metre. Ships ma
 | C | Dive or surface (submarines) |
 | 1 / 2 / 3 | Fleet orders: engage / escort / retreat (open the range and break contact) |
 | Tab | Take command of another ship |
+| Right- or middle-drag · Space / Home | Pan the battle chart · recentre on your flagship (the wheel zooms about the cursor) |
 | P, wheel | Pause, zoom |
 | − / = | Battle clock ×1 (real time) / ×2 / ×4 / ×8 / ×16 |
 

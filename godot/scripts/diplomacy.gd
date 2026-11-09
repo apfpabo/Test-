@@ -98,6 +98,7 @@ func new_day() -> void:
 			elif G.wars.has(k) and r > float(D.bands.peace) and not G.cobell.has(k): armistice(a, b)
 	# sieges: in a war, ports change hands
 	for k in G.wars.keys(): if randf() < float(D.get("sieges", {}).get("chance", 0.04)): _siege(k)
+	for k in G.wars.keys(): Structures.war_tick(k)   # and structures ashore
 	_escorts()
 	# commissions: the month's pay, or the end of service if your flag has turned on you
 	if G.commission != null:
@@ -194,10 +195,12 @@ func capture(p: Dictionary, by: String) -> void:
 	var home: String = Campaign.C.ports[int(p.id)].fac   # who held it in 1946: an ally retaking it hands it back
 	if home != by and home != old and (rel(home, by) >= float(D.bands.allied) or (coalition_of(home) != "" and coalition_of(home) == coalition_of(by))):
 		p.fac = home; p.merge(Campaign.market_mods(home), true); p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
+		Structures.on_port_captured(p, old, home)
 		shift(by, home, 4.0)
 		news("LIBERATED. The %s retakes %s and hands it back to the %s." % [GameData.fac[by].name, p.name, GameData.fac[home].name])
 		return
 	p.fac = by; p.merge(Campaign.market_mods(by), true); p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
+	Structures.on_port_captured(p, old, by)
 	shift(by, old, -5.0)
 	news("FALLEN. %s falls to the %s. The %s flag comes down over the harbour." % [p.name, GameData.fac[by].name, GameData.fac[old].short])
 	Campaign.log_ev("%s taken by the %s" % [p.name, GameData.fac[by].name])
@@ -243,7 +246,7 @@ func clash_tick(dt: float) -> void:
 				shift(a.fac, b.fac, -4.0); _fight(a, b, "incident"); return
 
 func _free(f: Dictionary) -> bool:
-	return f.cool <= 0 and not f.get("mission", false) and not f.get("hunter", false) and int(f.get("contract", 0)) == 0 and int(f.get("escort", 0)) == 0 and not f.ships.is_empty()
+	return f.cool <= 0 and f.kind != "assault" and not f.get("mission", false) and not f.get("hunter", false) and int(f.get("contract", 0)) == 0 and int(f.get("escort", 0)) == 0 and not f.ships.is_empty()
 
 ## An action between two fleets, settled without the player: the stronger side usually wins, and the loser loses
 ## most of its ships. Within earshot of your task force, you hear of it.
@@ -346,7 +349,7 @@ func _make(p: Dictionary) -> Dictionary:
 	if fac == "freeport" or randf() < 0.2: kinds.append_array(["smuggle", "smuggle"])
 	var foes := []
 	for e in POWERS: if at_war(fac, e): foes.append(e)
-	if not foes.is_empty(): kinds.append_array(["war", "war"])
+	if not foes.is_empty(): kinds.append_array(["war", "war", "strike"])
 	var kind: String = kinds.pick_random()
 	var c := {"id": G.nextContract, "kind": kind, "fac": fac, "port": int(p.id), "from": p.name}
 	G.nextContract += 1
@@ -384,6 +387,13 @@ func _make(p: Dictionary) -> Dictionary:
 			var dist := Campaign.mdist(p.sx, p.sy, d.sx, d.sy)
 			c.merge({"dest": int(d.id), "good": good, "qty": qty, "days": int(dist / speed * 1.8) + 10, "reward": int(round((5000.0 + dist * 6.0 + qty * 150.0) / 100.0) * 100), "rep": 6, "title": "Run %d %s into %s" % [qty, good, d.name]})
 			c.text = "Contraband for %s, a %s harbour, landed quietly past the customs launches. Get caught and the cargo is seized and the %s remembers. The fewer ships you bring in, the better your chances." % [d.name, GameData.fac[d.fac].short, GameData.fac[d.fac].short]
+		"strike":   # silence an enemy installation from the air
+			var tg: Array = Structures.all().filter(func(s): return foes.has(s.fac) and Campaign.mdist(p.sx, p.sy, s.x, s.y) < 2400.0 and not Structures.silenced(s))
+			if tg.is_empty(): return {}
+			var s: Dictionary = tg.pick_random()
+			c.merge({"struct": int(s.id), "target": s.fac, "days": 50, "reward": int(round((9000.0 + 5000.0 * float(Structures.kind(s).military) + randf() * 4000.0) / 500.0) * 500), "rep": 8,
+				"title": "Strike the %s" % s.name})
+			c.text = "The %s is at war with the %s. Knock out at least 70%% of the defences of the %s from the air. You need carriers. Taking this makes you a combatant to the %s." % [GameData.fac[fac].name, GameData.fac[s.fac].name, s.name, GameData.fac[s.fac].short]
 		"war":
 			var foe: String = foes.pick_random()
 			c.merge({"target": foe, "need": 3, "got": 0, "days": 60, "reward": int(round((14000.0 + randf() * 8000.0) / 500.0) * 500), "rep": 10,
@@ -416,7 +426,7 @@ func accept(c: Dictionary) -> void:
 			var ships: Array = Campaign.build_by_budget(Campaign.C.PATROL_POOL.raiders, float(c.reward) * 2.4, 6, "raiders", tl)
 			if ships.size() >= 2: f.ships = ships
 			f.x = c.x; f.y = c.y; f.home = {"x": c.x, "y": c.y}; f.contract = int(c.id); f.name = "Raider flotilla (contract)"; c.fleet = int(f.id)
-		"war": G.incidents = G.get("incidents", {}); G.incidents[c.target] = maxi(int(G.incidents.get(c.target, 0)), c.deadline)
+		"war", "strike": G.incidents = G.get("incidents", {}); G.incidents[c.target] = maxi(int(G.incidents.get(c.target, 0)), c.deadline)
 	G.contracts.append(c)
 	Campaign.log_ev("Contract: " + c.title)
 
@@ -469,6 +479,7 @@ func marks() -> Array:
 			"survey": var q: Dictionary = G.pois[int(c.poi)]; out.append([q.x, q.y, c.title])
 			"hunt":
 				for f in G.fleets: if int(f.get("contract", 0)) == int(c.id): out.append([f.x, f.y, c.title])
+			"strike": var st: Dictionary = Structures.all()[int(c.struct)]; out.append([st.x, st.y, c.title])
 	return out
 
 # ------------------------------------------------------------------ escorts and smuggling
@@ -524,6 +535,8 @@ func target_of(c: Dictionary):
 	match c.kind:
 		"delivery", "smuggle": var p: Dictionary = G.ports[int(c.dest)]; return Vector2(p.sx, p.sy)
 		"survey": var q: Dictionary = G.pois[int(c.poi)]; return Vector2(q.x, q.y)
+		"strike":   # flown from the sea: aim for the water off the coast nearest it
+			return Structures.coast_point(Structures.all()[int(c.struct)])
 		"hunt", "escort":
 			for f in G.fleets: if int(f.get("contract", 0)) == int(c.id) or int(f.get("escort", 0)) == int(c.id): return Vector2(f.x, f.y)
 	return null
@@ -534,6 +547,7 @@ func contract_info(c: Dictionary) -> String:
 	lines.append("Posted by the %s at %s." % [GameData.fac[c.fac].name, c.from])
 	lines.append("Pays %s and %s standing +%d. Failing costs 8 standing." % [Campaign.fmt(int(c.reward)), GameData.fac[c.fac].short, int(c.rep)])
 	if c.kind == "war": lines.append("Progress: %d of %d enemy ships." % [int(c.got), int(c.need)])
+	if c.kind == "strike": lines.append("Its defences: %d%% out of action now." % int(float(Structures.all()[int(c.struct)].dmg) * 100))
 	if c.kind == "delivery" or c.kind == "smuggle": lines.append("In your hold: %d of %d %s." % [int(G.cargo.get(c.good, 0)), int(c.qty), c.good])
 	var t = target_of(c)
 	if t != null: lines.append("Target %s, %d km from you." % [where(t.x, t.y), int(Campaign.mdist(G.player.x, G.player.y, t.x, t.y) * Campaign.KM_PER_UNIT)])

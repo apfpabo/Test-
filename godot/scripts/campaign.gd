@@ -271,6 +271,7 @@ func fuel_use() -> float:
 func wages() -> float:
     var t: float = G.crew * 0.15
     for o in G.officers: t += 40 * o.lvl
+    t += Structures.garrison_total() * 0.15   # the men holding your structures ashore
     return t
 var show_origin := false   # the chart opens with the origin's story once, at the start of a campaign
 
@@ -280,7 +281,7 @@ func perk(k: String, default = null): return G.get("perks", {}).get(k, default)
 ## Whether this force will fire on you. The armistice of 1945 holds: a flag's warships only engage you on sight if
 ## your standing with it has fallen to -60, if you caused an incident with it lately (opened fire under the
 ## armistice), or if your origin made you its declared target. Raiders, hunters and mission targets always fight.
-func hostile_fleet(f: Dictionary) -> bool: return at_war(f.fac) or f.get("hunter", false) or f.get("mission", false)
+func hostile_fleet(f: Dictionary) -> bool: return at_war(f.fac) or f.get("hunter", false) or f.get("mission", false) or f.get("kind", "") == "assault"
 const WAR_STANDING := -60
 const INCIDENT_DAYS := 90
 func at_war(fac: String) -> bool:
@@ -363,6 +364,7 @@ func new_game(start_key: String, navy := "concord") -> void:
     # hunters stay on your trail for a while: until a given day
     for h in G.perks.get("hunted", []): h.until = int(h.days)
     Diplomacy.ensure(st)
+    Structures.ensure()
     for g in C.GOODS: G.cargo[g.id] = st.cargo.get(g.id, 0)
     var p0: Dictionary = {}
     for p in G.ports: if p.name == st.port: p0 = p
@@ -610,6 +612,7 @@ func new_day(moved: bool) -> void:
         for g in C.GOODS: p.drift[g.id] = clampf(p.drift[g.id] * 0.93 + (randf() - 0.5) * 0.05, -0.3, 0.45)
     maintain_fleets(false)
     Diplomacy.new_day()
+    Structures.new_day()
     if G.day % 3 == 0: save()   # autosave every few days at sea
     var era = enemy_era()
     if era > G.get("seenEra", 1): G.seenEra = era; toast.emit("Intelligence: Directorate yards are fielding " + C.ERA_NAME[str(era)].split("· ")[1].to_lower() + ".")
@@ -641,6 +644,7 @@ func update(dt: float) -> void:
             else: P.repathT = 0.0
     else: coast(P, dt)
     Diplomacy.clash_tick(dt)
+    Structures.tick(dt)
     var ps = strength(G.fleet)
     var pr := strike_reach(G.fleet)
     for f in G.fleets.duplicate():
@@ -660,10 +664,15 @@ func update(dt: float) -> void:
         else:
             if f.get("chasing", false): f.chasing = false; f.route = null
             if f.get("route") == null:
-                if f.has("dest") and f.get("started", false):
+                if Structures._is_assault(f):   # an assault force bound for your structure: land, or get back on course
+                    var tg: Dictionary = f.get("tgt", {"x": f.x, "y": f.y})
+                    if mdist(f.x, f.y, tg.x, tg.y) < 8.0: Structures.assault_lands(f); continue
+                    if not set_course(f, tg.x, tg.y): Structures.assault_lands(f); continue
+                elif f.has("dest") and f.get("started", false):
                     if int(f.get("escort", 0)) > 0: Diplomacy.on_convoy_arrived(f)
                     G.fleets.erase(f); continue
-                if f.has("dest"):
+                if Structures._is_assault(f): pass
+                elif f.has("dest"):
                     f.started = true; var d: Dictionary = G.ports[f.dest]
                     f.route = build_route(f, port_route(f.from, f.dest)); f.ri = 0; f.rx = f.x; f.ry = f.y; f.tx = d.sx; f.ty = d.sy
                 elif f.get("hunter", false):
@@ -675,7 +684,16 @@ func update(dt: float) -> void:
                     if not set_course(f, w.x, w.y): f.route = null
         var fsp = fleet_map_speed(f.ships) * rate * (0.4 if in_ice(f.x, f.y) else 1.0)
         if int(f.get("escort", 0)) > 0 and dP > 45.0: fsp = 0.0   # an escorted convoy waits for its escort
-        if f.get("route") != null and route_move(f, fsp, fleet_turn_rate(f.ships), dt): f.route = null
+        if f.get("route") != null:
+            var was := Vector2(f.x, f.y)
+            if route_move(f, fsp, fleet_turn_rate(f.ships), dt): f.route = null
+            # wedged against a headland in narrow waters: after a few seconds, plan again from here
+            elif fsp > 0.0 and was.distance_to(Vector2(f.x, f.y)) < 0.001:
+                f.stuckT = f.get("stuckT", 0.0) + dt
+                if f.stuckT > 3.0:
+                    f.stuckT = 0.0; var tx = f.get("tx"); var ty = f.get("ty")
+                    if tx == null or not set_course(f, tx, ty): f.route = null
+            else: f.stuckT = 0.0
         # contact: hostile forces engage at the longer of the two sides' reach; an intercept closes to gun range.
         # A force that has been met stays quiet until the range opens past its reach again.
         var reach := maxf(strike_reach(f.ships), pr) if hos else 0.0
@@ -766,7 +784,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     for s in sim.ships:
         if s.side == 0:
             if not s.alive: r.lost.append(s.rec); cas += s.d.crew * 0.5
-            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
+            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = sim.planes_left(s); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
         else:
             if not s.alive: r.sunk.append(s.rec)
             else:
@@ -883,6 +901,7 @@ func load_game() -> bool:
     if not (d is Dictionary) or int(d.get("v", 0)) < SAVE_VERSION: return false
     G = d
     Diplomacy.ensure()
+    Structures.ensure()
     for o in [G.player] + G.fleets: _restore_route(o)
     _ints(G)
     paused = false
@@ -904,6 +923,9 @@ func _ints(g: Dictionary) -> void:
         if f.has("dest"): f.dest = int(f.dest)
         if f.has("from"): f.from = int(f.from)
     for p in g.ports: p.id = int(p.id)
+    for s in g.get("structs", []):
+        s.id = int(s.id); s.port = int(s.port); s.garrison = int(s.garrison); s.took = int(s.took); s.coastKm = int(s.coastKm)
+    for f in g.fleets: if f.has("assault"): f.assault = int(f.assault)
     if g.mission != null: g.mission.idx = int(g.mission.idx); g.mission.fleet = int(g.mission.fleet)
     for o in g.officers:
         o.lvl = int(o.lvl); o.pts = int(o.pts)

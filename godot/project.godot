@@ -13,6 +13,7 @@ Settings="*res://scripts/settings.gd"
 Sfx="*res://scripts/sfx.gd"
 Campaign="*res://scripts/campaign.gd"
 Diplomacy="*res://scripts/diplomacy.gd"
+Structures="*res://scripts/structures.gd"
 
 [display]
 window/size/viewport_width=1400

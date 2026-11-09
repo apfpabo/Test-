@@ -252,7 +252,11 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
         m.ammo_max = full_ammo(wid, m.w); m.ammo = int(round(m.ammo_max * float(rec.get("ammo", 1.0)))) if m.ammo_max > 0 else -1
         s.mounts.append(m)
     if d.get("sonar", false) and d.kind != "sub": s.dc_left = int(round(6 * float(rec.get("ammo", 1.0))))
-    for i in int(d.get("hangar", 0)): s.squads.append({"state": "ready", "t": 0.0, "n": 6})
+    # aircraft aboard: a campaign carrier may be short of planes lost in earlier strikes (rec.air)
+    var aboard: int = int(rec.get("air", int(d.get("hangar", 0)) * 6))
+    for i in int(d.get("hangar", 0)):
+        var n := clampi(aboard - i * 6, 0, 6)
+        s.squads.append({"state": "ready" if n > 0 else "lost", "t": 0.0, "n": n})
     if side == 1 and d.kind == "merchant": s.flee = true
     var best = -1
     for m in s.mounts: if m.w.kind == "gun": best = maxi(best, GUN_SIZES.find(m.w.size))
@@ -366,6 +370,15 @@ static func full_ammo(wid: String, w: Dictionary) -> int:
     return -1
 
 ## How full a ship's magazines are, 0..1, weighted by what the weapons cost (for the campaign to carry over).
+## Planes a carrier brings home: squadrons aboard, plus those still in the air when the battle ends.
+func planes_left(s: CShip) -> int:
+    var n := 0
+    for sq in s.squads:
+        if sq.state == "out":
+            for q in air: if q.sq == sq: n += int(q.n)
+        elif sq.state != "lost": n += int(sq.n)
+    return n
+
 func ammo_frac(s: CShip) -> float:
     var have := 0.0; var full := 0.0
     for m in s.mounts:

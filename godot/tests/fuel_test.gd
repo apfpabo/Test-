@@ -43,6 +43,13 @@ func _ready() -> void:
 		Campaign.paused = false; P.cool = 99.0; Campaign.update(1.0 / 30.0); t = i
 		if P.get("towed") == null: break
 	ok(P.get("towed") == null and Campaign.mdist(P.x, P.y, port.sx, port.sy) < 30.0, "towed into %s after %.1f days" % [port.name, t / 300.0])
+	# no crew: dead in the water even with full bunkers; broke: a tow anyway, for standing
+	G.cargo.fuel = 200; G.crew = 0
+	ok(Campaign.dead_in_water(), "no crew, no steam")
+	var pat2: Dictionary = Campaign.spawn_fleet("patrol", "concord"); G.credits = 0; var r0: int = G.rep.concord
+	var w2 := Campaign.water_point(30.0); P.x = w2.x; P.y = w2.y
+	print(Campaign.take_tow(pat2))
+	ok(P.get("towed") == pat2.id and G.rep.concord == r0 - 5 and G.credits == 0, "towed though broke, at a cost in standing")
 	Campaign.save(); ok(Campaign.load_game(), "save/load")
 	print("fuel test done, %d failures" % fails)
 	get_tree().quit(1 if fails else 0)

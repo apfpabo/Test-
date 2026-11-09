@@ -510,6 +510,7 @@ func _update_top() -> void:
     if G.cargo.fuel > 0 or fu <= 0: stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / fu)) if fu > 0 else "∞"]
     elif Campaign.reserve() > 0: stats.FUEL.text = "Reserve %dd" % int(ceil(Campaign.reserve() / (fu / 3.0)))
     else: stats.FUEL.text = "Under tow" if G.player.get("towed") != null else "DEAD IN WATER"
+    if int(G.crew) <= 0 and G.player.get("towed") == null: stats.FUEL.text = "NO CREW · ADRIFT"
     stats.FUEL.add_theme_color_override("font_color", UI.RED if fu > 0 and G.cargo.fuel / fu < 5 else UI.INK)
     stats.FUEL.get_parent().tooltip_text = "Fuel oil in the bunkers, and days of steaming left. Behind it, a reserve of %d tons (%d days at a crawl) that fills again whenever the bunkers have fuel." % [int(Campaign.reserve()), int(Campaign.reserve() / maxf(0.1, fu / 3.0))]
     stats.FUEL.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
@@ -833,14 +834,15 @@ func _hail_body(box: Control, f: Dictionary) -> void:
     var odds = "They badly outgun you." if ratio > 1.6 else ("They have the heavier squadron." if ratio > 1.1 else ("It would be an even fight." if ratio > 0.75 else "You outgun them."))
     box.add_child(UI.title(f.name)); box.add_child(_lead_pic(f)); _p(box, "%s ships close to signalling distance: %s." % [GameData.fac[f.fac].name, _counts(f.ships)])
     var merchant: bool = f.kind == "convoy" or f.ships.all(func(s): return Campaign.hull(s).kind == "merchant")
-    var dry: bool = G.cargo.fuel <= 0
+    var dry: bool = G.cargo.fuel <= 0 or int(G.crew) <= 0
     var acts := [UI.button("Exchange signals and pass", func(): f.cool = 8.0; P.cool = 3.0; close_panel(), true)]
     if merchant: acts.append(UI.button("Trade", func(): _trade(f)))
     if not merchant and dry:
         var fee := Campaign.tow_fee(); var np = Campaign.nearest_open_port()
-        acts.append(UI.button("Request a tow to %s · %s" % [np.name if np != null else "port", Campaign.fmt(fee)], func(): f.cool = 8.0; _toast(Campaign.take_tow(f)); close_panel(), false, np == null or G.credits < fee))
+        var tow_l: String = "Request a tow to %s · %s" % [np.name if np != null else "port", Campaign.fmt(fee)] if G.credits >= fee else "Ask for a tow to %s (you cannot pay)" % (np.name if np != null else "port")
+        acts.append(UI.button(tow_l, func(): f.cool = 8.0; _toast(Campaign.take_tow(f)); close_panel(), false, np == null))
     if merchant: _p(box, "Merchant ships carry spare bunker fuel and a little of everything, and will deal at sea, at worse prices than a port.", UI.DIM, 14)
-    elif dry: _p(box, "Your bunkers are dry. A warship can take you in tow to the nearest harbour open to you, for a fee.", UI.GOLD, 14)
+    elif dry: _p(box, ("You have no crew to raise steam." if int(G.crew) <= 0 else "Your bunkers are dry.") + " A warship can take you in tow to the nearest harbour open to you, for a fee; if you cannot pay, she will still tow you, but her flag will remember it.", UI.GOLD, 14)
     _p(box, odds + " Opening fire breaks the armistice: it costs 30 %s standing%s, and %s warships will engage you on sight for three months." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else "", GameData.fac[f.fac].short], UI.DIM, 13)
     acts.append(UI.button("Open fire", func():
         G.rep[f.fac] -= 30; Campaign.incident(f.fac); Diplomacy.on_open_fire(f.fac)

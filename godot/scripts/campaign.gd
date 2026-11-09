@@ -273,7 +273,7 @@ func fuel_use() -> float:
 ## wireless for a tow or a merchant convoy for fuel. It fills again from the bunkers once you have fuel.
 func reserve_cap() -> float: return fuel_use() * 4.0
 func reserve() -> float: return float(G.get("reserve", reserve_cap()))
-func dead_in_water() -> bool: return G.cargo.fuel <= 0 and reserve() <= 0.0 and fuel_use() > 0 and G.player.get("towed") == null
+func dead_in_water() -> bool: return G.player.get("towed") == null and (int(G.crew) <= 0 or (G.cargo.fuel <= 0 and reserve() <= 0.0 and fuel_use() > 0))
 
 func wages() -> float:
     var t: float = G.crew * 0.15
@@ -686,7 +686,11 @@ func update(dt: float) -> void:
     if P.get("route") != null:
         var no_fuel: bool = G.cargo.fuel <= 0 and fuel_use() > 0
         var sp = fleet_map_speed(G.fleet) * (0.2 if no_fuel else 1.0) * (0.4 if ice else 1.0)
+        sp *= 0.35 + 0.65 * crew_frac()   # short-handed in the stokeholds: less steam
         if dead_in_water(): sp = 0.0
+        if int(G.crew) <= 0 and not G.get("nocrewWarned", false):
+            G.nocrewWarned = true; toast.emit("There is not a soul aboard to raise steam. Your ships drift. Call a friendly fleet by wireless for a tow, then hire a crew in port.")
+        elif int(G.crew) > 0: G.nocrewWarned = false
         var tow = _fleet(P.towed) if P.get("towed") != null else null
         if tow != null: sp = minf(fleet_map_speed(G.fleet), fleet_map_speed(tow.ships) * 0.55)   # under tow: slow, but moving
         if esc != null: sp = minf(sp, maxf(esc.v, 0.5) + maxf(0.0, mdist(P.x, P.y, esc.x, esc.y) - 6.0) * 0.6 + 0.3)   # close up, then match her speed
@@ -809,12 +813,19 @@ func tow_fee() -> int:
 func take_tow(f: Dictionary) -> String:
     var p = nearest_open_port()
     if p == null: return "There is no harbour open to you to be towed to."
-    var fee := tow_fee()
-    if G.credits < fee: return "The tow costs %s, and you have %s." % [fmt(fee), fmt(G.credits)]
-    G.credits -= fee; var P: Dictionary = G.player
+    var fee := tow_fee(); var owed: bool = G.credits < fee
+    # a ship in distress is helped whether or not she can pay, as the law of the sea expects; the flag remembers it
+    if owed: G.rep[f.fac] = G.rep.get(f.fac, 0) - 5
+    else: G.credits -= fee
+    var P: Dictionary = G.player
     P.towed = int(f.id); P.follow = null; P.escort = null; P.destPort = int(p.id); f.answering = false
-    if not set_course(P, p.sx, p.sy): P.towed = null; G.credits += fee; return "No sea route to %s." % p.name
+    if not set_course(P, p.sx, p.sy):
+        P.towed = null
+        if owed: G.rep[f.fac] = G.rep.get(f.fac, 0) + 5
+        else: G.credits += fee
+        return "No sea route to %s." % p.name
     log_ev("Towed to %s by the %s" % [p.name, f.name])
+    if owed: return "You cannot pay, but no captain leaves a ship adrift. The %s takes you in tow for %s; the %s will remember it (standing -5)." % [f.name.to_lower(), p.name, GameData.fac[f.fac].short]
     return "The %s passes a hawser and takes you in tow for %s (%s)." % [f.name.to_lower(), p.name, fmt(fee)]
 
 func _fleet(id):

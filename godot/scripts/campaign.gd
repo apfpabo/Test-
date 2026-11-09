@@ -633,14 +633,26 @@ func update(dt: float) -> void:
             var lead = minf(d / maxf(0.5, fleet_map_speed(G.fleet)), 12.0)
             var lx: float = f.x + cos(f.h) * f.v * lead; var ly: float = f.y + sin(f.h) * f.v * lead
             if not set_course(P, f.x if on_land(lx, ly) else lx, f.y if on_land(lx, ly) else ly): set_course(P, f.x, f.y)
+    # escorting a fleet: keep station a little astern of it, at its speed, without making contact
+    var esc = null
+    if P.get("escort") != null:
+        esc = _fleet(P.escort); P.repathT = P.get("repathT", 0.0) - dt
+        if esc == null: P.escort = null; toast.emit("The fleet you were escorting has made harbour or gone. You are on your own again.")
+        elif P.repathT <= 0:
+            var d := mdist(P.x, P.y, esc.x, esc.y); P.repathT = 1.5 if d > 200 else 0.5
+            var st := Vector2(esc.x, esc.y) - Vector2.from_angle(esc.h) * 6.0
+            if on_land(st.x, st.y): st = Vector2(esc.x, esc.y)
+            if mdist(P.x, P.y, st.x, st.y) < 1.5: P.route = null
+            elif not set_course(P, st.x, st.y): set_course(P, esc.x, esc.y)
     var ice = in_ice(P.x, P.y)
     if P.get("route") != null:
         var no_fuel: bool = G.cargo.fuel <= 0 and fuel_use() > 0
         var sp = fleet_map_speed(G.fleet) * (0.2 if no_fuel else 1.0) * (0.4 if ice else 1.0)
+        if esc != null: sp = minf(sp, maxf(esc.v, 0.5) + maxf(0.0, mdist(P.x, P.y, esc.x, esc.y) - 6.0) * 0.6 + 0.3)   # close up, then match her speed
         G.movedToday = true
         if route_move(P, sp, fleet_turn_rate(G.fleet), dt):
             P.tx = null; P.route = null
-            if P.follow == null: _arrive()
+            if P.follow == null and P.get("escort") == null: _arrive()
             else: P.repathT = 0.0
     else: coast(P, dt)
     Diplomacy.clash_tick(dt)
@@ -918,6 +930,7 @@ func _ints(g: Dictionary) -> void:
     g.day = int(g.day); g.nextId = int(g.nextId); g.story = int(g.story)
     if g.player.get("destPort") != null: g.player.destPort = int(g.player.destPort)
     if g.player.get("follow") != null: g.player.follow = int(g.player.follow)
+    if g.player.get("escort") != null: g.player.escort = int(g.player.escort)
     for f in g.fleets:
         f.id = int(f.id)
         if f.has("dest"): f.dest = int(f.dest)

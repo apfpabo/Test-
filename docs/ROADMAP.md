@@ -86,6 +86,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - Airfields spot you and vector patrols onto you; coastal batteries shell your ships within 35 km; radar strengthens defences and warns you of assaults; naval bases you hold serve as a dockyard.
   - The powers take each other's structures in wars, structures follow their port when it falls, and the flag you took one from sends assault forces with troopships (shown in the orders box) to retake it. Strike contracts on the boards of powers at war.
   - Map symbols at normal zoom, drawn installations (runways, casemates, tank farms, pitheads, fields, piers) from 3× zoom.
+- **Right-click menu on the chart (done, 9 Nov 2026, owner request):** right-click a fleet: friendly ones offer *Escort her* (keep station astern at her speed, no contact; handy for escort contracts), *Close and hail* (the signals contact) and *Cancel orders*; hostile ones *Intercept*. The escorted fleet is ringed in green. `tests/escort_test.tscn`, `shot_context.tscn`.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

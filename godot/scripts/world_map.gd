@@ -252,6 +252,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
                 continue
             if f.get("chasing", false): draw_arc(Vector2(x, f.y), 160, 0, TAU, 64, Color(0.85, 0.38, 0.29, 0.28), 1.0 / z)
             if hos: _reach_ring(Vector2(x, f.y), Campaign.strike_reach(f.ships), Color(0.85, 0.38, 0.29, 0.35))
+            if P.get("escort") == f.id: draw_arc(Vector2(x, f.y), 19 * b / z, 0, TAU, 32, Color(0.55, 0.8, 0.6, 0.8), 1.5 / z)
             if hos or f.get("mission", false) or P.follow == f.id: draw_arc(Vector2(x, f.y), 16 * b / z, 0, TAU, 32, Color(Color("#e3b23c") if P.follow == f.id else col, 0.7), 1.5 / z)
             _fleet(f.ships, f.fac, Vector2(x, f.y), f.h, f.id)
         if G.fleet.size() and z >= 0.32: _wakes_of("player", G.fleet, Vector2(P.x, P.y), P.h)
@@ -430,12 +431,12 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             if sp.x < -150 or sp.x > vs.x + 150 or z < 0.32: continue
             var col = Color("#e3b23c") if (f.get("mission", false) or int(f.get("contract", 0)) > 0) else Color(GameData.fac[f.fac].map)
             var txt: String = (f.captain + " · " + Campaign.fmt(f.reward)) if f.kind == "bounty" else (f.name + " (%d)" % f.ships.size())
-            _t(sp + Vector2(0, 18 * b + 12), ("◎ " if P.follow == f.id else "") + txt, col, 12)
+            _t(sp + Vector2(0, 18 * b + 12), ("◎ " if P.follow == f.id else ("⚓ escorted · " if P.get("escort") == f.id else "")) + txt, col, 12)
         for m in Diplomacy.marks():
             var sp: Vector2 = map.to_screen(Vector2(m[0], m[1]))
             if sp.x > -150 and sp.x < vs.x + 150 and z > 0.2: _t(sp + Vector2(0, -16 - 11.0), "Contract: " + m[2], Color("#e3b23c"), 12)
         var psp: Vector2 = map.to_screen(Vector2(P.x, P.y))
-        _t(psp + Vector2(0, 21 * b + 13), "Your task force · %d kn" % int(round(P.v / 0.8)), Color("#e3b23c"), 12)
+        _t(psp + Vector2(0, 21 * b + 13), "Your task force · %d kn%s" % [int(round(P.v / 0.8)), " · escorting" if P.get("escort") != null else ""], Color("#e3b23c"), 12)
         if P.get("tx") != null and P.get("route") != null:
             var end: Vector2 = P.route[-1] + Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
             var days: float = Campaign.route_remaining(P) / maxf(0.5, Campaign.fleet_map_speed(G.fleet)) * 0.1
@@ -524,7 +525,7 @@ func _course_to_order(it: Dictionary) -> void:
     elif it.has("fleet"):
         for f in G.fleets: if int(f.id) == int(it.fleet): t = Vector2(f.x, f.y)
     if t == null: _toast("No fix on that target yet."); return
-    var P: Dictionary = G.player; P.follow = null; P.destPort = null
+    var P: Dictionary = G.player; P.follow = null; P.escort = null; P.destPort = null
     if it.has("c") and (it.c.kind == "delivery" or it.c.kind == "smuggle"): P.destPort = int(it.c.dest)
     if Campaign.set_course(P, t.x, t.y): free_cam = false; _toast("Course set: " + it.t.split(" · ")[0] + ".")
 
@@ -567,6 +568,7 @@ func _unhandled_input(e: InputEvent) -> void:
         var mb = e as InputEventMouseButton
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed: _zoom_at(1.12, mb.position)
         elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed: _zoom_at(1 / 1.12, mb.position)
+        elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed: _context(mb.position)
         elif mb.button_index == MOUSE_BUTTON_LEFT:
             if mb.pressed: drag = {"at": mb.position, "cam": cam, "moved": false}
             else:
@@ -594,7 +596,7 @@ func _zoom_at(f: float, sp: Vector2) -> void:
 func _click(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
     var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / minf(zoom, 1.5)
-    P.destPort = null; P.follow = null; Campaign.paused = false
+    P.destPort = null; P.follow = null; P.escort = null; Campaign.paused = false
     for f in G.fleets:
         if near.call(f.x, f.y, 16 * boost()): P.follow = f.id; P.repathT = 0.0; f.cool = 0.0; _toast("Intercept course locked on the " + f.name.to_lower() + ". You will close and make contact."); return
     for p in G.ports:
@@ -612,6 +614,46 @@ func _click(sp: Vector2) -> void:
         if st != null and (st.fac == "player" or zoom >= (0.3 if Structures.kind(st).military else 0.45)): open_struct(st); return
     if Campaign.on_land(w.x, w.y): _toast("That is land. Pick a point on the water."); return
     if not Campaign.set_course(P, w.x, clampf(w.y, 4, Campaign.MH - 4)): P.tx = null; _toast("No sea route to that point.")
+
+## Right-click on a fleet: orders for it. Friendly fleets: escort, close and hail, cancel; hostile ones: intercept.
+var _menu: PopupMenu
+func _context(sp: Vector2) -> void:
+    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); var hit = null
+    for f in G.fleets:
+        if Campaign.mdist(f.x, f.y, Campaign.wrap_x(w.x), w.y) < 16 * boost() / minf(zoom, 1.5): hit = f; break
+    if _menu == null:
+        _menu = PopupMenu.new(); _menu.add_theme_font_size_override("font_size", 14); ui.add_child(_menu)
+        _menu.id_pressed.connect(_context_pick)
+    _menu.clear()
+    var busy: bool = P.get("escort") != null or P.get("follow") != null or P.get("route") != null
+    if hit != null:
+        _menu.set_meta("fleet", int(hit.id))
+        _menu.add_separator(hit.name + " (%d)" % hit.ships.size())
+        if Campaign.hostile_fleet(hit): _menu.add_item("Intercept", 2)
+        else:
+            _menu.add_item("Escort her" if P.get("escort") != int(hit.id) else "Escorting her (keep station)", 1)
+            _menu.set_item_disabled(_menu.get_item_index(1), P.get("escort") == int(hit.id))
+            _menu.add_item("Close and hail", 2)
+    elif not busy: return
+    _menu.add_item("Cancel orders (heave to)", 3)
+    _menu.set_item_disabled(_menu.get_item_index(3), not busy)
+    _menu.position = Vector2i(sp)
+    _menu.reset_size(); _menu.popup()
+
+func _context_pick(id: int) -> void:
+    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var f = Campaign._fleet(_menu.get_meta("fleet", -1))
+    match id:
+        1:
+            if f == null: return
+            P.follow = null; P.destPort = null; P.escort = int(f.id); P.repathT = 0.0; free_cam = false; Campaign.paused = false
+            _toast("You take station astern of the %s and keep with her." % f.name.to_lower())
+        2:
+            if f == null: return
+            P.escort = null; P.destPort = null; P.follow = int(f.id); P.repathT = 0.0; f.cool = 0.0; Campaign.paused = false
+            _toast(("Intercept course locked on the %s." if Campaign.hostile_fleet(f) else "Closing the %s to signalling distance.") % f.name.to_lower())
+        3:
+            P.escort = null; P.follow = null; P.destPort = null; P.route = null; P.tx = null
+            _toast("Orders cancelled. The squadron heaves to.")
 
 # ------------------------------------------------------------------ panels
 var _blocking = false   # a panel that must be answered (an encounter or an aftermath)

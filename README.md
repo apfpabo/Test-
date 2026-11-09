@@ -4,7 +4,7 @@
 
 A naval fleet-command game in the spirit of Starsector, set on a fictional sea from 1942 into the missile age. It runs in the browser as one file with no dependencies.
 
-**Play:** the campaign runs in the browser: open `index.html`. The game is moving to Godot 4, battle first; see [The Godot build](#the-godot-build).
+**Play:** the game is a Godot 4 project in `godot/`; see [The Godot build](#the-godot-build). The old browser build (`index.html`) still opens, but it no longer gets updates.
 
 ## The campaign
 
@@ -62,9 +62,10 @@ The coastline data is embedded in `src/game.html` as `<script id="land-data">`. 
 
 ## The Godot build
 
-The game is being ported to Godot 4, starting with battles. `godot/` is a Godot 4.3 project:
+The whole game now runs in Godot 4. `godot/` is a Godot 4.3 project:
 
-- **Open it** in Godot 4.3 or later (Project Manager → Import → `godot/project.godot`) and press Play. It opens a battle setup screen with eight preset engagements (destroyer action, cruiser action, battle line, Yamato sorties, convoy raid, carrier strike, missile age and more), or build both squadrons from the 50 designs yourself. Battle controls are the same as in the browser build.
-- **What's new over the browser battles:** a GPU water shader with swell, light and glints; ship lighting in a shader; real per-ship scene nodes; native UI; desktop export.
-- **Art pipeline:** ship plans, mounts and effect textures are still drawn by the browser renderer and baked to images by `node tools/bake_assets.js`, which also exports the design and weapon data as JSON. Hand-made art can replace the baked images later without code changes.
-- **Checks:** `godot --headless --path godot res://tests/run_presets.tscn` plays every preset battle to a result.
+- **Open it** in Godot 4.3 or later (Project Manager → Import → `godot/project.godot`) and press Play. The title screen offers the campaign (three starts, or continue a saved game) and quick battles with eight preset engagements or squadrons you pick yourself.
+- **Saves** go to Godot's user data folder and are written at ports, after battles and every few days at sea.
+- **Over the browser build:** GPU water and ship-lighting shaders, scene nodes per ship, native UI, fast native pathfinding over a precomputed sea-lane network, desktop export.
+- **Art and data pipeline:** ship plans, mounts and effect textures are still drawn by the browser renderer and baked to images by `node tools/bake_assets.js`; `node tools/bake_world.js` bakes the coastlines, land mask, sea lanes and campaign tables. Hand-made art can replace the baked images later without code changes.
+- **Checks:** `godot --headless --path godot res://tests/run_presets.tscn` plays every preset battle; `res://tests/campaign_test.tscn` exercises routing, a month at sea, a battle and save/load.

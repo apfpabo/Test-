@@ -151,5 +151,9 @@ func show_results() -> void:
     if r.lost.size(): txt += "Lost: " + ", ".join(r.lost) + "\n"
     var body = Label.new(); body.text = txt; body.autowrap_mode = TextServer.AUTOWRAP_WORD; body.custom_minimum_size = Vector2(440, 0); box.add_child(body)
     var row = HBoxContainer.new(); box.add_child(row)
+    if GameData.pending.get("campaign", false): # back to the chart, where prizes, prize money and losses are settled
+        var go = Button.new(); go.text = "Return to the chart"; row.add_child(go)
+        go.pressed.connect(func(): Campaign.apply_battle(battle.sim); Campaign.show_aftermath = true; get_tree().change_scene_to_file("res://scenes/world_map.tscn"))
+        return
     var again = Button.new(); again.text = "Fight again"; again.pressed.connect(func(): get_tree().reload_current_scene()); row.add_child(again)
     var back = Button.new(); back.text = "Back to battle setup"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")); row.add_child(back)

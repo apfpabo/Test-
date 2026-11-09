@@ -28,7 +28,15 @@ func _ready() -> void:
     var pt: Array = cfg.get("player_tech", []); var et: Array = cfg.get("enemy_tech", [])
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])
     var efac: String = cfg.get("enemy_fac", "directorate")
-    sim.setup(_recs(mine, "player", pt), _recs(theirs, efac, et), pt, et, cfg.get("islands", randi_range(0, 4)))
+    if cfg.has("player_recs"): # a campaign action: your own ships, officers and crew against the fleet you met
+        sim.setup(cfg.player_recs, cfg.enemy_recs, pt, et, cfg.get("islands", 1))
+        for sh in sim.ships:
+            if sh.side == 0:
+                sh.cf = cfg.get("crew_frac", 1.0)
+                for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk
+            else: sh.sk = {"gun": mini(2, int(Campaign.G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
+    else:
+        sim.setup(_recs(mine, "player", pt), _recs(theirs, efac, et), pt, et, cfg.get("islands", randi_range(0, 4)))
     # sea
     var bg = CanvasLayer.new(); bg.layer = -10; add_child(bg)
     water = ColorRect.new(); water.set_anchors_preset(Control.PRESET_FULL_RECT); water.mouse_filter = Control.MOUSE_FILTER_IGNORE

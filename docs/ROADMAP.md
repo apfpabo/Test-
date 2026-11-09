@@ -24,12 +24,11 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 | Campaign | 5 story missions at one port; bounties | Contracts at every port, a mission tracker, dynamic convoys, seasonal weather and ice, points of interest |
 | Map movement | **Done:** momentum along planned routes, limited turn rate, pilotage speed in confined waters, wakes | — |
 
-## Engine move (in progress)
+## Engine move (done)
 
-The owner chose to move from the browser to **Godot 4**, battle first. Status:
+The owner chose to move from the browser to **Godot 4**. The port is complete: battles, the world chart, ports (market, shipyard, refit, repairs and crew, officers, Admiralty, research), the command panel, encounters, surveys, aftermath and prizes, missions, saves, and a quick-battle screen. The browser build (`src/game.html`) now only serves as the art and data source for the bake tools.
 
-- **Done:** Godot project in `godot/` with the full battle simulation ported (`battle_sim.gd`), battle screen with a water shader, ship lighting shader, wakes, smoke, damage, HUD, reticle, minimap, sound, camera panning, and a battle setup screen with presets and a custom squadron builder. Art and data are baked from the browser build by `tools/bake_assets.js`.
-- **Next:** port the world map, ports, missions and campaign state; then retire `src/game.html`. Choose a display font and a UI theme. Desktop export presets. Consider moving the plan renderer itself into Godot so art no longer depends on the browser.
+Follow-ups: a display font and UI polish; desktop export presets; touch controls; moving the plan renderer itself into Godot so art no longer depends on the browser.
 
 ## Suggested order of work
 

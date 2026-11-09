@@ -1,6 +1,6 @@
 extends Control
 ## Battle setup: pick a preset engagement or build both squadrons from the design registers.
-## The campaign still runs in the browser build; this is where the Godot port starts.
+## Quick battles outside the campaign.
 
 const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "missiles", "jets", "nuclear"], 3: ["radar", "sonar", "homing", "missiles", "jets", "nuclear", "ciws", "aegis"]}
 const PRESETS := [
@@ -31,7 +31,7 @@ func _ready() -> void:
     scroll.add_child(margin)
     var col = VBoxContainer.new(); col.add_theme_constant_override("separation", 10); margin.add_child(col)
     var title = Label.new(); title.text = "IRON MERIDIAN · BATTLE"; title.add_theme_font_size_override("font_size", 34); title.add_theme_color_override("font_color", Color(0.89, 0.7, 0.24)); col.add_child(title)
-    var sub = Label.new(); sub.text = "Godot build, battle first. Pick an engagement, or build both squadrons below. The campaign still runs in the browser build for now."; sub.add_theme_color_override("font_color", Color(0.62, 0.67, 0.67)); col.add_child(sub)
+    var sub = Label.new(); sub.text = "Godot build, battle first. Pick an engagement, or build both squadrons below. Fight any engagement you like; the campaign is on the title screen."; sub.add_theme_color_override("font_color", Color(0.62, 0.67, 0.67)); col.add_child(sub)
     var grid = GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 10); grid.add_theme_constant_override("v_separation", 10); col.add_child(grid)
     for pr in PRESETS:
         var b = Button.new(); b.text = pr.name + "\n" + pr.desc; b.custom_minimum_size = Vector2(320, 92); b.autowrap_mode = TextServer.AUTOWRAP_WORD; b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -58,6 +58,7 @@ func _ready() -> void:
     var go = Button.new(); go.text = "Action stations"; go.custom_minimum_size = Vector2(220, 44)
     go.pressed.connect(func(): if mine.size() and theirs.size(): _start(mine, theirs, fac_pick.get_item_metadata(fac_pick.selected), era_pick.selected + 1))
     col.add_child(go)
+    var back := Button.new(); back.text = "Back to the title screen"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")); col.add_child(back)
 
 func _list(parent: Control, label: String, arr: Array) -> ItemList:
     var box = VBoxContainer.new(); box.size_flags_horizontal = Control.SIZE_EXPAND_FILL; parent.add_child(box)

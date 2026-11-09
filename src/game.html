@@ -124,6 +124,8 @@ const FAC = {
   republic:    { name: 'Tarsene Free Republic', short: 'Free Republic', map: '#e39a5a', desc: 'A young, ideologically fierce republic that seized control of the western side of the Tarsene Gate during the war’s chaotic final year.' },
   freeport:    { name: 'Freeport Syndicate',    short: 'Freeports',     map: '#8fc48a', desc: 'Not a state but a loose, heavily armed association of freeports, smugglers, privateers, and exiles.' },
   enclave:     { name: 'Halvard Enclaves',      short: 'Enclaves',      map: '#e6e6df', desc: 'Hardy northern settlements and naval stations in the ice-fringed Rime and Skarn Passages. Traditionally neutral, isolationist, and respected for their seamanship and ice navigation.' },
+  ombria:      { name: 'Ombrian Protectorate',  short: 'Protectorate',  map: '#c98a6b', paint: 'directorate', desc: "The Directorate's client regime on the Ombrian shore of the Cradle Sea: a junta kept in power by Vargan advisers and Vargan guns, the southern half of the Continental Compact." },
+  isles:       { name: 'Outer Isles League',    short: 'Outer Isles',   map: '#9cc7dc', paint: 'pacific', desc: "The island states of the Oceanic Entente that never joined the Federation: small, proud, lightly armed, and loyal to whoever keeps the raiders off their reefs." },
   raiders:     { name: 'Black Flag raiders',    short: 'Raiders',       map: '#d2a03c', desc: 'Pirates and deserters preying on everyone.' },
 };
 // One paint scheme per flag, applied alike to hull, superstructure and turrets. Muted service greys, no decorative colour.
@@ -217,7 +219,7 @@ const MAKERS = {
 };
 const FAC_MAKERS = {
   concord: ['tidewater', 'clydemouth'], directorate: ['ostsee', 'neva'], pacific: ['seto', 'tidewater'], combine: ['marine', 'clydemouth'],
-  republic: ['tirreno'], freeport: ['tirreno', 'marine'], enclave: ['marine'], raiders: null, player: null,
+  republic: ['tirreno'], freeport: ['tirreno', 'marine'], enclave: ['marine'], ombria: ['neva', 'ostsee'], isles: ['tidewater', 'marine'], raiders: null, player: null,
 };
 // p: plan drawing. bow/run: fraction of length tapering at bow/stern · stern: 'c' cruiser, 't' transom · deck: 'teak' | 'lino' | steel
 // sup: [x, length, width, tiers] · fun: [x, rx, ry, y] · mast: [x, 't' tripod | 'p' pole | 'l' lattice | 'k' derrick post]
@@ -431,13 +433,15 @@ const STORY = [
 ];
 const NAMES = {
   player: ['Resolute', 'Halcyon', 'Kestrel', 'Valiant', 'Osprey', 'Harrow', 'Dauntless', 'Tempest', 'Cormorant', 'Ardent', 'Bellwether', 'Petrel', 'Starling', 'Indomitable', 'Sentinel', 'Gallant', 'Swift', 'Warden', 'Fearless', 'Corsair'],
-  concord: ['Liberty', 'Meridian', 'Chesapeake', 'Union', 'Ensign Hale', 'Providence', 'Steadfast', 'Vigilant', 'Concord', 'Narragansett', 'Thunderer'],
+  concord: ['Liberty', 'Meridian', 'Hesperus', 'Union', 'Ensign Hale', 'Providence', 'Steadfast', 'Vigilant', 'Concord', 'Hallandia', 'Thunderer'],
   directorate: ['Stoyky', 'Grozny', 'Bodry', 'Volkov', 'Iron Tsar', 'Kremnev', 'Sokol', 'Burya', 'Svarog', 'Admiral Rusk', 'Kalinov', 'Morozko', 'Hartmann'],
-  pacific: ['Harukaze', 'Kongo Star', 'Pacifica', 'Tidewater', 'Asahi', 'Southern Cross', 'Meiyo', 'Kaien'],
+  pacific: ['Harukaze', 'Amakura Star', 'Halcyon Star', 'Tidewater', 'Asahi', 'Southern Cross', 'Meiyo', 'Kaien'],
   combine: ['Meridian Venture', 'Golden Hind', 'Sterling', 'Ledger', 'Dividend', 'Cape Envoy', 'Trade Wind'],
-  republic: ['Libertad', 'Aurora', 'Barricada', 'Primero de Mayo', 'Comuna', 'Insurgente'],
+  republic: ['Libertad', 'Aurora', 'Barricada', 'Primero de Marzo', 'Comuna', 'Insurgente'],
   freeport: ['Ambergris', 'Fair Trade', 'Silver Tern', 'Marlin', 'Good Fortune', 'Tallow Star', 'Crescent'],
   enclave: ['Halvard', 'Polaris', 'Equinox', 'Fram', 'Meridian Survey'],
+  ombria: ['Sefira', 'Sand Viper', 'Protector', 'Loyal Ombra', 'Dune Hawk', 'Ilmaro', 'Steadfast Shore'],
+  isles: ['Tamaru', 'Coral Queen', 'Reef Warden', 'Outrigger', 'Greywater', 'Islander', 'Lagoon Star'],
   raiders: ['Jackal', 'Black Moth', 'Red Tide', 'Ravener', 'Scourge', "Widow's Due", 'Rattlebones', 'Hangman', 'Carrion', 'Salt Wraith'],
 };
 const OFFICER_FIRST = ['Ada', 'Bram', 'Celia', 'Dorian', 'Edda', 'Felix', 'Greta', 'Hollis', 'Ines', 'Jonas', 'Kasia', 'Leon', 'Mira', 'Nils', 'Oriana', 'Piet', 'Rhea', 'Soren', 'Tamsin', 'Ulric', 'Vera', 'Wim'];
@@ -451,6 +455,8 @@ const YARDS = {
   republic: ['pt', 'corvette', 'dd', 'ss', 'cl', 'ca', 'bb'],
   freeport: ['pt', 'corvette', 'freighter', 'dd', 'ss'],
   enclave: ['corvette', 'freighter'],
+  ombria: ['pt', 'corvette', 'dd', 'ss', 'cl'],
+  isles: ['pt', 'corvette', 'dd', 'freighter'],
 };
 const SAVE_KEY = 'iron-meridian-save-v2';
 
@@ -1484,9 +1490,9 @@ function routeLength(x, y, path) { let d = 0, px = x, py = y; for (const p of pa
 const PATROL_POOL = {
   concord: ['corvette', 'dd', 'dd', 'cl', 'ca', 'cve'], directorate: ['pt', 'dd', 'dd', 'ss', 'cl', 'ca', 'ddg', 'ssn', 'cg'],
   pacific: ['pt', 'dd', 'dd', 'ss', 'cl', 'ca', 'cve'], combine: ['corvette', 'dd', 'cl', 'cve'], republic: ['pt', 'corvette', 'dd', 'dd', 'ss', 'cl', 'ca'],
-  freeport: ['pt', 'corvette', 'dd'], enclave: ['corvette'], raiders: ['pt', 'pt', 'corvette', 'dd', 'ss'],
+  freeport: ['pt', 'corvette', 'dd'], enclave: ['corvette'], ombria: ['pt', 'pt', 'corvette', 'dd', 'ss'], isles: ['pt', 'corvette', 'dd'], raiders: ['pt', 'pt', 'corvette', 'dd', 'ss'],
 };
-const ESCORT_POOL = { concord: ['corvette', 'dd'], directorate: ['dd', 'pt'], pacific: ['dd', 'pt'], combine: ['corvette', 'dd'], republic: ['corvette', 'pt'], freeport: ['pt', 'corvette'], enclave: ['corvette'] };
+const ESCORT_POOL = { concord: ['corvette', 'dd'], directorate: ['dd', 'pt'], pacific: ['dd', 'pt'], combine: ['corvette', 'dd'], republic: ['corvette', 'pt'], freeport: ['pt', 'corvette'], enclave: ['corvette'], ombria: ['pt', 'dd'], isles: ['pt', 'corvette'] };
 function buildByBudget(pool, budget, max, fac, techList) {
   const ships = [];
   while (budget > 4000 && ships.length < max) { const opts = pool.map(c => designFor(c, fac, techList)).filter(t => t && HULLS[t].price <= budget); if (!opts.length) break; const t = pick(opts); ships.push(newShip(t, null, fac, techList)); budget -= HULLS[t].price; }

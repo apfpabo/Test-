@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
   await p.goto('file://' + path.join(ROOT, 'index.html')); await p.waitForTimeout(1200);
   const tables = await p.evaluate(() => ({
     START: '1946-03-01', POI_TEXT, WARS, GOODS, TECH, ERA_NAME, STORY, STARTS, SKILLS, YARDS, PATROL_POOL, ESCORT_POOL, OFFICER_FIRST, OFFICER_LAST, DESIGNS_OF, LEGACY,
-    MARKET_BIAS: { directorate: { steel: 0.7, fuel: 0.75 }, combine: { electronics: 0.75, medicine: 0.8 }, enclave: { electronics: 0.6, food: 1.6, fuel: 1.5 }, freeport: { munitions: 0.75 }, pacific: { steel: 0.8, electronics: 0.85 }, republic: { food: 0.75 }, concord: { fuel: 0.85 } },
+    MARKET_BIAS: { directorate: { steel: 0.7, fuel: 0.75 }, combine: { electronics: 0.75, medicine: 0.8 }, enclave: { electronics: 0.6, food: 1.6, fuel: 1.5 }, freeport: { munitions: 0.75 }, pacific: { steel: 0.8, electronics: 0.85 }, republic: { food: 0.75 }, concord: { fuel: 0.85 }, ombria: { fuel: 0.8, food: 1.25 }, isles: { food: 0.75, steel: 1.3 } },
   }));
   const file = path.join(OUT, 'data', 'campaign.json');
   const camp = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};

@@ -1,6 +1,7 @@
 extends Node
 ## Screenshots of diplomacy: a port's contract board, the commission office, the Missions & diplomacy tab with the
-## powers and the news, and a contract target on the chart. xvfb-run -a godot --path godot --rendering-driver opengl3 res://tests/shot_diplomacy.tscn -- <dir>
+## powers and the news, a contract target on the chart, a freeport's board (smuggling and escorts), a power's story
+## orders, and the Ombrian Protectorate on the chart. xvfb-run -a godot --path godot --rendering-driver opengl3 res://tests/shot_diplomacy.tscn -- <dir>
 var f := 0
 var out := ""
 var map: Node
@@ -25,4 +26,18 @@ func _process(_d: float) -> void:
         _shot("diplomacy"); map.close_panel()
         var m: Array = Diplomacy.marks()
         if not m.is_empty(): map.free_cam = true; map.cam = Vector2(m[0][0], m[0][1]); map.zoom = 1.2
-    if f == 36: _shot("contract_mark"); get_tree().quit()
+    if f == 36:
+        _shot("contract_mark"); map.free_cam = false
+        var ps: Dictionary = {}
+        for p in Campaign.G.ports: if p.name == "Port Saffron": ps = p
+        for i in 30:   # a board with a smuggling run on it
+            Campaign.G.offers.erase(str(int(ps.id)))
+            if Diplomacy.offers(ps).any(func(c): return c.kind == "smuggle" or c.kind == "escort"): break
+        map.open_port(ps); map.port_tab = "contracts"; map._render_port()
+    if f == 44:
+        _shot("contracts_saffron")
+        for p in Campaign.G.ports: if p.name == "Kotaraya": map.open_port(p)
+        map.port_tab = "admiralty"; map._render_port()
+    if f == 52:
+        _shot("orders_combine"); map.close_panel(); map.free_cam = true; map.cam = Vector2(Campaign.lon_x(-20.0), Campaign.lat_y(20.0)); map.zoom = 0.35
+    if f == 60: _shot("ombria"); get_tree().quit()

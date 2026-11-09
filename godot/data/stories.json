@@ -1,0 +1,57 @@
+{
+  "about": "Story missions offered at each power's capital (the Concord's five are the Admiralty's, in campaign.json STORY). Each chain is played in order; standing 0 or better with the issuer is needed. goal: destroy (sink the whole squadron) or capture (make the named ship strike, then take her as a prize). Missions against a power are deniable operations: the ships fly no colours, and the armistice is not formally broken. Written from the hooks in the owner's lore.",
+  "offices": {
+    "concord": "Admiralty", "directorate": "Naval Staff", "pacific": "Federation Council", "combine": "Security Board",
+    "republic": "Tarsene Admiralty", "freeport": "Brokers' Table", "enclave": "Halvard Moot"
+  },
+  "chains": {
+    "directorate": {
+      "end": "The Naval Staff is satisfied. In Strelsk they are already drawing up plans for the next round.",
+      "missions": [
+        { "title": "Wreckers in the Sounds", "brief": "Raiders have been stripping the scuttled fleet in the Strelsk Sounds and selling the fittings in Port Saffron. Find the flotilla under the destroyer Magpie and sink it.", "fac": "raiders", "ships": [["dd", "Magpie"], ["pt"], ["pt"]], "near": "Strelsk", "goal": "destroy", "reward": { "credits": 20000, "rp": 20, "rep": 10 } },
+        { "title": "A Trawler With Aerials", "brief": "A Concord \"fishery protection\" corvette, the Kittiwake, has been loitering off Korvagrad with more aerials than any trawler needs. She will fly no colours when you meet her, and neither will you. Make her strike and bring her in with her codebooks.", "fac": "concord", "ships": [["corvette", "Kittiwake"], ["dd"]], "near": "Korvagrad", "goal": "capture", "target": "Kittiwake", "reward": { "credits": 35000, "rp": 50, "rep": 15 } },
+        { "title": "Runners on the Sable Sea", "brief": "Syndicate blockade-runners are carrying Tarsene rifles across the Sable Sea to strikers in Tavrosk. Their escort is the cruiser Lantern Jack. Sink her squadron and the runners scatter.", "fac": "freeport", "ships": [["cl", "Lantern Jack"], ["dd"], ["pt"], ["freighter"]], "near": "Tavrosk", "goal": "destroy", "reward": { "credits": 60000, "rp": 60, "rep": 20 } }
+      ]
+    },
+    "pacific": {
+      "end": "The Council thanks you, in writing, and asks you to forget what you saw in the archive ship's hold.",
+      "missions": [
+        { "title": "Reef Raiders", "brief": "Raiders working out of the Lantern Isles have burned two Federation coaling hulks. Their leader sails the destroyer Sea Ghost. Find her and sink her.", "fac": "raiders", "ships": [["dd", "Sea Ghost"], ["pt"], ["corvette"]], "near": "Lumaya", "goal": "destroy", "reward": { "credits": 20000, "rp": 20, "rep": 10 } },
+        { "title": "The Occupied Isle", "brief": "The Directorate garrison on a \"temporarily\" occupied island in the reefs is supplied by a single squadron. The Council cannot be seen to act. You can. Its ships will fly no colours; neither will yours.", "fac": "directorate", "ships": [["cl", "Admiral Brask"], ["dd"], ["dd"]], "near": "Senkai Station", "goal": "destroy", "reward": { "credits": 45000, "rp": 50, "rep": 15 } },
+        { "title": "The Archive Ship", "brief": "An archivist has fled Amakura aboard the freighter Quiet Lantern with copies of the Black Archives, and a Combine security squadron is escorting her to Kotaraya. Make her strike and bring her back.", "fac": "combine", "ships": [["freighter", "Quiet Lantern"], ["dd"], ["dd"], ["corvette"]], "near": "Sanpo", "goal": "capture", "target": "Quiet Lantern", "reward": { "credits": 70000, "rp": 80, "rep": 20 } }
+      ]
+    },
+    "combine": {
+      "end": "The Board closes the file. Your account is marked: reliable.",
+      "missions": [
+        { "title": "Losses in the Saffron Sea", "brief": "Combine tankers keep vanishing in the Saffron Sea. The Board has traced the losses to a flotilla led by the destroyer Ledger's End. Remove it.", "fac": "raiders", "ships": [["dd", "Ledger's End"], ["dd"], ["pt"]], "near": "Port Saffron", "goal": "destroy", "reward": { "credits": 25000, "rp": 20, "rep": 10 } },
+        { "title": "Breach of Contract", "brief": "A Combine security squadron under Captain Imre Sallow has gone into business for itself at the Hakar Strait, taxing every ship that passes. The Board considers his contract terminated. So should you.", "fac": "raiders", "ships": [["cl", "Fiduciary"], ["dd"], ["corvette"]], "near": "Bab Hakar", "goal": "destroy", "reward": { "credits": 40000, "rp": 40, "rep": 15 } },
+        { "title": "Prototype Recovery", "brief": "A Directorate fast transport, the Stillwater, is carrying a prototype guided-missile director bought from a Combine engineer who had no right to sell it. Take the ship, and the director, intact.", "fac": "directorate", "ships": [["freighter", "Stillwater"], ["dd"], ["dd"]], "near": "Sanpo", "goal": "capture", "target": "Stillwater", "reward": { "credits": 65000, "rp": 90, "rep": 20 } }
+      ]
+    },
+    "republic": {
+      "end": "Tarsa celebrates in the streets. The Concord and the Directorate both take note.",
+      "missions": [
+        { "title": "Gate Watch", "brief": "Raiders lie in wait at the Gate's western mouth for ships leaving Tarsa, and the Republic's navy cannot spare a ship. Sink the raider destroyer Grim Bell and her boats.", "fac": "raiders", "ships": [["dd", "Grim Bell"], ["pt"], ["pt"]], "near": "Tarsa", "goal": "destroy", "reward": { "credits": 18000, "rp": 20, "rep": 10 } },
+        { "title": "Mines in the Cradle Sea", "brief": "Unmarked minelayers have been sowing the approaches to Puerto Corvo by night. Everyone in Tarsa knows whose they are. Sink the minelayer Voron and her escort.", "fac": "directorate", "ships": [["dd", "Voron"], ["dd"], ["pt"]], "near": "Puerto Corvo", "goal": "destroy", "reward": { "credits": 35000, "rp": 40, "rep": 15 } },
+        { "title": "Recognition", "brief": "The Protectorate's gunboats have been stopping Tarsene merchantmen in the Cradle Sea. Break their squadron off Ilmaro, and the Republic will have something to show the powers at the next conference.", "fac": "ombria", "ships": [["cl", "Junta's Fist"], ["dd"], ["pt"], ["pt"]], "near": "Ilmaro", "goal": "destroy", "reward": { "credits": 55000, "rp": 50, "rep": 25 } }
+      ]
+    },
+    "freeport": {
+      "end": "The Brokers raise a glass to you. Port Saffron is home, for as long as you don't become a liability.",
+      "missions": [
+        { "title": "Competition", "brief": "A bounty-hunting crew calling itself the Free Company has been taking Syndicate captains for Concord rewards. The Brokers want its leader, the destroyer Writ, at the bottom of the sea.", "fac": "raiders", "ships": [["dd", "Writ"], ["corvette"], ["pt"]], "near": "Mbaraka", "goal": "destroy", "reward": { "credits": 20000, "rp": 15, "rep": 10 } },
+        { "title": "The Customs Cutter", "brief": "The Concord customs cutter Diligence has a list of every Syndicate captain who has bunkered at St. Aldric. The Brokers want the cutter and the list. She flies Concord colours; on the night, you will fly none. Make her strike.", "fac": "concord", "ships": [["corvette", "Diligence"], ["dd"]], "near": "St. Aldric", "goal": "capture", "target": "Diligence", "reward": { "credits": 40000, "rp": 30, "rep": 15 } },
+        { "title": "Dry Dock Zero", "brief": "Someone is asking questions about Dry Dock Zero: a Combine survey squadron has been sounding the waters under Port Saffron. The Brokers want it gone before it finds anything.", "fac": "combine", "ships": [["cl", "Assessor"], ["dd"], ["dd"]], "near": "Port Saffron", "goal": "destroy", "reward": { "credits": 60000, "rp": 60, "rep": 20 } }
+      ]
+    },
+    "enclave": {
+      "end": "The Moot records your name in the long book. In the Rime, that is worth more than money.",
+      "missions": [
+        { "title": "Wreck Thieves", "brief": "Wreck thieves are stripping the Skarn Strait wreck fields that the Enclaves keep closed. Their ship is the old destroyer Corpse Light. Sink her.", "fac": "raiders", "ships": [["dd", "Corpse Light"], ["pt"], ["corvette"]], "near": "Grimvik", "goal": "destroy", "reward": { "credits": 18000, "rp": 30, "rep": 10 } },
+        { "title": "The Survey Ship", "brief": "Raiders have seized the Halvard survey ship Polar Star near Isfjell and mean to sell her charts of the ice. Make them strike and bring her home.", "fac": "raiders", "ships": [["freighter", "Polar Star"], ["dd"], ["pt"]], "near": "Isfjell", "goal": "capture", "target": "Polar Star", "reward": { "credits": 30000, "rp": 50, "rep": 15 } },
+        { "title": "Signals from the Barrier", "brief": "Someone is answering the old frequencies from the Austral Barrier stations. A Directorate research ship, the Zarnitsa, and her escort are working the ice edge near Sudrhavn. The Moot wants her gone from the stations.", "fac": "directorate", "ships": [["cl", "Zarnitsa"], ["dd"], ["dd"]], "near": "Sudrhavn", "goal": "destroy", "reward": { "credits": 50000, "rp": 80, "rep": 20 } }
+      ]
+    }
+  }
+}

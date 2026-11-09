@@ -657,16 +657,16 @@ func _take_prize(s: Dictionary) -> void:
     s.taken = "Taken"; var ns = s.duplicate(true); ns.erase("taken"); ns.pal = "player"; ns.id = str(randi()); G.fleet.append(ns); G.kills += 1
     _toast("%s sails under your flag. She needs %d crew." % [s.name, GameData.hulls[s.type].crew])
     if G.mission != null:
-        var m: Dictionary = Campaign.C.STORY[G.mission.idx]
+        var m: Dictionary = Campaign.mission_def()
         if m.goal == "capture" and s.name == m.target: Campaign._complete_mission(r)
     _show_aftermath(r)
 
 func _aftermath_done(r: Dictionary) -> void:
     var G: Dictionary = Campaign.G
     if G.mission != null:
-        var m: Dictionary = Campaign.C.STORY[G.mission.idx]
+        var m: Dictionary = Campaign.mission_def()
         if m.goal == "capture" and r.prizes.any(func(s): return s.name == m.target and s.get("taken", "") != "Taken"):
-            _toast("Without the %s the codebook is lost. Return to the Admiralty for new orders." % m.target); G.mission = null; Campaign.log_ev("Mission failed: " + m.title)
+            _toast("Without the %s the codebook is lost. Return to the %s for new orders." % [m.target, Campaign.story_office(G.mission.get("by", "concord"))]); G.mission = null; Campaign.log_ev("Mission failed: " + m.title)
     G.player.cool = 4.0; Campaign.save(); close_panel()
 
 func open_survey(q: Dictionary) -> void:
@@ -719,6 +719,13 @@ func open_port(p: Dictionary) -> void:
     if not Campaign.hostile(p.fac) and Campaign.G.day - p.get("offDay", -99) > 20: # the officers' mess turns over every few weeks
         p.offDay = Campaign.G.day; p.officers = [Campaign.new_officer(randi_range(1, 2)), Campaign.new_officer(randi_range(1, 3))]
         if randf() < 0.4: p.officers.append(Campaign.new_officer(randi_range(2, 4)))
+    var sm = Diplomacy.smuggle_for(p)
+    if Campaign.hostile(p.fac) and sm != null:   # a closed harbour, but there is a cargo to land
+        open_panel(func(box):
+            box.add_child(UI.title(p.name)); _p(box, "The harbour is closed to you, but your contact has named a beach and a night. Lights out, engines slow.")
+            _p(box, "Chance of being caught: %d%%. Caught, the cargo is seized, %s standing falls by 12, and their warships will hunt you for three months." % [int(Diplomacy.smuggle_risk(p) * 100), GameData.fac[p.fac].short], UI.DIM, 14)
+            box.add_child(UI.row([UI.button("Run the cargo ashore", func(): var t: String = Diplomacy.run_contraband(sm, p); close_panel(); _toast(t), true), UI.button("Turn away", close_panel)])))
+        return
     if Campaign.hostile(p.fac):
         open_panel(func(box): box.add_child(UI.title(p.name)); _p(box, "Shore batteries track your ships as you close the harbour. %s ports are closed to you while your standing with them is this low. Raise your standing, or dock somewhere friendlier." % GameData.fac[p.fac].name); box.add_child(UI.button("Stand off", close_panel, true)))
         return
@@ -783,7 +790,8 @@ func _render_port() -> void:
     var p = cur_port; var G: Dictionary = Campaign.G
     var tabs = [["market", "Market"], ["contracts", "Contracts"], ["yard", "Shipyard"], ["refit", "Refit"], ["fleet", "Repairs & crew"], ["officers", "Officers"]]
     if p.capital and Diplomacy.D.commissions.has(p.fac): tabs.append(["commission", "Commission"])
-    if p.capital and p.fac == "concord": tabs.append_array([["admiralty", "Admiralty"], ["research", "Research"]])
+    if p.capital and not Campaign.story_chain(p.fac).is_empty(): tabs.append(["admiralty", Campaign.story_office(p.fac)])
+    if p.capital and p.fac == "concord": tabs.append(["research", "Research"])
     elif p.fac == "enclave": tabs.append(["research", "Research exchange"])
     var limited: bool = Campaign.restricted(p.fac)
     if limited: # your old flag: the market and the dockyard's repair berth, nothing more, and at a price
@@ -803,7 +811,7 @@ func _render_port() -> void:
             "refit": _refit(box)
             "fleet": _repairs(box)
             "officers": _officers(box, p)
-            "admiralty": _missions(box, true)
+            "admiralty": _missions(box, true, p.fac)
             "contracts": _contracts(box, p)
             "commission": _commission(box, p)
             "research": _research(box)
@@ -1152,22 +1160,29 @@ func _powers(box: Control) -> void:
         var nw: Array = G.news.slice(-8); nw.reverse()
         for n in nw: _p(box, "%s: %s" % [Campaign.date_str(int(n[0])), n[1]], UI.DIM, 13)
 
-func _missions(box: Control, at_admiralty: bool) -> void:
-    var G: Dictionary = Campaign.G; var story: Array = Campaign.C.STORY
-    var m = story[G.story] if G.story < story.size() else null
+func _missions(box: Control, at_admiralty: bool, by := "") -> void:
+    var G: Dictionary = Campaign.G
     if G.mission != null:
-        var am: Dictionary = story[G.mission.idx]
-        box.add_child(UI.label("Active: " + am.title, UI.GOLD, 17)); _p(box, am.brief); _p(box, "The target is marked in yellow on your chart.", UI.DIM, 14)
-    elif m != null and at_admiralty:
-        box.add_child(UI.label("Orders %d of %d: %s" % [G.story + 1, story.size(), m.title], UI.GOLD, 17)); _p(box, m.brief)
-        _p(box, "Reward %s, %d RP, Concord standing +%d" % [Campaign.fmt(m.reward.credits), m.reward.rp, m.reward.rep], UI.DIM, 14)
-        if G.rep.concord >= 0:
-            box.add_child(UI.button("Accept orders", func():
-                var f = Campaign.spawn_fleet("mission", m.fac, false, m); G.mission = {"idx": G.story, "fleet": f.id}; Campaign.log_ev("Accepted orders: " + m.title)
-                _toast("Orders received: %s. The target is marked in yellow." % m.title); _rerender(), true))
-        else: _p(box, "The Admiralty will not deal with you while your standing is below zero.", UI.DIM, 14)
-    elif m != null: _p(box, "New orders await at the Concord Admiralty in Calder Roads.", UI.DIM, 14)
-    else: _p(box, "The war is won. The world's oceans settle into an armed peace, and the arms race goes on. Directorate fleets keep modernising, so keep your research ahead of theirs.")
+        var am: Dictionary = Campaign.mission_def(); var mby: String = G.mission.get("by", "concord")
+        box.add_child(UI.label("Active orders (%s): %s" % [Campaign.story_office(mby), am.title], UI.GOLD, 17)); _p(box, am.brief); _p(box, "The target is marked in yellow on your chart.", UI.DIM, 14)
+    if at_admiralty:
+        var chain: Array = Campaign.story_chain(by); var i: int = Campaign.story_idx(by); var office := Campaign.story_office(by)
+        if i >= chain.size(): _p(box, ("The war is won, for now. Directorate fleets keep modernising, so keep your research ahead of theirs." if by == "concord" else Campaign.S.chains[by].end), UI.DIM, 15)
+        elif G.mission == null:
+            var m: Dictionary = chain[i]
+            box.add_child(UI.label("%s orders %d of %d: %s" % [office, i + 1, chain.size(), m.title], UI.GOLD, 17)); _p(box, m.brief)
+            _p(box, "Reward %s, %d RP, %s standing +%d" % [Campaign.fmt(m.reward.credits), m.reward.rp, GameData.fac[by].short, m.reward.rep], UI.DIM, 14)
+            if G.rep.get(by, 0) >= 0 and not Campaign.at_war(by):
+                box.add_child(UI.button("Accept orders", func():
+                    Campaign.accept_mission(by); _toast("Orders received: %s. The target is marked in yellow." % m.title); _rerender(), true))
+            else: _p(box, "The %s will not deal with you while your standing is below zero." % office, UI.DIM, 14)
+        else: _p(box, "Finish your current orders first.", UI.DIM, 14)
+    elif G.mission == null:
+        var waiting := []
+        for f in GameData.fac:
+            if f != "raiders" and Campaign.story_idx(f) < Campaign.story_chain(f).size() and G.rep.get(f, 0) >= 0 and not Campaign.at_war(f):
+                for p in G.ports: if p.fac == f and p.capital: waiting.append("the %s in %s" % [Campaign.story_office(f), p.name])
+        if not waiting.is_empty(): _p(box, "Orders are waiting from " + ", ".join(waiting) + ".", UI.DIM, 14)
     if not at_admiralty:
         _active_contracts(box)
         if G.get("commission") != null: _p(box, "In service: %s (pay %s a month)." % [Diplomacy.commission_title(G.commission.fac), Campaign.fmt(int(Diplomacy.D.commissions[G.commission.fac].stipend))], UI.GREEN, 14)

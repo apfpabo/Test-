@@ -59,6 +59,52 @@ func _ready() -> void:
         G.offers = {}
         for c in Diplomacy.offers(cr): if c.kind == "war": war_offer = true
     print("war: %s, war contract offered %s, munitions price x%.2f at Concord ports" % [Diplomacy.at_war("concord", "directorate"), war_offer, Diplomacy.price_mult("concord", "munitions")])
+    # --- coalitions: a war between the Concord and the Directorate brings in allies
+    G.wars = {}; G.cobell = {}
+    G.rel[Diplomacy.pair("concord", "directorate")] = -90.0; Diplomacy.declare("concord", "directorate")
+    print("coalition war: isles %s, ombria %s, pacific %s (cordial members join half the time)" % [Diplomacy.at_war("isles", "directorate"), Diplomacy.at_war("ombria", "concord"), Diplomacy.at_war("pacific", "directorate")])
+    Diplomacy.armistice("concord", "directorate")
+    print("armistice ends the allies' wars too: isles %s, ombria %s" % [Diplomacy.at_war("isles", "directorate"), Diplomacy.at_war("ombria", "concord")])
+    # --- sieges: a port changes hands in a war
+    G.rel[Diplomacy.pair("concord", "directorate")] = -90.0; Diplomacy.declare("concord", "directorate")
+    var before := {}
+    for p in G.ports: before[p.name] = p.fac
+    for i in 6: Diplomacy._siege(Diplomacy.pair("concord", "directorate"))   # about a six-month war's worth
+    var changed := []
+    for p in G.ports: if before[p.name] != p.fac: changed.append("%s %s->%s" % [p.name, before[p.name], p.fac])
+    print("after 6 siege rolls: ", changed)
+    for p in G.ports: if p.capital and before[p.name] != p.fac: print("  ERROR: a capital fell: ", p.name)
+    # --- escort: the convoy waits for you, then sails and arrives
+    G.wars = {}; G.cobell = {}; G.contracts = []
+    var esc = null
+    for tries in 30:
+        G.offers = {}
+        for c in Diplomacy.offers(cr): if c.kind == "escort" and esc == null: esc = c
+    if esc != null:
+        Diplomacy.accept(esc); var cv = null
+        for q in G.fleets: if int(q.get("escort", 0)) == int(esc.id): cv = q
+        G.player.x = cv.x + 200.0; G.player.y = cv.y; for i in 30 * 20: Campaign.update(1.0 / 30.0)
+        var waited := Campaign.mdist(cv.x, cv.y, cr.sx, cr.sy)
+        var arrived := false
+        for i in 30 * 10 * 120:
+            G.player.x = cv.x; G.player.y = cv.y; G.player.cool = 9999.0; for f in G.fleets: f.cool = 9999.0
+            Campaign.paused = false; Campaign.update(1.0 / 30.0)
+            if not G.contracts.has(esc): arrived = true; break
+            if not G.fleets.has(cv): break
+        print("escort: convoy moved %.0f units while you were away; delivered %s, contracts left %d" % [waited, arrived, G.contracts.size()])
+    # --- smuggling: into a closed harbour and an open one
+    G.rep.directorate = -40; var sm = null
+    for tries in 60:
+        G.offers = {}
+        for c in Diplomacy.offers(port.call("Port Saffron")): if c.kind == "smuggle" and sm == null: sm = c
+    if sm != null:
+        G.cargo[sm.good] = 0; Diplomacy.accept(sm); var dp: Dictionary = G.ports[int(sm.dest)]
+        print("smuggle %s: risk %d%%, %s" % [sm.title, int(Diplomacy.smuggle_risk(dp) * 100), Diplomacy.run_contraband(sm, dp)])
+    # --- story chains of every power: offices, and a mission accepted and completed
+    for by in ["directorate", "pacific", "combine", "republic", "freeport", "enclave"]:
+        G.mission = null; Campaign.accept_mission(by); var r := {"notes": []}; var m: Dictionary = Campaign.mission_def()
+        Campaign._complete_mission(r); print("%s (%s): %s -> next %d of %d" % [by, Campaign.story_office(by), m.title, Campaign.story_idx(by), Campaign.story_chain(by).size()])
+    G.rel[Diplomacy.pair("concord", "directorate")] = -90.0; Diplomacy.declare("concord", "directorate")
     Campaign.save(); var rel_before = Diplomacy.rel("concord", "directorate")
     print("save/load: %s, relation kept %s, wars kept %s" % [Campaign.load_game(), is_equal_approx(Diplomacy.rel("concord", "directorate"), rel_before), Diplomacy.at_war("concord", "directorate")])
     get_tree().quit()

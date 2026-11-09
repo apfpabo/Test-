@@ -169,8 +169,13 @@
     { "name": "Isfjell", "fac": "enclave", "at": [7, 72.5] },
     { "name": "Grimvik", "fac": "enclave", "at": [43, 65], "note": "a Halvard station in the Skarn Passages" },
     { "name": "Sudrhavn", "fac": "enclave", "at": [1, -50.5] },
-    { "name": "Sefira", "fac": "directorate", "at": [-15, 31.5], "note": "the Directorate's Ombrian client harbour on the Cradle Sea (Continental Compact)" },
-    { "name": "Senkai Station", "fac": "pacific", "at": [165, 49.5], "note": "a Halcyon coaling station and listening post in the Stepping Stones" }
+    { "name": "Sefira", "fac": "ombria", "at": [-15, 31.5], "note": "capital of the Ombrian Protectorate, the Directorate's client on the Cradle Sea", "capital": true },
+    { "name": "Senkai Station", "fac": "pacific", "at": [165, 49.5], "note": "a Halcyon coaling station and listening post in the Stepping Stones" },
+    { "name": "Ilmaro", "fac": "ombria", "at": [-25, 31], "note": "Protectorate harbour on the Cradle Sea" },
+    { "name": "Duras", "fac": "ombria", "at": [-12, -8], "note": "Protectorate harbour on Ombria's Hesperian coast" },
+    { "name": "Tamaru", "fac": "isles", "capital": true, "at": [170.5, -6], "note": "seat of the Outer Isles League" },
+    { "name": "Corrin", "fac": "isles", "at": [151.5, -31], "note": "Outer Isles harbour in the southern reefs" },
+    { "name": "Greywater", "fac": "isles", "at": [-172, -42], "note": "Outer Isles harbour in the Greywater Isles" }
   ],
   "pois": [
     { "name": "The Skarn Strait Wreck Fields", "type": "wreck", "at": [50, 62], "text": "Dozens of ships from both coalitions lie in the cold northern passages. Some still contain sealed technical archives and prototype weapons. The Halvards restrict access; everyone else tries to sneak in." },

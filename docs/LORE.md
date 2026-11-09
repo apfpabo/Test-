@@ -163,7 +163,7 @@ The owner's world-building for the fictional map, kept word for word in [`lore/f
 ### Where the lore and the game still differ (for the owner)
 
 - **Survivor's lost fleet.** The lore names the Concord's Central Hesperian squadron and the Directorate's 4th Battle Division; the Halcyon navy has no named lost fleet.
-- **Ombrian clients and island states** have ports (Sefira) but no flags of their own yet.
+- **Ombrian clients and island states** now have flags of their own, the Ombrian Protectorate and the Outer Isles League ([`DIPLOMACY.md`](DIPLOMACY.md)). Their names and descriptions are placeholders written by Claude, not the owner's text: rename or rewrite them freely.
 
 Resolved by diplomacy ([`DIPLOMACY.md`](DIPLOMACY.md)): the Federation is now cordial with the Concord and hostile but not at war with the Directorate (balance-of-power events pull it both ways); a Syndicate letter of marque is offered at Port Saffron alongside the Tarsene one; Concord hardliners and moderates, the Concord's pressure on the Gate and the Combine selling to both sides are events between the powers.
 

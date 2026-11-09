@@ -21,16 +21,74 @@
     "enclave|pacific": 10,
     "enclave|combine": 5,
     "enclave|republic": 5,
-    "enclave|freeport": 0
+    "enclave|freeport": 0,
+    "ombria|directorate": 70,
+    "ombria|concord": -45,
+    "ombria|republic": -30,
+    "ombria|pacific": -20,
+    "ombria|combine": 5,
+    "ombria|freeport": 0,
+    "ombria|enclave": 0,
+    "ombria|isles": -20,
+    "isles|concord": 55,
+    "isles|pacific": 40,
+    "isles|directorate": -35,
+    "isles|freeport": -15,
+    "isles|combine": 10,
+    "isles|republic": 10,
+    "isles|enclave": 5
   },
-  "bands": { "war": -82, "peace": -60, "hostile": -30, "cool": -5, "cordial": 20, "allied": 50 },
+  "bands": {
+    "war": -82,
+    "peace": -60,
+    "hostile": -30,
+    "cool": -5,
+    "cordial": 20,
+    "allied": 50
+  },
   "commissions": {
-    "concord": { "title": "Concord reserve commission", "stipend": 4000, "text": "A reserve commission in the Hesperian Concord's navy: Concord contracts, Concord pay, and the Concord's wars become yours." },
-    "directorate": { "title": "Directorate auxiliary warrant", "stipend": 3500, "text": "A warrant as an auxiliary of the Vargan Directorate's fleet. Raiders who hurt Concord shipping are tolerated; captains who serve are paid." },
-    "pacific": { "title": "Federation scouting charter", "stipend": 3000, "text": "A charter from the Halcyon Federation to scout and escort among the island chains. It pays to keep the balance." },
-    "combine": { "title": "Combine security contract", "stipend": 5000, "text": "A retainer with the Meridian Combine's security fleets. Everything is a contract; reliable contractors are retained." },
-    "republic": { "title": "Tarsene letter of marque", "stipend": 2000, "marque": "directorate", "text": "A letter of marque from the Tarsene Free Republic against Directorate shipping. The paper is only as good as the guns behind it." },
-    "freeport": { "title": "Syndicate letter of marque", "stipend": 1500, "marque": "concord", "text": "A Syndicate letter-broker's marque against Concord shipping. The Syndicate considers you family, until you become a liability." }
+    "concord": {
+      "title": "Concord reserve commission",
+      "stipend": 4000,
+      "text": "A reserve commission in the Hesperian Concord's navy: Concord contracts, Concord pay, and the Concord's wars become yours."
+    },
+    "directorate": {
+      "title": "Directorate auxiliary warrant",
+      "stipend": 3500,
+      "text": "A warrant as an auxiliary of the Vargan Directorate's fleet. Raiders who hurt Concord shipping are tolerated; captains who serve are paid."
+    },
+    "pacific": {
+      "title": "Federation scouting charter",
+      "stipend": 3000,
+      "text": "A charter from the Halcyon Federation to scout and escort among the island chains. It pays to keep the balance."
+    },
+    "combine": {
+      "title": "Combine security contract",
+      "stipend": 5000,
+      "text": "A retainer with the Meridian Combine's security fleets. Everything is a contract; reliable contractors are retained."
+    },
+    "republic": {
+      "title": "Tarsene letter of marque",
+      "stipend": 2000,
+      "marque": "directorate",
+      "text": "A letter of marque from the Tarsene Free Republic against Directorate shipping. The paper is only as good as the guns behind it."
+    },
+    "freeport": {
+      "title": "Syndicate letter of marque",
+      "stipend": 1500,
+      "marque": "concord",
+      "text": "A Syndicate letter-broker's marque against Concord shipping. The Syndicate considers you family, until you become a liability."
+    },
+    "ombria": {
+      "title": "Protectorate coastal warrant",
+      "stipend": 1500,
+      "text": "A warrant from the junta in Sefira to guard the Ombrian shore. The pay comes from Strelsk, and everyone knows it."
+    },
+    "isles": {
+      "title": "League reef charter",
+      "stipend": 1800,
+      "text": "A charter from the Outer Isles League to keep the raiders off their reefs. Small pay, long memories, and harbours that are always glad to see you."
+    }
   },
   "contracts": {
     "max_active": 3,
@@ -38,19 +96,320 @@
     "refresh_days": 12
   },
   "events": [
-    { "id": "hardliners", "weight": 3, "pairs": [["concord", "directorate", -9]], "text": "Hardliners carry the vote on the Concord's Admiralty Board. Patrols off the Strelsk Sounds are doubled." },
-    { "id": "moderates", "weight": 3, "pairs": [["concord", "directorate", 7]], "text": "Concord moderates win the argument in Calder Roads: another round of mutual ruin is not worth the Gate. Patrols are told to keep their distance." },
-    { "id": "gate_demand", "weight": 2, "pairs": [["concord", "republic", -8], ["directorate", "republic", -4]], "text": "The Concord demands \"responsible control\" of the Tarsene Gate. Tarsa refuses, and says so from the shore batteries." },
-    { "id": "republic_friends", "weight": 2, "pairs": [["republic", "freeport", 6], ["republic", "pacific", 4]], "text": "The Tarsene Free Republic, desperate for friends, opens its harbours to Syndicate traders and Federation merchantmen." },
-    { "id": "combine_both", "weight": 2, "pairs": [["combine", "concord", -6], ["combine", "directorate", 5]], "text": "A Combine tanker convoy is seen bunkering Directorate submarines in the Monsoon Ocean. Kotaraya calls it ordinary commerce." },
-    { "id": "combine_concord", "weight": 2, "pairs": [["combine", "concord", 6], ["combine", "directorate", -4]], "text": "The Meridian Combine sells the Concord a squadron of new escorts, cash on delivery." },
-    { "id": "breakout", "weight": 3, "pairs": [["concord", "directorate", -7], ["pacific", "directorate", -5]], "text": "Directorate submarines are sighted beyond the Throat, heading for the Monsoon trade. The Entente calls it a breach of the armistice." },
-    { "id": "halcyon_balance", "weight": 2, "pairs": [["pacific", "directorate", 8], ["concord", "pacific", -5]], "text": "Amakura signs a fishing and trade convention with Strelsk. The Federation prefers balance to alliances." },
-    { "id": "entente_exercise", "weight": 2, "pairs": [["concord", "pacific", 6], ["pacific", "directorate", -5]], "text": "Concord and Federation carriers exercise together off the Arcs. Strelsk protests." },
-    { "id": "crackdown", "weight": 2, "pairs": [["concord", "freeport", -8]], "text": "The Concord boards Syndicate blockade-runners off Port Saffron. The freeports promise long memories." },
-    { "id": "halvard_talks", "weight": 2, "pairs": [["concord", "directorate", 6], ["enclave", "concord", 3], ["enclave", "directorate", 3]], "text": "Halvard mediators convene talks aboard an icebreaker in the Skarn Passages, where the armistice was signed." },
-    { "id": "occupied_isles", "weight": 2, "pairs": [["pacific", "directorate", -7]], "text": "A Directorate garrison on a \"temporarily\" occupied island in the Halcyon reefs refuses to withdraw." },
-    { "id": "quiet_race", "weight": 2, "pairs": [["concord", "directorate", -5], ["combine", "concord", -3]], "text": "A Directorate scientist defects to the Concord, with papers on guided weapons. Every intelligence service on the map takes notice." },
-    { "id": "freeport_raids", "weight": 2, "pairs": [["freeport", "combine", -6], ["freeport", "pacific", -4]], "text": "Raiders sheltering in the freeports strike Combine shipping in the Saffron Sea. Kotaraya blames Port Saffron." }
-  ]
+    {
+      "id": "hardliners",
+      "weight": 3,
+      "pairs": [
+        [
+          "concord",
+          "directorate",
+          -9
+        ]
+      ],
+      "text": "Hardliners carry the vote on the Concord's Admiralty Board. Patrols off the Strelsk Sounds are doubled."
+    },
+    {
+      "id": "moderates",
+      "weight": 3,
+      "pairs": [
+        [
+          "concord",
+          "directorate",
+          7
+        ]
+      ],
+      "text": "Concord moderates win the argument in Calder Roads: another round of mutual ruin is not worth the Gate. Patrols are told to keep their distance."
+    },
+    {
+      "id": "gate_demand",
+      "weight": 2,
+      "pairs": [
+        [
+          "concord",
+          "republic",
+          -8
+        ],
+        [
+          "directorate",
+          "republic",
+          -4
+        ]
+      ],
+      "text": "The Concord demands \"responsible control\" of the Tarsene Gate. Tarsa refuses, and says so from the shore batteries."
+    },
+    {
+      "id": "republic_friends",
+      "weight": 2,
+      "pairs": [
+        [
+          "republic",
+          "freeport",
+          6
+        ],
+        [
+          "republic",
+          "pacific",
+          4
+        ]
+      ],
+      "text": "The Tarsene Free Republic, desperate for friends, opens its harbours to Syndicate traders and Federation merchantmen."
+    },
+    {
+      "id": "combine_both",
+      "weight": 2,
+      "pairs": [
+        [
+          "combine",
+          "concord",
+          -6
+        ],
+        [
+          "combine",
+          "directorate",
+          5
+        ]
+      ],
+      "text": "A Combine tanker convoy is seen bunkering Directorate submarines in the Monsoon Ocean. Kotaraya calls it ordinary commerce."
+    },
+    {
+      "id": "combine_concord",
+      "weight": 2,
+      "pairs": [
+        [
+          "combine",
+          "concord",
+          6
+        ],
+        [
+          "combine",
+          "directorate",
+          -4
+        ]
+      ],
+      "text": "The Meridian Combine sells the Concord a squadron of new escorts, cash on delivery."
+    },
+    {
+      "id": "breakout",
+      "weight": 3,
+      "pairs": [
+        [
+          "concord",
+          "directorate",
+          -7
+        ],
+        [
+          "pacific",
+          "directorate",
+          -5
+        ]
+      ],
+      "text": "Directorate submarines are sighted beyond the Throat, heading for the Monsoon trade. The Entente calls it a breach of the armistice."
+    },
+    {
+      "id": "halcyon_balance",
+      "weight": 2,
+      "pairs": [
+        [
+          "pacific",
+          "directorate",
+          8
+        ],
+        [
+          "concord",
+          "pacific",
+          -5
+        ]
+      ],
+      "text": "Amakura signs a fishing and trade convention with Strelsk. The Federation prefers balance to alliances."
+    },
+    {
+      "id": "entente_exercise",
+      "weight": 2,
+      "pairs": [
+        [
+          "concord",
+          "pacific",
+          6
+        ],
+        [
+          "pacific",
+          "directorate",
+          -5
+        ]
+      ],
+      "text": "Concord and Federation carriers exercise together off the Arcs. Strelsk protests."
+    },
+    {
+      "id": "crackdown",
+      "weight": 2,
+      "pairs": [
+        [
+          "concord",
+          "freeport",
+          -8
+        ]
+      ],
+      "text": "The Concord boards Syndicate blockade-runners off Port Saffron. The freeports promise long memories."
+    },
+    {
+      "id": "halvard_talks",
+      "weight": 2,
+      "pairs": [
+        [
+          "concord",
+          "directorate",
+          6
+        ],
+        [
+          "enclave",
+          "concord",
+          3
+        ],
+        [
+          "enclave",
+          "directorate",
+          3
+        ]
+      ],
+      "text": "Halvard mediators convene talks aboard an icebreaker in the Skarn Passages, where the armistice was signed."
+    },
+    {
+      "id": "occupied_isles",
+      "weight": 2,
+      "pairs": [
+        [
+          "pacific",
+          "directorate",
+          -7
+        ]
+      ],
+      "text": "A Directorate garrison on a \"temporarily\" occupied island in the Halcyon reefs refuses to withdraw."
+    },
+    {
+      "id": "quiet_race",
+      "weight": 2,
+      "pairs": [
+        [
+          "concord",
+          "directorate",
+          -5
+        ],
+        [
+          "combine",
+          "concord",
+          -3
+        ]
+      ],
+      "text": "A Directorate scientist defects to the Concord, with papers on guided weapons. Every intelligence service on the map takes notice."
+    },
+    {
+      "id": "freeport_raids",
+      "weight": 2,
+      "pairs": [
+        [
+          "freeport",
+          "combine",
+          -6
+        ],
+        [
+          "freeport",
+          "pacific",
+          -4
+        ]
+      ],
+      "text": "Raiders sheltering in the freeports strike Combine shipping in the Saffron Sea. Kotaraya blames Port Saffron."
+    },
+    {
+      "id": "ombria_unrest",
+      "weight": 2,
+      "pairs": [
+        [
+          "ombria",
+          "directorate",
+          -6
+        ],
+        [
+          "ombria",
+          "concord",
+          4
+        ]
+      ],
+      "text": "Strikes in the Ombrian ports. The junta in Sefira asks Strelsk for more advisers; some officers ask Calder Roads for something else."
+    },
+    {
+      "id": "ombria_loyal",
+      "weight": 2,
+      "pairs": [
+        [
+          "ombria",
+          "concord",
+          -6
+        ],
+        [
+          "ombria",
+          "republic",
+          -4
+        ]
+      ],
+      "text": "The Protectorate's gunboats stop a Tarsene merchantman in the Cradle Sea and send her home without her cargo."
+    },
+    {
+      "id": "isles_raids",
+      "weight": 2,
+      "pairs": [
+        [
+          "isles",
+          "freeport",
+          -6
+        ],
+        [
+          "isles",
+          "concord",
+          3
+        ]
+      ],
+      "text": "Raiders strike the reef villages of the Outer Isles. The League asks the Concord for escorts and the freeports for the raiders' names."
+    },
+    {
+      "id": "isles_federation",
+      "weight": 2,
+      "pairs": [
+        [
+          "isles",
+          "pacific",
+          5
+        ]
+      ],
+      "text": "The Outer Isles League and the Halcyon Federation sign a coaling agreement. Amakura still hopes they will join the Federation one day."
+    }
+  ],
+  "coalitions": {
+    "about": "The wartime coalitions of the Meridian War (the owner's lore). When a member goes to war with a member of the other coalition, its allies (relations 50 or better) join at once; members merely cordial (20 or better) join half the time. Each power's own relations still decide.",
+    "Oceanic Entente": [
+      "concord",
+      "pacific",
+      "isles"
+    ],
+    "Continental Compact": [
+      "directorate",
+      "ombria"
+    ]
+  },
+  "sieges": {
+    "about": "In a war, about every 25 days one side may move on a port of the other: the defender's nearest harbour to the attacker's own, never a capital. The odds come from the fleets within reach of the port (about 900 units), weighted by each navy's quality (the lore: the Concord is still the strongest blue-water navy), against the harbour's own defences and garrison. Occupied ports stay occupied after an armistice.",
+    "chance": 0.04,
+    "reach": 900,
+    "harbour": 25000,
+    "navy": {
+      "concord": 1.35,
+      "directorate": 1.0,
+      "pacific": 1.0,
+      "combine": 0.9,
+      "republic": 0.85,
+      "freeport": 0.7,
+      "enclave": 0.8,
+      "ombria": 0.7,
+      "isles": 0.7
+    }
+  }
 }

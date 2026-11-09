@@ -9583,7 +9583,15 @@
    "marine"
   ],
   "raiders": null,
-  "player": null
+  "player": null,
+  "ombria": [
+   "neva",
+   "ostsee"
+  ],
+  "isles": [
+   "tidewater",
+   "marine"
+  ]
  },
  "FAC": {
   "concord": {
@@ -9628,6 +9636,20 @@
    "map": "#e6e6df",
    "desc": "Hardy northern settlements and naval stations in the ice-fringed Rime and Skarn Passages. Traditionally neutral, isolationist, and respected for their seamanship and ice navigation."
   },
+  "ombria": {
+   "name": "Ombrian Protectorate",
+   "short": "Protectorate",
+   "map": "#c98a6b",
+   "paint": "directorate",
+   "desc": "The Directorate's client regime on the Ombrian shore of the Cradle Sea: a junta kept in power by Vargan advisers and Vargan guns, the southern half of the Continental Compact."
+  },
+  "isles": {
+   "name": "Outer Isles League",
+   "short": "Outer Isles",
+   "map": "#9cc7dc",
+   "paint": "pacific",
+   "desc": "The island states of the Oceanic Entente that never joined the Federation: small, proud, lightly armed, and loyal to whoever keeps the raiders off their reefs."
+  },
   "raiders": {
    "name": "Black Flag raiders",
    "short": "Raiders",
@@ -9661,14 +9683,14 @@
   "concord": [
    "Liberty",
    "Meridian",
-   "Chesapeake",
+   "Hesperus",
    "Union",
    "Ensign Hale",
    "Providence",
    "Steadfast",
    "Vigilant",
    "Concord",
-   "Narragansett",
+   "Hallandia",
    "Thunderer"
   ],
   "directorate": [
@@ -9688,8 +9710,8 @@
   ],
   "pacific": [
    "Harukaze",
-   "Kongo Star",
-   "Pacifica",
+   "Amakura Star",
+   "Halcyon Star",
    "Tidewater",
    "Asahi",
    "Southern Cross",
@@ -9709,7 +9731,7 @@
    "Libertad",
    "Aurora",
    "Barricada",
-   "Primero de Mayo",
+   "Primero de Marzo",
    "Comuna",
    "Insurgente"
   ],
@@ -9740,6 +9762,24 @@
    "Hangman",
    "Carrion",
    "Salt Wraith"
+  ],
+  "ombria": [
+   "Sefira",
+   "Sand Viper",
+   "Protector",
+   "Loyal Ombra",
+   "Dune Hawk",
+   "Ilmaro",
+   "Steadfast Shore"
+  ],
+  "isles": [
+   "Tamaru",
+   "Coral Queen",
+   "Reef Warden",
+   "Outrigger",
+   "Greywater",
+   "Islander",
+   "Lagoon Star"
   ]
  },
  "HULL_ORDER": [

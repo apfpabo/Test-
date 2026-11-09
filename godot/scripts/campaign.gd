@@ -14,6 +14,7 @@ const SAVE_PATH := "user://iron_meridian_save.json"
 ## Version 4: the fictional world map. Saves from the real-Earth map (3 and older) cannot be loaded.
 const SAVE_VERSION := 4
 var C: Dictionary = {}           # campaign tables from data/campaign.json
+var S: Dictionary = {}           # story chains of the other powers, from data/stories.json
 var DEG = 20.0
 var LAT0 = 82.0
 var MW = 7200.0
@@ -113,6 +114,7 @@ func in_ice(x: float, y: float) -> bool:
 # ------------------------------------------------------------------ loading
 func _ready() -> void:
     C = JSON.parse_string(FileAccess.open("res://data/campaign.json", FileAccess.READ).get_as_text())
+    S = JSON.parse_string(FileAccess.open("res://data/stories.json", FileAccess.READ).get_as_text())
     DEG = C.DEG; LAT0 = C.LAT0; MW = C.MW; MH = C.MH; MASK_RES = C.MASK_RES
     var img: Image = load("res://data/land_mask.png").get_image()
     if img.is_compressed(): img.decompress()
@@ -658,7 +660,9 @@ func update(dt: float) -> void:
         else:
             if f.get("chasing", false): f.chasing = false; f.route = null
             if f.get("route") == null:
-                if f.has("dest") and f.get("started", false): G.fleets.erase(f); continue
+                if f.has("dest") and f.get("started", false):
+                    if int(f.get("escort", 0)) > 0: Diplomacy.on_convoy_arrived(f)
+                    G.fleets.erase(f); continue
                 if f.has("dest"):
                     f.started = true; var d: Dictionary = G.ports[f.dest]
                     f.route = build_route(f, port_route(f.from, f.dest)); f.ri = 0; f.rx = f.x; f.ry = f.y; f.tx = d.sx; f.ty = d.sy
@@ -670,6 +674,7 @@ func update(dt: float) -> void:
                     var w = water_point(6, Vector2(f.home.x, f.home.y), 120.0 if (f.get("mission", false) or f.kind == "bounty") else 320.0)
                     if not set_course(f, w.x, w.y): f.route = null
         var fsp = fleet_map_speed(f.ships) * rate * (0.4 if in_ice(f.x, f.y) else 1.0)
+        if int(f.get("escort", 0)) > 0 and dP > 45.0: fsp = 0.0   # an escorted convoy waits for its escort
         if f.get("route") != null and route_move(f, fsp, fleet_turn_rate(f.ships), dt): f.route = null
         # contact: hostile forces engage at the longer of the two sides' reach; an intercept closes to gun range.
         # A force that has been met stays quiet until the range opens past its reach again.
@@ -814,7 +819,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     G.credits += r.coin + r.bounty
     Diplomacy.on_battle(f, beaten.size(), gone, r.notes)
     if G.mission != null and f != null and G.mission.fleet == f.id:
-        var m: Dictionary = C.STORY[G.mission.idx]
+        var m: Dictionary = mission_def()
         if m.goal == "destroy" and gone: _complete_mission(r)
         elif m.goal == "capture" and r.sunk.any(func(s): return s.name == m.target):
             r.notes.append("The %s went down with her codebook. The mission has failed. Return to the Admiralty for new orders." % m.target)
@@ -824,12 +829,32 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     save()
     return r
 
+# ------------------------------------------------------------------ story missions
+## The chain of story missions a power offers at its capital: the Concord Admiralty's (campaign.json STORY) or another
+## power's (stories.json). Each is played in order.
+func story_chain(by: String) -> Array:
+    if by == "concord": return C.STORY
+    return S.get("chains", {}).get(by, {}).get("missions", [])
+func story_office(by: String) -> String: return S.get("offices", {}).get(by, "Admiralty")
+func story_idx(by: String) -> int:
+    if G.has("stories") and G.stories.has(by): return int(G.stories[by])
+    return int(G.get("story", 0)) if by == "concord" else 0
+func mission_def() -> Dictionary: return story_chain(G.mission.get("by", "concord"))[int(G.mission.idx)]
+func accept_mission(by: String) -> void:
+    var m: Dictionary = story_chain(by)[story_idx(by)]
+    var f = spawn_fleet("mission", m.fac, false, m); G.mission = {"idx": story_idx(by), "fleet": f.id, "by": by}; log_ev("Accepted orders: " + m.title)
+
 func _complete_mission(r: Dictionary) -> void:
-    var m: Dictionary = C.STORY[G.mission.idx]
-    G.credits += m.reward.credits; G.rp += m.reward.rp; G.rep.concord += m.reward.rep
+    var by: String = G.mission.get("by", "concord"); var m: Dictionary = mission_def()
+    G.credits += m.reward.credits; G.rp += m.reward.rp; G.rep[by] = mini(100, G.rep.get(by, 0) + int(m.reward.rep))
     r.notes.append("Orders complete: %s. +%s, +%d RP." % [m.title, fmt(m.reward.credits), m.reward.rp])
-    log_ev("Completed: " + m.title); G.story += 1; G.mission = null
-    if G.story >= C.STORY.size(): r.notes.append("Iron Will is gone, and with her the Directorate's hopes of breaking out this year. The armistice holds a little firmer. Your fleet, and the Quiet Race, go on.")
+    if not G.has("stories"): G.stories = {}
+    G.stories[by] = story_idx(by) + 1
+    if by == "concord": G.story = G.stories[by]
+    log_ev("Completed: " + m.title); G.mission = null
+    if story_idx(by) >= story_chain(by).size():
+        if by == "concord": r.notes.append("Iron Will is gone, and with her the Directorate's hopes of breaking out this year. The armistice holds a little firmer. Your fleet, and the Quiet Race, go on.")
+        else: r.notes.append(S.chains[by].end)
 
 # ------------------------------------------------------------------ saves
 func save() -> void:

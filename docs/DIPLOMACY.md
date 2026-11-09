@@ -28,9 +28,20 @@ Step 3 of the owner's plan (after the world map and the foundational lore). Rule
   - **Betrayal:** opening fire on the flag you serve tears up the commission, costs 40 standing, and that flag never offers service again.
   - The privateer origin starts with the Tarsene letter of marque.
 
+## Second pass (9 Nov 2026)
+
+- **Two new flags** (placeholder names, for the owner to rename or rewrite; their text is mine, not the owner's):
+  - The **Ombrian Protectorate** (`ombria`): the Directorate's client regime on the Ombrian shore, the southern half of the Continental Compact. Sefira (capital), Ilmaro, Duras. Allied with the Directorate. It flies Directorate paint and buys from the Korvagrad and Strelsk yards.
+  - The **Outer Isles League** (`isles`): the island states of the Oceanic Entente outside the Federation. Tamaru (capital), Corrin, Greywater. Allied with the Concord, cordial with the Federation. Federation paint; Tidewater and Combine Marine ships.
+  - A new flag borrows a baked paint scheme through `paint` in its FAC entry (`GameData.paint`), so no art re-bake is needed.
+- **Coalitions and alliances:** the Oceanic Entente (Concord, Federation, Outer Isles) and the Continental Compact (Directorate, Protectorate). When war breaks out, each side's allies (relations 50+) join at once; coalition members who are only cordial (20+) join half the time, or declare neutrality. Friends of both sides stay out. When the war ends, the allies' wars end with it.
+- **Ports change hands:** in a war, about every 25 days one side moves on the other's nearest harbour (never a capital). The odds come from the fleets within about 900 units of the port, weighted by each navy's quality (the Concord still the strongest), against the harbour's defences and garrison (Gatehold and Strelsk hold out three times as well). A port retaken by an ally of its 1946 owner is handed back. Occupied ports stay occupied after an armistice. Your squadron counts for the flag you serve when you are near.
+- **Escort contracts:** a convoy sails from the issuing port to another; it moves only while you keep station within about 45 units, and part way along raiders try it. Pay on arrival; failed if the convoy is lost or the deadline passes.
+- **Smuggling contracts:** contraband (medicine, electronics, munitions) for a harbour of a power the issuer dislikes, or one closed to you. Docking at an open harbour runs it past customs automatically; at a closed harbour you get a night landing. Risk: 30% (45% at a closed harbour), plus 4% per ship beyond two, less your evasion. Caught: the cargo is seized, that flag's standing falls by 12, and at a closed harbour it is an incident. Freeports post them most.
+- **Story missions from every power:** three-mission chains at the capitals of the Directorate (Naval Staff), Federation (Federation Council), Combine (Security Board), Republic (Tarsene Admiralty), Syndicate (Brokers' Table) and Enclaves (Halvard Moot), as well as the Concord Admiralty's five, in `data/stories.json`. They draw on the lore's hooks: the occupied isle, the Black Archives, Dry Dock Zero, the Quiet Race, the Austral Barrier signals. Missions against a power are deniable: the ships fly no colours. One set of orders at a time; the Missions & diplomacy tab lists where orders are waiting.
+
 ## Not yet
 
-- Factions beyond the seven powers (the Ombrian clients and island states of the lore have ports but no flags of their own).
-- Escort contracts, smuggling into closed ports, intelligence trading.
-- Peace treaties beyond the armistice, alliances that bring third parties into a war, territorial change (ports changing hands): that comes with land structures and claiming territory (step 4).
-- The story missions still come only from the Concord Admiralty.
+- The new flags have no owner-written lore; the codex shows only the owner's seven powers.
+- Peace treaties beyond the armistice, and you claiming ports (step 5, found your own flag).
+- Story missions from the Protectorate and the Outer Isles.

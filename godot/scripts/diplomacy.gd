@@ -4,10 +4,10 @@ extends Node
 ##
 ## State lives in the saved game (Campaign.G): rel {"a|b": value}, wars {"a|b": day declared}, news [[day, text]],
 ## contracts (accepted), offers {port id: {day, list}}, commission {fac, since, marque} or null, betrayed [fac],
-## nextContract. Tables: data/diplomacy.json, written from the owner's lore.
+## nextContract, cobell {war: the war it joined}. Tables: data/diplomacy.json, written from the owner's lore.
 
 var D: Dictionary = {}
-const POWERS := ["concord", "directorate", "pacific", "combine", "republic", "freeport", "enclave"]
+const POWERS := ["concord", "directorate", "pacific", "combine", "republic", "freeport", "enclave", "ombria", "isles"]
 var _clash_t := 0.0
 
 func _ready() -> void:
@@ -62,6 +62,10 @@ func ensure(st := {}) -> void:
 		for i in POWERS.size():
 			for j in range(i + 1, POWERS.size()): G.rel[pair(POWERS[i], POWERS[j])] = base_rel(POWERS[i], POWERS[j])
 	if not G.has("wars"): G.wars = {}
+	if not G.has("cobell"): G.cobell = {}
+	for p in POWERS:   # a save from before a power existed: its relations start where the tables put them
+		for q in POWERS: if p < q and not G.rel.has(pair(p, q)): G.rel[pair(p, q)] = base_rel(p, q)
+	for p in POWERS: if not G.rep.has(p): G.rep[p] = 0
 	for k in ["news", "contracts", "betrayed"]: if not G.has(k): G[k] = []
 	if not G.has("offers"): G.offers = {}
 	if not G.has("commission"): G.commission = null
@@ -90,10 +94,11 @@ func new_day() -> void:
 	for i in POWERS.size():
 		for j in range(i + 1, POWERS.size()):
 			var a: String = POWERS[i]; var b: String = POWERS[j]; var k := pair(a, b); var r := rel(a, b)
-			if not G.wars.has(k) and r <= float(D.bands.war):
-				G.wars[k] = G.day; news("WAR. The %s and the %s are at war again. Their fleets will fight wherever they meet." % [GameData.fac[a].name, GameData.fac[b].name])
-			elif G.wars.has(k) and r > float(D.bands.peace):
-				G.wars.erase(k); news("ARMISTICE. The %s and the %s agree a new armistice. Nobody believes it will last." % [GameData.fac[a].name, GameData.fac[b].name])
+			if not G.wars.has(k) and r <= float(D.bands.war): declare(a, b)
+			elif G.wars.has(k) and r > float(D.bands.peace) and not G.cobell.has(k): armistice(a, b)
+	# sieges: in a war, ports change hands
+	for k in G.wars.keys(): if randf() < float(D.get("sieges", {}).get("chance", 0.04)): _siege(k)
+	_escorts()
 	# commissions: the month's pay, or the end of service if your flag has turned on you
 	if G.commission != null:
 		var cf: String = G.commission.fac
@@ -105,6 +110,97 @@ func new_day() -> void:
 	# contracts past their deadline fail
 	for c in G.contracts.duplicate():
 		if G.day > int(c.deadline): fail(c, "The deadline has passed.")
+
+# ------------------------------------------------------------------ wars, coalitions, armistices
+func coalition_of(f: String) -> String:
+	for c in D.get("coalitions", {}):
+		if D.coalitions[c] is Array and D.coalitions[c].has(f): return c
+	return ""
+
+## War between two powers. Their allies (relations 50+) join at once; fellow members of a coalition who are merely
+## cordial join half the time (the Federation is allergic to permanent alliances). `main` is the war a joiner joins.
+func declare(a: String, b: String, main := "") -> void:
+	var G := g(); var k := pair(a, b)
+	if G.wars.has(k) or a == b: return
+	G.wars[k] = G.day; G.rel[k] = minf(rel(a, b), float(D.bands.war))
+	if main != "":
+		G.cobell[k] = main
+		news("ALLIANCE. The %s honours its obligations and declares war on the %s." % [GameData.fac[a].name, GameData.fac[b].name])
+		return
+	news("WAR. The %s and the %s are at war again. Their fleets will fight wherever they meet." % [GameData.fac[a].name, GameData.fac[b].name])
+	_call_allies(a, b, k); _call_allies(b, a, k)
+
+func _call_allies(side: String, foe: String, main: String) -> void:
+	for x in POWERS:
+		if x == side or x == foe or at_war(x, foe) or at_war(x, side): continue
+		var r := rel(x, side); var same := coalition_of(x) != "" and coalition_of(x) == coalition_of(side)
+		if rel(x, foe) >= float(D.bands.cordial): continue   # friends of both sides stay out
+		if r >= float(D.bands.allied) or (same and r >= float(D.bands.cordial) and randf() < 0.5): declare(x, foe, main)
+		elif same and r >= float(D.bands.cordial):
+			news("The %s declares its neutrality in the war between the %s and the %s." % [GameData.fac[x].name, GameData.fac[side].name, GameData.fac[foe].name])
+
+## The war between a and b ends; the allies who joined it lay down their arms with them.
+func armistice(a: String, b: String) -> void:
+	var G := g(); var k := pair(a, b)
+	G.wars.erase(k)
+	news("ARMISTICE. The %s and the %s agree a new armistice. Nobody believes it will last. Occupied ports stay occupied." % [GameData.fac[a].name, GameData.fac[b].name])
+	for j in G.cobell.keys():
+		if G.cobell[j] != k: continue
+		G.cobell.erase(j); G.wars.erase(j)
+		var xy: PackedStringArray = j.split("|"); G.rel[j] = maxf(rel(xy[0], xy[1]), float(D.bands.peace) + 3.0)
+		news("The %s and the %s lay down their arms as well." % [GameData.fac[xy[0]].name, GameData.fac[xy[1]].name], false)
+
+## A power's weight at sea: its fleets on the chart, its harbours, and your squadron if you serve it.
+func might(f: String) -> float:
+	var G := g(); var m := 0.0
+	for fl in G.fleets: if fl.fac == f: m += Campaign.strength(fl.ships)
+	m += 30000.0 * Campaign.ports_of(f).size()
+	if G.get("commission") != null and G.commission.fac == f: m += Campaign.strength(G.fleet)
+	return m
+
+## Strength within reach of a harbour: a power's fleets nearby (weighted by its navy's quality), its own harbours
+## close by, and your squadron if you serve it and are near.
+func local_might(f: String, at: Dictionary) -> float:
+	var G := g(); var R := float(D.sieges.get("reach", 900)); var m := 0.0
+	for fl in G.fleets: if fl.fac == f and Campaign.mdist(fl.x, fl.y, at.sx, at.sy) < R: m += Campaign.strength(fl.ships)
+	for p in G.ports: if p.fac == f and Campaign.mdist(p.sx, p.sy, at.sx, at.sy) < R: m += float(D.sieges.get("harbour", 25000)) * 0.5
+	if G.get("commission") != null and G.commission.fac == f and Campaign.mdist(G.player.x, G.player.y, at.sx, at.sy) < R: m += Campaign.strength(G.fleet)
+	return m * float(D.sieges.get("navy", {}).get(f, 1.0))
+
+## In a war, one side may move on a port of the other: the defender's nearest harbour to the attacker's own, never a
+## capital. Which side moves is a coin weighted by the navies' size and quality; whether the port falls depends on
+## the strength at sea near it, against the harbour's defences and garrison.
+func _siege(k: String) -> void:
+	var G := g(); var ab: PackedStringArray = k.split("|")
+	var na := might(ab[0]) * float(D.sieges.navy.get(ab[0], 1.0)); var nb := might(ab[1]) * float(D.sieges.navy.get(ab[1], 1.0))
+	if na + nb <= 0.0: return
+	var att: String = ab[0] if randf() * (na + nb) < na else ab[1]; var dfn: String = ab[1] if att == ab[0] else ab[0]
+	var best = null; var bd := INF
+	for p in G.ports:
+		if p.fac != dfn or p.capital: continue
+		for q in G.ports:
+			if q.fac != att: continue
+			var d := Campaign.mdist(p.sx, p.sy, q.sx, q.sy)
+			if d < bd: bd = d; best = p
+	if best == null or bd > 2600.0: return
+	var la := local_might(att, best); var ld := local_might(dfn, best) + float(D.sieges.get("harbour", 25000)) * float(best.get("garrison", 1))
+	var take := clampf(la / maxf(1.0, la + ld) * 0.8, 0.03, 0.6)
+	if randf() < take: capture(best, att)
+	else: news("SIEGE. A %s attack on %s is beaten off. The %s holds the port." % [GameData.fac[att].short, best.name, GameData.fac[dfn].name], Campaign.mdist(best.sx, best.sy, G.player.x, G.player.y) < 900.0)
+
+## A port changes hands: its market, officers and contract board are the new owner's from now on.
+func capture(p: Dictionary, by: String) -> void:
+	var G := g(); var old: String = p.fac
+	var home: String = Campaign.C.ports[int(p.id)].fac   # who held it in 1946: an ally retaking it hands it back
+	if home != by and home != old and (rel(home, by) >= float(D.bands.allied) or (coalition_of(home) != "" and coalition_of(home) == coalition_of(by))):
+		p.fac = home; p.merge(Campaign.market_mods(home), true); p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
+		shift(by, home, 4.0)
+		news("LIBERATED. The %s retakes %s and hands it back to the %s." % [GameData.fac[by].name, p.name, GameData.fac[home].name])
+		return
+	p.fac = by; p.merge(Campaign.market_mods(by), true); p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
+	shift(by, old, -5.0)
+	news("FALLEN. %s falls to the %s. The %s flag comes down over the harbour." % [p.name, GameData.fac[by].name, GameData.fac[old].short])
+	Campaign.log_ev("%s taken by the %s" % [p.name, GameData.fac[by].name])
 
 func _event() -> void:
 	var ev: Array = D.get("events", [])
@@ -147,7 +243,7 @@ func clash_tick(dt: float) -> void:
 				shift(a.fac, b.fac, -4.0); _fight(a, b, "incident"); return
 
 func _free(f: Dictionary) -> bool:
-	return f.cool <= 0 and not f.get("mission", false) and not f.get("hunter", false) and int(f.get("contract", 0)) == 0 and not f.ships.is_empty()
+	return f.cool <= 0 and not f.get("mission", false) and not f.get("hunter", false) and int(f.get("contract", 0)) == 0 and int(f.get("escort", 0)) == 0 and not f.ships.is_empty()
 
 ## An action between two fleets, settled without the player: the stronger side usually wins, and the loser loses
 ## most of its ships. Within earshot of your task force, you hear of it.
@@ -246,7 +342,8 @@ func offers(p: Dictionary) -> Array:
 
 func _make(p: Dictionary) -> Dictionary:
 	var G := g(); var fac: String = p.fac
-	var kinds := ["delivery", "delivery", "hunt", "survey"]
+	var kinds := ["delivery", "delivery", "hunt", "survey", "escort"]
+	if fac == "freeport" or randf() < 0.2: kinds.append_array(["smuggle", "smuggle"])
 	var foes := []
 	for e in POWERS: if at_war(fac, e): foes.append(e)
 	if not foes.is_empty(): kinds.append_array(["war", "war"])
@@ -274,6 +371,19 @@ func _make(p: Dictionary) -> Dictionary:
 			var s: Dictionary = sites.pick_random(); var dist := Campaign.mdist(p.sx, p.sy, s.x, s.y)
 			c.merge({"poi": int(s.id), "days": int(dist / speed * 2.0) + 15, "reward": int(round((3000.0 + dist * 2.5) / 100.0) * 100), "rep": 5, "title": "Survey %s" % s.name})
 			c.text = "%s wants an independent look at %s, and a report by wireless when you have it." % [p.name, s.name]
+		"escort":
+			var dests: Array = G.ports.filter(func(q): return int(q.id) != int(p.id) and (q.fac == fac or rel(fac, q.fac) > float(D.bands.cool)) and Campaign.mdist(p.sx, p.sy, q.sx, q.sy) > 500.0 and Campaign.mdist(p.sx, p.sy, q.sx, q.sy) < 2600.0)
+			if dests.is_empty(): return {}
+			var d: Dictionary = dests.pick_random(); var dist := Campaign.mdist(p.sx, p.sy, d.sx, d.sy)
+			c.merge({"dest": int(d.id), "days": int(dist / 45.0 * 1.6) + 10, "reward": int(round((4000.0 + dist * 5.0) / 100.0) * 100), "rep": 6, "title": "Escort a convoy to %s" % d.name})
+			c.text = "A %s convoy sails for %s and wants a warship alongside. It sails when you do and waits when you fall behind. Raiders will be watching the route." % [GameData.fac[fac].short, d.name]
+		"smuggle":
+			var targets: Array = G.ports.filter(func(q): return q.fac != fac and not q.capital and (rel(fac, q.fac) < float(D.bands.cool) or Campaign.hostile(q.fac)) and Campaign.mdist(p.sx, p.sy, q.sx, q.sy) < 3000.0)
+			if targets.is_empty(): return {}
+			var d: Dictionary = targets.pick_random(); var good: String = ["medicine", "electronics", "munitions"].pick_random(); var qty := randi_range(2, 5) * 5
+			var dist := Campaign.mdist(p.sx, p.sy, d.sx, d.sy)
+			c.merge({"dest": int(d.id), "good": good, "qty": qty, "days": int(dist / speed * 1.8) + 10, "reward": int(round((5000.0 + dist * 6.0 + qty * 150.0) / 100.0) * 100), "rep": 6, "title": "Run %d %s into %s" % [qty, good, d.name]})
+			c.text = "Contraband for %s, a %s harbour, landed quietly past the customs launches. Get caught and the cargo is seized and the %s remembers. The fewer ships you bring in, the better your chances." % [d.name, GameData.fac[d.fac].short, GameData.fac[d.fac].short]
 		"war":
 			var foe: String = foes.pick_random()
 			c.merge({"target": foe, "need": 3, "got": 0, "days": 60, "reward": int(round((14000.0 + randf() * 8000.0) / 500.0) * 500), "rep": 10,
@@ -285,7 +395,7 @@ func _make(p: Dictionary) -> Dictionary:
 func can_accept(c: Dictionary) -> String:
 	var G := g()
 	if G.contracts.size() >= int(D.contracts.max_active): return "You can hold %d contracts at once." % int(D.contracts.max_active)
-	if c.kind == "delivery" and Campaign.cargo_cap() - Campaign.cargo_used() < int(c.qty): return "Not enough room in the hold (%d needed)." % int(c.qty)
+	if (c.kind == "delivery" or c.kind == "smuggle") and Campaign.cargo_cap() - Campaign.cargo_used() < int(c.qty): return "Not enough room in the hold (%d needed)." % int(c.qty)
 	return ""
 
 func accept(c: Dictionary) -> void:
@@ -293,7 +403,12 @@ func accept(c: Dictionary) -> void:
 	for k in G.offers: G.offers[k].list.erase(c)
 	c.deadline = G.day + int(c.days)
 	match c.kind:
-		"delivery": G.cargo[c.good] = G.cargo.get(c.good, 0) + int(c.qty)
+		"delivery", "smuggle": G.cargo[c.good] = G.cargo.get(c.good, 0) + int(c.qty)
+		"escort":
+			var f: Dictionary = Campaign.spawn_fleet("convoy", c.fac)
+			var from: Dictionary = G.ports[int(c.port)]
+			f.x = from.sx; f.y = from.sy; f.home = {"x": from.sx, "y": from.sy}; f.from = int(c.port); f.dest = int(c.dest); f.route = null; f.started = false
+			f.escort = int(c.id); f.name = GameData.fac[c.fac].short + " convoy (escort)"; c.fleet = int(f.id)
 		"hunt":
 			var f: Dictionary = Campaign.spawn_fleet("raiders", "raiders")
 			# a flotilla worth the pay: about twice the reward in ships
@@ -320,9 +435,11 @@ func fail(c: Dictionary, why: String) -> void:
 	var t := "Contract failed: %s. %s %s standing -8." % [c.title, why, GameData.fac[c.fac].short]
 	Campaign.log_ev(t); Campaign.toast.emit(t)
 
-## Docking: deliveries for this port are handed over, if the goods are still in the hold.
+## Docking: deliveries for this port are handed over, if the goods are still in the hold; contraband is run ashore.
 func on_dock(p: Dictionary) -> void:
 	var G := g()
+	var sm = smuggle_for(p)
+	if sm != null: Campaign.toast.emit(run_contraband(sm, p))
 	for c in G.contracts.duplicate():
 		if c.kind != "delivery" or int(c.dest) != int(p.id): continue
 		if int(G.cargo.get(c.good, 0)) >= int(c.qty): G.cargo[c.good] -= int(c.qty); complete(c)
@@ -346,8 +463,56 @@ func marks() -> Array:
 	var G := g(); var out := []
 	for c in G.get("contracts", []):
 		match c.kind:
-			"delivery": var p: Dictionary = G.ports[int(c.dest)]; out.append([p.x, p.y, c.title])
+			"delivery", "smuggle": var p: Dictionary = G.ports[int(c.dest)]; out.append([p.x, p.y, c.title])
+			"escort":
+				for f in G.fleets: if int(f.get("escort", 0)) == int(c.id): out.append([f.x, f.y, c.title])
 			"survey": var q: Dictionary = G.pois[int(c.poi)]; out.append([q.x, q.y, c.title])
 			"hunt":
 				for f in G.fleets: if int(f.get("contract", 0)) == int(c.id): out.append([f.x, f.y, c.title])
 	return out
+
+# ------------------------------------------------------------------ escorts and smuggling
+## Escort convoys: they move only while you keep station (see Campaign.update); part way along, raiders try them.
+func _escorts() -> void:
+	var G := g()
+	for c in G.contracts.duplicate():
+		if c.kind != "escort": continue
+		var f = null
+		for q in G.fleets: if int(q.get("escort", 0)) == int(c.id): f = q
+		if f == null: fail(c, "The convoy was lost."); continue
+		var r = f.get("route")
+		if not c.get("ambushed", false) and r != null and r.size() > 2 and float(f.ri) / r.size() > 0.3:
+			c.ambushed = true
+			var a: Dictionary = Campaign.spawn_fleet("raiders", "raiders")
+			var w := Campaign.water_point(6, Vector2(f.x + 25.0, f.y), 30.0); a.x = w.x; a.y = w.y; a.home = {"x": w.x, "y": w.y}; a.cool = 0.0
+			Campaign.toast.emit("Lookouts report raiders closing on the convoy %s." % where(f.x, f.y))
+
+## The escorted convoy made harbour.
+func on_convoy_arrived(f: Dictionary) -> void:
+	for c in g().contracts.duplicate():
+		if c.kind == "escort" and int(f.get("escort", 0)) == int(c.id): complete(c)
+
+## A smuggling contract for this harbour, if you hold one.
+func smuggle_for(p: Dictionary):
+	for c in g().contracts: if c.kind == "smuggle" and int(c.dest) == int(p.id): return c
+	return null
+
+## The chance of being caught landing contraband here: worse in a closed harbour, better with fewer ships and a
+## captain who knows how to slip away.
+func smuggle_risk(p: Dictionary) -> float:
+	var r := 0.45 if Campaign.hostile(p.fac) else 0.3
+	r += 0.04 * maxi(0, Campaign.G.fleet.size() - 2) - float(Campaign.perk("evade", 0)) / 100.0
+	return clampf(r, 0.08, 0.8)
+
+## Land the contraband: paid if it gets ashore; if caught, the cargo is seized, the harbour's flag remembers, and in a
+## closed harbour it is an incident.
+func run_contraband(c: Dictionary, p: Dictionary) -> String:
+	var G := g()
+	if int(G.cargo.get(c.good, 0)) < int(c.qty): return "The contraband for %s is short: %d %s needed in the hold." % [p.name, int(c.qty), c.good]
+	G.cargo[c.good] -= int(c.qty)
+	if randf() >= smuggle_risk(p): complete(c); return "The cargo goes ashore by night at %s. Nobody saw a thing." % p.name
+	G.rep[p.fac] = G.rep.get(p.fac, 0) - 12
+	if Campaign.hostile(p.fac): Campaign.incident(p.fac)
+	G.contracts.erase(c); G.rep[c.fac] = G.rep.get(c.fac, 0) - 4
+	Campaign.log_ev("Caught smuggling at " + p.name)
+	return "Customs launches catch you at %s. The cargo is seized; %s standing -12%s." % [p.name, GameData.fac[p.fac].short, " and their warships will be looking for you" if Campaign.hostile(p.fac) else ""]

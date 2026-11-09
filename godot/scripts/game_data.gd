@@ -36,9 +36,13 @@ func tex(path: String) -> Texture2D:
 	_tex[path] = it
 	return it
 
-## Paint scheme actually baked for a design: its own flag if available, otherwise the raiders' scheme.
+## The paint scheme a flag wears: its own, or the one it borrows (a client state in its patron's colours).
+func paint(p: String) -> String: return fac.get(p, {}).get("paint", p)
+
+## Paint scheme actually baked for a design: its flag's if available, otherwise the raiders' scheme.
 func ship_pal(id: String, p: String) -> String:
-	return p if sprites.ships[id].pals.has(p) else "raiders"
+	var q := paint(p)
+	return q if sprites.ships[id].pals.has(q) else "raiders"
 
 func ship_tex(id: String, p: String, layer: String) -> Texture2D:
 	if layer.ends_with("shadow"): return tex("res://assets/ships/%s/%s.webp" % [id, layer])
@@ -68,7 +72,7 @@ func turret_h(w: Dictionary) -> float:
 
 ## Mount paint: the flag's superstructure colour (the shader divides out the reference grey the mounts are baked in).
 func mount_tint(p: String) -> Vector3:
-	var c := Color(pal.get(p, pal.player).sup)
+	var c := Color(pal.get(paint(p), pal.player).sup)
 	return Vector3(c.r, c.g, c.b)
 
 var mount_shader: Shader = preload("res://shaders/mount_light.gdshader")

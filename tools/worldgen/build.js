@@ -247,6 +247,65 @@ const landSites = []; {
   }
 }
 for (const q of landSites) if (q.land === 'unnamed land') console.log('  unnamed land at', (q.x / DEG - 180).toFixed(1), (LAT0 - q.y / DEG).toFixed(1));
+
+// ------------------------------------------------------------------ military installations (land structures, step 4)
+// Coastal batteries, airfields and radar stations round the ports and on both shores of every strait, and naval
+// bases (old wartime harbours) on coasts away from the ports. Owners are decided in the game (structures.gd), from
+// the nearest port. Hand additions: world.json "installations": [{kind, at: [lon, lat]}].
+const installations = []; {
+  const r = require('./noise').rng(W.seed * 131 + 9);
+  const cellXY = k => [(k % CW + 0.5) * MASK_RES, (((k / CW) | 0) + 0.5) * MASK_RES];
+  const taken = [];   // every structure so far, to keep them apart
+  for (const q of landSites) taken.push([q.x, q.y]);
+  const clear = (x, y, d) => taken.every(([tx, ty]) => Math.hypot(wdx(tx, x), ty - y) >= d);
+  // land cells with inland distance in [lo, hi] between rMin and rMax map units of (cx, cy), best first by score
+  function pick(cx, cy, rMin, rMax, lo, hi, gap, score) {
+    const out = [], c0 = Math.floor(wrapX(cx) / MASK_RES), r0 = Math.floor(cy / MASK_RES), R = Math.ceil(rMax / MASK_RES);
+    for (let dj = -R; dj <= R; dj++) for (let di = -R; di <= R; di++) {
+      const j = r0 + dj; if (j < 0 || j >= CH) continue;
+      const k = j * CW + (c0 + di + CW) % CW; if (!mask[k] || inland[k] < lo || inland[k] > hi) continue;
+      const [x, y] = cellXY(k), d = Math.hypot(wdx(cx, x), y - cy);
+      if (d < rMin || d > rMax || Math.abs(LAT0 - y / DEG) > 66) continue;
+      out.push([score ? score(d, k) : d + r() * rMax * 0.6, k, x, y]);
+    }
+    out.sort((a, b) => a[0] - b[0]);
+    for (const [, k, x, y] of out) if (clear(x, y, gap)) return { k, x, y };
+    return null;
+  }
+  const nearestPort = (x, y) => { let best = -1, bd = 1e9; for (const p of ports) { const d = Math.hypot(wdx(p.x, x), p.y - y); if (d < bd) { bd = d; best = p.id; } } return best; };
+  const add = (kind, at, extra = {}) => {
+    if (!at) return;
+    taken.push([at.x, at.y]);
+    installations.push({ id: installations.length, kind, x: r2(at.x), y: r2(at.y), land: landOf(at.k), port: extra.port ?? nearestPort(at.x, at.y), coastKm: Math.round(inland[at.k] * 0.1 * 111), ...(extra.strait ? { strait: extra.strait } : {}) });
+  };
+  for (const p of ports) {
+    const fortified = p.fac === 'directorate' || (p.garrison || 1) > 1;   // the Directorate's fortified harbours
+    for (let i = 0; i < (fortified ? 2 : 1); i++) add('battery', pick(p.sx, p.sy, 6, 40, 1, 2, 12), { port: p.id });
+    if (p.capital || (p.garrison || 1) > 1 || p.fac === 'pacific' || p.id % 2 === 0) add('airfield', pick(p.x, p.y, 25, 110, 4, 16, 18), { port: p.id });
+    if (p.capital || (p.garrison || 1) > 1 || (['concord', 'directorate', 'combine'].includes(p.fac) && p.id % 3 === 0)) add('radar', pick(p.sx, p.sy, 15, 70, 1, 3, 14), { port: p.id });
+  }
+  // both shores of every strait and canal: a battery each side, and a radar
+  for (const c of world.channels) {
+    const m = c.pts[c.pts.length >> 1], sx = wrapX(lonX(m[0])), sy = latY(m[1]), name = (W.channelNames || {})[c.name] || c.name;
+    const a = pick(sx, sy, 2, 45, 1, 2, 6); add('battery', a, { strait: name });
+    if (a) add('battery', pick(sx, sy, 2, 45, 1, 2, 6, (d, k) => { const [x, y] = cellXY(k); const o = Math.hypot(wdx(a.x, x), y - a.y); return o < 8 ? 1e9 : d - o * 0.3; }), { strait: name });
+    add('radar', pick(sx, sy, 6, 60, 1, 3, 10), { strait: name });
+  }
+  // naval bases: wartime harbours on quiet coasts, well away from the ports and from each other
+  const coast = [];
+  for (let j = 0; j < CH; j += 3) for (let i = 0; i < CW; i += 3) { const k = j * CW + i; if (mask[k] && inland[k] === 1 && Math.abs(LAT0 - (j + 0.5) * MASK_RES / DEG) < 58) coast.push([r(), k]); }
+  coast.sort((a, b) => a[0] - b[0]);
+  const bases = [];
+  for (const [, k] of coast) {
+    if (bases.length >= 16) break;
+    const [x, y] = cellXY(k);
+    if (ports.some(p => Math.hypot(wdx(p.x, x), p.y - y) < 6 * DEG)) continue;
+    if (bases.some(b => Math.hypot(wdx(b.x, x), b.y - y) < 14 * DEG) || !clear(x, y, 25)) continue;
+    const at = { k, x, y }; bases.push(at); add('navalbase', at);
+  }
+  for (const h of W.installations || []) { const x = wrapX(lonX(h.at[0])), y = latY(h.at[1]), k = Math.floor(y / MASK_RES) * CW + Math.floor(x / MASK_RES); add(h.kind, { k, x, y }); }
+}
+log('installations:', installations.length, Object.entries(installations.reduce((o, q) => (o[q.kind] = (o[q.kind] || 0) + 1, o), {})).map(e => e.join(' ')).join(', '));
 log('land sites:', landSites.length, Object.entries(landSites.reduce((o, q) => (o[q.kind] = (o[q.kind] || 0) + 1, o), {})).map(e => e.join(' ')).join(', '));
 for (const p of ports) p.land = landOf(Math.floor(p.y / MASK_RES) * CW + Math.floor(p.x / MASK_RES));
 
@@ -261,7 +320,7 @@ Object.assign(camp, {
   STRAITS: world.channels.map(c => { const p = c.pts[c.pts.length >> 1]; return { name: names[c.name] || c.name, kind: c.role, x: r2(wrapX(lonX(p[0]))), y: r2(latY(p[1])) }; }),
   ICE_BIAS: W.iceBias,
   RAIDER_GROUNDS: (W.raiderGrounds || []).map(([lo, la, r]) => [r2(lonX(lo)), r2(latY(la)), r * DEG]),
-  LANDMASSES: [...new Set((W.landmasses || []).map(m => m.name))], LAND_SITES: landSites,
+  LANDMASSES: [...new Set((W.landmasses || []).map(m => m.name))], LAND_SITES: landSites, INSTALLATIONS: installations,
   land, landMinX: minX, landMaxX: maxX,
 });
 for (const [k, v] of Object.entries(W.starts || {})) if (camp.STARTS[k]) Object.assign(camp.STARTS[k], v);

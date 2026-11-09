@@ -10,6 +10,9 @@ var ambience := 0.8
 var minimap := 1                  # 0 small, 1 medium, 2 large
 var fx_modern := true             # battle effects: modern (layered explosions, light, spray) or classic
 const MINIMAP_W := [190.0, 280.0, 400.0]
+## Everything plays through this fixed output level: the owner found the game far too loud, so 100% on the sliders
+## is now what 10% used to be. Settings saved before the change are carried over at the same loudness.
+const OUTPUT := 0.1
 
 func _ready() -> void:
 	UI.setup(get_tree().root)   # Barlow and the shared theme for every screen
@@ -22,16 +25,19 @@ func _ready() -> void:
 		master = cf.get_value("sound", "master", master); effects = cf.get_value("sound", "effects", effects)
 		ambience = cf.get_value("sound", "ambience", ambience); minimap = cf.get_value("battle", "minimap", minimap)
 		fx_modern = cf.get_value("battle", "fx_modern", fx_modern)
+		if int(cf.get_value("sound", "scale", 1)) < 2:   # saved on the old, ten-times-louder scale: keep the same loudness
+			effects = minf(1.0, effects * 10.0); ambience = minf(1.0, ambience * 10.0)
+			save()
 	apply()
 
 func apply() -> void:
-	for pair in [["Master", master], ["Effects", effects], ["Ambience", ambience]]:
+	for pair in [["Master", master * OUTPUT], ["Effects", effects], ["Ambience", ambience]]:
 		var i := AudioServer.get_bus_index(pair[0])
 		if i >= 0: AudioServer.set_bus_volume_db(i, linear_to_db(maxf(float(pair[1]), 0.0001))); AudioServer.set_bus_mute(i, float(pair[1]) <= 0.001)
 
 func save() -> void:
 	var cf := ConfigFile.new()
-	cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern)
+	cf.set_value("sound", "scale", 2); cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern)
 	cf.save(PATH)
 
 func minimap_width() -> float: return MINIMAP_W[clampi(minimap, 0, 2)]

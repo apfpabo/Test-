@@ -96,6 +96,14 @@ func _exit_tree() -> void: Sfx.engine(0.0); Sfx.ambience(0.0)
 func rx(x: float) -> float: return cam.x + Campaign.wdx(cam.x, x) # place a wrapped world x next to the camera
 func to_screen(p: Vector2) -> Vector2: return (Vector2(rx(p.x), p.y) - cam) * zoom + get_viewport_rect().size / 2
 func to_world(sp: Vector2) -> Vector2: return (sp - get_viewport_rect().size / 2) / zoom + cam
+## How large a structure is drawn close in (map units): larger than life so it reads, but never reaching past the
+## coast for an inland one, and no bigger than a few kilometres' worth for a battery, radar or harbour on the shore.
+func struct_r(s) -> float:
+    if s == null: return 0.0
+    var r: float = 18.0 * boost() / zoom
+    if Structures.COASTAL.has(s.kind): return minf(r, 2.6)
+    return minf(r, maxf(1.0, float(s.coastKm) / Campaign.KM_PER_UNIT * 0.8))
+
 ## The bearing from a structure to the nearest sea (batteries and piers face it), worked out once.
 func face_of(s: Dictionary) -> float:
     if not s.has("face"): var w := Campaign.nearest_water(s.x, s.y, 80); s.face = Campaign.mang(s.x, s.y, w.x, w.y)
@@ -282,9 +290,11 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
                 var rr := Structures.battery_units(); var n := 40
                 for i in n: if i % 2 == 0: draw_arc(c, rr, i * TAU / n, (i + 1) * TAU / n, 3, Color(0.85, 0.38, 0.29, 0.4), 1.2 / z)
             if close:
-                InstallationArt.draw(self, s.kind, c, 18.0 * b / z, int(s.id), map.face_of(s), float(s.dmg), float(s.ruin), true, map.tnow)
+                var R: float = map.struct_r(s); var face: float = map.face_of(s)
+                var dc := c - Vector2.from_angle(face) * R * 0.45 if Structures.COASTAL.has(s.kind) else c   # coastal works: the sea front on the shore
+                InstallationArt.draw(self, s.kind, dc, R, int(s.id), face, float(s.dmg), float(s.ruin), true, map.tnow)
                 var fc: Color = Color("#e3b23c") if mine else (Color(0.6, 0.6, 0.55) if s.fac == "" else Color(GameData.fac[s.fac].map))
-                var fp := c + Vector2(0, -18.0 * b / z * 0.95)   # a small flag on its staff
+                var fp := dc + Vector2(0, -R * 0.95)   # a small flag on its staff
                 draw_line(fp, fp + Vector2(0, -9.0 / z), Color(0.85, 0.85, 0.8), 1.0 / z)
                 draw_colored_polygon(PackedVector2Array([fp + Vector2(0, -9.0 / z), fp + Vector2(7.0 / z, -7.0 / z), fp + Vector2(0, -5.0 / z)]), fc)
             else:
@@ -427,7 +437,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             if not (mine and z > 0.2) and z < 1.0: continue
             var sp: Vector2 = map.to_screen(Vector2(s.x, s.y))
             if sp.x < -150 or sp.x > vs.x + 150 or sp.y < -50 or sp.y > vs.y + 50: continue
-            var off: float = 18.0 * b * 0.95 + 6.0 if z >= 3.0 else 14.0
+            var off: float = map.struct_r(s) * z * 0.95 + 6.0 if z >= 3.0 else 14.0
             var col: Color = Color("#e3b23c") if mine else (Color(0.75, 0.75, 0.7, 0.85) if s.fac == "" else Color(GameData.fac[s.fac].map))
             var st: String = " · silenced" if Structures.silenced(s) and not mine else ""
             _t(sp + Vector2(0, off + 10), s.name, Color(0.92, 0.92, 0.88, 0.9), 11)
@@ -633,7 +643,7 @@ func _zoom_at(f: float, sp: Vector2) -> void:
 
 func _click(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
-    var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / minf(zoom, 1.5)
+    var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / zoom   # r in screen pixels
     if Input.is_key_pressed(KEY_CTRL) and P.get("route") != null and P.get("follow") == null and P.get("escort") == null:   # another waypoint
         var tp = null
         for p in G.ports: if near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10): tp = p
@@ -643,8 +653,9 @@ func _click(sp: Vector2) -> void:
         else: _toast("No sea route to that point.")
         return
     P.destPort = null; P.follow = null; P.escort = null; Campaign.paused = false
-    for f in G.fleets:
-        if near.call(f.x, f.y, 16 * boost()): P.follow = f.id; P.repathT = 0.0; f.cool = 0.0; _toast("Intercept course locked on the " + f.name.to_lower() + ". You will close and make contact."); return
+    var hit = fleet_at(w)
+    for f in ([hit] if hit != null else []):
+        P.follow = f.id; P.repathT = 0.0; f.cool = 0.0; _toast("Intercept course locked on the " + f.name.to_lower() + ". You will close and make contact."); return
     for p in G.ports:
         if near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10):
             if Campaign.mdist(p.sx, p.sy, P.x, P.y) < 28: open_port(p); return
@@ -656,7 +667,7 @@ func _click(sp: Vector2) -> void:
             if Campaign.mdist(q.x, q.y, P.x, P.y) < 22: open_survey(q); return
             Campaign.set_course(P, q.x, q.y); return
     if zoom >= 0.3:
-        var st = Structures.at_point(w.x, w.y, (22.0 * boost() / zoom) if zoom >= 3.0 else 9.0 / minf(zoom, 1.5))
+        var st = Structures.at_point(w.x, w.y, maxf(10.0 / zoom, struct_r(Structures.at_point(w.x, w.y, 40.0)) if zoom >= 3.0 else 0.0))
         if st != null and (st.fac == "player" or zoom >= (0.3 if Structures.kind(st).military else 0.45)): open_struct(st); return
     if Campaign.on_land(w.x, w.y): _toast("That is land. Pick a point on the water."); return
     if not Campaign.set_course(P, w.x, clampf(w.y, 4, Campaign.MH - 4)): P.tx = null; _toast("No sea route to that point.")
@@ -665,8 +676,7 @@ func _click(sp: Vector2) -> void:
 var _menu: PopupMenu
 func _context(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); var hit = null
-    for f in G.fleets:
-        if Campaign.mdist(f.x, f.y, Campaign.wrap_x(w.x), w.y) < 16 * boost() / minf(zoom, 1.5): hit = f; break
+    hit = fleet_at(Vector2(Campaign.wrap_x(w.x), w.y))
     if _menu == null:
         _menu = PopupMenu.new(); _menu.add_theme_font_size_override("font_size", 14); ui.add_child(_menu)
         _menu.id_pressed.connect(_context_pick)
@@ -700,6 +710,15 @@ func _context_pick(id: int) -> void:
         3:
             P.escort = null; P.follow = null; P.destPort = null; P.route = null; P.tx = null
             _toast("Orders cancelled. The squadron heaves to.")
+
+## The fleet under a chart point: within 16 pixels or about its drawn size, whichever is larger; the nearest wins.
+func fleet_at(w: Vector2):
+    var best = null; var bd := INF
+    for f in Campaign.G.fleets:
+        var d := Campaign.mdist(f.x, f.y, Campaign.wrap_x(w.x), w.y)
+        var r: float = maxf(16.0 / zoom, marks._layout(f.ships)[0][3] * 0.55 if zoom >= 0.32 else 0.0)
+        if d < r and d < bd: bd = d; best = f
+    return best
 
 # ------------------------------------------------------------------ panels
 var _blocking = false   # a panel that must be answered (an encounter or an aftermath)

@@ -33,7 +33,9 @@ func battery_units() -> float: return float(D.battery_km) / Campaign.KM_PER_UNIT
 ## Builds the structures from the world tables (LAND_SITES, INSTALLATIONS) if the saved game has none yet.
 func ensure() -> void:
 	var G := g()
-	if G.has("structs") and not G.structs.is_empty(): return
+	if G.has("structs") and not G.structs.is_empty():
+		for s in G.structs: if not s.has("shore"): _to_shore(s)   # saves from before coastal installations stood on the coast
+		return
 	var C: Dictionary = Campaign.C; var out := []
 	var src := []
 	for q in C.get("LAND_SITES", []): src.append(q)
@@ -47,10 +49,30 @@ func ensure() -> void:
 		s.fac = p.fac if p != null else ""
 		s.home = s.fac
 		s.name = _name(s, p, q.get("strait", ""), used)
-		if s.kind == "navalbase":
-			var w := Campaign.nearest_water(s.x, s.y, 40); s.sx = w.x; s.sy = w.y; s.store = {}
+		if s.kind == "navalbase": s.store = {}
+		_to_shore(s)
 		out.append(s)
 	G.structs = out
+
+const COASTAL := ["battery", "radar", "navalbase"]
+## Batteries, radar stations and naval bases stand on the coast itself, about 2 km inland, facing the sea. (The world
+## build's land grid is 0.1 degrees, so its nearest inland cell is already 11 km from the water: too far for a gun
+## position or a harbour.) Other structures keep their place.
+func _to_shore(s: Dictionary) -> void:
+	s.shore = true
+	if not COASTAL.has(s.kind): return
+	var w := Campaign.nearest_water(s.x, s.y, 80)
+	if Campaign.on_land(w.x, w.y): return
+	var d := Vector2(Campaign.wdx(w.x, s.x), s.y - w.y); var L := d.length()
+	if L < 0.01: return
+	var u := d / L; var p := Vector2(w.x, w.y)
+	for i in int(L / 0.1) + 1:   # walk from the water back towards the old place until the shore
+		p += u * 0.1
+		if Campaign.on_land(p.x, p.y): break
+	p += u * 0.35   # a couple of km inland
+	s.x = Campaign.wrap_x(p.x); s.y = p.y; s.coastKm = 2
+	for k in ["face", "cx", "cy", "ox", "oy"]: s.erase(k)
+	if s.kind == "navalbase": s.sx = w.x; s.sy = w.y
 
 ## The port a structure belongs to: the nearest on the same landmass within reach, else a port just across the
 ## water, else none (the structure is unclaimed: the far south, the empty island groups).
@@ -291,10 +313,18 @@ func _strike_contracts(s: Dictionary, res: Dictionary) -> void:
 ## The sea off the coast nearest a structure, reachable by sea (an inland lake won't do: then its port's
 ## roadstead). Cached in the record.
 func coast_point(s: Dictionary) -> Vector2:
-	if s.has("cx"): return Vector2(float(s.cx), float(s.cy))
+	if s.has("ox"): return Vector2(float(s.ox), float(s.oy))
 	var p: Dictionary = g().ports[int(s.port)]; var w := Campaign.nearest_water(s.x, s.y, 80)
+	# stand off the shore, clear of the land by about three map units, so a fleet can arrive without circling
+	var out := Vector2(Campaign.wdx(s.x, w.x), w.y - s.y).normalized()
+	if out != Vector2.ZERO:
+		for i in 16:
+			if not Campaign.land_near(w.x, w.y, 3.0): break
+			var nx := w + out * 0.5
+			if Campaign.on_land(nx.x, nx.y): break
+			w = Vector2(Campaign.wrap_x(nx.x), nx.y)
 	if Campaign.on_land(w.x, w.y) or (not Campaign.sight_line(p.sx, p.sy, w.x, w.y) and Campaign.find_path(Vector2(p.sx, p.sy), w).is_empty()): w = Vector2(p.sx, p.sy)
-	s.cx = w.x; s.cy = w.y
+	s.ox = w.x; s.oy = w.y
 	return w
 
 ## Close enough to land a garrison: the fleet lies off the coast nearest the structure.

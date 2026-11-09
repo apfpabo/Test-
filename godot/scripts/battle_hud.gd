@@ -122,7 +122,6 @@ func _draw() -> void:
         _text(Vector2(x + 10, y + 26), f.rec.name.to_upper(), GOLD, 20)
         var hdg = int(round(fposmod(rad_to_deg(f.a + PI / 2), 360))); var rud = int(round(f.rud * 35))
         var line = f.d.dn + " class · " + ["All stop", "Slow ahead", "Half ahead", "Full ahead", "Flank speed"][f.throttle] + " · %d kn · course %03d° · rudder " % [int(round(f.v / BattleSim.KN)), hdg] + (("%d° " % absi(rud)) + ("port" if rud < 0 else "stbd") if rud else "amidships")
-        line += " · shells " + ("auto" if f.shell_mode == "auto" else BattleSim.SHELLS[f.shell_mode].name) + " (V)"
         if f.sub: line += " · SUBMERGED" if sim.submerged(f) else (" · diving" if f.want_dive else " · surfaced")
         _text(Vector2(x + 10, y + 46), line, DIM, 12)
         _text(Vector2(x + 10, y + 64), "Hull", DIM, 12); _bar(Vector2(x + 60, y + 56), 350, 7, f.hull / f.max_hull, GREEN)
@@ -168,8 +167,8 @@ func _draw() -> void:
             var st = ""
             for q in f.squads: st += ("▲" + str(q.n) if q.state == "ready" else ("→" if q.state == "out" else ("…" if q.state == "rearm" else "✕"))) + " "
             _text(Vector2(x + w - 10 - 200, y + 26), "Air: " + st, Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
-        _schematic(f, Rect2(x, y - 140, w, 120))
-        if f.mounts.any(func(m): return m.w.kind == "gun" and m.w.size != "A"): _shell_panel(f, Rect2(x, y - 140 - 98, w, 90))
+        _schematic(f, Rect2(x, y - 134, w, 120))   # the three boxes stand 14 px apart
+        if f.mounts.any(func(m): return m.w.kind == "gun" and m.w.size != "A"): _shell_panel(f, Rect2(x, y - 134 - 14 - 90, w, 90))
     # hit results: what each shell did, rising from where it struck and fading (hits on your own ships in red)
     for hm in sim.hit_marks:
         var a: float = clampf(hm.t / 0.6, 0.0, 1.0); var sp: Vector2 = to_screen(hm.pos) + Vector2(0, -26 - (1.8 - hm.t) * 18.0)
@@ -258,22 +257,30 @@ const SHELL_INFO := {
     "inc": ["INCENDIARY", "Sets a ship alight: four times the fires, little else. For merchants and wooden decks.", Color(0.78, 0.22, 0.16), Color(0.55, 0.5, 0.46)]}
 func _shell(c: Vector2, hgt: float, kind: String, dim := false) -> void:
     var info: Array = SHELL_INFO[kind]; var w := hgt * 0.3; var a := 0.4 if dim else 1.0
-    var body_top := c.y - hgt * 0.12; var base := c.y + hgt * 0.5
-    # the cartridge band and body
-    draw_rect(Rect2(c.x - w / 2, body_top, w, base - body_top), Color(info[3], a))
-    draw_rect(Rect2(c.x - w / 2, body_top, w * 0.28, base - body_top), Color(1, 1, 1, 0.12 * a))                       # a highlight down one side
-    draw_rect(Rect2(c.x - w / 2, base - hgt * 0.1, w, hgt * 0.035), Color(0.72, 0.5, 0.24, a))                         # copper driving band
-    draw_rect(Rect2(c.x - w / 2, base - hgt * 0.035, w, hgt * 0.035), Color(0.1, 0.11, 0.12, a))
-    # the head: an ogive in the colour of its kind
-    var pts := PackedVector2Array([Vector2(c.x - w / 2, body_top)])
-    for i in 9:
-        var t := i / 8.0; pts.append(Vector2(c.x - w / 2 * (1.0 - t) * (1.0 - t * 0.25) - (0.0 if i < 8 else 0.0), body_top - hgt * 0.38 * sin(t * PI / 2)))
-    for i in range(8, -1, -1):
-        var t := i / 8.0; pts.append(Vector2(c.x + w / 2 * (1.0 - t) * (1.0 - t * 0.25), body_top - hgt * 0.38 * sin(t * PI / 2)))
-    draw_colored_polygon(pts, Color(info[2], a))
-    if kind == "ap": draw_rect(Rect2(c.x - w * 0.5, body_top - hgt * 0.06, w, hgt * 0.06), Color(0.3, 0.36, 0.44, a))   # the armour-piercing cap's shoulder
-    if kind == "he": draw_circle(Vector2(c.x, body_top - hgt * 0.36), w * 0.13, Color(0.75, 0.75, 0.7, a))             # nose fuze
-    if kind == "inc": draw_rect(Rect2(c.x - w / 2, body_top + hgt * 0.06, w, hgt * 0.05), Color(0.95, 0.85, 0.3, a))   # yellow band
+    var body_top := c.y - hgt * 0.12; var base := c.y + hgt * 0.5; var x0 := c.x - w / 2
+    # a round body lit from the upper left: bright a third of the way across, falling away to a dark far edge
+    var shade := func(t: float) -> float: return 0.62 + 0.62 * exp(-pow((t - 0.3) / 0.24, 2.0)) - 0.3 * smoothstep(0.6, 1.0, t)
+    var n := 12
+    for i in n:
+        var t := (i + 0.5) / n; var k: float = shade.call(t); var col: Color = info[3]
+        draw_rect(Rect2(x0 + w * i / n, body_top, w / n + 0.5, base - body_top), Color(col.r * k, col.g * k, col.b * k, a))
+        draw_rect(Rect2(x0 + w * i / n, base - hgt * 0.1, w / n + 0.5, hgt * 0.035), Color(0.72 * k, 0.5 * k, 0.24 * k, a))   # copper driving band
+        if kind == "inc": draw_rect(Rect2(x0 + w * i / n, body_top + hgt * 0.06, w / n + 0.5, hgt * 0.05), Color(0.95 * k, 0.85 * k, 0.3 * k, a))   # yellow band
+        if kind == "ap": draw_rect(Rect2(x0 + w * i / n, body_top - hgt * 0.06, w / n + 0.5, hgt * 0.065), Color(0.3 * k, 0.36 * k, 0.44 * k, a))   # the cap's shoulder
+    draw_rect(Rect2(x0, base - hgt * 0.035, w, hgt * 0.035), Color(0.08, 0.09, 0.1, a))                                       # the base, in shadow
+    draw_line(Vector2(x0, base + 1.0), Vector2(x0 + w + hgt * 0.1, base + 1.0), Color(0, 0, 0, 0.35 * a), maxf(1.0, hgt * 0.03))   # the shadow it stands on
+    # the head: an ogive in the colour of its kind, shaded the same way in strips that follow its curve
+    var top := body_top - (hgt * 0.06 if kind == "ap" else 0.0); var hh := hgt * 0.38
+    var half := func(v: float) -> float: return w / 2 * sqrt(maxf(0.0, 1.0 - pow(v, 1.7)))   # half-width at height v (0 at the shoulder, 1 at the tip)
+    var rows := maxi(4, int(hh / 1.5))
+    for j in rows:
+        var v0 := float(j) / rows; var v1 := float(j + 1) / rows; var hw0: float = half.call(v0); var hw1: float = half.call(v1)
+        for i in n:
+            var t0 := float(i) / n; var t1 := float(i + 1) / n; var k: float = shade.call((t0 + t1) / 2); var col: Color = info[2]
+            draw_colored_polygon(PackedVector2Array([Vector2(c.x - hw0 + 2 * hw0 * t0, top - hh * v0), Vector2(c.x - hw0 + 2 * hw0 * t1 + 0.4, top - hh * v0),
+                Vector2(c.x - hw1 + 2 * hw1 * t1 + 0.4, top - hh * v1 - 0.4), Vector2(c.x - hw1 + 2 * hw1 * t0, top - hh * v1 - 0.4)]), Color(minf(1.0, col.r * k), minf(1.0, col.g * k), minf(1.0, col.b * k), a))
+    if kind == "he": draw_circle(Vector2(c.x, top - hh * 0.93), w * 0.13, Color(0.8, 0.8, 0.74, a)); draw_circle(Vector2(c.x - w * 0.04, top - hh * 0.95), w * 0.05, Color(1, 1, 1, 0.7 * a))   # nose fuze
+    draw_line(Vector2(c.x - w * 0.2, body_top + hgt * 0.04), Vector2(c.x - w * 0.2, base - hgt * 0.14), Color(1, 1, 1, 0.16 * a), maxf(1.0, w * 0.06))   # a glint down the lit side
 func _shell_panel(f, r: Rect2) -> void:
     draw_rect(r, PANEL); draw_rect(r, Color(GOLD, 0.35), false, 1)
     var mode: String = f.shell_mode; var cur: String = mode if mode != "auto" else (f.last_shell if f.last_shell != "" else "ap")

@@ -1,0 +1,60 @@
+{
+ "origins": {
+  "disgraced": {
+   "title": "The Disgraced Officer",
+   "subtitle": "Faction Captain",
+   "story": "You were a commissioned officer in one of the major navies. After a disastrous engagement (or a political purge), you were stripped of rank, given a worn-out destroyer or light cruiser as a “pension,” and quietly pushed out.",
+   "world": "Your former navy treats you with cold professionalism or quiet hostility. Rival powers see a potentially useful defector. Ports of your old flag may still offer limited services, but trust is low.",
+   "feel": "You start with decent skills, a proper warship, and some contacts, but also a stain on your name and people who would prefer you disappeared."
+  },
+  "hijacker": {
+   "title": "The Hijacker",
+   "subtitle": "Lone Terrorist / Pirate",
+   "story": "You and a small crew seized a freighter or light warship in a bloody action. You are now a wanted man with a price on your head.",
+   "world": "Most legitimate ports will fire on you or refuse entry. Pirate havens and freeports are your only real safe harbors at first. Bounty hunters and naval patrols actively hunt you.",
+   "feel": "High-risk, high-freedom start. You begin with a ship and almost no friends, forced to live by raiding, smuggling, and carefully choosing when to show a flag."
+  },
+  "merchant": {
+   "title": "The Merchant Captain",
+   "subtitle": "",
+   "story": "You own (or co-own) a modest freighter or armed merchantman. The unfinished war and shifting trade routes have left you scrambling for profitable, dangerous contracts.",
+   "world": "Generally tolerated or ignored by the great powers. Traders and freeports are friendly. Navies may conscript or “request” your services. Pirates see easy prey.",
+   "feel": "Classic trader start. Weaker combat power at the beginning, but better economic options and more neutral standing."
+  },
+  "survivor": {
+   "title": "The Survivor of the Lost Fleet",
+   "subtitle": "",
+   "story": "You were part of a major task force that was annihilated in a decisive (and possibly covered-up) battle. You escaped in a damaged ship with a handful of survivors and whatever you could scavenge.",
+   "world": "Depends on which side the lost fleet belonged to. Your old navy may view you as a living embarrassment or a useful witness. The winning side may want you silenced. Independent captains and salvage crews treat you with a mix of respect and pity.",
+   "feel": "Strong narrative hook, good starting combat skills, limited resources, and a personal mystery/revenge thread."
+  },
+  "privateer": {
+   "title": "The Privateer",
+   "subtitle": "",
+   "story": "You hold (or claim to hold) a letter of marque from a secondary power or breakaway state. You are legally a pirate to some and a legitimate combatant to others.",
+   "world": "Your sponsoring power is friendly and may offer contracts and safe harbor. Their enemies treat you as a hostile combatant. Neutrals are wary.",
+   "feel": "A middle ground between lawful officer and outlaw. You have a thin veneer of legitimacy and a clear early employer, but you’re still mostly on your own."
+  },
+  "defector": {
+   "title": "The Defector",
+   "subtitle": "",
+   "story": "You were an officer or senior enlisted in a major navy and deliberately switched sides (or went independent) with a valuable ship and sensitive knowledge.",
+   "world": "Your old flag wants you dead or captured. Your new patrons are interested but don’t fully trust you. Intelligence services on all sides take notice.",
+   "feel": "You start with a solid ship and useful intelligence, but also active hunters and a reputation for treachery that follows you."
+  },
+  "smuggler": {
+   "title": "The Smuggler / Black-Market Runner",
+   "subtitle": "",
+   "story": "You specialize in moving restricted goods, people, and information through blockades and contested waters. Your ship is fast, discreet, and lightly armed.",
+   "world": "Most navies view you as a nuisance or criminal. Freeports, criminal syndicates, and certain intelligence agencies are potential customers or protectors.",
+   "feel": "Stealth, speed, and information-focused start. Weaker in open battle, strong in evasion, contacts, and early money-making."
+  },
+  "academy": {
+   "title": "The Academy Cast-Off / Junior Officer",
+   "subtitle": "",
+   "story": "A recent graduate (or near-graduate) of a naval academy who was given a minor command as a political favor, punishment, or because of heavy losses. You have training but almost no real experience or political cover.",
+   "world": "Treated as green and insignificant by the major powers. Easier to be ignored or underestimated. Some older officers may take a mentorship interest (or try to use you).",
+   "feel": "Classic “young captain with something to prove.” Lower starting skills/resources, but cleaner reputation and more room to define yourself."
+  }
+ }
+}

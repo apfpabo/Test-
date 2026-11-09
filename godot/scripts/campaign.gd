@@ -265,6 +265,16 @@ func wages() -> float:
     var t: float = G.crew * 0.15
     for o in G.officers: t += 40 * o.lvl
     return t
+var show_origin := false   # the chart opens with the origin's story once, at the start of a campaign
+
+func perk(k: String, default = null): return G.get("perks", {}).get(k, default)
+
+## Hunter groups (and anything else that comes for you on sight) are hostile whatever your standing with their flag.
+func hostile_fleet(f: Dictionary) -> bool: return hostile(f.fac) or f.get("hunter", false)
+
+## Limited services at this flag's ports: your origin left you a stain there.
+func restricted(fac: String) -> bool: return (perk("restricted", []) as Array).has(fac)
+
 func hostile(fac: String) -> bool: return fac == "raiders" or G.rep.get(fac, 0) < -10
 func enemies_of(f: String) -> Array:
     var out = []
@@ -306,8 +316,9 @@ func market_mods(fac: String) -> Dictionary:
         mod[g.id] = m * bias.get(g.id, 1.0); drift[g.id] = 0.0
     return {"mod": mod, "drift": drift}
 
-func new_game(start_key: String) -> void:
-    var st: Dictionary = C.STARTS[start_key]
+## A new campaign from an origin (see Origins and docs/LORE.md); navy picks the great navy for origins tied to one.
+func new_game(start_key: String, navy := "concord") -> void:
+    var st: Dictionary = Origins.build(start_key, navy) if Origins.INFO.has(start_key) else C.STARTS[start_key]
     var ports = []
     for p in C.ports:
         var q: Dictionary = p.duplicate(); q.merge(market_mods(p.fac)); q.officers = []; q.offDay = -99; ports.append(q)
@@ -316,15 +327,26 @@ func new_game(start_key: String) -> void:
     var rep = {}
     for f in GameData.fac: rep[f] = st.rep.get(f, 0)
     rep.raiders = -100
-    G = {"v": 3, "ports": ports, "pois": pois, "day": 1, "dayF": 0.0, "credits": st.credits, "rep": rep, "tech": [], "rp": 0, "fleet": [], "cargo": {}, "fleets": [], "nextId": 1, "kills": 0, "crew": 0, "officers": [], "story": 0, "mission": null, "log": [], "start": start_key, "movedToday": false}
-    for f in st.fleet: G.fleet.append(new_ship(f[0], f[1], "player", []))
-    G.crew = crew_need()
-    var o = new_officer(1); o.ship = G.fleet[0].id; G.officers.append(o)
+    G = {"v": 3, "ports": ports, "pois": pois, "day": 1, "dayF": 0.0, "credits": st.credits, "rep": rep, "tech": [], "rp": 0, "fleet": [], "cargo": {}, "fleets": [], "nextId": 1, "kills": 0, "crew": 0, "officers": [], "story": 0, "mission": null, "log": [], "start": start_key, "movedToday": false,
+        "origin": start_key, "navy": st.get("navy", ""), "perks": st.get("perks", {}).duplicate(true)}
+    for f in st.fleet:
+        var sh: Dictionary = new_ship(f[0], f[1], "player", [])
+        var o: Dictionary = f[2] if f.size() > 2 else {}
+        sh.hullFrac = float(o.get("hull", 1.0))
+        var d: Dictionary = GameData.hulls[sh.type]
+        for i in d.slots.size(): if o.get("strip", []).has(d.slots[i].s): sh.fit[i] = ""   # stripped mounts, for cargo and speed of turnaround
+        G.fleet.append(sh)
+    G.crew = int(round(crew_need() * float(st.get("crew", 1.0))))
+    G.rp = int(G.perks.get("rp", 0))
+    var o = new_officer(int(st.get("officer", 1))); o.ship = G.fleet[0].id; G.officers.append(o)
+    # hunters stay on your trail for a while: until a given day
+    for h in G.perks.get("hunted", []): h.until = int(h.days)
     for g in C.GOODS: G.cargo[g.id] = st.cargo.get(g.id, 0)
     var p0: Dictionary = {}
     for p in G.ports: if p.name == st.port: p0 = p
     G.player = {"x": p0.sx, "y": p0.sy, "h": mang(p0.x, p0.y, p0.sx, p0.sy), "v": 0.0, "tx": null, "ty": null, "cool": 3.0, "destPort": null, "follow": null}
     for i in 40: maintain_fleets(true)
+    show_origin = Origins.INFO.has(start_key)
     toast.emit(date_str(1) + ". You put to sea from " + p0.name + ". Click the chart to set a course; scroll to zoom out to the whole world.")
     toast.emit("Wreck fields and abandoned bases (◇ on the chart) can be surveyed for salvage and research.")
     save()
@@ -403,9 +425,30 @@ func maintain_fleets(initial: bool) -> void:
         if count.call("patrol", fac) < want_patrol and (initial or randf() < 0.3): spawn_fleet("patrol", fac, initial)
         if fac != "enclave" and count.call("convoy", fac) < int(ceil(np * 0.6)) and (initial or randf() < 0.3): spawn_fleet("convoy", fac, initial)
     if count.call("raiders") < 6 and (initial or randf() < 0.3): spawn_fleet("raiders", "raiders", initial)
+    for h in perk("hunted", []):
+        if G.day > int(h.get("until", 0)): continue
+        var have: int = G.fleets.filter(func(f): return f.get("hunter", false) and f.name == h.name).size()
+        if have < int(h.max) and not initial and randf() < float(h.every): spawn_hunter(h)
     if count.call("bounty") < 2 and (initial or randf() < 0.08):
         var f = spawn_fleet("bounty", "raiders", initial)
         if not initial: toast.emit("Bounty posted on %s: %s." % [f.captain, fmt(f.reward)])
+
+## A group sent after you (your origin's hunters): it appears some way off and casts about where you were last seen.
+func spawn_hunter(h: Dictionary) -> Dictionary:
+    var P: Dictionary = G.player; var fac: String = h.fac
+    var f = {"id": G.nextId, "kind": "hunter", "hunter": true, "fac": fac, "name": h.name, "until": int(h.until), "h": randf() * TAU, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {}}
+    G.nextId += 1
+    var pos := water_point(8, Vector2(P.x, P.y), 420.0)
+    for i in 20:
+        if mdist(pos.x, pos.y, P.x, P.y) > 220: break
+        pos = water_point(8, Vector2(P.x, P.y), 420.0)
+    f.x = pos.x; f.y = pos.y; f.home = {"x": pos.x, "y": pos.y}
+    var tl = enemy_tech(enemy_era()); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
+    f.ships = build_by_budget(pool, float(h.budget) * (1.0 + G.day / 200.0), 4, fac, tl)
+    if f.ships.is_empty(): f.ships.append(new_ship("dd", null, fac, tl))
+    G.fleets.append(f)
+    toast.emit("Word reaches you that a %s is searching for you." % h.name.to_lower())
+    return f
 
 static func fmt(n: float) -> String:
     var s = str(int(round(absf(n)))); var out = ""
@@ -545,7 +588,7 @@ func update(dt: float) -> void:
     var ps = strength(G.fleet)
     for f in G.fleets.duplicate():
         f.cool = maxf(0.0, f.cool - dt)
-        var dP = mdist(f.x, f.y, P.x, P.y); var hos = hostile(f.fac)
+        var dP = mdist(f.x, f.y, P.x, P.y); var hos = hostile_fleet(f)
         var merchant = true
         for s in f.ships: if hull(s).kind != "merchant": merchant = false
         var rate = 0.6
@@ -564,6 +607,10 @@ func update(dt: float) -> void:
                 if f.has("dest"):
                     f.started = true; var d: Dictionary = G.ports[f.dest]
                     f.route = build_route(f, port_route(f.from, f.dest)); f.ri = 0; f.rx = f.x; f.ry = f.y; f.tx = d.sx; f.ty = d.sy
+                elif f.get("hunter", false):
+                    if G.day > f.until and dP > 200: G.fleets.erase(f); continue   # the trail has gone cold
+                    var w = water_point(6, Vector2(P.x, P.y), 140.0)   # casting about where you were last reported
+                    if not set_course(f, w.x, w.y): f.route = null
                 else:
                     var w = water_point(6, Vector2(f.home.x, f.home.y), 120.0 if (f.get("mission", false) or f.kind == "bounty") else 320.0)
                     if not set_course(f, w.x, w.y): f.route = null
@@ -656,6 +703,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     var beaten: Array = r.sunk + r.prizes; var beaten_value = 0.0
     for s in beaten: beaten_value += ship_value(s)
     for s in r.sunk: r.coin += ship_value(s) * (0.07 + randf() * 0.06)
+    if f != null: r.coin *= float((perk("prize", {}) as Dictionary).get(f.fac, 1.0))   # a letter of marque pays better against its target
     r.coin = int(round(r.coin / 50.0) * 50)
     r.rp = int(round(beaten_value / 4000.0)); G.rp += r.rp
     var fac: String = f.fac if f != null else "raiders"

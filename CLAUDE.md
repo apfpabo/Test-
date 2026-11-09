@@ -2,6 +2,7 @@
 
 - **Read [`docs/CREATIVE_DIRECTION.md`](docs/CREATIVE_DIRECTION.md) before any design, art, balance or feature work.** It is the project owner's north star. Never edit its text without their instruction.
 - Art pass 2 (turrets, national styles, superstructures) is done; [`docs/NEXT_ART_PASS.md`](docs/NEXT_ART_PASS.md) describes how ship art is now built: height maps baked in the browser renderer and lit in Godot shaders.
+- [`docs/LORE.md`](docs/LORE.md) keeps the owner's world-building text word for word (currently the eight starting origins), how much of it is in the game, and hooks for later. Never edit the owner's text; the in-game copy is `godot/data/lore.json`. Origins are implemented in `godot/scripts/origins.gd`.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) holds the gap analysis, the owner's standing feedback (grounded rather than arcade, Rule the Waves 3 art reference, no boarding) and the order of work. Keep it up to date as features land.
 - **The game is the Godot 4 project in `godot/`** (owner's decision; the port is complete). GDScript, GL Compatibility renderer.
   - `scripts/campaign.gd` (autoload `Campaign`): campaign state and rules, no drawing. `world_map.gd`: the chart, its panels (ports, command, encounters, aftermath). `main_menu.gd`: title. `skirmish.gd`: quick battles.

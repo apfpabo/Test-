@@ -12,18 +12,37 @@ func _ready() -> void:
     if Campaign.has_save():
         box.add_child(UI.button("Continue campaign", func():
             if Campaign.load_game(): get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true))
-    box.add_child(UI.label("CHOOSE YOUR START", UI.DIM, 12))
-    var grid = GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation", 10); box.add_child(grid)
-    for key in Campaign.C.STARTS:
-        var st: Dictionary = Campaign.C.STARTS[key]
-        var b = Button.new(); b.text = st.label + "\n\n" + st.blurb; b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; b.custom_minimum_size = Vector2(280, 170); b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-        b.pressed.connect(func(): Campaign.new_game(key); get_tree().change_scene_to_file("res://scenes/world_map.tscn")); grid.add_child(b)
+    box.add_child(UI.label("WHO WERE YOU?", UI.DIM, 12))
+    var grid = GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 8); grid.add_theme_constant_override("v_separation", 8); box.add_child(grid)
+    for key in Origins.LIST:
+        var info: Dictionary = Origins.INFO[key]
+        var b = Button.new(); b.text = info.label + "\n\n" + info.short; b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; b.custom_minimum_size = Vector2(212, 150); b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+        b.pressed.connect(func(): _origin(pc, box, key)); grid.add_child(b)
     box.add_child(UI.row([UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")), UI.button("Settings", func(): _settings(pc, box))]))
     # required by the CC BY 4.0 licence of the engine-room recording; the other sounds are CC0 (assets/sfx/CREDITS.md)
-    box.add_child(UI.label("Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Other sound effects are CC0, by thimras, qubodup, Joth and rubberduck on OpenGameArt.", UI.DIM, 11, true))
+    box.add_child(UI.label("Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Other sound effects are CC0, by thimras, qubodup, Joth, rubberduck and rango-mango on OpenGameArt.", UI.DIM, 11, true))
 
 func _settings(pc: PanelContainer, main: Control) -> void:
     main.visible = false
     var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box)
     box.add_child(Settings.panel())
     box.add_child(UI.row([UI.button("Back", func(): box.queue_free(); main.visible = true, true)]))
+
+## An origin's page: the owner's text for it, what you start with, a navy to choose where the origin has one, and Begin.
+func _origin(pc: PanelContainer, main: Control, key: String, navy := "concord") -> void:
+    main.visible = false
+    var info: Dictionary = Origins.INFO[key]; var L: Dictionary = Origins.lore(key)
+    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 8); pc.add_child(box)
+    box.add_child(UI.label(L.get("title", info.label) + ((" · " + L.subtitle) if L.get("subtitle", "") != "" else ""), UI.GOLD, 30))
+    box.add_child(UI.label(L.get("story", ""), UI.INK, 15, true))
+    box.add_child(UI.label("World reaction: " + L.get("world", ""), UI.DIM, 14, true))
+    box.add_child(UI.label("Feel: " + L.get("feel", ""), UI.DIM, 14, true))
+    if info.navy:
+        var row = []
+        for n in Origins.NAVIES: row.append(UI.button(GameData.fac[n].name, func(): box.queue_free(); _origin(pc, main, key, n), n == navy))
+        box.add_child(UI.label("YOUR NAVY", UI.DIM, 12)); box.add_child(UI.row(row))
+    var st: Dictionary = Origins.build(key, navy)
+    var h: Dictionary = GameData.hulls[st.fleet[0][0]]
+    box.add_child(UI.label("You start with: " + info.start, UI.INK, 14, true))
+    box.add_child(UI.label("%s (%s class, modelled on the %s)%s · %s · from %s" % [h.name, h.dn, h.model, (" and %d more" % (st.fleet.size() - 1)) if st.fleet.size() > 1 else "", Campaign.fmt(st.credits), st.port], UI.DIM, 13, true))
+    box.add_child(UI.row([UI.button("Begin", func(): Campaign.new_game(key, navy); get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true), UI.button("Back", func(): box.queue_free(); main.visible = true)]))

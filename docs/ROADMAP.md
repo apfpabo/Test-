@@ -45,6 +45,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
     - It meets belt armour made thicker by the angle of impact, or the thinner deck when it plunges.
     - Results: ricochet, no penetration (splinters), over-penetration, or penetration (full damage, subsystems).
     - Markers name the result on hits by and on your ships.
+- **Starting origins (done):** the eight origins the owner wrote ([`LORE.md`](LORE.md)) replace the three old starts. Each has its own ships, money, standing, captain and lasting conditions (limited services at an old flag, hunter groups, trade, evasion and prize perks, intelligence as research points). Navy origins let the player choose the navy. LORE.md lists what the origins promise but the game doesn't do yet.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

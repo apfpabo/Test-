@@ -52,7 +52,8 @@ func _ready() -> void:
     panel_layer = Control.new(); panel_layer.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(panel_layer)
     Campaign.toast.connect(_toast); Campaign.encounter.connect(_on_encounter); Campaign.reached_port.connect(open_port)
     cam = Vector2(Campaign.G.player.x, Campaign.G.player.y)
-    if Campaign.show_aftermath: Campaign.show_aftermath = false; _show_aftermath(Campaign.last_result)
+    if Campaign.show_origin: Campaign.show_origin = false; Campaign.paused = true; _show_origin()
+    elif Campaign.show_aftermath: Campaign.show_aftermath = false; _show_aftermath(Campaign.last_result)
     else: Campaign.paused = false
 
 func _prepare_land() -> void:
@@ -191,7 +192,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var x: float = map.rx(f.x)
             if absf(x - map.cam.x) > hw + 60 or absf(f.y - map.cam.y) > hh + 60: continue
             if z >= 0.32: _wakes_of(f.id, f.ships, Vector2(x, f.y), f.h)
-            var col = Color("#e3b23c") if f.get("mission", false) else Color(GameData.fac[f.fac].map); var hos = Campaign.hostile(f.fac)
+            var col = Color("#e3b23c") if f.get("mission", false) else Color(GameData.fac[f.fac].map); var hos = Campaign.hostile_fleet(f)
             if z < 0.32:
                 draw_colored_polygon(PackedVector2Array([Vector2(x, f.y) + Vector2.from_angle(f.h) * 7 / z, Vector2(x, f.y) + Vector2.from_angle(f.h + 2.5) * 4 / z, Vector2(x, f.y) + Vector2.from_angle(f.h - 2.5) * 4 / z]), col)
                 continue
@@ -323,7 +324,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             _t(sp - Vector2(0, s + 5), p.name, Color("#eef0ec"), 15 if p.capital else 13)
             if z > 0.45: _t(sp + Vector2(0, s + 15), GameData.fac[p.fac].short + (" · capital" if p.capital else "") + (" · hostile" if closed else ""), Color("#d9614a") if closed else Color(GameData.fac[p.fac].map), 11)
         for f in G.fleets:
-            var hos = Campaign.hostile(f.fac)
+            var hos = Campaign.hostile_fleet(f)
             if not (z >= 0.6 or hos or f.get("mission", false) or f.kind == "bounty"): continue
             var sp: Vector2 = map.to_screen(Vector2(f.x, f.y))
             if sp.x < -150 or sp.x > vs.x + 150 or z < 0.32: continue
@@ -485,9 +486,9 @@ func _on_encounter(f: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; P.tx = null; P.route = null; P.follow = null
     var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
     var odds = "They badly outgun you." if ratio > 1.6 else ("They have the heavier squadron." if ratio > 1.1 else ("It would be an even fight." if ratio > 0.75 else "You outgun them."))
-    var evade = int(round(clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0, 0.1, 0.9) * 100))
+    var evade = int(round(clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0, 0.1, 0.92) * 100))
     open_panel(func(box):
-        if not Campaign.hostile(f.fac):
+        if not Campaign.hostile_fleet(f):
             var en = Campaign.enemies_of(f.fac)
             box.add_child(UI.title(f.name)); box.add_child(_lead_pic(f)); _p(box, "%s ships close to signalling distance: %s." % [GameData.fac[f.fac].name, _counts(f.ships)])
             _p(box, odds + " Attacking costs 30 %s standing%s." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else ""], UI.DIM)
@@ -509,6 +510,24 @@ func _battle(f: Dictionary) -> void:
     GameData.pending = Campaign.battle_setup(f)
     Campaign.paused = true
     get_tree().change_scene_to_file("res://scenes/battle.tscn")
+
+## The opening of a campaign: who you were, what you have, and who wants what from you.
+func _show_origin() -> void:
+    var G: Dictionary = Campaign.G; var key: String = G.origin; var L: Dictionary = Origins.lore(key); var info: Dictionary = Origins.INFO[key]
+    open_panel(func(box):
+        box.add_child(UI.title(L.get("title", info.label)))
+        if G.get("navy", "") != "" and info.navy: _p(box, "Formerly of the " + GameData.fac[G.navy].name + ".", UI.DIM, 14)
+        _p(box, L.get("story", ""), UI.INK, 15)
+        _p(box, L.get("world", ""), UI.DIM, 14)
+        box.add_child(_thumb(G.fleet[0].type, "player", 520, G.fleet[0].fit))
+        _p(box, info.start, UI.INK, 14)
+        var st = []
+        for f in G.rep:
+            if f == "raiders" or G.rep[f] == 0: continue
+            st.append("%s %s%d" % [GameData.fac[f].short, "+" if G.rep[f] > 0 else "", G.rep[f]])
+        if st.size(): _p(box, "Standing: " + " · ".join(st), UI.DIM, 13)
+        for h in Campaign.perk("hunted", []): _p(box, "Hunted: %s, for some %d days." % [h.name, int(h.days)], UI.RED, 13)
+        box.add_child(UI.button("Put to sea", func(): close_panel(); Campaign.paused = false, true)), true)
 
 func _show_aftermath(r: Dictionary) -> void:
     if Campaign.G.fleet.is_empty():
@@ -593,8 +612,8 @@ func port_price(p: Dictionary, gid: String) -> int:
     var base = 1.0
     for g in Campaign.C.GOODS: if g.id == gid: base = g.base
     return maxi(1, int(round(base * p.mod[gid] * (1 + p.drift[gid]))))
-func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p, gid) * 1.06 * (1.1 if Campaign.G.rep.get(p.fac, 0) < 0 else 1.0)))
-func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93))
+func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p, gid) * 1.06 * (1.1 if Campaign.G.rep.get(p.fac, 0) < 0 else 1.0) * (1.15 if Campaign.restricted(p.fac) else 1.0) * (1.0 - float(Campaign.perk("trade", 0.0)))))
+func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93 * (0.9 if Campaign.restricted(p.fac) else 1.0) * (1.0 + float(Campaign.perk("trade", 0.0)))))
 
 func open_port(p: Dictionary) -> void:
     if not Campaign.hostile(p.fac) and Campaign.G.day - p.get("offDay", -99) > 20: # the officers' mess turns over every few weeks
@@ -664,9 +683,14 @@ func _render_port() -> void:
     var tabs = [["market", "Market"], ["yard", "Shipyard"], ["refit", "Refit"], ["fleet", "Repairs & crew"], ["officers", "Officers"]]
     if p.capital and p.fac == "concord": tabs.append_array([["admiralty", "Admiralty"], ["research", "Research"]])
     elif p.fac == "enclave": tabs.append(["research", "Research exchange"])
+    var limited: bool = Campaign.restricted(p.fac)
+    if limited: # your old flag: the market and the dockyard's repair berth, nothing more, and at a price
+        tabs = tabs.filter(func(t): return t[0] == "market" or t[0] == "fleet")
+        if not ["market", "fleet"].has(port_tab): port_tab = "market"
     open_panel(func(box):
         box.add_child(UI.title(p.name))
         _p(box, "%s%s · %d, day %d · Funds %s" % [GameData.fac[p.fac].name, " · capital" if p.capital else "", Campaign.year(), G.day, Campaign.fmt(G.credits)], UI.DIM, 14)
+        if limited: _p(box, "Your old service remembers you. The harbourmaster will sell you stores and berth you for repairs, at a price, but the shipyard, the officers' mess and the Admiralty are closed to you.", UI.GOLD, 14)
         _tabs(box, tabs, port_tab, func(k): port_tab = k; _render_port())
         match port_tab:
             "market": _market(box, p)

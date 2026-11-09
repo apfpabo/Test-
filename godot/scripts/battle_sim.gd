@@ -119,6 +119,8 @@ class Part:
 
 var AW = 26000.0
 var AH = 22000.0
+var sep := 9000.0             # the range the action opens at: 9 km by default, more when contact was made at missile or carrier reach
+var escape_r := ESCAPE_R
 var ships: Array[CShip] = []
 var shells: Array = []
 var torps: Array = []
@@ -196,14 +198,16 @@ func setup(player_recs: Array, enemy_recs: Array, player_tech: Array, enemy_tech
         if ok: islands.append(make_island(c, r))
     enemy_era = 3 if enemy_tech.has("aegis") else 2 if enemy_tech.has("missiles") else 1
     sonar_tech = player_tech.has("sonar"); helo_tech = player_tech.has("helo")
+    escape_r = maxf(ESCAPE_R, sep + 2500.0)
     _place(player_recs, 0, player_tech); _place(enemy_recs, 1, enemy_tech)
     flag = ships[0]
+    if sep > 9500.0: say("Contact at long range: their ships lie beyond the guns. Missiles and aircraft open the action.", 5.0)
 
 func _place(list: Array, side: int, tech: Array) -> void:
     var k = list.size()
     for i in k:
         var x = AW / 2 + (i - (k - 1) / 2.0) * 700.0 + (randf() - 0.5) * 120.0
-        var y = (AH / 2 - 4500.0 - (i % 2) * 400.0) if side == 1 else (AH / 2 + 4500.0 + (i % 2) * 400.0)
+        var y = (AH / 2 - sep / 2 - (i % 2) * 400.0) if side == 1 else (AH / 2 + sep / 2 + (i % 2) * 400.0)
         ships.append(make_ship(list[i], side, Vector2(x, y), PI / 2 if side == 1 else -PI / 2, tech))
 
 func make_island(c: Vector2, r: float) -> Dictionary:
@@ -350,6 +354,7 @@ func superfiring(s: CShip) -> void:
                 if a == b: continue
                 var ax: float = a.slot.x; var bx: float = b.slot.x
                 if signf(ax) != signf(bx) or absf(ax) >= absf(bx): continue          # a must be nearer amidships, same end
+                if a.slot.get("low", false): continue                               # a third turret on the deck behind a raised one (Nelson's X)
                 if absf(a.slot.y - b.slot.y) > (a.w.tw + b.w.tw) * 0.3: continue    # on the same line
                 if absf(bx - ax) > a.w.tl * 0.42 + a.w.bl + b.w.tw * 0.6: continue   # a's barrels reach over b
                 a.lvl = maxi(a.lvl, b.lvl + 1)
@@ -1102,7 +1107,7 @@ func step(dtv: float) -> void:
         if retreating:
             var o = nearest_enemy(s.pos, s.side)
             var edge = s.pos.x < 200 or s.pos.x > AW - 200 or s.pos.y < 200 or s.pos.y > AH - 200
-            if edge or o == null or s.pos.distance_to(o.pos) > ESCAPE_R:
+            if edge or o == null or s.pos.distance_to(o.pos) > escape_r:
                 s.escaped = true; say(s.rec.name + (" escapes." if s.side == 1 else " has withdrawn safely."), 2.5)
                 if s == flag: next_flag("You shift your flag to the ")
                 continue

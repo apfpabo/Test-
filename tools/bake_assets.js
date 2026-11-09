@@ -11,7 +11,10 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
   fs.mkdirSync(path.join(OUT, 'data'), { recursive: true });
   fs.writeFileSync(path.join(OUT, 'data', 'game_data.json'), JSON.stringify(data, null, 1));
   // which paint schemes each design can appear in: the player's and the raiders' (any), plus each flag that buys from its yard
-  const combos = {}; for (const [id, d] of Object.entries(data.HULLS)) { combos[id] = ['player', 'raiders']; for (const [f, mk] of Object.entries(data.FAC_MAKERS)) if (mk && mk.includes(d.yard)) combos[id].push(f); }
+  // (a flag that borrows another's paint, FAC.paint, needs none of its own; auxiliaries are bought by everyone, so they come in every scheme)
+  const combos = {}; for (const [id, d] of Object.entries(data.HULLS)) { const set = new Set(['player', 'raiders']);
+    for (const [f, mk] of Object.entries(data.FAC_MAKERS)) if (mk && (mk.includes(d.yard) || ['ap', 'ao', 'ae', 'ar'].includes(d.klass))) set.add((data.FAC[f] && data.FAC[f].paint) || f);
+    combos[id] = [...set].filter(k => data.PAL[k]); }
   const manifest = { ships: {}, mounts: {} }; let bytes = 0;
   const save = (rel, url) => { const f = path.join(OUT, 'assets', rel); fs.mkdirSync(path.dirname(f), { recursive: true }); const buf = Buffer.from(url.split(',')[1], 'base64'); fs.writeFileSync(f, buf); bytes += buf.length; };
   for (const [id, pals] of Object.entries(combos)) {

@@ -368,7 +368,7 @@ func invade(s: Dictionary) -> Dictionary:
 	if breaks_armistice(s):
 		G.rep[s.fac] = G.rep.get(s.fac, 0) - 30; Campaign.incident(s.fac); Diplomacy.on_open_fire(s.fac)
 	var A: float = men * (1.25 if Campaign.has_tech("amphib") else 1.0)
-	var odds := clampf(A / maxf(1.0, A + D) * 1.3 - 0.15, 0.05, 0.95)
+	var odds := invade_odds(s)
 	var won := randf() < odds
 	var lost := int(round(men * clampf(D / maxf(1.0, A + D) * randf_range(0.5, 1.1) * (0.7 if won else 1.4), 0.03, 0.95)))
 	var left := maxi(0, men - lost); G.troops = left
@@ -386,6 +386,25 @@ func invade(s: Dictionary) -> Dictionary:
 		Campaign.log_ev("Landing at the %s beaten off" % s.name)
 	Campaign.save()
 	return res
+
+## The chance a landing carries the place: your soldiers (a quarter better with amphibious warfare) against its defenders.
+func invade_odds(s: Dictionary) -> float:
+	var A: float = troops() * (1.25 if Campaign.has_tech("amphib") else 1.0)
+	return clampf(A / maxf(1.0, A + defenders(s)) * 1.3 - 0.15, 0.05, 0.95)
+## Soldiers put aboard in port (TROOP_COST each), as many as there are berths and money for. Returns how many.
+func embark(n: int) -> int:
+	var G := g(); var k := mini(mini(n, troop_capacity() - troops()), int(G.credits / TROOP_COST))
+	if k <= 0: return 0
+	G.credits -= k * TROOP_COST; G.troops = troops() + k
+	return k
+func disembark() -> int:
+	var n := troops(); g().troops = 0
+	return n
+## Soldiers without a berth (their transport was sunk or sold) are lost to you.
+func trim_troops() -> int:
+	var over := troops() - troop_capacity()
+	if over > 0: g().troops = troop_capacity()
+	return maxi(0, over)
 
 ## Why it can't be taken now, or "".
 func can_take(s: Dictionary) -> String:
@@ -577,7 +596,8 @@ func launch_assault(s: Dictionary, by: String) -> Dictionary:
 	var tl: Array = Campaign.enemy_tech(Campaign.fac_era(by))
 	var esc: Array = Campaign.build_by_budget(Campaign.C.PATROL_POOL[by], (20000.0 + randf() * 30000.0) * (1.0 + G.day / 200.0), 4, by, tl)
 	if not esc.is_empty(): f.ships = esc
-	for i in randi_range(1, 2): var tr: Dictionary = Campaign.new_ship("freighter", null, by, tl); tr.troops = true; f.ships.append(tr)
+	var carrier := "ap" if Campaign.design_for("ap", by, tl + ["amphib"]) != "" else "freighter"   # every power learned landings in the war
+	for i in randi_range(1, 2): var tr: Dictionary = Campaign.new_ship(carrier, null, by, tl + ["amphib"]); tr.troops = true; f.ships.append(tr)
 	f.kind = "assault"; f.assault = int(s.id); f.name = "%s assault force" % GameData.fac[by].short; f.cool = 0.0
 	f.x = from.sx; f.y = from.sy; f.home = {"x": from.sx, "y": from.sy}
 	var w := coast_point(s); f.tgt = {"x": w.x, "y": w.y}

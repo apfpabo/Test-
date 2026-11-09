@@ -31,6 +31,8 @@ func _ready() -> void:
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])
     var efac: String = cfg.get("enemy_fac", "directorate")
     if cfg.has("player_recs"): # a campaign action: your own ships, officers and crew against the fleet you met
+        # contact made at missile or carrier reach opens the action at longer range (chart km to battle metres, 1:10)
+        sim.sep = clampf(float(cfg.get("range_km", 90)) * 100.0, 9000.0, 18000.0)
         sim.setup(cfg.player_recs, cfg.enemy_recs, pt, et, cfg.get("islands", 1))
         for sh in sim.ships:
             if sh.side == 0:

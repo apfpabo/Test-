@@ -305,6 +305,68 @@ func fuel_use() -> float:
 ## crawl once the bunkers are dry. When it is gone the squadron is dead in the water: call a friendly fleet by
 ## wireless for a tow or a merchant convoy for fuel. It fills again from the bunkers once you have fuel.
 func reserve_cap() -> float: return fuel_use() * 4.0
+## Fuel oil the squadron can carry: forty days' steaming in the ships' own bunkers, plus the cargo tanks of its oilers.
+func tank_cap() -> int:
+    var t := 0
+    for s in G.fleet: t += int(hull(s).get("tank", 0))
+    return t
+func bunker_cap() -> int: return int(ceil(fuel_use() * 40.0)) + tank_cap()
+func fuel_room() -> int: return maxi(0, bunker_cap() - int(ceil(G.cargo.fuel)))
+## Ships of yours with an auxiliary's fitting: "ammo" (ammunition ships), "repair" (repair ships), "tank", "troops".
+func aux(field: String) -> Array: return G.fleet.filter(func(s): return hull(s).get(field, false))
+func repair_cost(s: Dictionary) -> int: return int(ceil((1.0 - float(s.hullFrac)) * float(hull(s).price) * 0.2))
+
+## Replenishment at sea, once a day. An ammunition ship passes shells across from the munitions in the holds (40 tons a
+## day each); a repair ship patches the worst-damaged hulls with steel from the holds (15 tons a day each), up to
+## three-quarters sound: the rest wants a dock. Both work under way; neither works without the cargo.
+const AMMO_TONS := 120.0     # of rearming cost to a ton of munitions
+const STEEL_TONS := 60.0    # of repair cost to a ton of steel
+const SEA_REPAIR := 0.75
+func rearm_tons(s: Dictionary) -> float: return rearm_cost(s) / AMMO_TONS
+func _replenish() -> void:
+    var ae: Array = aux("ammo"); var ar: Array = aux("repair")
+    if not ae.is_empty():
+        var budget: float = 40.0 * ae.size(); var want := false; var did := false
+        var order: Array = G.fleet.duplicate(); order.sort_custom(func(a, b): return float(a.get("ammo", 1.0)) < float(b.get("ammo", 1.0)))
+        for s in order:
+            var need: float = rearm_tons(s)
+            if need <= 0.01 or float(s.get("ammo", 1.0)) > 0.995: continue
+            want = true
+            var give: float = minf(need, minf(budget, float(G.cargo.munitions)))
+            if give <= 0.0: break
+            s.ammo = minf(1.0, float(s.get("ammo", 1.0)) + (1.0 - float(s.get("ammo", 1.0))) * give / need)
+            if s.ammo > 0.995: s.ammo = 1.0
+            G.cargo.munitions -= give; budget -= give; did = true
+        if want and not did and float(G.cargo.munitions) < 1.0:
+            if not G.get("ammoWarned", false): G.ammoWarned = true; toast.emit("The %s has nothing to pass across: no munitions in the holds. Buy munitions and she will rearm the squadron at sea." % ae[0].name)
+        else: G.ammoWarned = false
+        if did and not G.fleet.any(func(s): return float(s.get("ammo", 1.0)) < 0.995): toast.emit("Replenishment complete: the %s has filled every magazine." % ae[0].name)
+    if not ar.is_empty():
+        var budget: float = 15.0 * ar.size(); var want := false; var did := false
+        var order: Array = G.fleet.duplicate(); order.sort_custom(func(a, b): return float(a.hullFrac) < float(b.hullFrac))
+        for s in order:
+            if float(s.hullFrac) >= SEA_REPAIR: continue
+            want = true
+            var per: float = float(hull(s).price) * 0.2 / STEEL_TONS          # tons of steel for the whole hull
+            var give: float = minf((SEA_REPAIR - float(s.hullFrac)) * per, minf(budget, float(G.cargo.steel)))
+            if give <= 0.0: break
+            s.hullFrac = minf(SEA_REPAIR, float(s.hullFrac) + give / per); G.cargo.steel -= give; budget -= give; did = true
+        if want and not did and float(G.cargo.steel) < 1.0:
+            if not G.get("steelWarned", false): G.steelWarned = true; toast.emit("The %s has no plate to work with: no steel in the holds. Buy steel and she will patch your hulls at sea." % ar[0].name)
+        else: G.steelWarned = false
+        if did and not G.fleet.any(func(s): return float(s.hullFrac) < SEA_REPAIR - 0.001): toast.emit("The %s has made every ship seaworthy (75%%). The rest is dockyard work." % ar[0].name)
+
+## A prize of a design new to you is measured and her drawings copied: research points at once (double for a design
+## of an era you have not reached), and a naval base you hold can lay down the class from then on.
+func studied(id: String) -> bool: return G.get("studied", []).has(id)
+func study_prize(s: Dictionary) -> String:
+    if not G.has("studied"): G.studied = []
+    if G.studied.has(s.type): return ""
+    G.studied.append(s.type)
+    var h: Dictionary = hull(s)
+    var rp: int = maxi(5, int(round(float(h.price) / 2500.0))) * (2 if int(h.era) > player_era() else 1)
+    G.rp += rp; log_ev("Copied the drawings of the %s class (+%d RP)" % [h.dn, rp])
+    return "Her drawings are copied: +%d RP. A naval base you hold can now build the %s class." % [rp, h.dn]
 func reserve() -> float: return float(G.get("reserve", reserve_cap()))
 func dead_in_water() -> bool: return G.player.get("towed") == null and (int(G.crew) <= 0 or (G.cargo.fuel <= 0 and reserve() <= 0.0 and fuel_use() > 0))
 
@@ -705,6 +767,7 @@ func new_day(moved: bool) -> void:
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()
+    _replenish()
     if G.get("test", false): _test_topup()
     if G.day % 3 == 0: save()   # autosave every few days at sea
     _research_day()
@@ -933,7 +996,8 @@ func battle_setup(f: Dictionary) -> Dictionary:
     for s in G.fleet: recs.append(s)
     for o in G.officers: o.lastShip = o.ship
     return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(fac_era(f.fac)),
-        "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0}
+        "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0,
+        "range_km": int(f.get("contactKm", 0))}
 
 func _islands_here() -> int:
     var dens = land_density(G.player.x, G.player.y, 25)
@@ -962,6 +1026,8 @@ func apply_battle(sim: BattleSim) -> Dictionary:
                 if s.struck: r.prizes.append(s.rec)
     r.casualties = mini(int(G.crew), int(round(cas))); G.crew -= r.casualties
     G.fleet = G.fleet.filter(func(s): return not r.lost.has(s))
+    var drowned := Structures.trim_troops()
+    if drowned > 0: r.notes.append("%d soldiers were lost with their transport." % drowned)
     for o in G.officers: if not G.fleet.any(func(s): return s.id == o.ship): o.ship = null
     if f != null: f.ships = f.ships.filter(func(s): return not r.sunk.has(s) and not r.prizes.has(s))
     var enemy_left = false

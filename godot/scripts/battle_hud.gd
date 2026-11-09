@@ -137,7 +137,7 @@ func _reticle() -> void:
         if m.st == "reload": rel = minf(rel, m.cd / sim.reload_mult(s, m.w))
         if m.st == "train": train = maxf(train, m.err / BattleSim.TRAV[m.w.size])
     var l1 = ("Target beyond the screen edge · " if off else "") + (("Engaging " if sim.autofire else "Laid on ") + sim.lock.rec.name if lock and sim.lock != null else ("Firing at the point" if sim.mouse_down else "Aiming")) + " · %.1f of %.1f km" % [rng / 1000.0, mx / 1000.0]
-    var l2 = "%d of %d turrets bearing" % [bearing, ms.size()] + (" · ready" if n.call("ready") else (" · reloading %d s" % ceili(rel) if bearing else "")) + ((" · %d training, ~%d s" % [training, ceili(train)]) if training else "") + (" · out of range" if n.call("range") else "") + ((" · %d masked" % n.call("arc")) if n.call("arc") else "")
+    var l2 = "%d of %d turrets bearing" % [bearing, ms.size()] + (" · ready" if n.call("ready") else (" · reloading %d s" % ceili(rel) if bearing else "")) + ((" · %d turning to bear, ~%d s" % [training, ceili(train)]) if training else "") + (" · out of range" if n.call("range") else "") + ((" · %d blocked by own ship" % n.call("arc")) if n.call("arc") else "")
     var lines = [l1, l2]
     if not sim.autofire and not sim.mouse_down and lock: lines.append("Click the target or press X to open fire")
     for i in lines.size():

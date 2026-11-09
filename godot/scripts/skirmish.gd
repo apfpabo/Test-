@@ -55,7 +55,7 @@ func _ready() -> void:
     era_pick = OptionButton.new(); era_pick.add_item("Era I · late war"); era_pick.add_item("Era II · early Cold War"); era_pick.add_item("Era III · late Cold War"); row2.add_child(era_pick)
     var lists = HBoxContainer.new(); lists.add_theme_constant_override("separation", 12); col.add_child(lists)
     mine_list = _list(lists, "My squadron (click to remove)", mine); theirs_list = _list(lists, "Enemy (click to remove)", theirs)
-    var go = Button.new(); go.text = "Action stations"; go.custom_minimum_size = Vector2(220, 44)
+    var go = Button.new(); go.text = "Battle stations"; go.custom_minimum_size = Vector2(220, 44)
     go.pressed.connect(func(): if mine.size() and theirs.size(): _start(mine, theirs, fac_pick.get_item_metadata(fac_pick.selected), era_pick.selected + 1))
     col.add_child(go)
     var back := Button.new(); back.text = "Back to the title screen"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")); col.add_child(back)

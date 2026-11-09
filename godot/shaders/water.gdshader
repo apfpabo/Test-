@@ -1,11 +1,12 @@
-// Open sea seen from above: two scales of drifting swell from fractal noise, normals taken from the noise so the
-// low sun puts glints on wave faces, a cooler tint in the troughs, and a vignette at the screen edges.
+// Open sea seen from above: broad colour from drifting fractal noise, travelling swell waves on the real clock that
+// light the surface and carry the sun's glints, slow cloud shadows, and a vignette at the screen edges.
 shader_type canvas_item;
 
 uniform vec2 cam = vec2(0.0);          // world position at the centre of the screen (metres)
 uniform float zoom = 0.25;              // screen pixels per metre
 uniform vec2 screen = vec2(1400.0, 860.0);
 uniform float t = 0.0;                  // battle seconds
+uniform float rt = 0.0;                 // real seconds: the swell keeps rolling at its own pace whatever the battle clock
 uniform vec3 deep : source_color = vec3(0.075, 0.235, 0.275);
 uniform vec3 shallow : source_color = vec3(0.14, 0.34, 0.37);
 uniform vec2 sun_dir = vec2(-0.55, -0.85); // direction the light comes from, on the chart
@@ -23,17 +24,37 @@ float sea(vec2 w) {
 	float detail = clamp((zoom - 0.12) / 0.5, 0.0, 1.0); // fine chop only once you are close enough to see it
 	return swell * 0.8 + chop * 0.14 * detail;
 }
+// Travelling swell: four long-crested waves from about the same quarter, each moving at its deep-water speed
+// (omega = sqrt(g k)); returns the height and its slope. The phase is broken up by noise so crests don't repeat.
+vec3 swell_waves(vec2 w) {
+	vec3 acc = vec3(0.0);
+	vec4 len = vec4(140.0, 95.0, 63.0, 41.0); vec4 amp = vec4(0.5, 0.32, 0.2, 0.12); vec4 dir = vec4(0.35, 1.05, -0.35, 0.75);
+	float ph0 = noise(w / 700.0) * 6.0;
+	for (int i = 0; i < 4; i++) {
+		vec2 d = vec2(cos(dir[i]), sin(dir[i])); float k = 6.2832 / len[i]; float om = sqrt(9.81 * k);
+		float x = dot(d, w) * k - om * rt + ph0 * float(i + 1) * 0.6;
+		acc.x += amp[i] * sin(x); acc.yz += amp[i] * k * cos(x) * d;
+	}
+	return acc;
+}
 void fragment() {
 	vec2 w = cam + (SCREEN_UV - 0.5) * screen / zoom;
 	// lighting follows the broad swell only, so glints are smooth sheens rather than speckle
 	float e = max(6.0, 3.0 / max(zoom, 0.05));
 	float h = sea(w), hs = swell_h(w);
 	vec2 grad = vec2(swell_h(w + vec2(e, 0.0)) - hs, swell_h(w + vec2(0.0, e)) - hs) / e;
-	vec3 n = normalize(vec3(-grad * 220.0, 1.0));
+	vec3 sw = swell_waves(w);
+	float fade = clamp((zoom - 0.3) / 0.6, 0.0, 1.0);   // far out the waves would alias into streaks: leave the broad sea
+	vec3 n = normalize(vec3(-grad * 90.0 - sw.yz * 7.0 * fade, 1.0));
 	vec3 l = normalize(vec3(sun_dir, 0.9));
 	float diff = clamp(dot(n, l), 0.0, 1.0);
-	float spec = pow(clamp(dot(reflect(-l, n), vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 40.0);
-	vec3 col = mix(deep, shallow, smoothstep(0.3, 0.75, h));
+	// glints ride the moving swell (the noise slope has creases that would leave still, curly highlights)
+	vec3 ns = normalize(vec3(-sw.yz * 8.0 - grad * 30.0, 1.0));
+	float spec = pow(clamp(dot(reflect(-l, ns), vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 24.0) * fade;
+	vec3 col = mix(deep, shallow, smoothstep(0.3, 0.75, h + sw.x * 0.06 * fade));
+	// cloud shadows drifting across the sea
+	float cloud = smoothstep(0.45, 0.75, fbm(w / 2600.0 + vec2(rt * 0.0016, rt * 0.0009)));
+	col *= 1.0 - 0.16 * cloud;
 	col *= 0.82 + 0.3 * diff;
 	col += vec3(0.75, 0.8, 0.78) * spec * 0.12 * clamp(zoom * 2.0, 0.2, 1.0);
 	vec2 v = SCREEN_UV - 0.5; col *= 1.0 - dot(v, v) * 0.75;

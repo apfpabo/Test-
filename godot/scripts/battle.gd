@@ -108,7 +108,7 @@ func _process(delta: float) -> void:
     Sfx.engine(eng)
     var vs = get_viewport_rect().size
     water_mat.set_shader_parameter("cam", camera.position); water_mat.set_shader_parameter("zoom", zoom())
-    water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t)
+    water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t); water_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
     for v in views: v.refresh()
     for n in layers: if layers[n] is Drawer: layers[n].queue_redraw()
     hud.queue_redraw()
@@ -254,6 +254,16 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
     var view
     var lvl := 0
     var lit := false
+    ## The barrels texture drawn strip by strip, one strip per barrel, so each recoils on its own.
+    func _barrels(tex: Texture2D, m, info: Dictionary, o: Vector2, col: Color) -> void:
+        var n := int(m.w.get("barrels", 1)); var spr: float = info.spr; var g: float = float(m.w.get("gap", 0.0)); var hpx: float = tex.get_height()
+        for i in n:
+            var y0: float = 0.0 if i == 0 else (float(info.oy) + (i - 0.5 - (n - 1) / 2.0) * g) * spr
+            var y1: float = hpx if i == n - 1 else (float(info.oy) + (i + 0.5 - (n - 1) / 2.0) * g) * spr
+            var r: float = m.rec[i] if i < m.rec.size() else m.recoil
+            var rc: float = r * float(m.w.get("bl", 0.0)) * 0.12 * spr
+            var src = Rect2(0, y0, tex.get_width(), y1 - y0)
+            draw_texture_rect_region(tex, Rect2(o + Vector2(-rc, y0), src.size), src, col)
     func _visible_mount(s: BattleSim.CShip, m) -> bool:
         return m.lvl == lvl and m.w.kind != "ssm" and m.w.kind != "sam" and not (s.sub and m.w.kind == "torp") and GameData.sprites.mounts.has(m.wid)
     func _draw() -> void:
@@ -266,8 +276,8 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
             var info: Dictionary = GameData.sprites.mounts[m.wid]
             var sc: float = (1.0 + 0.035 * lvl) / info.spr
             var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
-            var rc: float = m.recoil * m.w.get("bl", 0.0) * 0.12 * info.spr
             var split: bool = info.get("split", false)
+            var bt: Texture2D = GameData.mount_img(m.wid, style, true) if split else null
             if not lit:
                 # a soft contact shadow round the foot, then a crisp shadow cast from the roof's height (raised turrets cast further)
                 draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04)
@@ -275,12 +285,12 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
                 var reach: float = GameData.turret_h(m.w) * 0.85 + 2.8 * lvl
                 draw_set_transform(p + sun * reach, m.ta, Vector2(sc, sc))
                 var shc = Color(0, 0, 0, 0.42 if lvl else 0.36)
-                if split: draw_texture(GameData.mount_img(m.wid, style, true), o - Vector2(rc, 0), shc)
+                if split: _barrels(bt, m, info, o, shc)
                 draw_texture(GameData.mount_img(m.wid, style), o, shc)
             else:
                 var code: Color = GameData.mount_code(sun.rotated(-m.ta), lvl, m.dead)
                 draw_set_transform(p, m.ta, Vector2(sc, sc))
-                if split: draw_texture(GameData.mount_img(m.wid, style, true), o - Vector2(rc, 0), code) # only the barrels run back on recoil
+                if split: _barrels(bt, m, info, o, code) # only the barrels run back on recoil, each on its own
                 draw_texture(GameData.mount_img(m.wid, style), o, code)
         draw_set_transform(Vector2.ZERO)
         if lit and lvl == s.max_lvl and s.struck: draw_rect(Rect2(-s.d.L / 2 - 6, -2, 5, 4), Color(0.91, 0.91, 0.88))
@@ -391,9 +401,9 @@ class Drawer extends Node2D:
                         var r = maxf(q.size, 2 * mn)
                         _puff(puff, q.pos, r * (0.5 + 0.9 * sqrt(k)), Color(0.97, 0.99, 0.99, 0.95 * (1 - k) * (1 - k)))
                         draw_arc(q.pos, r * (0.4 + k * 1.6), 0, TAU, 32, Color(0.92, 0.97, 0.97, 0.6 * (1 - k)), maxf(mn, r * 0.08))
-                    P.BLAST:
-                        draw_arc(q.pos, q.size * (0.3 + k), 0, TAU, 32, Color(0.88, 0.93, 0.93, 0.45 * (1 - k)), maxf(mn, q.size * 0.1 * (1 - k)))
-                        _puff(puff, q.pos, q.size * (0.3 + k * 0.8), Color(0.82, 0.89, 0.9, 0.25 * (1 - k)))
+                    P.BLAST: # the muzzle blast pressing on the sea: a half ring spreading out along the line of fire, not back across the ship
+                        draw_arc(q.pos, q.size * (0.3 + k), q.a - 1.25, q.a + 1.25, 24, Color(0.88, 0.93, 0.93, 0.45 * (1 - k)), maxf(mn, q.size * 0.1 * (1 - k)))
+                        _puff(puff, q.pos + Vector2.from_angle(q.a) * q.size * (0.2 + 0.4 * k), q.size * (0.25 + k * 0.6), Color(0.82, 0.89, 0.9, 0.25 * (1 - k)))
                     P.DC: _puff(puff, q.pos, q.size * (0.5 + k * 1.2), Color(0.96, 0.98, 0.98, 0.9 * (1 - k)))
             elif layer == 1:
                 match q.t:

@@ -23,6 +23,8 @@ class Mount:
     var ta = 0.0
     var cd = 0.0
     var recoil = 0.0
+    var rec := PackedFloat32Array()   # recoil of each barrel, 1 just fired
+    var queue: Array = []             # barrels still to fire in the current salvo: {i, t, aim}
     var tgt: CShip = null
     var tgt_t = 0.0
     var air: Dictionary = {}
@@ -130,7 +132,7 @@ var aim_mode = 0          # 0 none, 1 hold-fire at a point
 var mouse_world = Vector2.ZERO
 var mouse_down = false
 var gun_aim: Dictionary = {}
-var msg = "Action stations!"
+var msg = "Battle stations!"
 var msg_t = 3.0
 var finished = false
 var result: Dictionary = {}
@@ -420,11 +422,11 @@ func fx_splash(p: Vector2, size: float) -> void:
     part(P.SPLASH, p, 1.8, size); part(P.FOAM, p, 10.0, size * 1.5)
 
 func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
-    var S: float = {"S": 6.5, "M": 12.0, "L": 20.0, "H": 34.0}[size]
+    var S: float = {"S": 5.5, "M": 9.5, "L": 15.0, "H": 24.0}[size]
     var n: int = {"S": 3, "M": 4, "L": 7, "H": 11}[size] + barrels
     var f = part(P.FLASH, p, 0.26, S * (1 + barrels * 0.12)); f.a = ang
-    part(P.BLAST, p, 0.9, S * 3.0)
-    if size == "H" or size == "L": part(P.FOAM, p - Vector2.from_angle(ang) * S * 0.3, 4.0, S * 2.2) # the blast flattens the sea alongside
+    var bl = part(P.BLAST, p, 0.9, S * 3.0); bl.a = ang
+    if size == "H" or size == "L": part(P.FOAM, p + Vector2.from_angle(ang) * S * 0.6, 2.0, S * 1.1) # the blast flattens the sea ahead of the muzzle
     for i in ceili(n / 2.0):
         var a = ang + (randf() - 0.5) * 0.9
         part(P.SPARK, p, 0.3 + randf() * 0.3, S * 0.12, Vector2.from_angle(a) * (60.0 + randf() * 120.0))
@@ -436,19 +438,34 @@ func tracer(p: Vector2, q: Vector2) -> void:
     tracers.append({"a": p, "b": q + Vector2(randf() - 0.5, randf() - 0.5) * 20.0, "life": 0.12})
 
 # ------------------------------------------------------------------ weapons
+## A salvo: the barrels fire one after another a moment apart (heavier guns more slowly), each with its own flash,
+## report and recoil, rather than all at once.
+const RIPPLE := {"S": 0.15, "M": 0.25, "L": 0.4, "H": 0.5}
 func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary) -> void:
-    var p = world_pt(s, m.slot.x, m.slot.y); var ang = s.a + m.ta
+    var n := int(w.get("barrels", 1)); var start := randi() % n
+    for k in n: m.queue.append({"i": (start + k) % n, "t": k * RIPPLE[w.size], "aim": aim})
+    if m.queue.size() > n * 2: m.queue = m.queue.slice(m.queue.size() - n)
+    _ripple(s, m, 0.0)
+
+func _ripple(s: CShip, m: Mount, dt: float) -> void:
+    for j in range(m.queue.size() - 1, -1, -1):
+        var q: Dictionary = m.queue[j]; q.t -= dt
+        if q.t <= 0.0: m.queue.remove_at(j); fire_barrel(s, m, q.aim, int(q.i))
+
+func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
+    var w: Dictionary = m.w; var n := int(w.get("barrels", 1))
+    var ang = s.a + m.ta; var off: float = (i - (n - 1) / 2.0) * float(w.get("gap", 0.0))
+    var p = world_pt(s, m.slot.x, m.slot.y) + Vector2.from_angle(ang + PI / 2) * off
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
     var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1.15 if s.side == 1 else 1.0)
     var spread: float = w.spread * fc / maxf(0.3, s.fc)
-    for i in int(w.get("barrels", 1)):
-        var a = ang + (randf() - 0.5) * 2 * spread
-        var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
-        shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed + i * 0.15, "dmg": w.dmg, "side": s.side, "size": w.size})
-    m.recoil = 1.0
-    var mz = p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl)
-    fx_muzzle(mz, ang, w.size, int(w.get("barrels", 1)))
-    boom(p, {"S": 0.2, "M": 0.3, "L": 0.48, "H": 0.8}[w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 160.0}[w.size])
+    var a = ang + (randf() - 0.5) * 2 * spread
+    var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
+    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size})
+    if m.rec.size() != n: m.rec.resize(n)
+    m.rec[i] = 1.0; m.recoil = 1.0
+    fx_muzzle(p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl), ang, w.size, 1)
+    boom(p, {"S": 0.18, "M": 0.26, "L": 0.42, "H": 0.7}[w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 160.0}[w.size])
 
 func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y); var base = (aim - p).angle()
@@ -500,6 +517,7 @@ func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
     var p = world_pt(s, m.slot.x, m.slot.y)
     if m.w.kind == "gun": # dual-purpose guns firing at aircraft: a real gun report, flash and recoil
         var ang = (sq.pos - p).angle(); tracer(p, sq.pos); m.recoil = 1.0
+        m.rec.resize(int(m.w.get("barrels", 1))); m.rec.fill(1.0)
         fx_muzzle(p + Vector2.from_angle(ang) * (m.w.tl * 0.42 + m.w.bl), ang, m.w.size, int(m.w.get("barrels", 1)))
         boom(p, {"S": 0.16, "M": 0.24, "L": 0.4, "H": 0.6}[m.w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 220.0}[m.w.size])
     else: aa_shot(s, m, p, sq.pos)
@@ -512,6 +530,8 @@ func update_weapons(s: CShip, dt: float) -> void:
     for m in s.mounts:
         if m.dead: m.st = ""; continue
         var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 1.2)
+        for b in m.rec.size(): m.rec[b] = maxf(0.0, m.rec[b] - dt * 1.2)
+        if not m.queue.is_empty(): _ripple(s, m, dt)
         var p = world_pt(s, m.slot.x, m.slot.y)
         match w.kind:
             "gun":

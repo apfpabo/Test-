@@ -68,6 +68,7 @@ func _prepare_land() -> void:
         for q in ch: pv.append(Vector2(q[0], q[1]))
         chan_lines.append(pv)
 
+func _exit_tree() -> void: Sfx.engine(0.0)
 func rx(x: float) -> float: return cam.x + Campaign.wdx(cam.x, x) # place a wrapped world x next to the camera
 func to_screen(p: Vector2) -> Vector2: return (Vector2(rx(p.x), p.y) - cam) * zoom + get_viewport_rect().size / 2
 func to_world(sp: Vector2) -> Vector2: return (sp - get_viewport_rect().size / 2) / zoom + cam
@@ -96,6 +97,9 @@ func _process(delta: float) -> void:
         for c in land_copies: c.queue_redraw()
     marks.queue_redraw(); overlay.queue_redraw(); world.get_child(0).queue_redraw()
     _update_top(); _update_dock()
+    # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
+    var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
+    Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 4.0, 0.1, 1.0) if under_way else 0.0)
 
 ## Wake trails, recorded only for fleets on or near the screen. Each point ages out after a few seconds; every ship in
 ## the column draws its own wake along the trail (see Marks._wake).
@@ -177,17 +181,17 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         for f in G.fleets:
             var x: float = map.rx(f.x)
             if absf(x - map.cam.x) > hw + 60 or absf(f.y - map.cam.y) > hh + 60: continue
-            if z >= 0.32: _wakes_of(f.id, f.ships)
+            if z >= 0.32: _wakes_of(f.id, f.ships, Vector2(x, f.y), f.h)
             var col = Color("#e3b23c") if f.get("mission", false) else Color(GameData.fac[f.fac].map); var hos = Campaign.hostile(f.fac)
             if z < 0.32:
                 draw_colored_polygon(PackedVector2Array([Vector2(x, f.y) + Vector2.from_angle(f.h) * 7 / z, Vector2(x, f.y) + Vector2.from_angle(f.h + 2.5) * 4 / z, Vector2(x, f.y) + Vector2.from_angle(f.h - 2.5) * 4 / z]), col)
                 continue
             if f.get("chasing", false): draw_arc(Vector2(x, f.y), 160, 0, TAU, 64, Color(0.85, 0.38, 0.29, 0.28), 1.0 / z)
             if hos or f.get("mission", false) or P.follow == f.id: draw_arc(Vector2(x, f.y), 16 * b / z, 0, TAU, 32, Color(Color("#e3b23c") if P.follow == f.id else col, 0.7), 1.5 / z)
-            _fleet(f.ships, f.fac, Vector2(x, f.y), f.h)
-        if G.fleet.size() and z >= 0.32: _wakes_of("player", G.fleet)
+            _fleet(f.ships, f.fac, Vector2(x, f.y), f.h, f.id)
+        if G.fleet.size() and z >= 0.32: _wakes_of("player", G.fleet, Vector2(P.x, P.y), P.h)
         draw_arc(Vector2(P.x, P.y), 17 * b / z, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
-        if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h)
+        if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h, "player")
 
     func _dash(a: Vector2, b: Vector2, c: Color, w: float, d: float) -> void:
         var len = a.distance_to(b); var n = int(len / (d * 2)) + 1
@@ -209,38 +213,71 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             out.append([s, back, ((1 if k % 2 else -1) * len * 0.35) if k else 0.0, len, sc])
         return out
 
-    func _fleet(ships: Array, pal: String, p: Vector2, h: float) -> void:
+    ## The fleet's track, newest first, starting from where it is now: [position, heading] pairs in screen-wrapped map units.
+    func _track(key, p: Vector2, h: float) -> Array:
+        var out = [[p, h]]
+        var tr: Array = map.trails.get(key, [])
+        for i in range(tr.size() - 1, -1, -1): out.append([Vector2(map.rx(tr[i].x), tr[i].y), tr[i].h])
+        return out
+
+    ## Where a ship this far astern of the leader is: walked back along the track the leader has steamed, so a column
+    ## follows its leader through a channel or round a headland instead of being drawn across the land beside it.
+    ## With no track yet, the ships close up astern of the leader. Returns [position, heading].
+    func _astern(track: Array, back: float) -> Array:
+        var run := 0.0
+        for i in range(1, track.size()):
+            var a: Vector2 = track[i - 1][0]; var b: Vector2 = track[i][0]; var seg := a.distance_to(b)
+            if seg > 1e-4 and run + seg >= back:
+                var k := (back - run) / seg; var hd: float = (a - b).angle()
+                return [a.lerp(b, k), hd]
+            run += seg
+        # past the end of the track: carry on straight astern, unless that would put the ship ashore
+        var last: Array = track[-1]; var rest: float = back - run; var hl: float = last[1]
+        var q: Vector2 = last[0] - Vector2.from_angle(hl) * rest
+        if Campaign.on_land(Campaign.wrap_x(q.x), q.y): q = last[0] - Vector2.from_angle(hl) * minf(rest, 0.3)
+        return [q, hl]
+
+    func _fleet(ships: Array, pal: String, p: Vector2, h: float, key = null) -> void:
+        var track = _track(key, p, h)
         for e in _layout(ships):
             var s: Dictionary = e[0]
-            var q = p - Vector2.from_angle(h) * e[1] + Vector2(-sin(h), cos(h)) * e[2]
+            var at: Array = [p, h] if e[1] == 0.0 else _astern(track, e[1])
             var info: Dictionary = GameData.sprites.ships[s.type]
-            draw_set_transform(q, h, Vector2.ONE * e[4] / info.spr)
+            draw_set_transform(at[0], at[1], Vector2.ONE * e[4] / info.spr)
             for layer in ["base", "top"]:
                 var t = GameData.ship_tex(s.type, pal, layer); draw_texture(t, -t.get_size() / 2)
         draw_set_transform(Vector2.ZERO)
 
-    ## Wakes along the fleet's trail, one per ship: two arms spreading from the stern and a churned band between them,
-    ## all fading with age.
-    func _wakes_of(key, ships: Array) -> void:
+    ## Wakes along the track, one per ship, each starting at that ship's stern: two arms spreading out and a churned
+    ## band between them, fading with distance and age.
+    func _wakes_of(key, ships: Array, p: Vector2, h: float) -> void:
         var tr: Array = map.trails.get(key, [])
         if tr.size() < 2: return
         var z: float = map.zoom
+        var track = _track(key, p, h)
+        var dist := [0.0]; var age := [0.0]   # distance back along the track, and each point's age
+        for i in range(1, track.size()):
+            dist.append(dist[-1] + track[i - 1][0].distance_to(track[i][0])); age.append(tr[tr.size() - i].t)
         for e in _layout(ships):
-            var back: float = e[1]; var side: float = e[2]; var len: float = e[3]
+            var len: float = e[3]; var start: float = e[1] + len * 0.48; var reach: float = len * 3.0
+            # sample the track evenly from the stern back, so the arms open smoothly
+            var pts = []
+            var j := 0
+            for n in 17:
+                var dd: float = start + reach * n / 16.0
+                if dd > dist[-1]: break
+                while j < dist.size() - 1 and dist[j + 1] < dd: j += 1
+                var at: Array = _astern(track, dd)
+                pts.append([at[0], at[1], age[mini(j + 1, age.size() - 1)], dd - start])
             var arm_l = PackedVector2Array(); var arm_r = PackedVector2Array(); var mid = PackedVector2Array()
             var ca = PackedColorArray(); var cm = PackedColorArray()
-            var run := 0.0; var prev = null; var reach: float = len * 3.0   # a wake runs about three ship lengths
-            for i in range(tr.size() - 1, -1, -1):
-                var q: Dictionary = tr[i]
-                var d = Vector2.from_angle(q.h); var nrm = Vector2(-d.y, d.x)
-                var base = Vector2(map.rx(q.x), q.y) - d * (back + len * 0.48) + nrm * side
-                if prev != null: run += base.distance_to(prev)
-                prev = base
-                var k: float = minf(1.0, maxf(q.t / 4.0, run / reach))
-                var spread: float = len * (0.05 + 0.6 * k) * (0.6 + 0.4 * q.s)
-                arm_l.append(base + nrm * spread); arm_r.append(base - nrm * spread); mid.append(base)
-                ca.append(Color(0.9, 0.95, 0.95, 0.45 * (1.0 - k) * (1.0 - k) * q.s)); cm.append(Color(0.85, 0.93, 0.93, 0.2 * (1.0 - k) * (1.0 - k) * q.s))
+            for q in pts:
+                var k: float = minf(1.0, maxf(q[2] / 4.0, q[3] / reach))
+                var d = Vector2.from_angle(q[1]); var nrm = Vector2(-d.y, d.x); var spread: float = len * (0.05 + 0.6 * k)
+                arm_l.append(q[0] + nrm * spread); arm_r.append(q[0] - nrm * spread); mid.append(q[0])
+                ca.append(Color(0.9, 0.95, 0.95, 0.45 * (1.0 - k) * (1.0 - k))); cm.append(Color(0.85, 0.93, 0.93, 0.2 * (1.0 - k) * (1.0 - k)))
                 if k >= 1.0: break
+            if mid.size() < 2: continue
             draw_polyline_colors(mid, cm, maxf(len * 0.1, 1.5 / z))
             draw_polyline_colors(arm_l, ca, maxf(len * 0.012, 1.0 / z)); draw_polyline_colors(arm_r, ca, maxf(len * 0.012, 1.0 / z))
 
@@ -453,10 +490,10 @@ func _on_encounter(f: Dictionary) -> void:
         else:
             var who: String = ("Your mission target, " + f.name + ",") if f.get("mission", false) else (("%s's squadron, worth %s," % [f.captain, Campaign.fmt(f.reward)]) if f.kind == "bounty" else "A " + GameData.fac[f.fac].name + " force")
             box.add_child(UI.title("Contact")); box.add_child(_lead_pic(f)); _p(box, "%s is closing on you: %s." % [who, _counts(f.ships)]); _p(box, odds, UI.DIM)
-            box.add_child(UI.row([UI.button("Action stations", func(): _battle(f), true),
+            box.add_child(UI.row([UI.button("Battle stations", func(): _battle(f), true),
                 UI.button("Break off (%d%%)" % evade, func():
                     if randf() * 100 < evade: f.cool = 7.0; P.cool = 4.0; close_panel(); _toast("You turn away under a smoke screen and open the range.")
-                    else: open_panel(func(b2): b2.add_child(UI.title("No escape")); _p(b2, "Their lookouts have you, and they hold the faster ships. You will have to fight."); b2.add_child(UI.button("Action stations", func(): _battle(f), true)), true))]))
+                    else: open_panel(func(b2): b2.add_child(UI.title("No escape")); _p(b2, "Their lookouts have you, and they hold the faster ships. You will have to fight."); b2.add_child(UI.button("Battle stations", func(): _battle(f), true)), true))]))
     , true)
 
 func _battle(f: Dictionary) -> void:
@@ -520,7 +557,7 @@ func _do_survey(q: Dictionary) -> void:
     open_panel(func(box):
         box.add_child(UI.title("Survey: " + q.name))
         for l in out.lines: _p(box, l)
-        if out.ambush != null: box.add_child(UI.button("Action stations", func(): _battle(out.ambush), true))
+        if out.ambush != null: box.add_child(UI.button("Battle stations", func(): _battle(out.ambush), true))
         else: box.add_child(UI.button("Return to the chart", close_panel, true))
     , out.ambush != null)
 

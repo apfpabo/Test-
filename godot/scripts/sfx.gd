@@ -12,6 +12,7 @@ var _pop: Array = []            # light AA pops
 var _pool: Array[AudioStreamPlayer] = []
 var _next = 0
 var _engine: AudioStreamPlayer
+var _recent: Array[float] = []   # start times of recent reports, to keep a big gunfight from turning to mush
 var muted = false:
 	set(v): muted = v; if _engine: _engine.stream_paused = v
 
@@ -49,13 +50,15 @@ func _report(cutoff: float) -> AudioStreamWAV:
 		# thump: a sine falling in pitch, gone in a fraction of a second
 		var f = f1 + (f0 - f1) * exp(-t * 18.0); ph += TAU * f / RATE
 		var thump = sin(ph) * exp(-t * lerpf(16.0, 7.0, heavy)) * att
+		# body: a second, lower sine that lingers, the weight felt rather than heard (most of it 40-90 Hz)
+		var body = sin(ph * 0.55) * exp(-t * lerpf(9.0, 3.2, heavy)) * att * lerpf(0.35, 0.9, heavy)
 		# crack: bright noise for the first few milliseconds
 		var nz = randf_range(-1, 1); hp = 0.6 * (hp + nz - prev); prev = nz
 		var crack = hp * exp(-t * lerpf(60.0, 35.0, heavy))
 		# tail: low-passed rumble that rolls on
 		y = (1.0 - a) * nz + a * y; y2 = (1.0 - a) * y + a * y2
 		var tail = y2 * 3.4 * exp(-t * lerpf(6.0, 1.6, heavy)) * minf(1.0, t * 60.0)
-		out[i] = clampf(thump * lerpf(0.75, 1.0, heavy) + crack * lerpf(0.6, 0.35, heavy) + tail * 0.9, -1.0, 1.0)
+		out[i] = clampf(thump * lerpf(0.75, 1.0, heavy) + body + crack * lerpf(0.6, 0.35, heavy) + tail * 0.9, -1.0, 1.0) * 0.8
 	return _wav(out)
 
 ## A light AA round: a short pop.
@@ -69,12 +72,13 @@ func _aa_pop() -> AudioStreamWAV:
 
 ## Engine and sea: a slow-breathing low rumble that loops without a seam.
 func _engine_loop() -> AudioStreamWAV:
-	var n = RATE * 4; var out = PackedFloat32Array(); out.resize(n); var y = 0.0; var y2 = 0.0; var a = exp(-TAU * 90.0 / RATE)
+	var n = RATE * 4; var out = PackedFloat32Array(); out.resize(n); var y = 0.0; var y2 = 0.0; var bw = 0.0; var a = exp(-TAU * 90.0 / RATE)
 	for i in n:
 		var t = float(i) / RATE; var nz = randf_range(-1, 1); y = (1.0 - a) * nz + a * y; y2 = (1.0 - a) * y + a * y2
-		var hum = sin(TAU * 42.0 * t) * 0.18 + sin(TAU * 84.0 * t) * 0.06   # shaft and machinery
+		var hum = sin(TAU * 42.0 * t) * 0.18 + sin(TAU * 84.0 * t) * 0.1 + sin(TAU * 126.0 * t) * 0.07 + sin(TAU * 252.0 * t) * 0.03  # shafts, turbines, blowers
 		var swell = 0.75 + 0.25 * sin(TAU * t / 4.0)                          # the sea, once round the loop
-		out[i] = (y2 * 5.0 * swell + hum) * 0.6
+		bw = 0.92 * bw + 0.08 * nz; var wash = (nz - bw) * 0.22 * (0.6 + 0.4 * sin(TAU * t / 2.0 + 1.0))  # bow wave hiss
+		out[i] = (y2 * 5.0 * swell + hum * (1.0 + 0.15 * sin(TAU * 3.0 * t)) + wash) * 0.7
 	# cross-fade the ends so the loop is seamless
 	var fade = RATE / 4
 	for i in fade:
@@ -95,6 +99,15 @@ func pop(vol: float) -> void:
 	_play(_pop.pick_random(), vol, randf_range(0.85, 1.2))
 
 func _play(stream: AudioStream, vol: float, rate: float) -> void:
+	# a crowd of reports at once: each new one is quieter, and faint ones are dropped, so the loudest stay distinct
+	var now := Time.get_ticks_msec() / 1000.0
+	while not _recent.is_empty() and now - _recent[0] > 0.35: _recent.pop_front()
+	var crowd := _recent.size()
+	if crowd > 4 and vol < 0.15: return
+	vol /= sqrt(1.0 + crowd * 0.35)
+	_recent.append(now)
+	# far reports arrive muffled and a touch lower
+	if vol < 0.2: rate *= 0.88
 	var p = _pool[_next]; _next = (_next + 1) % _pool.size()
 	p.stream = stream; p.pitch_scale = rate * randf_range(0.92, 1.08); p.volume_db = linear_to_db(clampf(vol, 0.0, 1.0)) + 2.0; p.play()
 
@@ -104,5 +117,5 @@ func engine(level: float) -> void:
 	if level <= 0.01: if _engine.playing: _engine.stop()
 	else:
 		if not _engine.playing and not muted: _engine.play()
-		_engine.volume_db = lerpf(_engine.volume_db, linear_to_db(clampf(level, 0.0, 1.0) * 0.5), 0.1)
+		_engine.volume_db = lerpf(_engine.volume_db, linear_to_db(clampf(0.25 + level * 0.75, 0.0, 1.0)) - 3.0, 0.1)
 		_engine.pitch_scale = 0.8 + 0.4 * level

@@ -1278,9 +1278,14 @@ class ShipThumb extends Control:
         guns.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(guns)
         if sel >= 0:
             var hl := ThumbHighlight.new(); hl.thumb = self; hl.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(hl)
+    ## Pixels per metre: the plan drawn as large as fits inside this box (a box stretched wider by its container
+    ## no longer makes the ship spill out above and below it).
+    func px_per_m() -> float:
+        var info: Dictionary = GameData.sprites.ships[id]
+        return minf(size.x / float(info.w), (size.y - 4.0) / float(info.h))
     func _draw() -> void:
         var info: Dictionary = GameData.sprites.ships[id]
-        var k = size.x / info.w   # pixels per metre
+        var k = px_per_m()   # pixels per metre: the plan fits inside the box, whatever the box's shape
         var c = size / 2
         for layer in ["base", "top"]:
             var t = GameData.ship_tex(id, pal, layer); draw_texture_rect(t, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false)
@@ -1293,7 +1298,7 @@ class ThumbHighlight extends Control:
     func _draw() -> void:
         var d: Dictionary = GameData.hulls[thumb.id]; var info: Dictionary = GameData.sprites.ships[thumb.id]
         if thumb.sel < 0 or thumb.sel >= d.slots.size(): return
-        var sl: Dictionary = d.slots[thumb.sel]; var k: float = size.x / info.w; var c: Vector2 = size / 2 + Vector2(sl.x, sl.y) * k
+        var sl: Dictionary = d.slots[thumb.sel]; var k: float = thumb.px_per_m(); var c: Vector2 = size / 2 + Vector2(sl.x, sl.y) * k
         var wid = thumb.fit[thumb.sel] if thumb.fit != null else sl.def
         var w: Dictionary = GameData.weapons.get(wid if wid != null else "", {})
         var r := maxf(9.0, maxf(float(w.get("tw", 3.0)), float(w.get("tl", 3.0))) * 0.75 * k + 5.0)
@@ -1310,7 +1315,7 @@ class ThumbMounts extends Control:
     func _draw() -> void:
         var id: String = thumb.id; var fit = thumb.fit
         var info: Dictionary = GameData.sprites.ships[id]; var d: Dictionary = GameData.hulls[id]
-        var k = size.x / info.w; var c = size / 2; var style := GameData.style_of(id)
+        var k = thumb.px_per_m(); var c = size / 2; var style := GameData.style_of(id)
         for i in d.slots.size():
             var sl: Dictionary = d.slots[i]; var wid = fit[i] if fit != null else sl.def
             if wid == null or wid == "" or not GameData.sprites.mounts.has(wid): continue
@@ -1634,7 +1639,7 @@ func _missions(box: Control, at_admiralty: bool, by := "") -> void:
 func _lead_pic(f: Dictionary) -> Control:
     var lead: Dictionary = f.ships[0]
     for s in f.ships: if GameData.hulls[s.type].L > GameData.hulls[lead.type].L: lead = s
-    return _thumb(lead.type, GameData.ship_pal(lead.type, f.fac), minf(420.0, GameData.hulls[lead.type].L * 2.2 + 60), lead.fit)
+    return _thumb(lead.type, GameData.ship_pal(lead.type, f.fac), clampf(GameData.hulls[lead.type].L * 2.2 + 60, 260.0, 420.0), lead.fit)
 
 # ------------------------------------------------------------------ land structures
 ## Your structures ashore: what each yields, who holds it, where its goods go, and the goods waiting for you.

@@ -325,6 +325,17 @@ func fleet_map_speed(ships: Array) -> float:
     var m = INF
     for s in ships: m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * int(s.get("up", {}).get("eng", 0))))
     return m * 0.576
+## The engine-room telegraph on the chart: speed as a share of cruising speed, and fuel burned a day as a share of
+## the cruising burn (it rises steeply with speed, so slow steaming stretches the bunkers and flank speed drains them).
+const SPEEDS := {"slow": [0.5, 0.35, "Slow", "Slow ahead"], "half": [0.75, 0.6, "Half", "Half ahead"], "cruise": [1.0, 1.0, "Cruise", "Cruising speed"],
+    "full": [1.2, 1.6, "Full", "Full ahead"], "flank": [1.38, 2.4, "Flank", "Flank speed"]}
+const SPEED_ORDER := ["slow", "half", "cruise", "full", "flank"]
+func speed_order() -> String: return str(G.player.get("spd", "cruise"))
+## Your squadron's speed on the chart at the ordered setting (before fuel, ice and tows).
+func player_speed() -> float: return fleet_map_speed(G.fleet) * float(SPEEDS[speed_order()][0])
+## Fuel burned a day at the ordered setting.
+func fuel_burn() -> float: return fuel_use() * float(SPEEDS[speed_order()][1])
+
 func fleet_turn_rate(ships: Array) -> float:
     var L = 0.0
     for s in ships: L = maxf(L, hull(s).L)
@@ -621,7 +632,7 @@ func new_day(moved: bool) -> void:
     var P: Dictionary = G.player
     if not G.has("reserve"): G.reserve = reserve_cap()
     if moved and P.get("towed") == null:
-        var burn: float = fuel_use() * (1.5 if in_ice(P.x, P.y) else 1.0)
+        var burn: float = fuel_burn() * (1.5 if in_ice(P.x, P.y) else 1.0)
         if G.cargo.fuel > 0: G.cargo.fuel -= burn
         else:
             G.reserve = maxf(0.0, float(G.reserve) - burn / 3.0)
@@ -685,7 +696,7 @@ func update(dt: float) -> void:
     var ice = in_ice(P.x, P.y)
     if P.get("route") != null:
         var no_fuel: bool = G.cargo.fuel <= 0 and fuel_use() > 0
-        var sp = fleet_map_speed(G.fleet) * (0.2 if no_fuel else 1.0) * (0.4 if ice else 1.0)
+        var sp = (fleet_map_speed(G.fleet) * 0.2 if no_fuel else player_speed()) * (0.4 if ice else 1.0)
         sp *= 0.35 + 0.65 * crew_frac()   # short-handed in the stokeholds: less steam
         if dead_in_water(): sp = 0.0
         if int(G.crew) <= 0 and not G.get("nocrewWarned", false):

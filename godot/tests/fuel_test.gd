@@ -12,6 +12,10 @@ func _ready() -> void:
 	var G: Dictionary = Campaign.G; var P: Dictionary = G.player
 	ok(Campaign.reserve() > 0.0 and is_equal_approx(Campaign.reserve(), Campaign.reserve_cap()), "a full reserve at the start (%.1f)" % Campaign.reserve())
 	ok(G.fleets.filter(func(f): return f.kind == "convoy").all(func(f): return int(f.cargo.get("fuel", 0)) > 0 and f.has("cash")), "every convoy carries fuel to sell, and cash")
+	# the telegraph: slower is lighter on fuel a day and over the distance; flank is the opposite
+	P.spd = "slow"; var vs := Campaign.player_speed(); var bs := Campaign.fuel_burn()
+	P.spd = "flank"; var vf := Campaign.player_speed(); var bf := Campaign.fuel_burn(); P.spd = "cruise"
+	ok(vs < vf and bs < bf and bs / vs < bf / vf, "telegraph: slow %.1f kn on %.1f t a day, flank %.1f kn on %.1f t a day" % [vs / 0.8, bs, vf / 0.8, bf])
 	# out to sea and run the bunkers dry
 	var a := Campaign.water_point(30.0); P.x = a.x; P.y = a.y; G.cargo.fuel = 0
 	G.fleets = G.fleets.filter(func(f): return not Campaign.hostile_fleet(f))

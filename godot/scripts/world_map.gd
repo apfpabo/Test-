@@ -56,7 +56,7 @@ func _ready() -> void:
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
     ui = Control.new(); ui.set_anchors_preset(Control.PRESET_FULL_RECT); ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.theme = UI.theme(); cl.add_child(ui)
     overlay = Overlay.new(); overlay.map = self; overlay.set_anchors_preset(Control.PRESET_FULL_RECT); overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(overlay)
-    _build_top(); _build_toasts(); _build_orders()
+    _build_top(); _build_toasts(); _build_orders(); _build_telegraph()
     dock = UI.button("Dock", _on_dock, true); dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM); dock.position = Vector2(-80, -60); dock.visible = false; ui.add_child(dock)
     dock.set_anchor_and_offset(SIDE_LEFT, 0.5, -90); dock.set_anchor_and_offset(SIDE_RIGHT, 0.5, 90); dock.set_anchor_and_offset(SIDE_TOP, 1.0, -64); dock.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -26)
     panel_layer = Control.new(); panel_layer.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(panel_layer)
@@ -134,7 +134,7 @@ func _process(delta: float) -> void:
     marks.queue_redraw(); overlay.queue_redraw(); world.get_child(0).queue_redraw()
     _orders_t -= delta
     if _orders_t <= 0.0: _orders_t = 0.5; _update_orders()
-    _update_top(); _update_dock()
+    _update_top(); _update_dock(); _update_telegraph()
     # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
     var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
     Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 6.0, 0.03, 0.3) if under_way else 0.0)
@@ -466,7 +466,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
         _t(psp + Vector2(0, lab_off + 13), "Your task force · %d kn%s" % [int(round(P.v / 0.8)), " · escorting" if P.get("escort") != null else ""], Color("#e3b23c"), 12)
         if P.get("tx") != null and P.get("route") != null:
             var end: Vector2 = P.route[-1] + Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
-            var days: float = Campaign.route_remaining(P) / maxf(0.5, Campaign.fleet_map_speed(G.fleet)) * 0.1
+            var days: float = Campaign.route_remaining(P) / maxf(0.5, Campaign.player_speed()) * 0.1
             _t(map.to_screen(end) + Vector2(0, 20), "under a day" if days < 1 else "≈ %d days" % int(ceil(days)), Color(0.89, 0.91, 0.89, 0.75), 11)
         var mp: Vector2 = map.to_world(get_local_mouse_position())
         _t(Vector2(vs.x - 160, vs.y - 14), "%.1f°%s %.1f°%s" % [absf(Campaign.y_lat(mp.y)), "N" if Campaign.y_lat(mp.y) >= 0 else "S", absf(Campaign.x_lon(mp.x)), "E" if Campaign.x_lon(mp.x) >= 0 else "W"], Color(0.62, 0.67, 0.67), 12, HORIZONTAL_ALIGNMENT_RIGHT, 150)
@@ -507,7 +507,7 @@ func _update_top() -> void:
     var G: Dictionary = Campaign.G
     stats.DATE.text = Campaign.date_str(G.day); stats.FUNDS.text = Campaign.fmt(G.credits)
     var fu = Campaign.fuel_use()
-    if G.cargo.fuel > 0 or fu <= 0: stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / fu)) if fu > 0 else "∞"]
+    if G.cargo.fuel > 0 or fu <= 0: stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / Campaign.fuel_burn())) if fu > 0 else "∞"]
     elif Campaign.reserve() > 0: stats.FUEL.text = "Reserve %dd" % int(ceil(Campaign.reserve() / (fu / 3.0)))
     else: stats.FUEL.text = "Under tow" if G.player.get("towed") != null else "DEAD IN WATER"
     if int(G.crew) <= 0 and G.player.get("towed") == null: stats.FUEL.text = "NO CREW · ADRIFT"
@@ -595,6 +595,39 @@ func _toast(text: String) -> void:
     while toasts.get_child_count() > 5: toasts.get_child(0).queue_free(); toasts.remove_child(toasts.get_child(0))
     get_tree().create_timer(6.5).timeout.connect(func(): if is_instance_valid(pc): pc.queue_free())
 
+# ------------------------------------------------------------------ the engine-room telegraph (bottom right)
+var tele_btns := {}
+var tele_info: Label
+func _build_telegraph() -> void:
+    var pc := PanelContainer.new(); ui.add_child(pc)
+    var sb := StyleBoxFlat.new(); sb.bg_color = Color(UI.PANEL, 0.9); sb.border_color = UI.LINE; sb.set_border_width_all(1); sb.border_width_top = 2
+    sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 6; sb.content_margin_bottom = 8; sb.set_corner_radius_all(3)
+    pc.add_theme_stylebox_override("panel", sb)
+    pc.set_anchor_and_offset(SIDE_RIGHT, 1, -14); pc.set_anchor_and_offset(SIDE_LEFT, 1, -360); pc.set_anchor_and_offset(SIDE_BOTTOM, 1, -30); pc.set_anchor_and_offset(SIDE_TOP, 1, -98)
+    var col := VBoxContainer.new(); col.add_theme_constant_override("separation", 4); pc.add_child(col)
+    var head := HBoxContainer.new(); col.add_child(head)
+    var t := Label.new(); t.text = "ENGINES"; t.add_theme_font_override("font", UI.font("cond")); t.add_theme_font_size_override("font_size", 14); t.add_theme_color_override("font_color", Color(UI.GOLD, 0.85)); head.add_child(t)
+    tele_info = Label.new(); tele_info.add_theme_font_size_override("font_size", 12); tele_info.add_theme_color_override("font_color", UI.DIM); tele_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    tele_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; head.add_child(tele_info)
+    var seg := HBoxContainer.new(); seg.add_theme_constant_override("separation", 0); col.add_child(seg)
+    for k in Campaign.SPEED_ORDER:
+        var key: String = k; var sp: Array = Campaign.SPEEDS[k]
+        var b := UI.button(sp[2], func(): _set_speed(key)); b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size.x = 66; b.add_theme_font_size_override("font_size", 14)
+        b.tooltip_text = "%s: %d%% of cruising speed, burning %d%% of the cruising fuel a day. Q and E step the telegraph." % [sp[3], int(float(sp[0]) * 100), int(float(sp[1]) * 100)]
+        seg.add_child(b); tele_btns[k] = b
+
+func _set_speed(k: String) -> void:
+    Campaign.G.player.spd = k
+    _toast("Engine room: %s." % Campaign.SPEEDS[k][3].to_lower())
+
+func _update_telegraph() -> void:
+    var cur := Campaign.speed_order()
+    for k in tele_btns:
+        tele_btns[k].add_theme_color_override("font_color", UI.GOLD if k == cur else UI.DIM)
+        tele_btns[k].add_theme_color_override("font_hover_color", UI.GOLD if k == cur else UI.INK)
+    var fb := Campaign.fuel_burn()
+    tele_info.text = "%d kn · %.1f t fuel a day" % [int(round(Campaign.player_speed() / 0.8)), fb] if fb > 0 else "%d kn" % int(round(Campaign.player_speed() / 0.8))
+
 func _update_dock() -> void:
     if panel_open: dock.visible = false; return
     var np = Campaign.nearest_port(28.0); var poi = null if np != null else Campaign.nearest_poi(22.0)
@@ -635,6 +668,9 @@ func _unhandled_input(e: InputEvent) -> void:
     elif e is InputEventKey and e.pressed and not e.echo:
         match e.keycode:
             KEY_SPACE: Campaign.paused = not Campaign.paused
+            KEY_Q, KEY_E:   # the telegraph: Q slower, E faster
+                var i: int = Campaign.SPEED_ORDER.find(Campaign.speed_order()) + (1 if e.keycode == KEY_E else -1)
+                _set_speed(Campaign.SPEED_ORDER[clampi(i, 0, Campaign.SPEED_ORDER.size() - 1)])
             KEY_1: _speed(1)
             KEY_2: _speed(2)
             KEY_3: _speed(4)

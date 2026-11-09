@@ -9,6 +9,7 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [autoload]
 GameData="*res://scripts/game_data.gd"
+Settings="*res://scripts/settings.gd"
 Sfx="*res://scripts/sfx.gd"
 Campaign="*res://scripts/campaign.gd"
 

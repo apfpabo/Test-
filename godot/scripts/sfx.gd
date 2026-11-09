@@ -21,6 +21,13 @@ var _engine: AudioStreamPlayer
 var _recent: Array[float] = []   # start times of recent reports, to keep a big gunfight from turning to mush
 var _rec: Dictionary = {}       # recorded banks by event: Array of AudioStream
 var _room: AudioStreamPlayer     # engine room under the sea ambience
+var _bed: AudioStreamPlayer      # open sea (Ambience bus)
+var _bed2: AudioStreamPlayer
+var _gull_p: AudioStreamPlayer
+var _gulls: Array = []
+var _gull_t := 4.0
+var _amb := 0.0                  # ambience level asked for, 0..1
+var _coast := 0.0                # how much land is near, 0..1: gulls call more often
 var muted = false:
 	set(v):
 		muted = v
@@ -37,7 +44,7 @@ func _ready() -> void:
 	for k in 2: _oer.append(_auto(7.5, 0.5, 0.03, 1400.0, false))
 	for k in 2: _bof.append(_auto(4.0, 0.62, 0.06, 500.0, false))
 	for i in 24:
-		var p = AudioStreamPlayer.new(); add_child(p); _pool.append(p)
+		var p = AudioStreamPlayer.new(); p.bus = "Effects"; add_child(p); _pool.append(p)
 	var names = {"gun_H": ["gun_heavy_1", "gun_heavy_2"], "gun_L": ["gun_heavy_1", "gun_heavy_2"], "gun_M": ["gun_medium"], "gun_S": ["gun_small"],
 		"hit": ["hit_1", "hit_2"], "hit_big": ["hit_big"], "splash": ["splash_1", "splash_2", "splash_3", "splash_4"], "blast": ["blast"], "launch": ["launch"],
 		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa40": ["bofors"]}
@@ -47,13 +54,24 @@ func _ready() -> void:
 			var st = load("res://assets/sfx/%s.ogg" % n)
 			if st != null: bank.append(st)
 		if not bank.is_empty(): _rec[k] = bank
-	_engine = AudioStreamPlayer.new(); _engine.volume_db = -80.0; add_child(_engine)
+	_engine = AudioStreamPlayer.new(); _engine.volume_db = -80.0; _engine.bus = "Effects"; add_child(_engine)
 	var amb = load("res://assets/sfx/sea_ambient.ogg")
 	if amb: amb.loop = true; _engine.stream = amb
 	else: _engine.stream = _engine_loop()
-	_room = AudioStreamPlayer.new(); _room.volume_db = -80.0; add_child(_room)
+	_room = AudioStreamPlayer.new(); _room.volume_db = -80.0; _room.bus = "Effects"; add_child(_room)
 	var er = load("res://assets/sfx/engine_room.ogg")
 	if er: er.loop = true; _room.stream = er
+	# the open sea and gulls, on the Ambience bus
+	_bed = AudioStreamPlayer.new(); _bed.volume_db = -80.0; _bed.bus = "Ambience"; add_child(_bed)
+	var bed = load("res://assets/sfx/sea_bed.ogg")
+	if bed: bed.loop = true; _bed.stream = bed
+	_bed2 = AudioStreamPlayer.new(); _bed2.volume_db = -80.0; _bed2.bus = "Ambience"; add_child(_bed2)
+	var amb2 = load("res://assets/sfx/sea_ambient.ogg")
+	if amb2: amb2.loop = true; _bed2.stream = amb2
+	for i in 5:
+		var g = load("res://assets/sfx/gull_%d.ogg" % (i + 1))
+		if g: _gulls.append(g)
+	_gull_p = AudioStreamPlayer.new(); _gull_p.bus = "Ambience"; add_child(_gull_p)
 	var comp = AudioEffectCompressor.new(); comp.threshold = -16.0; comp.ratio = 4.0; comp.attack_us = 2000.0; comp.release_ms = 250.0; comp.gain = 4.0
 	AudioServer.add_bus_effect(0, comp)
 	var lim = AudioEffectHardLimiter.new() if ClassDB.class_exists("AudioEffectHardLimiter") else AudioEffectLimiter.new()
@@ -179,17 +197,32 @@ func _play(stream: AudioStream, vol: float, rate: float) -> void:
 	p.stream = stream; p.pitch_scale = rate * randf_range(0.92, 1.08); p.volume_db = linear_to_db(clampf(vol, 0.0, 1.0)) + 2.0; p.play()
 
 ## Engine level 0..1 (0 silences it). Called every frame by the battle.
-## Sea and engines, level 0..1 (0 silences them). The sea along the hull swells with speed; the engine room
-## underneath runs a little faster with it. Called every frame by the battle and the chart.
-func engine(level: float) -> void:
-	if not _engine: return
-	for pl in [_engine, _room]:
-		if pl == null or pl.stream == null: continue
-		if level <= 0.01:
-			if pl.playing: pl.stop()
-			continue
-		if not pl.playing and not muted: pl.play()
-		var room: bool = pl == _room
-		var target: float = linear_to_db(clampf((0.15 + level * 0.6) if room else (0.25 + level * 0.75), 0.0, 1.0)) - (8.0 if room else 2.0)
-		pl.volume_db = lerpf(pl.volume_db, target, 0.1)
-		pl.pitch_scale = (0.9 + 0.2 * level) if room else (0.85 + 0.25 * level)
+## Ship sounds, level 0..1: the sea along the hull and the engine room under it, rising with speed. They fade in
+## and out rather than starting or stopping dead. Called every frame by the battle and the chart.
+var _eng_level := 0.0
+func engine(level: float) -> void: _eng_level = clampf(level, 0.0, 1.0)
+
+## The open sea all round: level 0..1, and coast 0..1 for how much land is near (gulls call more often there).
+func ambience(level: float, coast := 0.0) -> void: _amb = clampf(level, 0.0, 1.0); _coast = clampf(coast, 0.0, 1.0)
+
+func _fade(pl: AudioStreamPlayer, lin: float, rate: float, dt: float, pitch := 1.0) -> void:
+	if pl == null or pl.stream == null: return
+	var target := linear_to_db(maxf(lin, 0.0001))
+	if lin > 0.001 and not pl.playing and not muted: pl.volume_db = -60.0; pl.play()
+	if not pl.playing: return
+	pl.volume_db = move_toward(pl.volume_db, target, rate * dt * (2.5 if target > pl.volume_db else 1.0))
+	pl.pitch_scale = pitch
+	if lin <= 0.001 and pl.volume_db <= -55.0: pl.stop()
+
+func _process(dt: float) -> void:
+	var e := _eng_level
+	_fade(_engine, e * 0.7, 18.0, dt, 0.85 + 0.25 * e)
+	_fade(_room, e * 0.35, 18.0, dt, 0.9 + 0.2 * e)
+	_fade(_bed, _amb * 0.55, 12.0, dt)
+	_fade(_bed2, _amb * 0.3, 12.0, dt)
+	if _amb > 0.05 and not _gulls.is_empty() and not muted:
+		_gull_t -= dt * (0.2 + _coast * 1.6)
+		if _gull_t <= 0.0:
+			_gull_t = randf_range(6.0, 16.0)
+			_gull_p.stream = _gulls.pick_random(); _gull_p.pitch_scale = randf_range(0.9, 1.1)
+			_gull_p.volume_db = linear_to_db(_amb * (0.15 + 0.45 * _coast) * randf_range(0.6, 1.0)); _gull_p.play()

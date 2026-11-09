@@ -18,6 +18,12 @@ func _ready() -> void:
         var st: Dictionary = Campaign.C.STARTS[key]
         var b = Button.new(); b.text = st.label + "\n\n" + st.blurb; b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; b.custom_minimum_size = Vector2(280, 170); b.alignment = HORIZONTAL_ALIGNMENT_LEFT
         b.pressed.connect(func(): Campaign.new_game(key); get_tree().change_scene_to_file("res://scenes/world_map.tscn")); grid.add_child(b)
-    box.add_child(UI.row([UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn"))]))
+    box.add_child(UI.row([UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")), UI.button("Settings", func(): _settings(pc, box))]))
     # required by the CC BY 4.0 licence of the engine-room recording; the other sounds are CC0 (assets/sfx/CREDITS.md)
     box.add_child(UI.label("Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Other sound effects are CC0, by thimras, qubodup, Joth and rubberduck on OpenGameArt.", UI.DIM, 11, true))
+
+func _settings(pc: PanelContainer, main: Control) -> void:
+    main.visible = false
+    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box)
+    box.add_child(Settings.panel())
+    box.add_child(UI.row([UI.button("Back", func(): box.queue_free(); main.visible = true, true)]))

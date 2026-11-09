@@ -68,7 +68,9 @@ func _prepare_land() -> void:
         for q in ch: pv.append(Vector2(q[0], q[1]))
         chan_lines.append(pv)
 
-func _exit_tree() -> void: Sfx.engine(0.0)
+var coast := 0.0
+var coast_t := 0.0
+func _exit_tree() -> void: Sfx.engine(0.0); Sfx.ambience(0.0)
 func rx(x: float) -> float: return cam.x + Campaign.wdx(cam.x, x) # place a wrapped world x next to the camera
 func to_screen(p: Vector2) -> Vector2: return (Vector2(rx(p.x), p.y) - cam) * zoom + get_viewport_rect().size / 2
 func to_world(sp: Vector2) -> Vector2: return (sp - get_viewport_rect().size / 2) / zoom + cam
@@ -99,7 +101,14 @@ func _process(delta: float) -> void:
     _update_top(); _update_dock()
     # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
     var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
-    Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 4.0, 0.1, 1.0) if under_way else 0.0)
+    Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 6.0, 0.05, 0.6) if under_way else 0.0)
+    # the sea all round, and gulls when there is land near
+    coast_t -= delta
+    if coast_t <= 0.0:
+        coast_t = 1.0; var n := 0
+        for i in 12: if Campaign.on_land(G.player.x + cos(i * TAU / 12.0) * 4.0, G.player.y + sin(i * TAU / 12.0) * 4.0): n += 1
+        coast = n / 12.0
+    Sfx.ambience(0.85, minf(1.0, coast * 2.5))
 
 ## Wake trails, recorded only for fleets on or near the screen. Each point ages out after a few seconds; every ship in
 ## the column draws its own wake along the trail (see Marks._wake).

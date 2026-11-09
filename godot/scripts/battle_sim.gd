@@ -119,6 +119,7 @@ var missiles: Array = []
 var air: Array = []
 var parts: Array[Part] = []
 var tracers: Array = []
+var hit_marks: Array = []        # floating hit results for the HUD: {pos, text, col, t, ours}
 var islands: Array = []
 var order = "engage"
 var t = 0.0        # battle clock
@@ -475,7 +476,7 @@ func tracer(p: Vector2, q: Vector2) -> void:
 # ------------------------------------------------------------------ weapons
 ## A salvo: the barrels fire one after another a moment apart (heavier guns more slowly), each with its own flash,
 ## report and recoil, rather than all at once.
-const RIPPLE := {"S": 0.15, "M": 0.25, "L": 0.4, "H": 0.5}
+const RIPPLE := {"S": 0.4, "M": 0.6, "L": 0.9, "H": 1.2}   # battle seconds between barrels in a salvo
 func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary) -> void:
     var n := int(w.get("barrels", 1)); var start := randi() % n
     for k in n: m.queue.append({"i": (start + k) % n, "t": k * RIPPLE[w.size], "aim": aim})
@@ -497,7 +498,9 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     var spread: float = w.spread * fc / maxf(0.3, s.fc)
     var a = ang + (randf() - 0.5) * 2 * spread
     var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
-    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size})
+    # penetration in mm of armour, from the shell's weight, falling off with range; fall: how steeply it comes down
+    var pen: float = float(w.dmg) * 1.9 * (1.0 - 0.45 * clampf(dd / rng, 0.0, 1.0))
+    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s})
     if m.rec.size() != n: m.rec.resize(n)
     m.rec[i] = 1.0; m.recoil = 1.0
     fx_muzzle(p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl), ang, w.size, 1)
@@ -565,6 +568,9 @@ func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
 
 func update_weapons(s: CShip, dt: float) -> void:
     var is_player = s == flag; var sm = submerged(s)
+    if s.struck: # a ship that has struck her colours ceases fire
+        for m in s.mounts: m.queue.clear(); m.st = ""
+        return
     for m in s.mounts:
         if m.dead: m.st = ""; continue
         var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 1.2)
@@ -682,18 +688,40 @@ func update_weapons(s: CShip, dt: float) -> void:
 
 ## A pattern of depth charges rolled and thrown off the stern; they sink and burst a few seconds later.
 func drop_dcs(s: CShip) -> bool:
-    if s.dc_left <= 0 or s.dc_t > 0 and s.dc_t < 24.0 and s.dc_t != 0.0: return false
+    if s.dc_left <= 0 or s.dc_t > 0.0: return false   # none left, or the racks still reloading
     s.dc_left -= 1; s.dc_t = 25.0; var st = world_pt(s, -s.d.L / 2, 0)
     for i in 6:
         var q = part(P.DC, st + Vector2(randf() - 0.5, randf() - 0.5) * 90.0, 1.4, 24.0); q.life = -1.5 - i * 0.4; q.side = s.side; dcs.append({"pos": q.pos, "t": (1.5 + i * 0.4) * BT, "side": s.side})
     if s.side == 0 and s == flag: say("Depth charges away · %d patterns left." % s.dc_left, 1.5)
     return true
 
+## What a shell does when it strikes. Its penetration (mm, from its weight and the range it was fired at) meets the
+## armour it hits: the belt, made thicker by the angle the shell strikes at, or the thinner deck if it comes down
+## steeply from long range. A very oblique hit can ricochet; a shell that beats the armour penetrates (full damage,
+## and it reaches the ship's subsystems), but a heavy shell into a lightly built ship may pass straight through
+## (over-penetration); one that fails only throws splinters.
+func shell_result(tg: CShip, sh: Dictionary) -> Dictionary:
+    var dir: Vector2 = (sh.e - sh.s).normalized(); var side_n := Vector2.from_angle(tg.a + PI / 2)
+    var obl: float = acos(clampf(absf(dir.dot(side_n)), 0.0, 1.0))   # 0 = square to the side
+    var fall: float = sh.fall; var deck: bool = fall > 0.6 and randf() < (fall - 0.6) * 2.0
+    var armour: float = maxf(1.0, tg.armor * (0.4 if deck else 1.0))
+    if deck: obl = lerpf(obl, 0.5, 0.7)                               # coming down steeply: the deck is struck more squarely
+    if not deck and obl > 1.12 and randf() < (obl - 1.0) / 0.5: return {"kind": "rico", "k": 0.03, "text": "Ricochet"}
+    var eff: float = armour / maxf(cos(obl), 0.25)
+    var pen: float = sh.get("pen", sh.dmg * 1.9)
+    if pen < eff:
+        return {"kind": "nopen", "k": 0.1 + 0.15 * pen / eff, "text": "No penetration" + (" (deck)" if deck else "")}
+    if pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14) and randf() < 0.55:
+        return {"kind": "over", "k": 0.35, "text": "Overpenetration"}
+    tg.armor = maxf(tg.d.armor * 0.4, tg.armor - sh.dmg * 0.1)       # the plate is weakened where it was holed
+    return {"kind": "pen", "k": 1.0, "text": "Deck penetration" if deck else "Penetration"}
+
 # ------------------------------------------------------------------ damage
 func damage(s: CShip, dmg: float, type: String) -> void:
     if not s.alive: return
     var hd = 0.0
     match type:
+        "resolved": hd = dmg   # already weighed against the armour (shell_result)
         "shell":
             var eff = dmg / (dmg + s.armor); hd = dmg * maxf(0.03, eff); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.25 * eff)
         "torp": hd = dmg * (1 - minf(0.45, s.d.armor / 700.0))
@@ -1012,7 +1040,14 @@ func step(dtv: float) -> void:
             if absf(l.x) < s.d.L / 2 + 3 and absf(l.y) < s.d.B / 2 + 3: hit = s; break
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
         if hit != null:
-            mark_hit(hit, sh.pos, sz, true); hit_systems(hit, sh.pos, sh.dmg, "shell"); damage(hit, sh.dmg, "shell"); fx_boom(sh.pos, 7 * sz, 0.6)
+            var res := shell_result(hit, sh); _log("shell " + res.kind)
+            mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico")
+            if res.kind == "pen": hit_systems(hit, sh.pos, sh.dmg, "shell")
+            damage(hit, sh.dmg * res.k, "resolved")
+            if res.kind == "rico": part(P.SPARK, sh.pos, 0.5, 2 + sz, Vector2.from_angle((sh.e - sh.s).angle() + (randf() - 0.5) * 1.2) * 120.0)
+            else: fx_boom(sh.pos, 7 * sz * (1.0 if res.kind == "pen" else 0.6), 0.6)
+            var mine: bool = sh.side == 0 or hit.side == 0
+            if mine: hit_marks.append({"pos": sh.pos, "text": res.text, "kind": res.kind, "t": 1.8, "ours": hit.side == 0})
             for k2 in 3: part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * 60.0)
             sound("hit", sh.pos, 0.14 * sz)
         elif land_at(sh.pos): part(P.DUST, sh.pos, 1.6, 9 * sz)
@@ -1112,6 +1147,9 @@ func fx(dtv: float) -> void:
         if q.life >= q.mx: parts.remove_at(i)
     if parts.size() > 2400:
         parts.reverse(); parts.resize(2400); parts.reverse()
+    for i in range(hit_marks.size() - 1, -1, -1):
+        hit_marks[i].t -= dtv
+        if hit_marks[i].t <= 0: hit_marks.remove_at(i)
     for i in range(tracers.size() - 1, -1, -1):
         tracers[i].life -= dtv
         if tracers[i].life <= 0: tracers.remove_at(i)

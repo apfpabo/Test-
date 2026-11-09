@@ -51,6 +51,7 @@ func _ready() -> void:
         else: node = Drawer.new(); node.battle = self; node.kind = n
         if n == "light": var mat = CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; node.material = mat
         world.add_child(node); layers[n] = node
+    for is_ in sim.islands: _add_island(is_)
     for s in sim.ships: _add_view(s)
     camera = Camera2D.new(); world.add_child(camera); camera.make_current()
     camera.zoom = Vector2.ONE * clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) / 3200.0, 0.14, 0.4)
@@ -65,19 +66,40 @@ func _recs(ids: Array, pal: String, tech: Array) -> Array:
         out.append({"type": ids[i], "name": pool[i % pool.size()], "hullFrac": 1.0, "fit": BattleSim.default_fit(d, tech), "pal": pal})
     return out
 
+var island_mats: Array = []
+var island_shader: Shader = preload("res://shaders/island.gdshader")
+## An island drawn by island.gdshader on a quad over it, its coastline the island's own outline.
+func _add_island(is_: Dictionary) -> void:
+    var rad: Array = is_.rad; var rmax := 0.0
+    for v in rad: rmax = maxf(rmax, v)
+    var img := Image.create(rad.size(), 1, false, Image.FORMAT_RF)
+    for i in rad.size(): img.set_pixel(i, 0, Color(float(rad[i]) / rmax, 0, 0))
+    var mat := ShaderMaterial.new(); mat.shader = island_shader
+    mat.set_shader_parameter("center", is_.c); mat.set_shader_parameter("rad", ImageTexture.create_from_image(img))
+    mat.set_shader_parameter("r_max", rmax); mat.set_shader_parameter("seed", randf() * 10.0); mat.set_shader_parameter("sun_dir", -BattleSim.SUN.normalized())
+    var v := IslandView.new(); v.c = is_.c; v.ext = rmax * 1.45; v.material = mat; layers.islands.add_child(v); island_mats.append(mat)
+
+class IslandView extends Node2D:
+    var c := Vector2.ZERO
+    var ext := 100.0
+    func _draw() -> void: draw_rect(Rect2(c - Vector2(ext, ext), Vector2(ext, ext) * 2.0), Color.WHITE)
+
 func _add_view(s: BattleSim.CShip) -> void:
     var v = ShipView.new(); v.battle = self; v.s = s; layers.ships.add_child(v); v.build(); s.view = v; views.append(v)
 
 var shake := 0.0
-## How near a point is to the camera, in screen terms (1 on screen centre, 0 well off screen).
+## How near a point is to the listener, 1 at the camera, 0 out of earshot. Measured in metres, with the earshot
+## at least 2.5 km and growing with the view, so zooming in on a ship doesn't silence what is going on around it.
 func _near(p: Vector2) -> float:
-    return clampf(1.0 - p.distance_to(camera.position) * camera.zoom.x / 1400.0, 0.0, 1.0)
+    var vs := get_viewport_rect().size / camera.zoom.x
+    var reach := maxf(2500.0, vs.length() * 0.6)
+    return clampf(1.0 - p.distance_to(camera.position) / reach, 0.0, 1.0)
 func _boom(p: Vector2, vol: float, freq: float, rate: float) -> void:
     var k := _near(p)
     Sfx.boom(vol * k, freq, rate)
     if freq <= 360.0 and vol >= 0.4: shake = maxf(shake, vol * k * k * 6.0) # heavy guns and big blasts jolt the view
 
-func _exit_tree() -> void: Sfx.engine(0.0)
+func _exit_tree() -> void: Sfx.engine(0.0); Sfx.ambience(0.0)
 func zoom() -> float: return camera.zoom.x
 func combat_speed() -> float: return speeds[speed_i]
 
@@ -107,9 +129,11 @@ func _process(delta: float) -> void:
         for x in sim.ships:
             if x.alive and not x.escaped: eng = maxf(eng, _near(x.pos) * clampf(x.v / maxf(1.0, x.d.kn * 0.5144), 0.0, 1.0) * clampf(x.d.L / 200.0, 0.35, 1.0))
     Sfx.engine(eng)
+    Sfx.ambience(0.0 if paused else 0.6, 0.35 if not sim.islands.is_empty() else 0.0)
     var vs = get_viewport_rect().size
     water_mat.set_shader_parameter("cam", camera.position); water_mat.set_shader_parameter("zoom", zoom())
     water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t); water_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
+    for m in island_mats: m.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
     for v in views: v.refresh()
     for n in layers: if layers[n] is Drawer: layers[n].queue_redraw()
     hud.queue_redraw()
@@ -329,14 +353,8 @@ class Drawer extends Node2D:
         if c.a <= 0.01 or r * battle.zoom() < 0.6: return
         draw_texture_rect(tex, Rect2(p.x - r, p.y - r, 2 * r, 2 * r), false, c)
 
-    func _islands() -> void:
-        var sim: BattleSim = battle.sim
-        for is_ in sim.islands:
-            for layer in [[1.0, 26.0, Color(0.31, 0.59, 0.59, 0.18)], [1.0, 10.0, Color(0.39, 0.67, 0.63, 0.22)], [1.0, 0.0, Color("#c2ad7d")], [0.84, 0.0, Color("#56703f")], [0.52, 0.0, Color("#455d34")], [0.24, 0.0, Color("#6c6a52")]]:
-                var pts = PackedVector2Array(); var n: int = is_.rad.size()
-                for i in n:
-                    var a = i / float(n) * TAU; pts.append(is_.c + Vector2.from_angle(a) * (is_.rad[i] * layer[0] + layer[1]))
-                draw_colored_polygon(pts, layer[2])
+    func _islands() -> void:  # islands are IslandView nodes with their own shader (see Battle._add_island)
+        pass
 
     # Wakes: overlapping soft foam stamps. The churned band starts the width of the stern and spreads; the bow wave
     # hugs the forward hull and runs on into the Kelvin arms, which open at about 19.5 degrees to the track.

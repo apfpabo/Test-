@@ -13,6 +13,16 @@ const GREEN := Color(0.5, 0.75, 0.56)
 const PANEL := Color(0.055, 0.1, 0.12, 0.9)
 
 var menu: Control
+var _tip := ""   # explanation for whatever the mouse is over, drawn last
+const TIPS := {
+    "crew": "Crew fit for duty. Losses slow the guns' reloading, damage control and the ship's speed.",
+    "fire": "Fires burning aboard: they eat at the hull until damage control puts them out. MAG means a fire has reached a magazine: unless it is flooded in time, it explodes.",
+    "engine": "Machinery: the power for speed. Hits amidships cut it; a heavy hit stops the engines for a while (STOP). Damage control gets some of it back.",
+    "ammo": "Main-battery shells left. Every mount has a magazine; refill them in port (Rearm).",
+    "helm": "Steering gear, right aft. A hit can jam the rudder where it lies (JAM) until it is cleared.",
+    "fc": "Fire control: the directors and rangefinders in the bridge. Damage to them widens your salvos.",
+    "map": "Damage shows on the plan only where it is. Red: machinery (amidships), steering (aft) or fire control (bridge) damaged, deeper red is worse. Black with a red cross: a wrecked mount. Amber dot: a mount out of ammunition. Orange: a fire. Flashing box: a burning magazine. Blue box: a flooded magazine (its turret is out of action).",
+}
 
 func _ready() -> void:
     font = ThemeDB.fallback_font
@@ -35,7 +45,17 @@ func _build_menu() -> void:
         b.call("Restart battle", func(): get_tree().reload_current_scene())
         b.call("Battle setup", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn"))
         b.call("Main menu", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+    b.call("Settings", func(): _menu_settings(box))
     box.add_child(UI.label("Esc resumes · P pauses without this menu", UI.DIM, 12))
+
+func _menu_settings(box: VBoxContainer) -> void:
+    for c in box.get_children(): c.visible = false
+    var sp = VBoxContainer.new(); box.add_child(sp); sp.add_child(Settings.panel())
+    sp.add_child(UI.button("Back", func(): _menu_back(box, sp)))
+
+func _menu_back(box: VBoxContainer, sp: Control) -> void:
+    sp.queue_free()
+    for c in box.get_children(): if c != sp: c.visible = true
 
 func _confirm(text: String, yes: Callable) -> void:
     var box: VBoxContainer = menu.get_child(0).get_child(0)
@@ -123,20 +143,31 @@ func _draw() -> void:
                 if m.dead: dead += 1
                 elif m.cd <= 0 and m.ammo != 0: ready += 1
             var unit: String = {"gun": "rds", "aa": "bursts", "torp": "salvos", "ssm": "salvos", "sam": "rds"}.get(ms[0].w.kind, "")
-            var am: String = (" · empty" if left == 0 else (" · %d%%" % int(100.0 * left / cap) if unit == "bursts" else " · %d %s" % [left, unit])) if cap > 0 else ""
+            var am: String = (" · empty" if left == 0 else (" · %d%%" % int(100.0 * left / cap) if unit == "bursts" else (" · %s %s" % [("%.1fk" % (left / 1000.0)) if left >= 1000 else str(left), unit]))) if cap > 0 else ""
             _text(Vector2(gx, gy), str(ms.size()) + "× " + n + ((" (" + str(dead) + " out)") if dead else "") + am, RED if cap > 0 and left == 0 else (GOLD if cap > 0 and left < cap * 0.2 else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_LEFT, 196)
             _bar(Vector2(gx, gy + 4), 130, 3, float(ready) / ms.size(), GREEN if ready else GOLD)
             gx += 200
             if gx > x + 330: gx = x + 10; gy += 22
             if gy > y + h - 6: break
+        if f.d.get("sonar", false) and not f.sub: # depth charges: patterns left and the racks reloading (Z drops a pattern)
+            var dct: float = f.dc_t if f.dc_t > 0 else 0.0
+            var lab := "Depth charges · %d pattern%s" % [f.dc_left, "" if f.dc_left == 1 else "s"] + (" · reloading %d s" % ceili(dct) if dct > 0 and f.dc_left > 0 else (" · ready (Z)" if f.dc_left > 0 else ""))
+            _text(Vector2(x + w - 210, y + 26), lab, RED if f.dc_left == 0 else (GOLD if dct > 0 else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
+            _bar(Vector2(x + w - 110, y + 30), 100, 3, 1.0 - dct / 25.0 if f.dc_left > 0 else 0.0, GREEN if dct <= 0 else GOLD)
         if not f.squads.is_empty():
             var st = ""
             for q in f.squads: st += ("▲" + str(q.n) if q.state == "ready" else ("→" if q.state == "out" else ("…" if q.state == "rearm" else "✕"))) + " "
             _text(Vector2(x + w - 10 - 200, y + 26), "Air: " + st, Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
         _schematic(f, Rect2(x, y - 140, w, 120))
+    # hit results: what each shell did, rising from where it struck and fading (hits on your own ships in red)
+    for hm in sim.hit_marks:
+        var a: float = clampf(hm.t / 0.6, 0.0, 1.0); var sp: Vector2 = to_screen(hm.pos) + Vector2(0, -26 - (1.8 - hm.t) * 18.0)
+        var col: Color = RED if hm.ours else ({"pen": INK, "over": GOLD}.get(hm.kind, DIM) as Color)
+        _text(sp - Vector2(79, -1), hm.text, Color(0, 0, 0, a * 0.8), 14 if hm.kind == "pen" else 13, HORIZONTAL_ALIGNMENT_CENTER, 160)
+        _text(sp - Vector2(80, 0), hm.text, Color(col, a), 14 if hm.kind == "pen" else 13, HORIZONTAL_ALIGNMENT_CENTER, 160)
     _reticle()
     # minimap
-    var mw = 190.0; var mh = mw * sim.AH / sim.AW; var mx = W - mw - 16; var my = H - mh - 16; var k = mw / sim.AW
+    var mw: float = Settings.minimap_width(); var mh = mw * sim.AH / sim.AW; var mx = W - mw - 16; var my = H - mh - 16; var k = mw / sim.AW
     draw_rect(Rect2(mx, my, mw, mh), PANEL); draw_rect(Rect2(mx, my, mw, mh), Color(GOLD, 0.55), false, 1)
     for is_ in sim.islands: draw_circle(Vector2(mx, my) + is_.c * k, is_.r * k, Color("#56703f"))
     for s in sim.ships:
@@ -147,6 +178,7 @@ func _draw() -> void:
     draw_rect(Rect2(Vector2(mx, my) + vr.position * k, vr.size * k), Color(INK, 0.4), false, 1)
     # messages and pause
     if sim.msg_t > 0: _text(Vector2(0, 74), sim.msg.to_upper(), Color(INK, minf(1.0, sim.msg_t)), 26, HORIZONTAL_ALIGNMENT_CENTER, W)
+    if _tip != "": _draw_tip(_tip); _tip = ""
     if battle.paused:
         draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.06, 0.5))
         if not menu.visible: _text(Vector2(0, H / 2), "PAUSED · P TO RESUME · ESC FOR MENU", INK, 34, HORIZONTAL_ALIGNMENT_CENTER, W)
@@ -213,6 +245,8 @@ func _schematic(f, r: Rect2) -> void:
     var sil := Rect2(r.position + Vector2(10, 4), Vector2(r.size.x - 20, r.size.y - 50))
     var k: float = minf(sil.size.x / float(info.w), sil.size.y / float(info.h))   # pixels per metre
     var c := sil.get_center()
+    var mouse := get_local_mouse_position()
+    if sil.has_point(mouse): _tip = TIPS.map
     var at = func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * k
     var tex = GameData.ship_tex(f.rec.type, f.pal, "base")
     draw_texture_rect(tex, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false, Color(0.42, 0.46, 0.47, 0.95))
@@ -251,6 +285,7 @@ func _schematic(f, r: Rect2) -> void:
     var bx: float = r.position.x + 30; var by: float = r.position.y + r.size.y - 30; var step: float = (r.size.x - 60) / (badges.size() - 1)
     for b in badges:
         var bad: bool = b[2]; var ctr := Vector2(bx, by)
+        if mouse.distance_to(ctr) < 16: _tip = TIPS[b[0]]
         draw_circle(ctr, 13, Color(0.55, 0.12, 0.1, 0.95) if bad else Color(0.16, 0.2, 0.22, 0.95)); draw_arc(ctr, 13, 0, TAU, 24, Color(1, 1, 1, 0.25), 1.0)
         _icon(String(b[0]), ctr, Color(1, 0.88, 0.85) if bad else Color(0.8, 0.84, 0.84))
         _text(ctr + Vector2(-30, 26), b[1], RED if bad else DIM, 11, HORIZONTAL_ALIGNMENT_CENTER, 60)
@@ -271,3 +306,12 @@ func _icon(kind: String, c: Vector2, col: Color) -> void:
             draw_arc(c, 6, 0, TAU, 20, col, 1.6); draw_circle(c, 1.8, col)
             for i in 6: var a := i * TAU / 6.0; draw_line(c + Vector2.from_angle(a) * 2, c + Vector2.from_angle(a) * 9, col, 1.4)
         "fc": draw_rect(Rect2(c + Vector2(-8, -1.5), Vector2(16, 3)), col); draw_rect(Rect2(c + Vector2(-3, -5), Vector2(6, 8)), col)
+
+## A small explanation box beside the mouse, wrapped to a readable width.
+func _draw_tip(t: String) -> void:
+    var w := 320.0; var fs := 12
+    var hgt: float = font.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, w, fs).y
+    var p := get_local_mouse_position() + Vector2(16, -hgt - 20)
+    p.x = clampf(p.x, 8, size.x - w - 24); p.y = clampf(p.y, 8, size.y - hgt - 24)
+    draw_rect(Rect2(p, Vector2(w + 16, hgt + 14)), Color(0.04, 0.08, 0.1, 0.96)); draw_rect(Rect2(p, Vector2(w + 16, hgt + 14)), Color(GOLD, 0.6), false, 1)
+    draw_multiline_string(font, p + Vector2(8, 8 + fs), t, HORIZONTAL_ALIGNMENT_LEFT, w, fs, -1, INK)

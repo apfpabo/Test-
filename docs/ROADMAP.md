@@ -28,6 +28,23 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - CIWS, Oerlikon and Bofors each have their own rate-of-fire sound.
   - The damage display follows War Thunder's: damage-only silhouette plus a badge row (crew, fires, machinery, ammunition, steering, fire control).
   - Recorded sound effects (owner approved CC0 and CC BY) replace the synthesised ones: gun reports by calibre, hits, splashes on misses, blasts, missile launches, depth charges, sea and engine-room loops; CIWS and light AA are built from recorded transients at each weapon's rate of fire. Sources: `godot/assets/sfx/CREDITS.md`.
+- **Playtest feedback, round 4 (done):**
+  - Settings (title screen and pause menu): master, effects and ambience volume; battle minimap small, medium or large.
+  - Sound:
+    - Chart engine sound is quieter.
+    - Ship sounds fade instead of stopping dead.
+    - Earshot in battle is measured in metres, so zooming in no longer cuts sounds off.
+    - A sea bed and gulls play on the chart (more gulls near land) and at sea in battle.
+  - Barrels in a salvo fire further apart.
+  - Struck ships cease fire.
+  - The flagship panel shows depth-charge patterns and rack reloading.
+  - Hovering the damage display explains each badge and the damage colours.
+  - Battle islands are shaded terrain (beach, scrub, woods, rock, peaks, shallows and surf), with the coastline kept to the collision outline.
+  - Shell ballistics:
+    - Each shell's penetration depends on its weight and range.
+    - It meets belt armour made thicker by the angle of impact, or the thinner deck when it plunges.
+    - Results: ricochet, no penetration (splinters), over-penetration, or penetration (full damage, subsystems).
+    - Markers name the result on hits by and on your ships.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 
@@ -38,7 +55,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 | Alternate Earth, global oceans | **Done (first pass):** a global ocean map from real coastlines, wrapping east-west, with 5 theatres, 32 real ports, 7 factions plus raiders, 16 survey sites (wrecks, abandoned bases, black sites), seasonal pack ice and A* sea routes | Port control and capture, more points of interest, regional weather, hand-crafted sites |
 | Start 1944–52 tech, research-driven eras | 3 eras, 8 techs; RP from kills, captures and missions; enemies modernise over time | A 4th Modern era; RP from salvage, captured officers and documents, surveys and research enclaves; regional tech disparity |
 | Ship classes | **Done (first pass):** 13 classes in 50 designs from 7 fictional yards, each modelled on a real ship (Iowa, Yamato, Bismarck, KGV, Littorio, Vanguard, Fletcher, Kagero, Narvik, Forrestal and others) with real dimensions, speed, armour and turning circle. Each flag buys from its own yards, and designs unlock by era | Battlecruisers, auxiliaries (tankers, ammunition ships, repair ships, troop transports), more Era III designs, a Modern era |
-| Combat feel | **Subsystems done:** location-based hits on magazines (fire, flooding or detonation), machinery (power loss, engines stopped), steering gear (jammed rudder), fire control and crew spaces, repaired in part by damage control. **Pace rework done:** true-scale battles (1 unit = 1 m) with real knots, acceleration, rudder lag, speed loss in turns and real tactical diameters. Real reload times and turret training rates, a battle clock from ×1 to ×16 (default ×2), gun ranges compressed to about a fifth of real, salvo dispersion mostly in range, escape by opening the range, contact lost after 15 quiet minutes. Also turrets with arcs, armour, torpedoes, aircraft, missiles with SAM/CIWS, sonar | Ammunition types, weather, time of day, radar horizon and visibility, formation orders (line ahead, turn together) |
+| Combat feel | **Subsystems done:** location-based hits on magazines (fire, flooding or detonation), machinery (power loss, engines stopped), steering gear (jammed rudder), fire control and crew spaces, repaired in part by damage control. **Pace rework done:** true-scale battles (1 unit = 1 m) with real knots, acceleration, rudder lag, speed loss in turns and real tactical diameters. Real reload times and turret training rates, a battle clock from ×1 to ×16 (default ×2), gun ranges compressed to about a fifth of real, salvo dispersion mostly in range, escape by opening the range, contact lost after 15 quiet minutes. Also turrets with arcs, armour, torpedoes, aircraft, missiles with SAM/CIWS, sonar | Ammunition types (AP/HE), weather, time of day, radar horizon and visibility, formation orders (line ahead, turn together) |
 | Logistics | Fuel, food, crew, wages, repairs, rearming in port | Ammunition supply at sea, crew fatigue, supply lines, auxiliaries that resupply at sea |
 | Factions and diplomacy | 7 factions modeled on the direction's archetypes, per-faction reputation, a fixed list of wars | Inter-faction relations, wars and ceasefires, commissions, betrayal, corporations, revolutionaries, enclaves |
 | Found your own flag | Not started | Claim ports, run them, attract officers and ships |

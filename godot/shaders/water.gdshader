@@ -44,12 +44,12 @@ void fragment() {
 	float h = sea(w), hs = swell_h(w);
 	vec2 grad = vec2(swell_h(w + vec2(e, 0.0)) - hs, swell_h(w + vec2(0.0, e)) - hs) / e;
 	vec3 sw = swell_waves(w);
-	float fade = clamp((zoom - 0.3) / 0.6, 0.0, 1.0);   // far out the waves would alias into streaks: leave the broad sea
-	vec3 n = normalize(vec3(-grad * 90.0 - sw.yz * 7.0 * fade, 1.0));
+	float fade = clamp((zoom - 0.45) / 0.8, 0.0, 1.0);   // far out the waves would alias into streaks: leave the broad sea
+	vec3 n = normalize(vec3(-grad * 90.0 - sw.yz * 3.5 * fade, 1.0));
 	vec3 l = normalize(vec3(sun_dir, 0.9));
 	float diff = clamp(dot(n, l), 0.0, 1.0);
 	// glints ride the moving swell (the noise slope has creases that would leave still, curly highlights)
-	vec3 ns = normalize(vec3(-sw.yz * 8.0 - grad * 30.0, 1.0));
+	vec3 ns = normalize(vec3(-sw.yz * 4.0 - grad * 30.0, 1.0));
 	float spec = pow(clamp(dot(reflect(-l, ns), vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 24.0) * fade;
 	vec3 col = mix(deep, shallow, smoothstep(0.3, 0.75, h + sw.x * 0.06 * fade));
 	// cloud shadows drifting across the sea

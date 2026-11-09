@@ -21,5 +21,7 @@ Built by `tools/build_sfx.py` from these recordings (trimmed, mixed, filtered an
 | `bofors` | [Tiny Naval Battle Sounds Set (made from US military public-domain recordings)](https://opengameart.org/content/tiny-naval-battle-sounds-set) | Iwan Gabovitch (qubodup) | CC0 |
 | `sea_ambient` | [Tiny Naval Battle Sounds Set (made from US military public-domain recordings)](https://opengameart.org/content/tiny-naval-battle-sounds-set) | Iwan Gabovitch (qubodup) | CC0 |
 | `engine_room` | [The engine of the icebreaker Kuna (Work With Sounds)](https://commons.wikimedia.org/wiki/File:WWS_IcebreakerKunashipsengine.ogg) | Work With Sounds / Museum of Municipal Engineering | CC BY 4.0 |
+| `sea_bed` | [Beach Ocean Waves (from jasinski, CC0)](https://opengameart.org/content/beach-ocean-waves) | Iwan Gabovitch (qubodup) | CC0 |
+| `gull_1..5` | [Solo Seagull Sound Effects](https://opengameart.org/content/solo-seagull-sound-effects) | rango-mango | CC0 |
 
 CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ · CC0: https://creativecommons.org/publicdomain/zero/1.0/

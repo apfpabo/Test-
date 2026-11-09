@@ -20,6 +20,15 @@ SOURCES = {
     'explosion_dull.flac': (OGA + 'explosion_dull.flac', 'Dull explosion', 'Iwan Gabovitch (qubodup)', 'CC0', 'https://opengameart.org/content/dull-explosion'),
     'chunky_explosion.mp3': (OGA + 'Chunky%20Explosion.mp3', 'Chunky Explosion', 'Joth', 'CC0', 'https://opengameart.org/content/chunky-explosion'),
     'sfx100.zip': (OGA + '100-CC0-SFX_0.zip', '100 CC0 SFX', 'rubberduck', 'CC0', 'https://opengameart.org/content/100-cc0-sfx'),
+    'gull_1.wav': (OGA + 'Seagull%20Ambient%201.wav', 'Solo Seagull Sound Effects', 'rango-mango', 'CC0', 'https://opengameart.org/content/solo-seagull-sound-effects'),
+    'gull_2.wav': (OGA + 'Seagull%20Ambient%202.wav', 'Solo Seagull Sound Effects', 'rango-mango', 'CC0', 'https://opengameart.org/content/solo-seagull-sound-effects'),
+    'gull_3.wav': (OGA + 'Seagull%20Ambient%203.wav', 'Solo Seagull Sound Effects', 'rango-mango', 'CC0', 'https://opengameart.org/content/solo-seagull-sound-effects'),
+    'gull_5.wav': (OGA + 'Seagull%20Ambient%205.wav', 'Solo Seagull Sound Effects', 'rango-mango', 'CC0', 'https://opengameart.org/content/solo-seagull-sound-effects'),
+    'gull_6.wav': (OGA + 'Seagull%20Ambient%206.wav', 'Solo Seagull Sound Effects', 'rango-mango', 'CC0', 'https://opengameart.org/content/solo-seagull-sound-effects'),
+    'waves_1.flac': (OGA + 'wave_01_cc0-18363__jasinski__alkaibeach.flac', 'Beach Ocean Waves (from jasinski, CC0)', 'Iwan Gabovitch (qubodup)', 'CC0', 'https://opengameart.org/content/beach-ocean-waves'),
+    'waves_2.flac': (OGA + 'wave_02_cc0-18363__jasinski__alkaibeach.flac', 'Beach Ocean Waves (from jasinski, CC0)', 'Iwan Gabovitch (qubodup)', 'CC0', 'https://opengameart.org/content/beach-ocean-waves'),
+    'waves_3.flac': (OGA + 'wave_03_cc0-18363__jasinski__alkaibeach.flac', 'Beach Ocean Waves (from jasinski, CC0)', 'Iwan Gabovitch (qubodup)', 'CC0', 'https://opengameart.org/content/beach-ocean-waves'),
+    'waves_4.flac': (OGA + 'wave_04_cc0-18363__jasinski__alkaibeach.flac', 'Beach Ocean Waves (from jasinski, CC0)', 'Iwan Gabovitch (qubodup)', 'CC0', 'https://opengameart.org/content/beach-ocean-waves'),
     'kuna_engine.ogg': (COMMONS + '7/7a/WWS_IcebreakerKunashipsengine.ogg', 'The engine of the icebreaker Kuna (Work With Sounds)', 'Work With Sounds / Museum of Municipal Engineering', 'CC BY 4.0', 'https://commons.wikimedia.org/wiki/File:WWS_IcebreakerKunashipsengine.ogg'),
 }
 RATE = 32000
@@ -109,10 +118,16 @@ def main():
     # engines and the sea: the battleship ambience over the Kuna's engine room heard through the hull
     amb = load(os.path.join(nv, 'BattleShipMovementAmbient.wav')); made['sea_ambient'] = norm(loop(amb, 0.8), 0.7)
     kuna = load(os.path.join(dl, 'kuna_engine.ogg')); k = seg(kuna, 30.0, 52.0); made['engine_room'] = norm(loop(lowpass(k, 900), 1.0), 0.7)
+    # the open sea for the chart: the four wave recordings run together into one loop; gulls as separate calls
+    wv = [load(os.path.join(dl, 'waves_%d.flac' % i)) for i in range(1, 5)]; xf = int(0.8 * RATE); bed = wv[0]
+    for w in wv[1:]: k = np.linspace(0, 1, xf); bed = np.concatenate([bed[:-xf], bed[-xf:] * (1 - k) + w[:xf] * k, w[xf:]])
+    made['sea_bed'] = norm(loop(bed, 1.5), 0.6)
+    for i, n in enumerate([1, 2, 3, 5, 6]):
+        g = load(os.path.join(dl, 'gull_%d.wav' % n)); made['gull_%d' % (i + 1)] = fade(norm(seg(g, max(0.0, onset(g, 0.05) - 0.05)), 0.7), 0.01, 0.4)
     for name, x in made.items(): print('%-12s %.2f s' % (name, len(x) / RATE)); write(out, name, x)
     used = {'gun_heavy_1': ['cannon_fire.ogg', 'naval.7z'], 'gun_heavy_2': ['cannon_fire.ogg', 'naval.7z'], 'gun_medium': ['naval.7z'], 'gun_small': ['naval.7z'],
             'hit_1': ['cannon_hit_ship_short.ogg'], 'hit_2': ['naval.7z'], 'splash_1..4': ['naval.7z'], 'blast': ['ship_destroyed_short.ogg'], 'hit_big': ['chunky_explosion.mp3'],
-            'launch': ['launch.7z'], 'ciws_1/2, oerlikon': ['explosion_dull.flac', 'sfx100.zip'], 'bofors': ['naval.7z'], 'sea_ambient': ['naval.7z'], 'engine_room': ['kuna_engine.ogg']}
+            'launch': ['launch.7z'], 'ciws_1/2, oerlikon': ['explosion_dull.flac', 'sfx100.zip'], 'bofors': ['naval.7z'], 'sea_ambient': ['naval.7z'], 'engine_room': ['kuna_engine.ogg'], 'sea_bed': ['waves_1.flac'], 'gull_1..5': ['gull_1.wav']}
     lines = ['# Sound credits', '', 'Built by `tools/build_sfx.py` from these recordings (trimmed, mixed, filtered and looped). CC0 and public-domain sources need no credit; they are listed so every file can be traced. The one CC BY 4.0 recording must be credited wherever the game is distributed.', '',
              '| File(s) here | Source | Author | Licence |', '| --- | --- | --- | --- |']
     for f, srcs in used.items():

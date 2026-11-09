@@ -41,7 +41,9 @@ Step four of the plan (land structures that can be struck from the air and captu
 - `LAND_SITES`: 266 inland sites about 5° apart, each with a kind (`farm` for food, `mine` for steel, `oil` or `industry` for money), its landmass, its nearest port and its distance from the coast (for carrier strike range).
 - `LANDMASSES`, and `land` on every port: which landmass or island group a port or site belongs to.
 
-Nothing in the game uses them yet. The strike reach that now starts fights at sea (`Campaign.strike_reach`: carriers 250–350 km) is the same measure an air strike on a site should use.
+- `INSTALLATIONS`: 118 military installations placed by `build.js` (coastal batteries, airfields, radar stations, naval bases), with hand additions from `world.json` `installations`.
+
+Land structures are built on them: [`LAND_STRUCTURES.md`](LAND_STRUCTURES.md). The strike reach that now starts fights at sea (`Campaign.strike_reach`: carriers 250–350 km) is the same measure an air strike on a site should use.
 
 ## Saves
 

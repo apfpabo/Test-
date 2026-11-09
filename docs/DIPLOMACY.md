@@ -40,6 +40,10 @@ Step 3 of the owner's plan (after the world map and the foundational lore). Rule
 - **Smuggling contracts:** contraband (medicine, electronics, munitions) for a harbour of a power the issuer dislikes, or one closed to you. Docking at an open harbour runs it past customs automatically; at a closed harbour you get a night landing. Risk: 30% (45% at a closed harbour), plus 4% per ship beyond two, less your evasion. Caught: the cargo is seized, that flag's standing falls by 12, and at a closed harbour it is an incident. Freeports post them most.
 - **Story missions from every power:** three-mission chains at the capitals of the Directorate (Naval Staff), Federation (Federation Council), Combine (Security Board), Republic (Tarsene Admiralty), Syndicate (Brokers' Table) and Enclaves (Halvard Moot), as well as the Concord Admiralty's five, in `data/stories.json`. They draw on the lore's hooks: the occupied isle, the Black Archives, Dry Dock Zero, the Quiet Race, the Austral Barrier signals. Missions against a power are deniable: the ships fly no colours. One set of orders at a time; the Missions & diplomacy tab lists where orders are waiting.
 
+## Land structures (9 Nov 2026)
+
+Strike contracts (silence an enemy installation from the air) on the boards of powers at war; structures change hands in wars and follow their port when it falls. See [`LAND_STRUCTURES.md`](LAND_STRUCTURES.md).
+
 ## Not yet
 
 - The new flags have no owner-written lore; the codex shows only the owner's seven powers.

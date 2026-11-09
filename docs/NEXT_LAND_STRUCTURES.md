@@ -1,5 +1,7 @@
 # Next: land structures
 
+> **Done (9 Nov 2026).** The owner's answers and what was built: [`LAND_STRUCTURES.md`](LAND_STRUCTURES.md). This brief is kept as written.
+
 Brief for the next working session (written 9 Nov 2026). Read [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION.md) (never edit it), [`ROADMAP.md`](ROADMAP.md), [`LORE.md`](LORE.md) and [`lore/foundational_lore.md`](lore/foundational_lore.md) (the owner's text, never edit), [`WORLD.md`](WORLD.md) and [`DIPLOMACY.md`](DIPLOMACY.md) first.
 
 ## The owner's request

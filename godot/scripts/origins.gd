@@ -53,12 +53,12 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			if en != "concord" and navy != "concord": st.rep["concord"] = 5
 			st.perks = {"restricted": [navy]}
 		"hijacker":
-			st.fleet = [["fr_liberty", null, {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
+			st.fleet = [["fr_liberty", "Ashen Wake", {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
 			st.cargo = {"fuel": 60, "food": 25, "munitions": 20}
 			st.rep = {"concord": -35, "directorate": -35, "pacific": -35, "combine": -45, "republic": -20, "enclave": -15, "freeport": 15}
 			st.perks = {"evade": 5, "hunted": [{"fac": "raiders", "name": "Bounty hunters", "days": 240, "max": 2, "every": 0.06, "budget": 30000}, {"fac": "combine", "name": "Combine reprisal squadron", "days": 150, "max": 1, "every": 0.03, "budget": 45000}]}
 		"merchant":
-			st.fleet = [["fr_victory", null, {}]]; st.credits = 45000; st.port = "Cape Ombra"
+			st.fleet = [["fr_victory", "Southern Trader", {}]]; st.credits = 45000; st.port = "Cape Ombra"
 			st.cargo = {"fuel": 120, "food": 60, "steel": 60, "electronics": 20}
 			st.rep = {"combine": 15, "freeport": 15}
 			st.perks = {"trade": 0.06}

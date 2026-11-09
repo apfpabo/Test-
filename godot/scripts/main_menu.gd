@@ -20,9 +20,16 @@ func _ready() -> void:
         var info: Dictionary = Origins.INFO[key]
         var b = Button.new(); b.text = info.label + "\n\n" + info.short; b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; b.custom_minimum_size = Vector2(212, 150); b.alignment = HORIZONTAL_ALIGNMENT_LEFT
         b.pressed.connect(func(): _origin(pc, box, key)); grid.add_child(b)
-    box.add_child(UI.row([UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")), UI.button("Settings", func(): _settings(pc, box))]))
+    box.add_child(UI.row([UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")), UI.button("The world", func(): _codex(pc, box)), UI.button("Settings", func(): _settings(pc, box))]))
     # required by the CC BY 4.0 licence of the engine-room recording; the other sounds are CC0 (assets/sfx/CREDITS.md)
     box.add_child(UI.label("Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Other sound effects are CC0, by thimras, qubodup, Joth, rubberduck and rango-mango on OpenGameArt.", UI.DIM, 11, true))
+
+func _codex(pc: PanelContainer, main: Control) -> void:
+    main.visible = false
+    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box)
+    box.add_child(UI.label("The world of 1946", UI.GOLD, 30))
+    box.add_child(Codex.panel(560.0))
+    box.add_child(UI.row([UI.button("Back", func(): box.queue_free(); main.visible = true, true)]))
 
 func _settings(pc: PanelContainer, main: Control) -> void:
     main.visible = false
@@ -39,6 +46,7 @@ func _origin(pc: PanelContainer, main: Control, key: String, navy := "concord") 
     box.add_child(UI.label(L.get("story", ""), UI.INK, 15, true))
     box.add_child(UI.label("World reaction: " + L.get("world", ""), UI.DIM, 14, true))
     box.add_child(UI.label("Feel: " + L.get("feel", ""), UI.DIM, 14, true))
+    if Codex.backstory(key) != "": box.add_child(UI.label("IN 1946", UI.DIM, 12)); box.add_child(Codex.rich(Codex.backstory(key), UI.GOLD, 14))
     if info.navy:
         var row = []
         for n in Origins.NAVIES: row.append(UI.button(GameData.fac[n].name, func(): box.queue_free(); _origin(pc, main, key, n), n == navy))

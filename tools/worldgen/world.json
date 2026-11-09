@@ -140,17 +140,17 @@
     { "name": "Calder Roads", "fac": "concord", "capital": true, "at": [74.5, 38] },
     { "name": "Halbrook", "fac": "concord", "at": [59, 52] },
     { "name": "Wexmouth", "fac": "concord", "at": [14, 52] },
-    { "name": "Gatehold", "fac": "concord", "at": [7.5, 35.2] },
+    { "name": "Gatehold", "fac": "concord", "at": [7.5, 35.2], "garrison": 3 },
     { "name": "St. Aldric", "fac": "concord", "at": [32, 34] },
     { "name": "Freeholm", "fac": "concord", "at": [11.5, 18] },
     { "name": "Anvil Harbour", "fac": "concord", "at": [157, 24] },
     { "name": "Port Merrow", "fac": "concord", "at": [-130, -30] },
-    { "name": "Strelsk", "fac": "directorate", "capital": true, "at": [-12, 57.4] },
+    { "name": "Strelsk", "fac": "directorate", "capital": true, "at": [-12, 57.4], "garrison": 3 },
     { "name": "Korvagrad", "fac": "directorate", "at": [-4, 64] },
     { "name": "Norvask", "fac": "directorate", "at": [-17, 72.5] },
     { "name": "Tavrosk", "fac": "directorate", "at": [-27, 46] },
     { "name": "Ostrozhny", "fac": "directorate", "at": [-151, 48] },
-    { "name": "Amakura", "fac": "pacific", "capital": true, "at": [-162.5, 37.5] },
+    { "name": "Amakura", "fac": "pacific", "capital": true, "at": [-162.5, 37.5], "rumour": "The Halcyon Federation is rumored to possess captured Concord and Directorate research that it has not shared with either side. Several powers would go to war to seize or destroy it." },
     { "name": "Senhai", "fac": "pacific", "at": [-140, 31] },
     { "name": "Lumaya", "fac": "pacific", "at": [-147, 8] },
     { "name": "Kotaraya", "fac": "combine", "capital": true, "at": [-104, 3] },
@@ -161,7 +161,7 @@
     { "name": "Tarsa", "fac": "republic", "capital": true, "at": [11, 44] },
     { "name": "Puerto Corvo", "fac": "republic", "at": [-5, 42] },
     { "name": "Isla Parda", "fac": "republic", "at": [17.5, 27] },
-    { "name": "Port Saffron", "fac": "freeport", "capital": true, "at": [58, 25] },
+    { "name": "Port Saffron", "fac": "freeport", "capital": true, "at": [58, 25], "rumour": "A hidden, heavily guarded facility beneath the freeport. Rumored to be rebuilding or modifying something that should not exist in 1946." },
     { "name": "Kesselport", "fac": "freeport", "at": [-31, 34] },
     { "name": "Mbaraka", "fac": "freeport", "at": [-50.5, -6.5] },
     { "name": "Puerto Vela", "fac": "freeport", "at": [67, -33] },
@@ -171,7 +171,7 @@
     { "name": "Sudrhavn", "fac": "enclave", "at": [1, -50.5] }
   ],
   "pois": [
-    { "name": "Skarn Strait wrecks", "type": "wreck", "at": [50, 62] },
+    { "name": "The Skarn Strait Wreck Fields", "type": "wreck", "at": [50, 62], "text": "Dozens of ships from both coalitions lie in the cold northern passages. Some still contain sealed technical archives and prototype weapons. The Halvards restrict access; everyone else tries to sneak in." },
     { "name": "Korvagrad graveyard", "type": "wreck", "at": [5, 69] },
     { "name": "Cradle Sea wrecks", "type": "wreck", "at": [-15, 35] },
     { "name": "Austrine approaches", "type": "wreck", "at": [38, -30] },
@@ -185,8 +185,12 @@
     { "name": "Stepping Stones forward base", "type": "base", "at": [-170, 54] },
     { "name": "Monsoon atoll airstrip", "type": "base", "at": [-75, -10] },
     { "name": "Rime black site", "type": "site", "at": [25, 70] },
-    { "name": "Ice-shelf station", "type": "site", "at": [-40, -63] },
-    { "name": "Howling Seas weather station", "type": "site", "at": [10, -55] }
+    { "name": "Austral Barrier station", "type": "site", "at": [-40, -63], "text": "Pre-war scientific outposts on the edge of the Howling Seas. Most are silent. A few still transmit on old frequencies." },
+    { "name": "Howling Seas weather station", "type": "site", "at": [10, -55] },
+    { "name": "The Lost Squadron of the Central Hesperian", "type": "wreck", "at": [30, 40], "text": "In the final weeks of the war an entire Concord battle group vanished after reporting contact with an unknown force. No wreckage was ever confirmed. Both sides still search the area." },
+    { "name": "The Throat Research Anchorage", "type": "site", "at": [-33.5, 47], "text": "A heavily damaged Directorate research complex in the inner Sable Sea. Officially abandoned. Unofficially, signals still occasionally leave it." },
+    { "name": "The Corvo Canal Zone", "type": "base", "at": [78, 12], "text": "Demilitarized on paper. In practice a nest of spies, smugglers, and deniable special forces. Whoever truly controls the Canal in the next war will control the movement of fleets between the Hesperian and the southern oceans." },
+    { "name": "Austral Barrier station (east)", "type": "site", "at": [100, -64], "text": "Pre-war scientific outposts on the edge of the Howling Seas. Most are silent. A few still transmit on old frequencies." }
   ],
   "factions": {
     "concord": { "name": "Hesperian Concord", "desc": "Legacy maritime empire: the Hallandian naval compact that never stood down after the armistice." },
@@ -239,5 +243,8 @@
     { "name": "the Halcyon Reefs", "box": [100, -45, 180, 17] },
     { "name": "the Howling Rocks", "box": [-180, -60, 180, -46] },
     { "name": "the Rime Isles", "box": [-20, 63, 30, 82] }
-  ]
+  ],
+  "garrisonNote": "garrison: how many times more often the flag's patrols put out from this port (the owner's lore: the Concord's heavy presence at Gatehold, the heavily defended Strelsk Sounds).",
+  "raiderGrounds": [[60, 20, 10], [8, 36, 7], [30, 40, 14]],
+  "raiderNote": "Where raider flotillas gather, [lon, lat, radius in degrees]: the Saffron Sea, the approaches to the Tarsene Gate and the open Hesperian (the owner's lore, March 1946)."
 }

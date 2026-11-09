@@ -137,3 +137,32 @@ Things the origins promise that the game doesn't do yet:
 - **Defector:** intelligence services on all sides taking notice. Missions to sell or trade what you know. Your new patrons' trust growing (or failing) with service.
 - **Smuggler:** contraband goods and blockades to run. Inspections. Criminal syndicates and intelligence agencies as customers and protectors.
 - **Academy Cast-Off:** being underestimated (enemies less wary of you). Mentors among older officers, who may also try to use you.
+
+## Foundational lore (9 Nov 2026)
+
+The owner's world-building for the fictional map, kept word for word in [`lore/foundational_lore.md`](lore/foundational_lore.md): the world in brief, the unfinished Meridian War (1939–1945) between the Continental Compact and the Oceanic Entente, the seven powers in 1946 with their profiles, the mysteries, the Quiet Race, and a 1946 backstory for each origin. Never edit that file; `python3 tools/lore_to_json.py` slices it, unchanged, into the `world` part of `godot/data/lore.json`.
+
+### In the game today
+
+- **Codex:** the title screen's "The world" button and the Command panel's Codex tab show the world in brief, the unfinished war, March 1946, the official history of the Meridian War, every power with its profile, the mysteries and the Quiet Race.
+- **Origins:** each origin screen (title screen and the first chart panel) adds its 1946 backstory under the owner's origin text. The hijacker's freighter is the *Ashen Wake*; the merchant's is the *Southern Trader*.
+- **Factions:** each flag's description is the opening of its entry (shown on its name under Missions & standing), and every port shows its flag's attitude toward independents.
+- **Mysteries on the chart:** survey sites carry the owner's text: the Lost Squadron of the Central Hesperian, the Skarn Strait Wreck Fields, the Throat Research Anchorage (inner Sable Sea), the Corvo Canal Zone, and two Austral Barrier stations. Amakura and Port Saffron show their rumours (the Black Archives, Dry Dock Zero) in the port panel.
+- **March 1946:** raiders gather in the Saffron Sea, the approaches to the Tarsene Gate and the open Hesperian; Concord patrols put out from Gatehold, and Directorate patrols from Strelsk, three times as often as from other ports.
+- **Wars:** the fixed hostilities (Concord and Halcyon against the Directorate) match the two coalitions.
+
+### Where the lore and the game differ (for the owner)
+
+- **The armistice.** The lore makes 1946 a nervous peace ("one serious incident away from open war"); the game still has Concord and Halcyon ships fight the Directorate on sight. Turning that into an armistice with incidents belongs to diplomacy (step 3).
+- **The Tarsene Gate's sides.** The lore puts the Republic on the Gate's western side; on the map the Gate runs east–west, with Tarsa on its northern shore and the Concord's Gatehold on the southern.
+- **Ombrian clients.** The Directorate's Ombrian clients don't exist on the map yet: Ombria's ports belong to the Concord and the Combine. A candidate for the new factions.
+- **Halcyon in the Entente.** The lore calls the Federation wary of both sides and fond of profitable neutrality, but also a member of the Entente; the game keeps it at war with the Directorate.
+- **Privateer sponsor.** The lore offers a Tarsene or a Syndicate letter of marque; the game has only the Republic's.
+- **Survivor's lost fleet.** The lore names the Concord's Central Hesperian squadron and the Directorate's 4th Battle Division; the Halcyon navy has no named lost fleet.
+
+### Hooks
+
+- The Lost Squadron wreck site is where the survivor's mystery thread should lead.
+- The Amakura Black Archives and Dry Dock Zero as story missions; the Halvards restricting access to the Skarn Strait wrecks; signals from the Throat anchorage and the Austral Barrier stations.
+- The Quiet Race: research as intelligence that makes you interesting to every service on the map.
+- Hardliners and moderates in the Concord; the Concord's aim to absorb the Republic; the Combine selling to both sides.

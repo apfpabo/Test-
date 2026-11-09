@@ -19,6 +19,7 @@ var toasts: VBoxContainer
 var dock: Button
 var panel_layer: Control
 var panel_open = false
+var codex_tab = "world"
 var trails: Dictionary = {}   # wake trails: fleet id ("player" for yours) -> points {x, y, h, t, s}, newest last
 var tnow = 0.0
 var land_tris: Array = []       # [PackedVector2Array] parts that triangulate
@@ -559,6 +560,7 @@ func _show_origin() -> void:
         if G.get("navy", "") != "" and info.navy: _p(box, "Formerly of the " + GameData.fac[G.navy].name + ".", UI.DIM, 14)
         _p(box, L.get("story", ""), UI.INK, 15)
         _p(box, L.get("world", ""), UI.DIM, 14)
+        if Codex.backstory(key) != "": box.add_child(Codex.rich(Codex.backstory(key), UI.GOLD, 14))
         box.add_child(_thumb(G.fleet[0].type, "player", 520, G.fleet[0].fit))
         _p(box, info.start, UI.INK, 14)
         var st = []
@@ -617,7 +619,7 @@ func _aftermath_done(r: Dictionary) -> void:
 
 func open_survey(q: Dictionary) -> void:
     open_panel(func(box):
-        box.add_child(UI.title("Survey: " + q.name)); _p(box, Campaign.C.POI_TEXT[q.type])
+        box.add_child(UI.title("Survey: " + q.name)); _p(box, q.get("text", Campaign.C.POI_TEXT[q.type]))
         box.add_child(UI.row([UI.button("Send the divers down", func(): _do_survey(q), true, Campaign.G.day < q.next), UI.button("Leave", close_panel)])))
 
 func _do_survey(q: Dictionary) -> void:
@@ -730,6 +732,9 @@ func _render_port() -> void:
     open_panel(func(box):
         box.add_child(UI.title(p.name))
         _p(box, "%s%s · %d, day %d · Funds %s" % [GameData.fac[p.fac].name, " · capital" if p.capital else "", Campaign.year(), G.day, Campaign.fmt(G.credits)], UI.DIM, 14)
+        var att: String = Codex.profile(p.fac).get("Attitude toward independents", "")
+        if att != "": box.add_child(Codex.rich("*" + att + "*", UI.DIM, 13))
+        if p.get("rumour", "") != "": box.add_child(Codex.rich("Rumour has it: " + p.rumour, UI.GOLD, 13))
         if limited: _p(box, "Your old service remembers you. The harbourmaster will sell you stores and berth you for repairs, at a price, but the shipyard, the officers' mess and the Admiralty are closed to you.", UI.GOLD, 14)
         _tabs(box, tabs, port_tab, func(k): port_tab = k; _render_port())
         match port_tab:
@@ -747,12 +752,13 @@ func show_command() -> void:
     cur_port = {}
     open_panel(func(box):
         box.add_child(UI.title("Command"))
-        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & standing"], ["hold", "Hold"]], cmd_tab, func(k): cmd_tab = k; show_command())
+        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & standing"], ["hold", "Hold"], ["codex", "Codex"]], cmd_tab, func(k): cmd_tab = k; show_command())
         match cmd_tab:
             "fleet": _fleet_table(box, false)
             "officers": _officers(box, {})
             "research": _research(box)
             "missions": _missions(box, false)
+            "codex": Codex.build(box, codex_tab, func(k): codex_tab = k; show_command())
             "hold":
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
                 _p(box, "%d / %d used. %d enemy ships sunk or taken." % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.G.kills], UI.DIM, 14)
@@ -1053,7 +1059,8 @@ func _missions(box: Control, at_admiralty: bool) -> void:
     for f in GameData.fac:
         if f == "raiders": continue
         var r: int = G.rep.get(f, 0)
-        box.add_child(UI.row([UI.label(GameData.fac[f].name), UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label("hostile" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"), UI.RED if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM), 13)]))
+        var nl := UI.label(GameData.fac[f].name); nl.tooltip_text = GameData.fac[f].get("desc", ""); nl.mouse_filter = Control.MOUSE_FILTER_PASS
+        box.add_child(UI.row([nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label("hostile" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"), UI.RED if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM), 13)]))
     if G.log.size():
         box.add_child(UI.label("LOG", UI.DIM, 12))
         var lg: Array = G.log.slice(-8); lg.reverse()

@@ -379,6 +379,16 @@ func build_by_budget(pool: Array, budget: float, mx: int, fac: String, tech: Arr
         var t: String = opts.pick_random(); ships.append(new_ship(t, null, fac, tech)); budget -= GameData.hulls[t].price
     return ships
 
+## A port of the flag for a patrol to put out from, weighted by its garrison (campaign.json: Gatehold and Strelsk x3).
+func _garrison_port(fac: String) -> Dictionary:
+    var ps: Array = ports_of(fac); var tot := 0.0
+    for p in ps: tot += float(p.get("garrison", 1))
+    var r := randf() * tot
+    for p in ps:
+        r -= float(p.get("garrison", 1))
+        if r <= 0: return p
+    return ps.back()
+
 func spawn_fleet(kind: String, fac: String, initial := false, mission = null) -> Dictionary:
     var P: Dictionary = G.player; var era = enemy_era(); var tl = enemy_tech(maxi(1, era - 1) if kind == "raiders" else era); var scale = 1.0 + G.day / 120.0
     var f = {"id": G.nextId, "kind": kind, "fac": mission.fac if mission != null else fac, "h": randf() * TAU, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {}}
@@ -389,8 +399,10 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
             var np: Dictionary = {}
             for p in G.ports: if p.name == mission.near: np = p
             pos = water_point(8, Vector2(np.sx, np.sy), 160)
-        elif kind == "patrol": var p: Dictionary = ports_of(fac).pick_random(); pos = water_point(8, Vector2(p.sx, p.sy), 260)
+        elif kind == "patrol": var p: Dictionary = _garrison_port(fac); pos = water_point(8, Vector2(p.sx, p.sy), 260)
         elif kind == "convoy": var p: Dictionary = ports_of(fac).pick_random(); pos = Vector2(p.sx, p.sy); from_id = p.id
+        elif kind == "raiders" and not C.get("RAIDER_GROUNDS", []).is_empty() and randf() < 0.6:   # their favourite hunting grounds
+            var g: Array = C.RAIDER_GROUNDS.pick_random(); pos = water_point(8, Vector2(g[0], g[1]), g[2])
         else:
             var p: Dictionary = G.ports.filter(func(q): return q.fac != "enclave").pick_random(); pos = water_point(8, Vector2(p.sx, p.sy), 420)
         if mission != null or initial or mdist(pos.x, pos.y, P.x, P.y) > 300: break

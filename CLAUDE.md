@@ -1,9 +1,9 @@
 # Iron Meridian — notes for agents
 
 - **Read [`docs/CREATIVE_DIRECTION.md`](docs/CREATIVE_DIRECTION.md) before any design, art, balance or feature work.** It is the project owner's north star. Never edit its text without their instruction.
-- **Next task:** more factions with better lore (step 2 of the owner's plan in [`docs/ROADMAP.md`](docs/ROADMAP.md); ask the owner for their faction text first). The fictional world map is done: [`docs/WORLD.md`](docs/WORLD.md).
+- **Next task:** more factions (step 2 of the owner's plan in [`docs/ROADMAP.md`](docs/ROADMAP.md)). The owner's foundational lore is in the game; LORE.md lists where it and the game still differ. The fictional world map is done: [`docs/WORLD.md`](docs/WORLD.md).
 - Art pass 2 (turrets, national styles, superstructures) is done; [`docs/NEXT_ART_PASS.md`](docs/NEXT_ART_PASS.md) describes how ship art is now built: height maps baked in the browser renderer and lit in Godot shaders.
-- [`docs/LORE.md`](docs/LORE.md) keeps the owner's world-building text word for word (currently the eight starting origins), how much of it is in the game, and hooks for later. Never edit the owner's text; the in-game copy is `godot/data/lore.json`. Origins are implemented in `godot/scripts/origins.gd`.
+- [`docs/LORE.md`](docs/LORE.md) keeps the owner's world-building text word for word (the eight starting origins, and the foundational lore in [`docs/lore/foundational_lore.md`](docs/lore/foundational_lore.md), which `tools/lore_to_json.py` slices into `lore.json` for the codex), how much of it is in the game, and hooks for later. Never edit the owner's text; the in-game copy is `godot/data/lore.json`. Origins are implemented in `godot/scripts/origins.gd`.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) holds the gap analysis, the owner's standing feedback (grounded rather than arcade, Rule the Waves 3 art reference, no boarding) and the order of work. Keep it up to date as features land.
 - **The game is the Godot 4 project in `godot/`** (owner's decision; the port is complete). GDScript, GL Compatibility renderer.
   - `scripts/campaign.gd` (autoload `Campaign`): campaign state and rules, no drawing. `world_map.gd`: the chart, its panels (ports, command, encounters, aftermath). `main_menu.gd`: title. `skirmish.gd`: quick battles.

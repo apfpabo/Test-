@@ -113,10 +113,10 @@ function coastPoint(lon, lat) {
 }
 const ports = W.ports.map((p, id) => {
   const [x, y] = coastPoint(p.at[0], p.at[1]); const s = nearestWater(x, y, 80);
-  return { id, name: p.name, fac: p.fac, capital: !!p.capital, x, y, sx: r2(s.x), sy: r2(s.y) };
+  return { id, name: p.name, fac: p.fac, capital: !!p.capital, x, y, sx: r2(s.x), sy: r2(s.y), ...(p.rumour ? { rumour: p.rumour } : {}), ...(p.garrison ? { garrison: p.garrison } : {}) };
 });
 if (bad) process.exit(1);
-const pois = W.pois.map((q, id) => { const w = nearestWater(lonX(q.at[0]), latY(q.at[1]), 80); return { id, name: q.name, type: q.type, x: r2(w.x), y: r2(w.y) }; });
+const pois = W.pois.map((q, id) => { const w = nearestWater(lonX(q.at[0]), latY(q.at[1]), 80); return { id, name: q.name, type: q.type, x: r2(w.x), y: r2(w.y), ...(q.text ? { text: q.text } : {}) }; });
 
 // ------------------------------------------------------------------ sea routes: A* over the mask (as the browser build did)
 const N = { g: new Float32Array(CW * CH), from: new Int32Array(CW * CH), stamp: new Uint32Array(CW * CH), closed: new Uint32Array(CW * CH), cur: 0, hf: new Float64Array(1 << 16), hi: new Int32Array(1 << 16), hn: 0 };
@@ -260,6 +260,7 @@ Object.assign(camp, {
   channels: world.channels.map(c => c.pts.map(([lo, la]) => [r2(lonX(lo)), r2(latY(la))])),
   STRAITS: world.channels.map(c => { const p = c.pts[c.pts.length >> 1]; return { name: names[c.name] || c.name, kind: c.role, x: r2(wrapX(lonX(p[0]))), y: r2(latY(p[1])) }; }),
   ICE_BIAS: W.iceBias,
+  RAIDER_GROUNDS: (W.raiderGrounds || []).map(([lo, la, r]) => [r2(lonX(lo)), r2(latY(la)), r * DEG]),
   LANDMASSES: [...new Set((W.landmasses || []).map(m => m.name))], LAND_SITES: landSites,
   land, landMinX: minX, landMaxX: maxX,
 });

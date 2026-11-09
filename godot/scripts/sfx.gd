@@ -9,6 +9,9 @@ const RATE := 22050
 var _cut: Array[float] = [160.0, 220.0, 350.0, 520.0, 700.0, 900.0, 1200.0, 1400.0]
 var _banks: Array = []          # per cutoff: a few variations
 var _pop: Array = []            # light AA pops
+var _gat: Array = []            # CIWS gatling bursts
+var _oer: Array = []            # Oerlikon rattles
+var _bof: Array = []            # Bofors pom-poms
 var _pool: Array[AudioStreamPlayer] = []
 var _next = 0
 var _engine: AudioStreamPlayer
@@ -22,6 +25,9 @@ func _ready() -> void:
 		for k in 2: vars.append(_report(c))
 		_banks.append(vars)
 	for k in 3: _pop.append(_aa_pop())
+	for k in 2: _gat.append(_auto(75.0, 0.45, 0.012, 900.0, true))
+	for k in 2: _oer.append(_auto(7.5, 0.5, 0.03, 1400.0, false))
+	for k in 2: _bof.append(_auto(4.0, 0.62, 0.06, 500.0, false))
 	for i in 24:
 		var p = AudioStreamPlayer.new(); add_child(p); _pool.append(p)
 	_engine = AudioStreamPlayer.new(); _engine.stream = _engine_loop(); _engine.volume_db = -80.0; add_child(_engine)
@@ -92,6 +98,30 @@ func boom(vol: float, freq := 420.0, rate := 1.0) -> void:
 	var best = 0
 	for i in _cut.size(): if absf(_cut[i] - freq) < absf(_cut[best] - freq): best = i
 	_play(_banks[best].pick_random(), vol, rate)
+
+## Automatic fire: a train of individual reports at a rate of fire (rounds a second), each a sharp crack over a
+## short thump; a gatling also has a continuous low growl and the whine of the rotating barrels.
+func _auto(rate: float, dur: float, shot: float, cutoff: float, gatling: bool) -> AudioStreamWAV:
+	var n = int(RATE * dur); var out = PackedFloat32Array(); out.resize(n)
+	var a = exp(-TAU * cutoff / RATE); var y = 0.0; var hp = 0.0; var prev = 0.0; var nxt = 0.0; var t0 = -1.0; var ph = 0.0
+	for i in n:
+		var t = float(i) / RATE
+		if t >= nxt and t < dur - shot * 2.0: t0 = t; nxt = t + (1.0 / rate) * randf_range(0.92, 1.08)
+		var nz = randf_range(-1, 1); y = (1.0 - a) * nz + a * y; hp = 0.5 * (hp + nz - prev); prev = nz
+		var u = t - t0; var e = exp(-u / shot) if t0 >= 0.0 else 0.0
+		ph += TAU * (110.0 if gatling else 70.0) / RATE
+		var v = (hp * 0.8 + y * 2.2) * e + sin(ph) * e * 0.5
+		if gatling:
+			var env = minf(1.0, t * 30.0) * minf(1.0, (dur - t) * 30.0)
+			v = v * 0.7 + (y * 1.6 + sin(TAU * 960.0 * t) * 0.05) * env * 0.5   # the growl and the barrels' whine
+		out[i] = clampf(v * 0.8, -1.0, 1.0)
+	return _wav(out)
+
+## A CIWS burst, an Oerlikon rattle or a Bofors pom-pom: wid picks which.
+func auto_fire(wid: String, vol: float) -> void:
+	if muted or vol < 0.01: return
+	var bank: Array = _gat if wid == "ciws" else (_bof if wid == "aa40" else _oer)
+	_play(bank.pick_random(), vol, randf_range(0.95, 1.05))
 
 ## Light AA and point-defence fire.
 func pop(vol: float) -> void:

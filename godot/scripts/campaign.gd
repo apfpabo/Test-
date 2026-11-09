@@ -626,6 +626,12 @@ func _islands_here() -> int:
 
 ## Applies a finished battle to the campaign: damage, losses, casualties, prizes, prize money, research, officer
 ## experience, bounties and missions. Mirrors the browser build's endCombat.
+## Cost to refill a ship's magazines: a fraction of what its weapons cost, for the share that was fired.
+func rearm_cost(s: Dictionary) -> int:
+    var w := 0.0
+    for wid in s.fit: if wid != null and wid != "" and GameData.weapons.has(wid): w += float(GameData.weapons[wid].price)
+    return int(ceil((1.0 - float(s.get("ammo", 1.0))) * w * 0.15))
+
 func apply_battle(sim: BattleSim) -> Dictionary:
     var f = _fleet(GameData.pending.get("fleet_id", -1))
     var r = {"victory": false, "retreated": false, "sunk": [], "lost": [], "prizes": [], "coin": 0, "rp": 0, "goods": "", "bounty": 0, "casualties": 0, "notes": []}
@@ -633,7 +639,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     for s in sim.ships:
         if s.side == 0:
             if not s.alive: r.lost.append(s.rec); cas += s.d.crew * 0.5
-            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
+            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
         else:
             if not s.alive: r.sunk.append(s.rec)
             else:

@@ -12,8 +12,40 @@ const RED := Color(0.85, 0.38, 0.29)
 const GREEN := Color(0.5, 0.75, 0.56)
 const PANEL := Color(0.055, 0.1, 0.12, 0.9)
 
+var menu: Control
+
 func _ready() -> void:
     font = ThemeDB.fallback_font
+    _build_menu()
+
+## The pause menu (Esc). Quick battles can be restarted or set up again; a campaign battle can be broken off (an order
+## to withdraw, fought out as usual) or abandoned for the main menu, which loses what happened since the last save.
+func _build_menu() -> void:
+    menu = CenterContainer.new(); menu.set_anchors_preset(Control.PRESET_FULL_RECT); menu.visible = false; menu.theme = UI.theme(); add_child(menu)
+    var pc = PanelContainer.new(); pc.custom_minimum_size = Vector2(340, 0); menu.add_child(pc)
+    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 8); pc.add_child(box)
+    box.add_child(UI.label("Paused", UI.GOLD, 28))
+    var campaign: bool = GameData.pending.has("player_recs")
+    var b = func(t: String, cb: Callable, primary := false): var x = UI.button(t, cb, primary); x.custom_minimum_size = Vector2(300, 40); box.add_child(x)
+    b.call("Resume", func(): toggle_menu(), true)
+    if campaign:
+        b.call("Break off the action", func(): battle.sim.order = "retreat"; battle.sim.say("All ships withdraw! Open the range and break contact.", 2.5); toggle_menu())
+        b.call("Quit to main menu", func(): _confirm("Quit to the main menu? This battle and anything since your last save will be lost.", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")))
+    else:
+        b.call("Restart battle", func(): get_tree().reload_current_scene())
+        b.call("Battle setup", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn"))
+        b.call("Main menu", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+    box.add_child(UI.label("Esc resumes · P pauses without this menu", UI.DIM, 12))
+
+func _confirm(text: String, yes: Callable) -> void:
+    var box: VBoxContainer = menu.get_child(0).get_child(0)
+    for c in box.get_children(): c.queue_free()
+    box.add_child(UI.label(text, UI.INK, 15, true))
+    box.add_child(UI.row([UI.button("Quit", yes, true), UI.button("Back", func(): menu.queue_free(); _build_menu(); menu.visible = true)]))
+
+func toggle_menu() -> void:
+    menu.visible = not menu.visible
+    battle.paused = menu.visible
 
 func _text(p: Vector2, s: String, col := INK, size := 13, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0) -> void:
     draw_string(font, p, s, align, width, size, col)
@@ -47,7 +79,7 @@ func _draw() -> void:
         var on: bool = sim.order == orders[i][2]
         _text(Vector2(16, 28 + i * 18), ("▸ " if on else "   ") + orders[i][0] + " " + orders[i][1], GOLD if on else Color(INK, 0.55))
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
-    _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · click enemy to engage · hold on water to fire there · right-click water: cease fire · right-drag: pan, Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torps · Q missiles · F air · C dive · Tab ship · P pause · M mute", Color(INK, 0.45), 12)
+    _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · click enemy to engage · hold on water to fire there · right-click water: cease fire · right-drag: pan, Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torps · Q missiles · F air · C dive · Tab ship · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
     var ry = 116.0
     for side in [0, 1]:
         _text(Vector2(16, ry), "Enemy" if side else "Task force", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
@@ -85,11 +117,14 @@ func _draw() -> void:
         for m in f.mounts: groups[m.w.name].append(m)
         var gx = x + 10; var gy = y + 98
         for n in groups:
-            var ms: Array = groups[n]; var ready = 0; var dead = 0
+            var ms: Array = groups[n]; var ready = 0; var dead = 0; var left = 0; var cap = 0
             for m in ms:
+                if m.ammo_max > 0: left += maxi(0, m.ammo); cap += m.ammo_max
                 if m.dead: dead += 1
-                elif m.cd <= 0: ready += 1
-            _text(Vector2(gx, gy), str(ms.size()) + "× " + n + ((" (" + str(dead) + " out)") if dead else ""), Color(0.84, 0.86, 0.85), 12)
+                elif m.cd <= 0 and m.ammo != 0: ready += 1
+            var unit: String = {"gun": "rds", "aa": "bursts", "torp": "salvos", "ssm": "salvos", "sam": "rds"}.get(ms[0].w.kind, "")
+            var am: String = (" · empty" if left == 0 else (" · %d%%" % int(100.0 * left / cap) if unit == "bursts" else " · %d %s" % [left, unit])) if cap > 0 else ""
+            _text(Vector2(gx, gy), str(ms.size()) + "× " + n + ((" (" + str(dead) + " out)") if dead else "") + am, RED if cap > 0 and left == 0 else (GOLD if cap > 0 and left < cap * 0.2 else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_LEFT, 196)
             _bar(Vector2(gx, gy + 4), 130, 3, float(ready) / ms.size(), GREEN if ready else GOLD)
             gx += 200
             if gx > x + 330: gx = x + 10; gy += 22
@@ -98,7 +133,7 @@ func _draw() -> void:
             var st = ""
             for q in f.squads: st += ("▲" + str(q.n) if q.state == "ready" else ("→" if q.state == "out" else ("…" if q.state == "rearm" else "✕"))) + " "
             _text(Vector2(x + w - 10 - 200, y + 26), "Air: " + st, Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
-        _schematic(f, Rect2(x, y - 118, w, 98))
+        _schematic(f, Rect2(x, y - 140, w, 120))
     _reticle()
     # minimap
     var mw = 190.0; var mh = mw * sim.AH / sim.AW; var mx = W - mw - 16; var my = H - mh - 16; var k = mw / sim.AW
@@ -113,7 +148,8 @@ func _draw() -> void:
     # messages and pause
     if sim.msg_t > 0: _text(Vector2(0, 74), sim.msg.to_upper(), Color(INK, minf(1.0, sim.msg_t)), 26, HORIZONTAL_ALIGNMENT_CENTER, W)
     if battle.paused:
-        draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.06, 0.5)); _text(Vector2(0, H / 2), "PAUSED · P TO RESUME", INK, 34, HORIZONTAL_ALIGNMENT_CENTER, W)
+        draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.06, 0.5))
+        if not menu.visible: _text(Vector2(0, H / 2), "PAUSED · P TO RESUME · ESC FOR MENU", INK, 34, HORIZONTAL_ALIGNMENT_CENTER, W)
 
 ## Gun-laying reticle at the point the main battery is aimed, with a plain-words state of the guns.
 func _reticle() -> void:
@@ -167,44 +203,71 @@ func show_results() -> void:
     var again = Button.new(); again.text = "Fight again"; again.pressed.connect(func(): get_tree().reload_current_scene()); row.add_child(again)
     var back = Button.new(); back.text = "Back to battle setup"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")); row.add_child(back)
 
-## Damage schematic of the flagship, after the manner of a damage-control board: the ship's own plan as a dark
-## silhouette, with each part coloured by its state. Mounts: grey in action, red when wrecked. Magazines (under the
-## centreline turrets): amber, flashing red while on fire, blue once flooded. Machinery, steering gear and fire
-## control: green, yellow, red by damage; machinery dark red while the engines are stopped.
+## Damage display for the flagship, in the manner of War Thunder's: the ship's own plan as a grey silhouette where
+## only damage shows (parts going red as they are hurt, black when destroyed, fires flickering orange, magazines
+## flashing while they burn and blue once flooded), and below it a row of badges with a value each: crew, fires,
+## machinery, ammunition, steering and fire control. A badge turns red when its system is in trouble.
 func _schematic(f, r: Rect2) -> void:
     draw_rect(r, PANEL); draw_rect(r, Color(GOLD, 0.35), false, 1)
     var d: Dictionary = f.d; var info: Dictionary = GameData.sprites.ships[f.rec.type]
-    var k: float = minf((r.size.x - 20) / float(info.w), (r.size.y - 26) / float(info.h))   # pixels per metre
-    var c := r.position + Vector2(r.size.x / 2, r.size.y / 2 + 6)
+    var sil := Rect2(r.position + Vector2(10, 4), Vector2(r.size.x - 20, r.size.y - 50))
+    var k: float = minf(sil.size.x / float(info.w), sil.size.y / float(info.h))   # pixels per metre
+    var c := sil.get_center()
     var at = func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * k
     var tex = GameData.ship_tex(f.rec.type, f.pal, "base")
-    draw_texture_rect(tex, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false, Color(0.32, 0.38, 0.4, 0.95))
+    draw_texture_rect(tex, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false, Color(0.42, 0.46, 0.47, 0.95))
     var blink: bool = int(Time.get_ticks_msec() / 250) % 2 == 0
-    var state = func(v: float) -> Color: return GREEN if v > 0.75 else (GOLD if v > 0.4 else RED)
+    var hurt = func(v: float) -> Color: return Color(0.85, 0.2, 0.15, clampf((1.0 - v) * 1.6, 0.0, 0.9))
     var L: float = d.L
-    # machinery amidships
-    var eng_col: Color = Color(0.55, 0.12, 0.1) if f.eng_out > 0 else state.call(f.eng)
-    draw_rect(Rect2(at.call(-L * 0.18, -d.B * 0.18), Vector2(L * 0.36, d.B * 0.36) * k), Color(eng_col, 0.75))
-    # steering gear right aft
-    draw_rect(Rect2(at.call(-L * 0.47, -d.B * 0.1), Vector2(L * 0.06, d.B * 0.2) * k), Color(RED if f.jam > 0 else GREEN, 0.85))
-    # fire control in the bridge block
+    # machinery, steering gear and fire control show only once damaged
+    if f.eng_out > 0 or f.eng < 0.97: draw_rect(Rect2(at.call(-L * 0.18, -d.B * 0.2), Vector2(L * 0.36, d.B * 0.4) * k), Color(0.12, 0.02, 0.02, 0.9) if f.eng_out > 0 else hurt.call(f.eng))
+    if f.jam > 0: draw_rect(Rect2(at.call(-L * 0.48, -d.B * 0.14), Vector2(L * 0.07, d.B * 0.28) * k), Color(0.85, 0.2, 0.15, 0.9))
     var sup: Array = d.p.get("sup", [])
-    if not sup.is_empty(): draw_circle(at.call(float(sup[0][0]), 0.0), maxf(3.0, float(sup[0][2]) * 0.22 * k), Color(state.call(f.fc), 0.9))
-    # magazines and mounts
+    if not sup.is_empty() and f.fc < 0.97: draw_circle(at.call(float(sup[0][0]), 0.0), maxf(3.0, float(sup[0][2]) * 0.3 * k), hurt.call(f.fc))
+    for fi in f.fires: draw_circle(at.call(float(fi.x), float(fi.y)), maxf(2.0, float(fi.r) * k), Color(1.0, 0.55 if blink else 0.4, 0.1, 0.9))
     for m in f.mounts:
         var sl: Dictionary = m.slot; var mp: Vector2 = at.call(float(sl.x), float(sl.y))
+        var sz: float = maxf(2.5, float(m.w.get("tw", 2.5)) * 0.5 * k)
         if m.w.kind == "gun" and sl.y == 0 and ["M", "L", "H"].has(m.w.size):
-            var mc: Color = Color(0.85, 0.62, 0.2)
-            if f.mag_fire > 0 and absf(f.mag_x - sl.x) < 1.0: mc = RED if blink else Color(1, 0.85, 0.4)
+            var mc := Color(0, 0, 0, 0)
+            if f.mag_fire > 0 and absf(f.mag_x - sl.x) < 1.0: mc = Color(1.0, 0.45, 0.1) if blink else Color(1.0, 0.85, 0.3)
             for fx in f.flooded: if absf(fx - sl.x) < 1.0: mc = Color(0.35, 0.6, 0.85)
-            var mw: float = maxf(4.0, float(m.w.tl) * 0.5 * k)
-            draw_rect(Rect2(mp + Vector2(-mw / 2, float(m.w.tw) * 0.3 * k + 2), Vector2(mw, 3)), mc)
-        var sz: float = maxf(3.0, float(m.w.get("tw", 2.5)) * 0.5 * k)
-        var col: Color = Color(0.82, 0.85, 0.83) if not m.dead else RED
-        if m.w.kind == "gun": draw_rect(Rect2(mp - Vector2(sz, sz * 0.8), Vector2(sz * 2, sz * 1.6)), col)
-        else: draw_circle(mp, sz * 0.7, Color(col, 0.85))
-        if m.dead: draw_line(mp - Vector2(sz, sz), mp + Vector2(sz, sz), Color(0.1, 0.05, 0.05), 1.5); draw_line(mp + Vector2(-sz, sz), mp + Vector2(sz, -sz), Color(0.1, 0.05, 0.05), 1.5)
-    # key
-    var kx := r.position.x + 10; var ky := r.position.y + 14
-    for e in [["Machinery", eng_col], ["Steering", RED if f.jam > 0 else GREEN], ["Fire control", state.call(f.fc)], ["Magazines", RED if f.mag_fire > 0 else Color(0.85, 0.62, 0.2)], ["Crew %d%%" % int(f.cf * 100), state.call(f.cf)]]:
-        draw_rect(Rect2(kx, ky - 7, 7, 7), e[1]); _text(Vector2(kx + 10, ky), e[0], DIM, 11); kx += 22 + font.get_string_size(e[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+            if mc.a > 0: draw_rect(Rect2(mp - Vector2(sz * 1.3, sz * 1.1), Vector2(sz * 2.6, sz * 2.2)), mc)
+        if m.dead:
+            if m.w.kind == "gun": draw_rect(Rect2(mp - Vector2(sz, sz * 0.8), Vector2(sz * 2, sz * 1.6)), Color(0.08, 0.06, 0.06))
+            else: draw_circle(mp, sz * 0.7, Color(0.08, 0.06, 0.06))
+            draw_line(mp - Vector2(sz, sz), mp + Vector2(sz, sz), RED, 1.5); draw_line(mp + Vector2(-sz, sz), mp + Vector2(sz, -sz), RED, 1.5)
+        elif m.ammo == 0: draw_circle(mp, sz * 0.6, Color(0.9, 0.62, 0.2, 0.9))
+    # badges
+    var main_left := 0; var main_cap := 0
+    for m in f.mounts: if m.w.kind == "gun" and m.w.size == f.main_sz and m.ammo_max > 0: main_left += maxi(0, m.ammo); main_cap += m.ammo_max
+    var badges = [
+        ["crew", "%d%%" % int(f.cf * 100), f.cf < 0.6],
+        ["fire", str(f.fires.size()) if f.mag_fire <= 0 else "MAG", f.fires.size() > 0 or f.mag_fire > 0],
+        ["engine", "STOP" if f.eng_out > 0 else "%d%%" % int(f.eng * 100), f.eng_out > 0 or f.eng < 0.5],
+        ["ammo", ("%d%%" % int(100.0 * main_left / main_cap)) if main_cap > 0 else "—", main_cap > 0 and main_left < main_cap * 0.2],
+        ["helm", "JAM" if f.jam > 0 else "OK", f.jam > 0],
+        ["fc", "%d%%" % int(f.fc * 100), f.fc < 0.6]]
+    var bx: float = r.position.x + 30; var by: float = r.position.y + r.size.y - 30; var step: float = (r.size.x - 60) / (badges.size() - 1)
+    for b in badges:
+        var bad: bool = b[2]; var ctr := Vector2(bx, by)
+        draw_circle(ctr, 13, Color(0.55, 0.12, 0.1, 0.95) if bad else Color(0.16, 0.2, 0.22, 0.95)); draw_arc(ctr, 13, 0, TAU, 24, Color(1, 1, 1, 0.25), 1.0)
+        _icon(String(b[0]), ctr, Color(1, 0.88, 0.85) if bad else Color(0.8, 0.84, 0.84))
+        _text(ctr + Vector2(-30, 26), b[1], RED if bad else DIM, 11, HORIZONTAL_ALIGNMENT_CENTER, 60)
+        bx += step
+
+## Small line-drawn badge icons.
+func _icon(kind: String, c: Vector2, col: Color) -> void:
+    match kind:
+        "crew": draw_circle(c + Vector2(0, -4), 3.2, col); draw_rect(Rect2(c + Vector2(-5, 0), Vector2(10, 6)), col)
+        "fire":
+            var pts = PackedVector2Array([c + Vector2(0, -8), c + Vector2(5, 0), c + Vector2(3, 6), c + Vector2(-3, 6), c + Vector2(-5, 0), c + Vector2(-1, -3)])
+            draw_colored_polygon(pts, col)
+        "engine":
+            for i in 3: var a := i * TAU / 3.0; draw_colored_polygon(PackedVector2Array([c, c + Vector2.from_angle(a) * 8 + Vector2.from_angle(a + 1.6) * 2, c + Vector2.from_angle(a + 0.7) * 7]), col)
+            draw_circle(c, 2.0, Color(0.16, 0.2, 0.22))
+        "ammo": draw_rect(Rect2(c + Vector2(-2.5, -3), Vector2(5, 9)), col); draw_colored_polygon(PackedVector2Array([c + Vector2(-2.5, -3), c + Vector2(0, -8), c + Vector2(2.5, -3)]), col)
+        "helm":
+            draw_arc(c, 6, 0, TAU, 20, col, 1.6); draw_circle(c, 1.8, col)
+            for i in 6: var a := i * TAU / 6.0; draw_line(c + Vector2.from_angle(a) * 2, c + Vector2.from_angle(a) * 9, col, 1.4)
+        "fc": draw_rect(Rect2(c + Vector2(-8, -1.5), Vector2(16, 3)), col); draw_rect(Rect2(c + Vector2(-3, -5), Vector2(6, 8)), col)

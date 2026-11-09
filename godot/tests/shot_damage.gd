@@ -1,5 +1,5 @@
 extends Node
-## The flagship's damage schematic after hits on several subsystems: res://tests/shot_damage.tscn -- <out.png> [design]
+## The flagship's damage display after hits on several subsystems: res://tests/shot_damage.tscn -- <out.png> [design] [menu]
 var battle: Node
 var f := 0
 func _ready() -> void:
@@ -15,4 +15,5 @@ func _process(_d: float) -> void:
         s.mag_x = guns[0].slot.x; if guns.size() > 2: s.flooded.append(guns[-1].slot.x); guns[-1].dead = true
         s.mounts[-1].dead = true
         battle.paused = true
+    if f == 3 and OS.get_cmdline_user_args().size() > 2: battle.hud.toggle_menu()
     if f == 6: get_viewport().get_texture().get_image().save_png(OS.get_cmdline_user_args()[0]); get_tree().quit()

@@ -25,6 +25,8 @@ class Mount:
     var recoil = 0.0
     var rec := PackedFloat32Array()   # recoil of each barrel, 1 just fired
     var queue: Array = []             # barrels still to fire in the current salvo: {i, t, aim}
+    var ammo := -1                    # rounds (guns: shells for all barrels; AA: bursts; torpedoes and missiles: salvos) left
+    var ammo_max := -1
     var tgt: CShip = null
     var tgt_t = 0.0
     var air: Dictionary = {}
@@ -93,6 +95,7 @@ class CShip:
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
     var mag_x = 0.0        # where along the hull
     var flooded: Array = [] # magazines flooded by damage control (their x along the hull)
+    var dc_left = 0        # depth-charge patterns left
 
 class Part:
     var t: int
@@ -140,7 +143,7 @@ var result: Dictionary = {}
 var enemy_era = 1
 var sonar_tech = false
 var on_boom: Callable    # (pos, vol, freq, rate) for sound
-var on_pop: Callable     # (pos, vol) for light AA fire
+var on_pop: Callable     # (pos, vol, weapon id) for light AA and point-defence fire
 var sys_log := {}        # subsystem events this battle, for tests and balance
 func _log(k: String) -> void: sys_log[k] = sys_log.get(k, 0) + 1
 var small_craft = [false, false]  # whether each side still has torpedo boats or submarines afloat
@@ -155,14 +158,15 @@ func say(m: String, dur := 3.0) -> void:
 func boom(p: Vector2, vol: float, freq := 420.0, rate := 1.0) -> void:
     if on_boom.is_valid(): on_boom.call(p, vol, freq, rate)
 
-func pop(p: Vector2, vol: float) -> void:
-    if on_pop.is_valid(): on_pop.call(p, vol)
+func pop(p: Vector2, vol: float, wid := "") -> void:
+    if on_pop.is_valid(): on_pop.call(p, vol, wid)
 
 ## Light AA or point-defence burst: a tracer, a small flash at the mount and its report.
 func aa_shot(s: CShip, m: Mount, p: Vector2, q: Vector2) -> void:
+    if m.w.kind == "aa": use_round(m)
     tracer(p, q)
     var f = part(P.FLASH, p, 0.12, 3.0 if m.wid != "aa20" else 2.0); f.a = (q - p).angle()
-    pop(p, 0.22 if m.wid == "aa20" else 0.32)
+    pop(p, 0.22 if m.wid == "aa20" else (0.4 if m.wid == "ciws" else 0.32), m.wid)
 
 # ------------------------------------------------------------------ setup
 func setup(player_recs: Array, enemy_recs: Array, player_tech: Array, enemy_tech: Array, n_islands: int) -> void:
@@ -231,7 +235,9 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
         var wid: String = rec.fit[i]
         if wid == "" or not GameData.weapons.has(wid): continue
         var m = Mount.new(); m.slot = d.slots[i]; m.wid = wid; m.w = GameData.weapons[wid]; m.ta = m.slot.arcs[0][0]; m.cd = randf() * m.w.rel * 0.5
+        m.ammo_max = full_ammo(wid, m.w); m.ammo = int(round(m.ammo_max * float(rec.get("ammo", 1.0)))) if m.ammo_max > 0 else -1
         s.mounts.append(m)
+    if d.get("sonar", false) and d.kind != "sub": s.dc_left = int(round(6 * float(rec.get("ammo", 1.0))))
     for i in int(d.get("hangar", 0)): s.squads.append({"state": "ready", "t": 0.0, "n": 6})
     if side == 1 and d.kind == "merchant": s.flee = true
     var best = -1
@@ -334,6 +340,30 @@ func world_pt(s: CShip, lx: float, ly: float) -> Vector2:
 
 func active(s: CShip) -> bool: return s.alive and not s.escaped
 func engageable(s: CShip) -> bool: return s.alive and not s.escaped and not s.struck
+## Magazine depth for a mount: shells for all its guns (by calibre), AA bursts, torpedo salvos (with one reload),
+## missile salvos and SAM rounds. Roughly a long day's action for big guns; light AA can run dry in a long air fight.
+static func full_ammo(wid: String, w: Dictionary) -> int:
+    match String(w.kind):
+        "gun": return int(w.get("barrels", 1)) * int({"H": 100, "L": 150, "M": 250, "S": 300}[w.size])
+        "aa": return 60 if wid == "ciws" else (600 if wid == "aa20" else 400)
+        "torp": return 2
+        "ssm": return 4
+        "sam": return 40
+    return -1
+
+## How full a ship's magazines are, 0..1, weighted by what the weapons cost (for the campaign to carry over).
+func ammo_frac(s: CShip) -> float:
+    var have := 0.0; var full := 0.0
+    for m in s.mounts:
+        if m.ammo_max <= 0: continue
+        var wt: float = float(m.w.price); have += wt * float(m.ammo) / m.ammo_max; full += wt
+    return have / full if full > 0 else 1.0
+
+func use_round(m: Mount, n := 1) -> bool:
+    if m.ammo < 0: return true
+    if m.ammo < n: m.ammo = 0; return false
+    m.ammo -= n; return true
+
 func submerged(s: CShip) -> bool: return s.sub and s.dive > 0.6
 
 func detected_by(sb: CShip, side: int) -> bool:
@@ -342,7 +372,7 @@ func detected_by(sb: CShip, side: int) -> bool:
     for o in ships:
         if o.side != side or not active(o): continue
         var dd = o.pos.distance_to(sb.pos)
-        if dd < 500.0 or (o.d.get("sonar", false) and dd < sonar_r): return true
+        if dd < 500.0 or (o.d.get("sonar", false) and dd < sonar_r) or (o.sub and dd < sonar_r * 1.4): return true  # a boat's passive sonar hears another
     return false
 
 func visible_to(s: CShip, side: int) -> bool:
@@ -454,6 +484,7 @@ func _ripple(s: CShip, m: Mount, dt: float) -> void:
         if q.t <= 0.0: m.queue.remove_at(j); fire_barrel(s, m, q.aim, int(q.i))
 
 func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
+    if not use_round(m): return
     var w: Dictionary = m.w; var n := int(w.get("barrels", 1))
     var ang = s.a + m.ta; var off: float = (i - (n - 1) / 2.0) * float(w.get("gap", 0.0))
     var p = world_pt(s, m.slot.x, m.slot.y) + Vector2.from_angle(ang + PI / 2) * off
@@ -469,6 +500,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     boom(p, {"S": 0.18, "M": 0.26, "L": 0.42, "H": 0.7}[w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 160.0}[w.size])
 
 func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
+    if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y); var base = (aim - p).angle()
     for i in int(w.count):
         var a: float = base + (i - (w.count - 1) / 2.0) * 0.06
@@ -477,16 +509,16 @@ func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     if s.sub: s.reveal_t = 20.0
 
 func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
+    if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
     for i in int(w.count):
         missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "delay": i * 2.0})
     if s.sub: s.reveal_t = 25.0
-    boom(p, 0.18, 1200.0, 0.6)
 
 func fire_sam(s: CShip, m: Mount, tg) -> void:
+    if not use_round(m): return
     var p = world_pt(s, m.slot.x, m.slot.y); var tp: Vector2 = tg.pos
     missiles.append({"pos": p, "a": (tp - p).angle(), "v": 200.0, "speed": m.w.speed, "life": gun_range(s, m.w) / m.w.speed * 1.5, "dmg": 0, "side": s.side, "target": tg, "kind": "sam", "p": m.w.pd, "delay": 0.0})
-    boom(p, 0.08, 1400.0, 0.8)
 
 func reload_mult(s: CShip, w: Dictionary) -> float:
     var r = 0.5 + 0.5 * s.cf
@@ -516,6 +548,7 @@ func kill_missile(ms: Dictionary) -> void:
 
 func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
     var p = world_pt(s, m.slot.x, m.slot.y)
+    if m.w.kind == "gun" and not use_round(m, int(m.w.get("barrels", 1))): return
     if m.w.kind == "gun": # dual-purpose guns firing at aircraft: a real gun report, flash and recoil
         var ang = (sq.pos - p).angle(); tracer(p, sq.pos); m.recoil = 1.0
         m.rec.resize(int(m.w.get("barrels", 1))); m.rec.fill(1.0)
@@ -533,6 +566,7 @@ func update_weapons(s: CShip, dt: float) -> void:
         var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 1.2)
         for b in m.rec.size(): m.rec[b] = maxf(0.0, m.rec[b] - dt * 1.2)
         if not m.queue.is_empty(): _ripple(s, m, dt)
+        if m.ammo == 0: m.st = "empty"; continue   # magazine dry
         var p = world_pt(s, m.slot.x, m.slot.y)
         match w.kind:
             "gun":
@@ -617,7 +651,10 @@ func update_weapons(s: CShip, dt: float) -> void:
                     var want = ang_diff((mouse_world - p).angle(), s.a)
                     if not arc_check(m.slot, want).x > 0: continue
                     m.ta = want; m.cd = w.rel; fire_torps(s, m, mouse_world); continue
-                var tg: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and not submerged(s.target)) else nearest_enemy(s.pos, s.side, rng * 0.75, func(x: CShip) -> bool: return not submerged(x))
+                # straight-running torpedoes pass over a submerged boat; acoustic homers can go after one that is held on sonar
+                var homer: bool = w.get("homing", false)
+                var ok_t = func(x: CShip) -> bool: return not submerged(x) or homer
+                var tg: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and ok_t.call(s.target)) else nearest_enemy(s.pos, s.side, rng * 0.75, ok_t)
                 if tg == null or p.distance_to(tg.pos) > rng * 0.75: continue
                 var lp = lead_point(p, tg, w.speed); var want = ang_diff((lp - p).angle(), s.a)
                 var ac = arc_check(m.slot, want)
@@ -637,10 +674,16 @@ func update_weapons(s: CShip, dt: float) -> void:
         s.dc_t -= dt
         if s.dc_t <= 0:
             var sb = nearest_enemy(s.pos, s.side, 260.0, func(o: CShip) -> bool: return o.sub and submerged(o))
-            if sb != null:
-                s.dc_t = 25.0; var st = world_pt(s, -s.d.L / 2, 0)
-                for i in 6:
-                    var q = part(P.DC, st + Vector2(randf() - 0.5, randf() - 0.5) * 90.0, 1.4, 24.0); q.life = -1.5 - i * 0.4; q.side = s.side; dcs.append({"pos": q.pos, "t": (1.5 + i * 0.4) * BT, "side": s.side})
+            if sb != null: drop_dcs(s)
+
+## A pattern of depth charges rolled and thrown off the stern; they sink and burst a few seconds later.
+func drop_dcs(s: CShip) -> bool:
+    if s.dc_left <= 0 or s.dc_t > 0 and s.dc_t < 24.0 and s.dc_t != 0.0: return false
+    s.dc_left -= 1; s.dc_t = 25.0; var st = world_pt(s, -s.d.L / 2, 0)
+    for i in 6:
+        var q = part(P.DC, st + Vector2(randf() - 0.5, randf() - 0.5) * 90.0, 1.4, 24.0); q.life = -1.5 - i * 0.4; q.side = s.side; dcs.append({"pos": q.pos, "t": (1.5 + i * 0.4) * BT, "side": s.side})
+    if s.side == 0 and s == flag: say("Depth charges away · %d patterns left." % s.dc_left, 1.5)
+    return true
 
 # ------------------------------------------------------------------ damage
 func damage(s: CShip, dmg: float, type: String) -> void:
@@ -816,10 +859,12 @@ func ai_ship(s: CShip, dt: float) -> void:
     elif d < pref * 0.55: desired = to + PI - s.pref_side * 0.5
     else: desired = to - s.pref_side * PI / 2
     if (s.d.kind == "pt" or s.sub) and s.torp_run_t <= 0: desired = to
+    var asw: bool = tg.sub and submerged(tg) and s.d.get("sonar", false) and not s.sub and s.dc_left > 0
+    if asw: desired = to   # a submerged contact: run in over it so the depth charges fall on it
     var mg: float = s.d.td + 800.0
     if s.pos.x < mg or s.pos.x > AW - mg or s.pos.y < mg or s.pos.y > AH - mg: desired = (Vector2(AW, AH) / 2 - s.pos).angle()
     s.rudder = helm(s, steer_avoid(s, desired))
-    s.throttle = 4 if d > pref + 1500 else 3
+    s.throttle = 4 if d > pref + 1500 or asw else 3
     if s.d.kind == "carrier": launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
 
 func launch_strike(s: CShip, tg: CShip) -> bool:
@@ -973,14 +1018,14 @@ func step(dtv: float) -> void:
         var tp: Dictionary = torps[i]; tp.life -= dt; tp.arm -= dt
         if tp.homing and tp.arm <= 0:
             var tpa: float = tp.a; var tpp: Vector2 = tp.pos
-            var tg = nearest_enemy(tp.pos, tp.side, 1200.0, func(o: CShip) -> bool: return not submerged(o) and absf(ang_diff((o.pos - tpp).angle(), tpa)) < 0.7)
+            var tg = nearest_enemy(tp.pos, tp.side, 1200.0, func(o: CShip) -> bool: return absf(ang_diff((o.pos - tpp).angle(), tpa)) < 0.7)  # homers hear submerged boats too
             if tg != null: tp.a += clampf(ang_diff((tg.pos - tp.pos).angle(), tp.a), -0.15 * dt, 0.15 * dt)
         tp.pos += Vector2.from_angle(tp.a) * tp.speed * dt
         var gone: bool = tp.life <= 0
         if not gone and land_at(tp.pos): gone = true; fx_boom(tp.pos, 20.0)
         if not gone and tp.arm <= 0:
             for s in ships:
-                if s.side == tp.side or not active(s) or submerged(s): continue
+                if s.side == tp.side or not active(s) or (submerged(s) and not tp.homing): continue
                 var l: Vector2 = (tp.pos - s.pos).rotated(-s.a)
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
                     mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.FOAM, tp.pos, 12.0, 60.0)
@@ -992,6 +1037,16 @@ func step(dtv: float) -> void:
         var m: Dictionary = missiles[i]
         if m.get("dead", false): missiles.remove_at(i); continue
         if m.delay > 0: m.delay -= dt; continue
+        var age: float = m.get("age", -1.0)
+        if age < 0.0: # leaving the rail: a burst of flame, a white cloud and some dark smoke from the booster
+            var back = Vector2.from_angle(m.a + PI)
+            part(P.FIRE, m.pos + back * 3.0, 0.6, 7.0 if m.kind == "ssm" else 4.0)
+            var f = part(P.FLASH, m.pos, 0.18, 6.0 if m.kind == "ssm" else 3.5); f.a = m.a + PI
+            part(P.MTRAIL, m.pos + back * 4.0, 4.0, 9.0 if m.kind == "ssm" else 5.0)
+            for k2 in 3: part(P.GUNSMOKE, m.pos + back * (2.0 + k2 * 3.0) + Vector2(randf() - 0.5, randf() - 0.5) * 6.0, 3.0 + randf() * 2.0, 4.0 + randf() * 3.0, Vector2(randf() - 0.5, randf() - 0.5) * 8.0, true)
+            boom(m.pos, 0.2 if m.kind == "ssm" else 0.12, 1200.0, 0.6)
+            age = 0.0
+        m.age = age + dt
         m.life -= dt; m.v = minf(m.speed, m.v + m.speed * dt)
         var tg = m.target; var alive = false
         if tg != null:
@@ -1013,6 +1068,9 @@ func step(dtv: float) -> void:
                 fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); boom(m.pos, 0.5, 220.0); missiles.remove_at(i); continue
         m.pos += Vector2.from_angle(m.a) * m.v * dt
         if randf() < dtv * 30: part(P.MTRAIL, m.pos, 1.0 if m.kind == "sam" else 2.0, 4.0)
+        if m.age < 1.6: # the booster burning: flame at the tail, darker smoke mixed into the trail
+            part(P.FIRE, m.pos - Vector2.from_angle(m.a) * 2.0, 0.12, 2.5 if m.kind == "ssm" else 1.6)
+            if randf() < dtv * 10: part(P.SMOKE, m.pos - Vector2.from_angle(m.a) * 4.0, 2.5, 3.0, Vector2.ZERO, true)
         if m.life <= 0:
             if m.kind == "ssm": fx_splash(m.pos, 14.0)
             missiles.remove_at(i)

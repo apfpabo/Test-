@@ -25,7 +25,7 @@ func _ready() -> void:
     var cfg: Dictionary = GameData.pending
     sim = BattleSim.new()
     sim.on_boom = _boom
-    sim.on_pop = func(p: Vector2, vol: float): Sfx.pop(vol * _near(p))
+    sim.on_pop = func(p: Vector2, vol: float, wid: String): Sfx.auto_fire(wid, vol * _near(p))
     var pt: Array = cfg.get("player_tech", []); var et: Array = cfg.get("enemy_tech", [])
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])
     var efac: String = cfg.get("enemy_fac", "directorate")
@@ -178,7 +178,12 @@ func _key(k: int) -> void:
         KEY_1: sim.order = "engage"; sim.say("All ships: engage.", 1.5)
         KEY_2: sim.order = "escort"; sim.say("All ships: form on the flagship.", 1.5)
         KEY_3: sim.order = "retreat"; sim.say("All ships withdraw! Open the range and break contact.", 2.5)
-        KEY_P, KEY_ESCAPE: paused = not paused
+        KEY_P: paused = not paused
+        KEY_ESCAPE: hud.toggle_menu()
+        KEY_Z:
+            if s == null or s.sub or not s.d.get("sonar", false): sim.say("This ship carries no depth charges.", 1.2)
+            elif s.dc_left <= 0: sim.say("No depth charges left.", 1.2)
+            elif not sim.drop_dcs(s): sim.say("The racks are reloading.", 1.0)
         KEY_SPACE, KEY_HOME: cam_free = false; sim.say("Camera on the " + (s.rec.name if s else "flagship") + ".", 1.0)
         KEY_EQUAL, KEY_KP_ADD, KEY_PERIOD: speed_i = mini(speeds.size() - 1, speed_i + 1); sim.say("Time ×" + str(int(combat_speed() * BattleSim.BT)), 1.0)
         KEY_MINUS, KEY_KP_SUBTRACT, KEY_COMMA: speed_i = maxi(0, speed_i - 1); sim.say("Time ×" + str(int(combat_speed() * BattleSim.BT)) + (" (real time)" if combat_speed() < 1 else ""), 1.0)

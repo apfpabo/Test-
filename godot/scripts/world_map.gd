@@ -692,6 +692,13 @@ func _repairs(box: Control) -> void:
     var total = 0
     for s in G.fleet: total += repair_cost(s)
     var short = maxi(0, Campaign.crew_need() - int(G.crew))
+    var arm := 0; var low := 1.0
+    for s in G.fleet: arm += Campaign.rearm_cost(s); low = minf(low, float(s.get("ammo", 1.0)))
+    if low < 0.999: _p(box, "Magazines: the emptiest ship is %d%% full." % int(low * 100), UI.GOLD if low < 0.5 else UI.DIM, 14)
+    box.add_child(UI.row([UI.button("Rearm all · " + Campaign.fmt(arm), func():
+        G.credits -= arm
+        for s in G.fleet: s.ammo = 1.0
+        _toast("Magazines filled."); _render_port(), false, arm == 0 or G.credits < arm)]))
     box.add_child(UI.row([UI.button("Repair all · " + Campaign.fmt(total), func(): _repair_all(total), false, total == 0 or G.credits < total),
         UI.button("Hire %s crew · %s" % [Campaign.fmt(short), Campaign.fmt(short * 25)], func(): G.credits -= short * 25; G.crew += short; _render_port(), false, short == 0 or G.credits < short * 25),
         UI.button("Hire 50 spare · 1,250", func(): G.credits -= 1250; G.crew += 50; _render_port(), false, G.credits < 1250)]))

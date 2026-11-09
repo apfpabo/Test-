@@ -100,6 +100,22 @@ func glow_tex() -> Texture2D:
 func ring_tex() -> Texture2D:
 	if _ring == null: _ring = _radial([0.0, 0.62, 0.8, 0.88, 0.94, 1.0], [0.0, 0.0, 0.3, 1.0, 0.35, 0.0])
 	return _ring
+## A tiling strip of churned water for wake ribbons: streaks of foam running along the track, broken across it.
+var _wake: Texture2D
+func wake_tex() -> Texture2D:
+	if _wake == null:
+		var n := FastNoiseLite.new(); n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH; n.frequency = 0.03; n.fractal_octaves = 4; n.seed = 5
+		var a: Image = n.get_seamless_image(256, 128); var fine := FastNoiseLite.new(); fine.frequency = 0.11; fine.fractal_octaves = 3; fine.seed = 9
+		var b: Image = fine.get_seamless_image(256, 128)
+		var img := Image.create(256, 64, true, Image.FORMAT_RGBA8)
+		for y in 64:
+			for x in 256:
+				# stretched along the track (x), fine across it
+				var v: float = a.get_pixel(x, (y * 2) % 128).r * 0.6 + b.get_pixel((x * 2) % 256, (y * 2) % 128).r * 0.5
+				var al: float = smoothstep(0.38, 0.78, v)
+				img.set_pixel(x, y, Color(1, 1, 1, clampf(0.25 + al * 0.9, 0.0, 1.0)))
+		img.generate_mipmaps(); _wake = ImageTexture.create_from_image(img)
+	return _wake
 func _radial(offs: Array, alphas: Array) -> Texture2D:
 	var gr := Gradient.new(); gr.offsets = PackedFloat32Array(offs)
 	var cols := PackedColorArray()

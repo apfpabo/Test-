@@ -52,7 +52,7 @@ func _ready() -> void:
     for n in ["islands", "below", "shadows", "ships", "above", "light", "overlay"]:
         var node: Node2D
         if n == "ships": node = Node2D.new()
-        else: node = Drawer.new(); node.battle = self; node.kind = n
+        else: node = Drawer.new(); node.battle = self; node.kind = n; node.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
         if n == "light": var mat = CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; node.material = mat
         world.add_child(node); layers[n] = node
     for is_ in sim.islands: _add_island(is_)
@@ -60,9 +60,14 @@ func _ready() -> void:
     camera = Camera2D.new(); world.add_child(camera); camera.make_current()
     camera.zoom = Vector2.ONE * clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) / 3200.0, 0.14, 0.4)
     camera.position = sim.flag.pos
+    # bloom over the finished picture (modern effects only), under the HUD
+    var bl = CanvasLayer.new(); bl.layer = 5; add_child(bl)
+    bloom = ColorRect.new(); bloom.set_anchors_preset(Control.PRESET_FULL_RECT); bloom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var bm := ShaderMaterial.new(); bm.shader = preload("res://shaders/bloom.gdshader"); bloom.material = bm; bl.add_child(bloom)
     var hl = CanvasLayer.new(); hl.layer = 10; add_child(hl)
     hud = HUD.new(); hud.battle = self; hud.set_anchors_preset(Control.PRESET_FULL_RECT); hud.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.add_child(hud)
 
+var bloom: ColorRect
 func _recs(ids: Array, pal: String, tech: Array) -> Array:
     var out = []; var pool: Array = GameData.names.get(pal, GameData.names.player).duplicate(); pool.shuffle()
     for i in ids.size():
@@ -110,6 +115,7 @@ func combat_speed() -> float: return speeds[speed_i]
 # ------------------------------------------------------------------ frame
 func _process(delta: float) -> void:
     sim.modern = Settings.fx_modern   # the effects style can change in the pause menu
+    bloom.visible = sim.modern
     var dt = minf(delta, 0.05)
     sim.msg_t -= dt # messages fade on the real clock, whatever the battle speed
     sim.mouse_world = world.get_global_mouse_position()
@@ -415,11 +421,20 @@ class Drawer extends Node2D:
             pts = pts.filter(func(q): return not q.sm)
             if pts.size() < 2: continue
             var B: float = s.d.B; var strength = clampf(pts[0].v / 10.0, 0.1, 1.0)
-            _walk(pts, func(q): return q.p, func(age): return B * (0.42 + age * 0.06), 0.3 * strength, foam, now, min_step)
-            for side in ["l", "r"]:
-                var sd = -1.0 if side == "l" else 1.0
-                _walk(pts, func(q): return q[side] + Vector2(-sin(q.a), cos(q.a)) * sd * (now - q.t) * q.v * BattleSim.BT * 0.354, func(age): return B * 0.1 + age * 0.9, 0.17 * strength, foam, now, min_step)
-            if sim.modern: _glints(pts, B, now, foam)
+            if sim.modern:
+                # the churned track astern: a broad mottled ribbon, bright at the screws, greening and fading as it widens
+                _ribbon(pts, func(q): return q.p, func(age): return B * (0.5 + age * 0.085), func(age): return 0.62 * strength * pow(maxf(0.0, 1.0 - age / 18.0), 1.25) * minf(1.0, 0.35 + age * 0.5), now, B * 5.0, Color(0.9, 0.97, 0.96))
+                _ribbon(pts, func(q): return q.p, func(age): return B * (0.22 + age * 0.03), func(age): return 0.55 * strength * pow(maxf(0.0, 1.0 - age / 7.0), 1.5), now, B * 2.2, Color(1, 1, 1))
+                # the bow waves: two feathered crests opening astern at the Kelvin angle
+                for side in ["l", "r"]:
+                    var sd = -1.0 if side == "l" else 1.0
+                    _ribbon(pts, func(q): return q[side] + Vector2(-sin(q.a), cos(q.a)) * sd * (now - q.t) * q.v * BattleSim.BT * 0.354, func(age): return B * 0.16 + age * 1.5, func(age): return 0.5 * strength * pow(maxf(0.0, 1.0 - age / 14.0), 1.6), now, B * 3.0, Color(0.93, 0.98, 0.98))
+                _glints(pts, B, now, foam)
+            else:
+                _walk(pts, func(q): return q.p, func(age): return B * (0.42 + age * 0.06), 0.3 * strength, foam, now, min_step)
+                for side in ["l", "r"]:
+                    var sd = -1.0 if side == "l" else 1.0
+                    _walk(pts, func(q): return q[side] + Vector2(-sin(q.a), cos(q.a)) * sd * (now - q.t) * q.v * BattleSim.BT * 0.354, func(age): return B * 0.1 + age * 0.9, 0.17 * strength, foam, now, min_step)
             if sim.active(s) and not sim.submerged(s):
                 var sk = clampf(s.v / (s.d.kn * BattleSim.KN), 0.0, 1.0); var x: float = s.d.L / 2
                 while x > s.d.L * 0.3:
@@ -442,6 +457,32 @@ class Drawer extends Node2D:
                 var off := Vector2(-sin(q.a), cos(q.a)) * (h - 0.5) * B * (0.6 + age * 0.12)
                 var r := maxf(B * 0.05, 1.2 / z)
                 _puff(foam, q.p + off, r * (1.0 + tw), Color(1, 1, 1, 0.9 * tw))
+
+    ## A ribbon of foam along a track: feathered at both edges, textured with churned water that stays put on the sea.
+    ## One triangle array for the whole ribbon.
+    func _ribbon(pts: Array, get: Callable, half: Callable, alpha: Callable, now: float, tile: float, col: Color) -> void:
+        var n := pts.size()
+        if n < 2: return
+        var V := PackedVector2Array(); var C := PackedColorArray(); var U := PackedVector2Array(); var I := PackedInt32Array()
+        var rows := 0
+        for i in n:
+            var x: Vector2 = get.call(pts[i]); var age: float = now - pts[i].t
+            var nx: Vector2 = get.call(pts[mini(i + 1, n - 1)]); var px: Vector2 = get.call(pts[maxi(i - 1, 0)])
+            var dir: Vector2 = px - nx
+            if dir.length_squared() < 0.0001: dir = Vector2.from_angle(pts[i].a)
+            dir = dir.normalized(); var nor := Vector2(-dir.y, dir.x)
+            var w: float = half.call(age); var a: float = alpha.call(age)
+            if i == 0: a = 0.0   # the ribbon grows out of the hull
+            var u: float = pts[i].t * 9.0 / tile   # by the time each point was laid, so the foam stays put on the sea
+            for k in 4:
+                var f: float = [-1.0, -0.42, 0.42, 1.0][k]
+                V.append(x + nor * w * f); U.append(Vector2(u, 0.5 + f * 0.5)); C.append(Color(col, a if k == 1 or k == 2 else 0.0))
+            if rows > 0:
+                var b := (rows - 1) * 4
+                for k in 3: I.append_array([b + k, b + k + 1, b + k + 4, b + k + 1, b + k + 5, b + k + 4])
+            rows += 1
+        if I.is_empty(): return
+        RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), I, V, C, U, PackedInt32Array(), PackedFloat32Array(), GameData.wake_tex().get_rid())
 
     func _walk(pts: Array, get: Callable, rad: Callable, alp: float, foam: Texture2D, now: float, min_step: float) -> void:
         for i in pts.size() - 1:
@@ -524,19 +565,31 @@ class Drawer extends Node2D:
                         var ang: float = q.a + q.v * 1.3 + q.life * (0.15 if q.v % 2 else -0.15)
                         _rpuff(cl, q.pos, r, ang, Color(base, a))
                         _rpuff(cl, q.pos + sun * r * 0.14, r * 0.72, ang + 0.8, Color(hi, a * 0.28))
+                    P.SOOT:   # the black heart of a big explosion: oily smoke boiling up through the fire, lit red from inside at first
+                        var r: float = q.size * (0.7 + 2.6 * sqrt(k)); var a := 0.82 * minf(1.0, q.life * 5.0) * pow(1 - k, 0.9)
+                        var hot := clampf(1.0 - q.life / 0.9, 0.0, 1.0)
+                        _rpuff(cl, q.pos, r, q.a, Color(Color(0.07, 0.065, 0.06).lerp(Color(0.5, 0.16, 0.04), hot * 0.8), a))
+                        _rpuff(cl, q.pos + sun * r * 0.16, r * 0.66, q.a + 1.1, Color(0.36, 0.34, 0.32, a * 0.3))
                     _: _part_classic(1, q, k, cl, puff, foam_tex(), mn, z, tn)
             else:
                 match q.t:
                     P.CORE:
                         var r = maxf(q.size, 3 * mn)
-                        _puff(glow, q.pos, r * (0.6 + k * 0.9), Color(1, 0.95, 0.85, 0.8 * pow(1 - k, 1.5)))
-                        _puff(puff, q.pos, r * 0.45 * (1 - k), Color(1, 1, 1, 1 - k))
+                        _puff(glow, q.pos, r * (0.55 + k * 0.8), Color(1, 0.9, 0.72, 0.62 * pow(1 - k, 1.5)))
+                        _puff(puff, q.pos, r * 0.36 * (1 - k), Color(1, 1, 1, 1 - k))
                     P.FIREBALL:
                         var c: Color
                         if k < 0.12: c = Color(1, 0.9, 0.66).lerp(Color(1, 0.55, 0.18), k / 0.12)
                         elif k < 0.5: c = Color(1, 0.55, 0.18).lerp(Color(0.7, 0.18, 0.05), (k - 0.12) / 0.38)
                         else: c = Color(0.7, 0.18, 0.05).lerp(Color(0.15, 0.04, 0.02), (k - 0.5) / 0.5)
-                        _rpuff(cl, q.pos, maxf(q.size, 2 * mn) * (0.55 + 1.15 * sqrt(k)), q.a, Color(c, 0.6 * pow(1 - k, 1.2)))
+                        var fr: float = maxf(q.size, 2 * mn) * (0.55 + 1.15 * sqrt(k))
+                        _rpuff(cl, q.pos, fr, q.a, Color(c, 0.5 * pow(1 - k, 1.2)))
+                        _rpuff(clouds[(q.v + 1) % 4], q.pos, fr * 0.6, -q.a * 1.7, Color(c.lightened(0.25), 0.34 * pow(1 - k, 2.0)))   # a brighter, tighter lobe turning the other way
+                    P.FLARE:   # glare: a thin streak of light across the burst, and a shorter one down it
+                        var r = maxf(q.size, 6 * mn) * (0.7 + 0.6 * k); var al := pow(1 - k, 2.0)
+                        draw_set_transform(q.pos, 0.0, Vector2(3.2, 0.09)); draw_texture_rect(glow, Rect2(-r, -r, 2 * r, 2 * r), false, Color(1, 0.93, 0.8, 0.85 * al))
+                        draw_set_transform(q.pos, 0.0, Vector2(0.07, 1.1)); draw_texture_rect(glow, Rect2(-r, -r, 2 * r, 2 * r), false, Color(1, 0.9, 0.75, 0.5 * al))
+                        draw_set_transform(Vector2.ZERO)
                     P.RING: _puff(ring, q.pos, maxf(q.size * (0.08 + 1.0 - pow(1 - k, 3)), 2 * mn), Color(1, 0.86, 0.62, 0.38 * (1 - k) * (1 - k)))
                     P.DEBRIS: _streak(q, k, Color(1, 0.72 - k * 0.3, 0.32 - k * 0.2, 1 - k), mn, true)
                     P.SPARK: _streak(q, k, Color(1, 0.8, 0.45, 1 - k), mn, false)

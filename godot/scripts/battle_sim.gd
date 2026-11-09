@@ -15,7 +15,7 @@ const WIND := Vector2(7.0, 3.5)  # smoke drift, metres per visual second
 const SUN := Vector2(0.55, 0.85) # direction shadows fall on the chart
 
 enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL,
-    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN }   # the modern effects (Settings.fx_modern)
+    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT }   # the modern effects (Settings.fx_modern)
 
 class Mount:
     var slot: Dictionary
@@ -509,6 +509,17 @@ func fx_boom(p: Vector2, size: float, mx := 0.6) -> void:
         for i in nd / 2:
             var e = part(P.EMBER, p + rdir() * size * 0.3, 1.5 + randf() * 2.0, 0.6 + size * 0.035, rdir() * (8.0 + randf() * size * 1.5), true); e.drag = 0.35
         part(P.GLOW, p, mx * 1.8 + 0.3, size * 4.0)
+        if size >= 14.0:   # a big burst: a streak of glare across it, a black heart of soot, burning fragments trailing smoke, late pops
+            part(P.FLARE, p, 0.16 + size / 700.0, size * 2.6)
+            for i in 2 + int(size / 25.0):
+                var so = part(P.SOOT, p + rdir() * size * 0.2, mx * 2.2 + 1.0 + randf(), size * (0.5 + randf() * 0.3), rdir() * size * 0.5, true, -0.08 - randf() * 0.1)
+                so.a = randf() * TAU; so.spin = (randf() - 0.5) * 0.8; so.drag = 0.3
+            for i in clampi(int(size / 9.0), 1, 7):
+                var ch = part(P.DEBRIS, p, 0.9 + randf() * 1.3, 1.0 + size * 0.03 + randf(), rdir() * (size * 3.0 + randf() * size * 6.0 + 30.0)); ch.drag = 0.45; ch.wind = false; ch.spin = 1.0   # spin marks a fragment that smokes
+            for i in int(size / 22.0):
+                var off: Vector2 = rdir() * size * (0.4 + randf() * 0.7); var dl := -0.12 - randf() * 0.45
+                part(P.CORE, p + off, 0.1, size * 0.3, Vector2.ZERO, false, dl)
+                var fb2 = part(P.FIREBALL, p + off, mx * 1.2, size * 0.32, rdir() * size * 0.4, false, dl); fb2.a = randf() * TAU; fb2.drag = 0.2
     for i in 2: part(P.SMOKE, p + Vector2(randf() - 0.5, randf() - 0.5) * size * 0.5, 5.0 + randf() * 3.0, size * 0.7, Vector2(randf() - 0.5, randf() - 0.5) * 6.0, true, -0.15)
 
 ## A shell into the sea: a white burst, spray thrown out in streaks, a ring running out across the water, then foam.
@@ -1272,6 +1283,8 @@ func fx(dtv: float) -> void:
         if q.vel != Vector2.ZERO:
             q.pos += q.vel * dtv; q.vel *= pow(q.drag, dtv)
         if q.spin != 0.0: q.a += q.spin * dtv
+        if q.t == P.DEBRIS and q.spin != 0.0 and q.life > 0.0 and randf() < dtv * 22.0:   # a burning fragment leaves a thread of smoke
+            var tr = part(P.SMOKE, q.pos, 0.9 + randf() * 0.8, q.size * (1.2 + randf()), q.vel * 0.05, true); tr.a = randf() * TAU
         if q.life >= q.mx: parts.remove_at(i)
     flash = maxf(0.0, flash - dtv * 1.4)
     if parts.size() > 3200:

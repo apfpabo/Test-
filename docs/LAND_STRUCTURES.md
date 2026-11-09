@@ -83,12 +83,20 @@ Batteries, radar stations and naval bases stand on the coast itself, about 2 km 
 
 A structure held by `"player"` already behaves like a small territory: garrison, upkeep, income, a depot, enemies who want it back, radar cover and naval bases you can dock at. Founding a flag can turn `"player"` into a faction id of its own (a `Diplomacy.POWERS` entry with relations), let naval bases grow into ports, and let structures recruit, build and defend themselves.
 
+## Troop transports and landings (done)
+
+- **Ships:** the Troop Transport class (`ap`, research: Amphibious warfare) in four designs, each with a `troops` field: an attack transport (1,500 soldiers), a tank landing ship (240), an amphibious transport dock (930, Era II) and a large landing ship (520, Era III).
+- **Embarking:** in port, under Repairs & crew: `Structures.embark(n)` at `TROOP_COST` (40) a soldier, up to `troop_capacity()`. Soldiers draw `TROOP_WAGE` (0.2) a day and eat with the crew. The top bar shows them beside the crew.
+- **Landing:** the structure panel offers "Land the troops" once the fleet lies off its coast, with the defenders, the odds (`Structures.invade_odds`) and a report afterwards. A landing needs no silenced defences: strikes and bombardment only thin the defenders. It breaks the armistice like a strike.
+- **Losses:** soldiers whose transport is sunk or sold have no berth and are lost (`Structures.trim_troops`).
+- **The powers:** their assault forces sail in troop transports instead of freighters.
+- Surrender (a garrison from your crews once 80% of the defences are silenced) still works without troopships.
+- Checked by `tests/aux_test.tscn`.
+
 ## Not yet
 
-(Done since: naval bombardment, Syndicate carriers.)
+(Done since: naval bombardment, Syndicate carriers, troop transports.)
 
-
-- Troop transports (auxiliaries) to replace landing from the crews.
 - Land-based air raids on your fleet (airfields only spot).
 - Defend contracts (sink an assault force sailing against a power's structure) and structures changing hands through NPC assault fleets you can watch.
 - Investing in your structures (more flak, a radar, rebuilding faster).

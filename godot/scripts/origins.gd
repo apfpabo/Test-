@@ -72,7 +72,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 		"privateer":
 			st.fleet = [["dd_soldati", null, {}]]; st.credits = 20000; st.officer = 2; st.port = "Puerto Corvo"
 			st.rep = {"republic": 30, "directorate": -40, "concord": -5, "pacific": -5, "combine": -5}
-			st.perks = {"prize": {"directorate": 1.3}, "outlaw": ["directorate"]}
+			st.perks = {"prize": {"directorate": 1.3}}; st.commission = "republic"   # the Tarsene letter of marque (Diplomacy)
 		"defector":
 			var to: String = en
 			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 20000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Tarsa"

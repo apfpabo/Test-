@@ -12,6 +12,7 @@ GameData="*res://scripts/game_data.gd"
 Settings="*res://scripts/settings.gd"
 Sfx="*res://scripts/sfx.gd"
 Campaign="*res://scripts/campaign.gd"
+Diplomacy="*res://scripts/diplomacy.gd"
 
 [display]
 window/size/viewport_width=1400

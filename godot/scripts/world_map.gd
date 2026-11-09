@@ -223,6 +223,9 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var col = Color(GameData.fac[p.fac].map)
             if p.capital: draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), Color("#ecebe2")); draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), col, false, 3.0 / z)
             else: draw_circle(Vector2(x, p.y), s, Color("#ecebe2")); draw_arc(Vector2(x, p.y), s, 0, TAU, 20, col, 3.0 / z)
+        for m in Diplomacy.marks():   # active contracts: where to go
+            var x: float = map.rx(m[0]); var rr: float = 11.0 / z
+            draw_arc(Vector2(x, m[1]), rr, 0, TAU, 28, Color("#e3b23c"), 2.0 / z); draw_arc(Vector2(x, m[1]), rr * 1.5, 0, TAU, 28, Color(0.89, 0.7, 0.24, 0.35), 1.2 / z)
         # planned route
         if P.get("tx") != null and P.get("route") != null:
             var r: Array = P.route; var off: Vector2 = Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
@@ -236,7 +239,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var x: float = map.rx(f.x)
             if absf(x - map.cam.x) > hw + 60 or absf(f.y - map.cam.y) > hh + 60: continue
             if z >= 0.32: _wakes_of(f.id, f.ships, Vector2(x, f.y), f.h)
-            var col = Color("#e3b23c") if f.get("mission", false) else Color(GameData.fac[f.fac].map); var hos = Campaign.hostile_fleet(f)
+            var col = Color("#e3b23c") if (f.get("mission", false) or int(f.get("contract", 0)) > 0) else Color(GameData.fac[f.fac].map); var hos = Campaign.hostile_fleet(f)
             if z < 0.32:
                 draw_colored_polygon(PackedVector2Array([Vector2(x, f.y) + Vector2.from_angle(f.h) * 7 / z, Vector2(x, f.y) + Vector2.from_angle(f.h + 2.5) * 4 / z, Vector2(x, f.y) + Vector2.from_angle(f.h - 2.5) * 4 / z]), col)
                 continue
@@ -385,9 +388,12 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             if not (z >= 0.6 or hos or f.get("mission", false) or f.kind == "bounty"): continue
             var sp: Vector2 = map.to_screen(Vector2(f.x, f.y))
             if sp.x < -150 or sp.x > vs.x + 150 or z < 0.32: continue
-            var col = Color("#e3b23c") if f.get("mission", false) else Color(GameData.fac[f.fac].map)
+            var col = Color("#e3b23c") if (f.get("mission", false) or int(f.get("contract", 0)) > 0) else Color(GameData.fac[f.fac].map)
             var txt: String = (f.captain + " · " + Campaign.fmt(f.reward)) if f.kind == "bounty" else (f.name + " (%d)" % f.ships.size())
             _t(sp + Vector2(0, 18 * b + 12), ("◎ " if P.follow == f.id else "") + txt, col, 12)
+        for m in Diplomacy.marks():
+            var sp: Vector2 = map.to_screen(Vector2(m[0], m[1]))
+            if sp.x > -150 and sp.x < vs.x + 150 and z > 0.2: _t(sp + Vector2(0, -16 - 11.0), "Contract: " + m[2], Color("#e3b23c"), 12)
         var psp: Vector2 = map.to_screen(Vector2(P.x, P.y))
         _t(psp + Vector2(0, 21 * b + 13), "Your task force · %d kn" % int(round(P.v / 0.8)), Color("#e3b23c"), 12)
         if P.get("tx") != null and P.get("route") != null:
@@ -573,11 +579,11 @@ func _on_encounter(f: Dictionary) -> void:
             _p(box, odds + " Opening fire breaks the armistice: it costs 30 %s standing%s, and %s warships will engage you on sight for three months." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else "", GameData.fac[f.fac].short], UI.DIM)
             box.add_child(UI.row([UI.button("Exchange signals and pass", func(): f.cool = 8.0; P.cool = 3.0; close_panel(), true),
                 UI.button("Open fire", func():
-                    G.rep[f.fac] -= 30; Campaign.incident(f.fac)
+                    G.rep[f.fac] -= 30; Campaign.incident(f.fac); Diplomacy.on_open_fire(f.fac)
                     for e in en: G.rep[e] = mini(100, G.rep[e] + 5)
                     _toast("%s standing is now %d." % [GameData.fac[f.fac].name, G.rep[f.fac]]); _battle(f))]))
         else:
-            var who: String = ("Your mission target, " + f.name + ",") if f.get("mission", false) else (("%s's squadron, worth %s," % [f.captain, Campaign.fmt(f.reward)]) if f.kind == "bounty" else "A " + GameData.fac[f.fac].name + " force")
+            var who: String = ("Your mission target, " + f.name + ",") if f.get("mission", false) else ("The flotilla you were hired to hunt" if int(f.get("contract", 0)) > 0 else (("%s's squadron, worth %s," % [f.captain, Campaign.fmt(f.reward)]) if f.kind == "bounty" else "A " + GameData.fac[f.fac].name + " force"))
             box.add_child(UI.title("Contact")); box.add_child(_lead_pic(f)); _p(box, "%s is closing on you: %s." % [who, _counts(f.ships)]); _p(box, _contact_line(f), UI.DIM); _p(box, odds, UI.DIM)
             box.add_child(UI.row([UI.button("Battle stations", func(): _battle(f), true),
                 UI.button("Break off (%d%%)" % evade, func():
@@ -705,7 +711,7 @@ func sell_value(s: Dictionary) -> int: return int(floor(Campaign.ship_value(s) *
 func port_price(p: Dictionary, gid: String) -> int:
     var base = 1.0
     for g in Campaign.C.GOODS: if g.id == gid: base = g.base
-    return maxi(1, int(round(base * p.mod[gid] * (1 + p.drift[gid]))))
+    return maxi(1, int(round(base * p.mod[gid] * (1 + p.drift[gid]) * Diplomacy.price_mult(p.fac, gid))))
 func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p, gid) * 1.06 * (1.1 if Campaign.G.rep.get(p.fac, 0) < 0 else 1.0) * (1.15 if Campaign.restricted(p.fac) else 1.0) * (1.0 - float(Campaign.perk("trade", 0.0)))))
 func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93 * (0.9 if Campaign.restricted(p.fac) else 1.0) * (1.0 + float(Campaign.perk("trade", 0.0)))))
 
@@ -716,6 +722,7 @@ func open_port(p: Dictionary) -> void:
     if Campaign.hostile(p.fac):
         open_panel(func(box): box.add_child(UI.title(p.name)); _p(box, "Shore batteries track your ships as you close the harbour. %s ports are closed to you while your standing with them is this low. Raise your standing, or dock somewhere friendlier." % GameData.fac[p.fac].name); box.add_child(UI.button("Stand off", close_panel, true)))
         return
+    Diplomacy.on_dock(p)
     cur_port = p; port_tab = "market"; _render_port(); Campaign.save()
 
 func _rerender() -> void:
@@ -774,12 +781,13 @@ func _tabs(box: Control, tabs: Array, cur: String, cb: Callable) -> void:
 
 func _render_port() -> void:
     var p = cur_port; var G: Dictionary = Campaign.G
-    var tabs = [["market", "Market"], ["yard", "Shipyard"], ["refit", "Refit"], ["fleet", "Repairs & crew"], ["officers", "Officers"]]
+    var tabs = [["market", "Market"], ["contracts", "Contracts"], ["yard", "Shipyard"], ["refit", "Refit"], ["fleet", "Repairs & crew"], ["officers", "Officers"]]
+    if p.capital and Diplomacy.D.commissions.has(p.fac): tabs.append(["commission", "Commission"])
     if p.capital and p.fac == "concord": tabs.append_array([["admiralty", "Admiralty"], ["research", "Research"]])
     elif p.fac == "enclave": tabs.append(["research", "Research exchange"])
     var limited: bool = Campaign.restricted(p.fac)
     if limited: # your old flag: the market and the dockyard's repair berth, nothing more, and at a price
-        tabs = tabs.filter(func(t): return t[0] == "market" or t[0] == "fleet")
+        tabs = tabs.filter(func(t): return t[0] == "market" or t[0] == "fleet" or t[0] == "contracts")
         if not ["market", "fleet"].has(port_tab): port_tab = "market"
     open_panel(func(box):
         box.add_child(UI.title(p.name))
@@ -796,6 +804,8 @@ func _render_port() -> void:
             "fleet": _repairs(box)
             "officers": _officers(box, p)
             "admiralty": _missions(box, true)
+            "contracts": _contracts(box, p)
+            "commission": _commission(box, p)
             "research": _research(box)
         box.add_child(UI.button("Put to sea", func(): cur_port = {}; G.player.cool = maxf(G.player.cool, 2.5); Campaign.save(); close_panel(), true))
     , false, 960)
@@ -804,7 +814,7 @@ func show_command() -> void:
     cur_port = {}
     open_panel(func(box):
         box.add_child(UI.title("Command"))
-        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & standing"], ["hold", "Hold"], ["codex", "Codex"]], cmd_tab, func(k): cmd_tab = k; show_command())
+        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["hold", "Hold"], ["codex", "Codex"]], cmd_tab, func(k): cmd_tab = k; show_command())
         match cmd_tab:
             "fleet": _fleet_table(box, false)
             "officers": _officers(box, {})
@@ -1091,6 +1101,57 @@ func _research(box: Control) -> void:
         else: act = UI.label("Requires " + ", ".join(t.req.map(func(r): return Campaign.C.TECH.filter(func(x): return x.id == r)[0].name)), UI.DIM, 13)
         box.add_child(UI.row([col, act]))
 
+func _contracts(box: Control, p: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    _p(box, "Work posted at %s by the %s. Pay on completion; failing a contract costs 8 standing with whoever posted it." % [p.name, GameData.fac[p.fac].name], UI.DIM, 14)
+    var list: Array = Diplomacy.offers(p)
+    if list.is_empty(): _p(box, "Nothing posted today. The board is renewed every couple of weeks.", UI.DIM, 14)
+    for c in list:
+        box.add_child(UI.label(c.title, UI.GOLD, 16)); _p(box, c.text, UI.INK, 14)
+        var why: String = Diplomacy.can_accept(c)
+        box.add_child(UI.row([UI.label("Pays %s · %s standing +%d · %d days" % [Campaign.fmt(int(c.reward)), GameData.fac[c.fac].short, int(c.rep), int(c.days)], UI.DIM, 13),
+            UI.button("Sign", func(): Diplomacy.accept(c); _toast("Signed: " + c.title + ". Marked in gold on the chart."); _rerender(), true, why != "")]))
+        if why != "": _p(box, why, UI.DIM, 12)
+    _active_contracts(box)
+
+func _active_contracts(box: Control) -> void:
+    var G: Dictionary = Campaign.G
+    if G.get("contracts", []).is_empty(): return
+    box.add_child(UI.label("YOUR CONTRACTS", UI.DIM, 12))
+    for c in G.contracts:
+        var prog: String = (" · %d of %d sunk" % [int(c.got), int(c.need)]) if c.kind == "war" else ""
+        box.add_child(UI.row([UI.label("%s (%s)%s · %d days left" % [c.title, c.from, prog, maxi(0, int(c.deadline) - G.day)], UI.INK, 14),
+            UI.button("Abandon", func(): Diplomacy.fail(c, "Abandoned."); _rerender())]))
+
+func _commission(box: Control, p: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var C: Dictionary = Diplomacy.D.commissions[p.fac]
+    box.add_child(UI.label(C.title, UI.GOLD, 18)); _p(box, C.text)
+    _p(box, "Pay %s a month. Sinking the %s's enemies earns twice the standing. %s Turning your guns on the %s is betrayal, and is never forgiven." % [Campaign.fmt(int(C.stipend)), GameData.fac[p.fac].short,
+        ("You become a combatant to the %s." % GameData.fac[C.marque].name) if C.has("marque") else "Its wars become yours.", GameData.fac[p.fac].short], UI.DIM, 14)
+    if G.commission != null and G.commission.fac == p.fac:
+        _p(box, "You hold this commission, since %s." % Campaign.date_str(int(G.commission.since)), UI.GREEN, 14)
+        box.add_child(UI.button("Resign (standing -10)", func(): Diplomacy.resign(); _rerender()))
+        return
+    var why: String = Diplomacy.can_commission(p.fac)
+    if why != "": _p(box, why, UI.DIM, 14)
+    else: box.add_child(UI.button("Accept the " + C.title, func(): Diplomacy.take_commission(p.fac); _rerender(), true))
+
+## The powers as they stand: how each great power regards the others, and the latest news between them.
+func _powers(box: Control) -> void:
+    var G: Dictionary = Campaign.G
+    box.add_child(UI.label("THE POWERS", UI.DIM, 12))
+    var P: Array = Diplomacy.POWERS
+    for i in P.size():
+        for j in range(i + 1, P.size()):
+            var a: String = P[i]; var b: String = P[j]; var bd: String = Diplomacy.band(a, b)
+            if bd == "neutral" or bd == "cool": continue
+            var col: Color = UI.RED if bd == "war" else (Color(0.9, 0.55, 0.35) if bd in ["armistice", "hostile"] else UI.GREEN)
+            box.add_child(UI.row([UI.label("%s and %s" % [GameData.fac[a].short, GameData.fac[b].short], UI.INK, 14), UI.label(Diplomacy.BAND_TEXT[bd] + " (%d)" % int(round(Diplomacy.rel(a, b))), col, 13)]))
+    if not G.get("news", []).is_empty():
+        box.add_child(UI.label("NEWS", UI.DIM, 12))
+        var nw: Array = G.news.slice(-8); nw.reverse()
+        for n in nw: _p(box, "%s: %s" % [Campaign.date_str(int(n[0])), n[1]], UI.DIM, 13)
+
 func _missions(box: Control, at_admiralty: bool) -> void:
     var G: Dictionary = Campaign.G; var story: Array = Campaign.C.STORY
     var m = story[G.story] if G.story < story.size() else null
@@ -1107,6 +1168,9 @@ func _missions(box: Control, at_admiralty: bool) -> void:
         else: _p(box, "The Admiralty will not deal with you while your standing is below zero.", UI.DIM, 14)
     elif m != null: _p(box, "New orders await at the Concord Admiralty in Calder Roads.", UI.DIM, 14)
     else: _p(box, "The war is won. The world's oceans settle into an armed peace, and the arms race goes on. Directorate fleets keep modernising, so keep your research ahead of theirs.")
+    if not at_admiralty:
+        _active_contracts(box)
+        if G.get("commission") != null: _p(box, "In service: %s (pay %s a month)." % [Diplomacy.commission_title(G.commission.fac), Campaign.fmt(int(Diplomacy.D.commissions[G.commission.fac].stipend))], UI.GREEN, 14)
     box.add_child(UI.label("STANDING", UI.DIM, 12))
     _p(box, "The armistice of November 1945 holds, just. A flag's warships engage you on sight only if your standing with it falls to %d, or for three months after you open fire on its ships. Its ports close below -10." % Campaign.WAR_STANDING, UI.DIM, 13)
     for f in GameData.fac:
@@ -1116,6 +1180,7 @@ func _missions(box: Control, at_admiralty: bool) -> void:
         var stt: String = ("at war · engages on sight" + (" (incident, %d days)" % Campaign.incident_days(f) if Campaign.incident_days(f) > 0 else "")) if Campaign.at_war(f) else ("ports closed" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"))
         var sc: Color = UI.RED if Campaign.at_war(f) else (UI.GOLD if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM))
         box.add_child(UI.row([nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label(stt, sc, 13)]))
+    if not at_admiralty: _powers(box)
     if G.log.size():
         box.add_child(UI.label("LOG", UI.DIM, 12))
         var lg: Array = G.log.slice(-8); lg.reverse()

@@ -162,9 +162,10 @@ The owner's world-building for the fictional map, kept word for word in [`lore/f
 
 ### Where the lore and the game still differ (for the owner)
 
-- **Halcyon in the Entente.** The lore calls the Federation wary of both sides and fond of profitable neutrality, but also a member of the Entente; the game keeps it at war with the Directorate.
-- **Privateer sponsor.** The lore offers a Tarsene or a Syndicate letter of marque; the game has only the Republic's.
 - **Survivor's lost fleet.** The lore names the Concord's Central Hesperian squadron and the Directorate's 4th Battle Division; the Halcyon navy has no named lost fleet.
+- **Ombrian clients and island states** have ports (Sefira) but no flags of their own yet.
+
+Resolved by diplomacy ([`DIPLOMACY.md`](DIPLOMACY.md)): the Federation is now cordial with the Concord and hostile but not at war with the Directorate (balance-of-power events pull it both ways); a Syndicate letter of marque is offered at Port Saffron alongside the Tarsene one; Concord hardliners and moderates, the Concord's pressure on the Gate and the Combine selling to both sides are events between the powers.
 
 ### Hooks
 

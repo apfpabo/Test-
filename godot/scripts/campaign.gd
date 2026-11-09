@@ -284,7 +284,7 @@ const INCIDENT_DAYS := 90
 func at_war(fac: String) -> bool:
     if fac == "raiders": return true
     if fac == "player": return false
-    return G.rep.get(fac, 0) <= WAR_STANDING or int(G.get("incidents", {}).get(fac, 0)) > G.day or (perk("outlaw", []) as Array).has(fac)
+    return G.rep.get(fac, 0) <= WAR_STANDING or int(G.get("incidents", {}).get(fac, 0)) > G.day or (perk("outlaw", []) as Array).has(fac) or Diplomacy.commission_enemy(fac)
 ## Days left of an incident with this flag (0 if none).
 func incident_days(fac: String) -> int: return maxi(0, int(G.get("incidents", {}).get(fac, 0)) - G.day)
 ## You fired on a flag's ships under the armistice: its warships engage you on sight for three months.
@@ -297,10 +297,8 @@ func restricted(fac: String) -> bool: return (perk("restricted", []) as Array).h
 
 ## Ports closed: a flag's harbours refuse you while your standing is below -10 (its ships may still keep the peace).
 func hostile(fac: String) -> bool: return fac == "raiders" or G.rep.get(fac, 0) < -10
-func enemies_of(f: String) -> Array:
-    var out = []
-    for w in C.WARS: if w.has(f): out.append(w[1] if w[0] == f else w[0])
-    return out
+## The powers this one counts as enemies (hostile or at war), from Diplomacy's relations.
+func enemies_of(f: String) -> Array: return Diplomacy.enemies(f)
 func officer_of(rec: Dictionary):
     for o in G.officers: if o.ship == rec.id: return o
     return null
@@ -362,6 +360,7 @@ func new_game(start_key: String, navy := "concord") -> void:
     var o = new_officer(int(st.get("officer", 1))); o.ship = G.fleet[0].id; G.officers.append(o)
     # hunters stay on your trail for a while: until a given day
     for h in G.perks.get("hunted", []): h.until = int(h.days)
+    Diplomacy.ensure(st)
     for g in C.GOODS: G.cargo[g.id] = st.cargo.get(g.id, 0)
     var p0: Dictionary = {}
     for p in G.ports: if p.name == st.port: p0 = p
@@ -608,6 +607,7 @@ func new_day(moved: bool) -> void:
     for p in G.ports:
         for g in C.GOODS: p.drift[g.id] = clampf(p.drift[g.id] * 0.93 + (randf() - 0.5) * 0.05, -0.3, 0.45)
     maintain_fleets(false)
+    Diplomacy.new_day()
     if G.day % 3 == 0: save()   # autosave every few days at sea
     var era = enemy_era()
     if era > G.get("seenEra", 1): G.seenEra = era; toast.emit("Intelligence: Directorate yards are fielding " + C.ERA_NAME[str(era)].split("· ")[1].to_lower() + ".")
@@ -638,6 +638,7 @@ func update(dt: float) -> void:
             if P.follow == null: _arrive()
             else: P.repathT = 0.0
     else: coast(P, dt)
+    Diplomacy.clash_tick(dt)
     var ps = strength(G.fleet)
     var pr := strike_reach(G.fleet)
     for f in G.fleets.duplicate():
@@ -723,6 +724,7 @@ func do_survey(poi: Dictionary) -> Dictionary:
         hulk.pal = "player"; hulk.name = GameData.names.player.pick_random(); hulk.hullFrac = 0.22; G.fleet.append(hulk)
         out.lines.append("A %s is still afloat at her moorings. Pumped out and patched, she joins you as the %s at 22%% condition. She needs %d crew." % [hull(hulk).name.to_lower(), hulk.name, hull(hulk).crew])
     log_ev("Surveyed %s (+%d RP)" % [poi.name, rp])
+    Diplomacy.on_survey(poi, out.lines)
     if roll > (0.65 if poi.type == "site" else 0.82):
         var f = spawn_fleet("patrol" if poi.type == "site" else "raiders", "directorate" if poi.type == "site" else "raiders")
         f.x = wrap_x(G.player.x + 6); f.y = G.player.y
@@ -780,7 +782,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     r.coin = int(round(r.coin / 50.0) * 50)
     r.rp = int(round(beaten_value / 4000.0)); G.rp += r.rp
     var fac: String = f.fac if f != null else "raiders"
-    for e in (["concord", "pacific", "combine", "freeport"] if fac == "raiders" else enemies_of(fac)): G.rep[e] = mini(100, G.rep.get(e, 0) + beaten.size())
+    Diplomacy.thanks(fac, beaten.size())
     if r.victory and f != null and f.cargo.size():
         var got = []; var free = cargo_cap() - cargo_used()
         for g in f.cargo:
@@ -810,6 +812,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
             if f.kind == "bounty": r.bounty = f.reward; log_ev("Collected the bounty on " + f.captain)
         else: f.cool = 8.0
     G.credits += r.coin + r.bounty
+    Diplomacy.on_battle(f, beaten.size(), gone, r.notes)
     if G.mission != null and f != null and G.mission.fleet == f.id:
         var m: Dictionary = C.STORY[G.mission.idx]
         if m.goal == "destroy" and gone: _complete_mission(r)
@@ -826,7 +829,7 @@ func _complete_mission(r: Dictionary) -> void:
     G.credits += m.reward.credits; G.rp += m.reward.rp; G.rep.concord += m.reward.rep
     r.notes.append("Orders complete: %s. +%s, +%d RP." % [m.title, fmt(m.reward.credits), m.reward.rp])
     log_ev("Completed: " + m.title); G.story += 1; G.mission = null
-    if G.story >= C.STORY.size(): r.notes.append("The Directorate sues for an armistice. The war is over. Your fleet, and the arms race, go on.")
+    if G.story >= C.STORY.size(): r.notes.append("Iron Will is gone, and with her the Directorate's hopes of breaking out this year. The armistice holds a little firmer. Your fleet, and the Quiet Race, go on.")
 
 # ------------------------------------------------------------------ saves
 func save() -> void:
@@ -854,6 +857,7 @@ func load_game() -> bool:
     var d = JSON.parse_string(FileAccess.open(SAVE_PATH, FileAccess.READ).get_as_text())
     if not (d is Dictionary) or int(d.get("v", 0)) < SAVE_VERSION: return false
     G = d
+    Diplomacy.ensure()
     for o in [G.player] + G.fleets: _restore_route(o)
     _ints(G)
     paused = false

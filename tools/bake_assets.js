@@ -41,13 +41,15 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
     for (const [wid, w] of Object.entries(WEAPONS)) {
       if (w.kind === 'ssm' || w.kind === 'sam') continue;
       const len = w.kind === 'gun' ? w.tl * 0.42 + w.bl + 1 : w.kind === 'torp' ? 6 : 4.5, back = w.kind === 'gun' ? w.tl * 0.62 + 1 : w.kind === 'torp' ? 5 : 3, half = w.kind === 'gun' ? Math.max(w.tw * 0.6, 1.5) + 0.5 : 2.6;
-      const mk = (pal, shadow) => { const c = document.createElement('canvas'); c.width = Math.ceil((len + back) * S); c.height = Math.ceil(half * 2 * S); const g = c.getContext('2d'); g.translate(back * S, half * S); g.scale(S, S); drawMount(g, wid, 0, PAL[pal], 0, false, shadow); return c.toDataURL('image/webp', 0.92); };
-      out[wid] = { spr: S, ox: back, oy: half, w: len + back, h: half * 2, img: { shadow: mk('player', true) } };
-      for (const pal of Object.keys(PAL)) out[wid].img[pal] = mk(pal, false);
+      const mk = (pal, shadow, part) => { const c = document.createElement('canvas'); c.width = Math.ceil((len + back) * S); c.height = Math.ceil(half * 2 * S); const g = c.getContext('2d'); g.translate(back * S, half * S); g.scale(S, S); drawMount(g, wid, 0, PAL[pal], 0, false, shadow, part); return c.toDataURL('image/webp', 0.92); };
+      // guns are baked as housing and barrels apart, so only the barrels run back on recoil
+      const split = w.kind === 'gun';
+      out[wid] = { spr: S, ox: back, oy: half, w: len + back, h: half * 2, split, img: { shadow: mk('player', true) } };
+      for (const pal of Object.keys(PAL)) { out[wid].img[pal] = mk(pal, false, split ? 'house' : undefined); if (split) out[wid].img[pal + '_barrels'] = mk(pal, false, 'barrels'); }
     }
     return out;
   });
-  for (const [wid, m] of Object.entries(mres)) { manifest.mounts[wid] = { spr: m.spr, ox: m.ox, oy: m.oy, w: m.w, h: m.h }; for (const [k, url] of Object.entries(m.img)) save('mounts/' + wid + '/' + k + '.webp', url); }
+  for (const [wid, m] of Object.entries(mres)) { manifest.mounts[wid] = { spr: m.spr, ox: m.ox, oy: m.oy, w: m.w, h: m.h, split: m.split }; for (const [k, url] of Object.entries(m.img)) save('mounts/' + wid + '/' + k + '.webp', url); }
   // effect textures
   const fx = await p.evaluate(() => {
     const out = {}; out.puff = puffSprite('255,255,255').toDataURL('image/png');

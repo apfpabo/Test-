@@ -31,6 +31,7 @@ class Mount:
     var dead = false
     var rest_t = 0.0
     var rest_o: CShip = null
+    var lvl = 0        # 0 on the deck; 1 and up for superfiring mounts whose barrels pass over the one ahead
 
 class CShip:
     var rec: Dictionary
@@ -78,6 +79,7 @@ class CShip:
     var fires: Array = []
     var trail: Array = []
     var main_sz = ""
+    var max_lvl = 0
     var view: Node = null
 
 class Part:
@@ -211,7 +213,23 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     var best = -1
     for m in s.mounts: if m.w.kind == "gun": best = maxi(best, GUN_SIZES.find(m.w.size))
     s.main_sz = GUN_SIZES[maxi(best, 0)]
+    superfiring(s)
     return s
+
+## Works out which mounts stand higher from the layout: a gun mount nearer amidships, on the same line as one further
+## out and close enough that its barrels reach over it, is superfiring. Chains (A, B, C) give rising levels.
+func superfiring(s: CShip) -> void:
+    var guns: Array = s.mounts.filter(func(m): return m.w.kind == "gun")
+    for _pass in 3:
+        for a in guns:
+            for b in guns:
+                if a == b: continue
+                var ax: float = a.slot.x; var bx: float = b.slot.x
+                if signf(ax) != signf(bx) or absf(ax) >= absf(bx): continue          # a must be nearer amidships, same end
+                if absf(a.slot.y - b.slot.y) > (a.w.tw + b.w.tw) * 0.3: continue    # on the same line
+                if absf(bx - ax) > a.w.tl * 0.42 + a.w.bl + b.w.tw * 0.6: continue   # a's barrels reach over b
+                a.lvl = maxi(a.lvl, b.lvl + 1)
+    for m in s.mounts: s.max_lvl = maxi(s.max_lvl, m.lvl)
 
 # ------------------------------------------------------------------ queries
 func world_pt(s: CShip, lx: float, ly: float) -> Vector2:

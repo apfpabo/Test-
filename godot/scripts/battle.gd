@@ -226,19 +226,29 @@ class Mounts extends Node2D:   # turrets, with their shadows cast in the world's
     func _draw() -> void:
         var s: BattleSim.CShip = view.s
         if (s.sub and s.dive > 0.1) or view.battle.zoom() * s.d.L < 30: return
-        var off = BattleSim.SUN.rotated(-s.a) * 1.4
-        for pass_ in [1, 0]:
+        var sun = BattleSim.SUN.rotated(-s.a)
+        # level by level from the deck up: each raised turret's shadow falls across the turret below it
+        for lvl in range(0, s.max_lvl + 1):
             for m in s.mounts:
-                if m.w.kind == "ssm" or m.w.kind == "sam": continue
-                if s.sub and m.w.kind == "torp": continue
+                if m.lvl != lvl or m.w.kind == "ssm" or m.w.kind == "sam" or (s.sub and m.w.kind == "torp"): continue
                 var info: Dictionary = GameData.sprites.mounts.get(m.wid, {})
                 if info.is_empty(): continue
-                var tx = GameData.mount_tex(m.wid, "shadow" if pass_ == 1 else s.pal)
-                var sc: float = 1.0 / info.spr
-                var p = Vector2(m.slot.x, m.slot.y) + (off if pass_ == 1 else Vector2.ZERO)
-                var recoil = -Vector2.from_angle(m.ta) * m.recoil * (m.w.get("bl", 0.0) * 0.12)
-                draw_set_transform(p + (recoil if pass_ == 0 else Vector2.ZERO), m.ta, Vector2(sc, sc))
-                draw_texture(tx, -Vector2(info.ox, info.oy) * info.spr, Color(0.3, 0.27, 0.25) if m.dead else Color.WHITE)
+                var sc: float = (1.0 + 0.035 * lvl) / info.spr
+                var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
+                draw_set_transform(p + sun * (1.4 + 2.6 * lvl), m.ta, Vector2(sc, sc))
+                draw_texture(GameData.mount_tex(m.wid, "shadow"), o, Color(1, 1, 1, 0.9 if lvl else 1.0))
+            for m in s.mounts:
+                if m.lvl != lvl or m.w.kind == "ssm" or m.w.kind == "sam" or (s.sub and m.w.kind == "torp"): continue
+                var info: Dictionary = GameData.sprites.mounts.get(m.wid, {})
+                if info.is_empty(): continue
+                var sc: float = (1.0 + 0.035 * lvl) / info.spr
+                var tint = Color(0.3, 0.27, 0.25) if m.dead else Color.WHITE
+                var o = -Vector2(info.ox, info.oy) * info.spr
+                draw_set_transform(Vector2(m.slot.x, m.slot.y), m.ta, Vector2(sc, sc))
+                if info.get("split", false): # only the barrels run back on recoil; the housing stays put
+                    var rc: float = m.recoil * m.w.get("bl", 0.0) * 0.12 * info.spr
+                    draw_texture(GameData.mount_tex(m.wid, s.pal + "_barrels"), o - Vector2(rc, 0), tint)
+                draw_texture(GameData.mount_tex(m.wid, s.pal), o, tint)
         draw_set_transform(Vector2.ZERO)
         if s.struck: draw_rect(Rect2(-s.d.L / 2 - 6, -2, 5, 4), Color(0.91, 0.91, 0.88))
 

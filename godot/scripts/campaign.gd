@@ -554,6 +554,11 @@ func route_move(o: Dictionary, max_sp: float, turn: float, dt: float) -> bool:
         var a: Vector2 = r[o.ri]; var b: Vector2 = r[o.ri + 1]; var ab := b - a; var L2 := ab.length_squared()
         var t := clampf((cur - a).dot(ab) / maxf(L2, 0.0001), 0.0, 1.0)
         if (t >= 0.999 or cur.distance_to(b) < 0.5) and o.ri < r.size() - 2: o.ri += 1
+        # a point inside the turning circle and well off the bow can't be reached this time round: count it as
+        # passed rather than orbit it for ever (close Ctrl+Click waypoints, or a slow ship on dry bunkers)
+        elif cur.distance_to(b) < minf(R, o.v / maxf(turn * 0.5, 0.01)) * 1.2 + 0.3 and absf(ang_diff((b - cur).angle(), o.h)) > 1.2:
+            if o.ri < r.size() - 2: o.ri += 1
+            else: o.rx = cur.x; o.ry = cur.y; o.route = null; return true
         else: break
     # aim at a point a little way along the route: further ahead the faster we go
     var a0: Vector2 = r[o.ri]; var b0: Vector2 = r[o.ri + 1]; var ab0 := b0 - a0

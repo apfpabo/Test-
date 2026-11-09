@@ -15,6 +15,17 @@ func _ready() -> void:
 		for k in 3: near[k] = minf(near[k], Campaign.mdist(P.x, P.y, pts[k].x, pts[k].y))
 		if P.get("route") == null: break
 	var chart_ok: bool = ok1 and near.all(func(d): return d < 3.0) and P.get("route") == null
+	# waypoints closer together than the turning circle, on dry bunkers (the owner's video): no orbiting for ever
+	G.cargo.fuel = 0; var zz := []
+	for i in 10: zz.append(Vector2(P.x + 6 + i * 3.0, P.y + (4.0 if i % 2 else -4.0)))
+	Campaign.set_course(P, zz[0].x, zz[0].y)
+	for i in range(1, zz.size()): Campaign.add_waypoint(P, zz[i].x, zz[i].y)
+	var zdays := -1.0
+	for i in 30 * 10 * 30:
+		Campaign.paused = false; Campaign.update(1.0 / 30.0)
+		if P.get("route") == null: zdays = i / 300.0; break
+	print("close zig-zag on dry bunkers: finished after %.1f days" % zdays)
+	chart_ok = chart_ok and zdays > 0.0
 	print("chart: legs added %s, closest to each waypoint %s, arrived %s" % [ok1, near.map(func(d): return snappedf(d, 0.1)), P.get("route") == null])
 	# battle
 	var S = preload("res://scripts/skirmish.gd"); var pr: Dictionary = S.PRESETS[0]

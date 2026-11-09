@@ -9418,6 +9418,15 @@
    "ens": "#2a2a2a"
   }
  },
+ "YARD_STYLE": {
+  "tidewater": "us",
+  "clydemouth": "uk",
+  "ostsee": "de",
+  "neva": "su",
+  "seto": "jp",
+  "tirreno": "it",
+  "marine": "uk"
+ },
  "CLASSES": {
   "pt": {
    "name": "Motor Torpedo Boat",

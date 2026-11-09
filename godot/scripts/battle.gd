@@ -179,7 +179,7 @@ class ShipView extends Node2D:
     var s: BattleSim.CShip
     var base: Sprite2D
     var top: Sprite2D
-    var top_sh: Sprite2D
+    var style := "us"
     var detail: Node2D
     var lit_base: ShaderMaterial
     var lit_top: ShaderMaterial
@@ -193,13 +193,21 @@ class ShipView extends Node2D:
         lit_base = ShaderMaterial.new(); lit_base.shader = battle.light_shader; base.material = lit_base
         detail = Detail.new(); detail.view = self; detail.scale = Vector2(spr, spr); base.add_child(detail)
         base.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW  # soot and holes stay on the hull
-        top_sh = _sprite(GameData.ship_tex(id, s.pal, "top_shadow"), 3.0 / spr); top_sh.modulate = Color(1, 1, 1, 0.5)
         top = _sprite(GameData.ship_tex(id, s.pal, "top"), 1.0 / spr)
         lit_top = ShaderMaterial.new(); lit_top.shader = battle.light_shader; top.material = lit_top
-        var mounts = Mounts.new(); mounts.view = self; add_child(mounts)
+        style = GameData.style_of(id)
+        var mmat = GameData.mount_material(s.pal)
+        for lvl in range(0, s.max_lvl + 1):
+            for lit in [false, true]:
+                var ml = MountLayer.new(); ml.view = self; ml.lvl = lvl; ml.lit = lit
+                if lit: ml.material = mmat
+                add_child(ml)
         var fires = Fires.new(); fires.view = self; var mat = CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; fires.material = mat; add_child(fires)
+        var hm = GameData.ship_h(id)
         for m in [lit_base, lit_top]:
             m.set_shader_parameter("size_m", size_m); m.set_shader_parameter("beam", float(s.d.B))
+            m.set_shader_parameter("hmap", hm); m.set_shader_parameter("use_h", hm != null); m.set_shader_parameter("h_max", float(GameData.sprites.get("h_max", 40)))
+        lit_top.set_shader_parameter("is_top", true)
 
     func _sprite(t: Texture2D, sc: float) -> Sprite2D:
         var sp = Sprite2D.new(); sp.texture = t; sp.scale = Vector2(sc, sc); add_child(sp); return sp
@@ -212,8 +220,6 @@ class ShipView extends Node2D:
         visible = alpha > 0.02 and not s.escaped and (s.side == 0 or not s.sub or s.dive < 0.3 or battle.sim.detected_by(s, 0) or not s.alive)
         position = s.pos; rotation = s.a + k * 0.25; scale = Vector2.ONE * (1.0 - 0.2 * k); modulate.a = alpha
         var sun_local = BattleSim.SUN.rotated(-s.a)
-        var hgt: float = 6.0 if s.d.kind == "carrier" else clampf(s.d.B * 0.22, 1.2, 7.0)
-        top_sh.position = sun_local * hgt
         var soot = clampf((1.0 - s.hull / s.max_hull - 0.25) * 1.4, 0.0, 1.0)
         for m in [lit_base, lit_top]: m.set_shader_parameter("sun_local", sun_local); m.set_shader_parameter("soot", soot)
         for c in get_children(): if c is Node2D and not (c is Sprite2D): c.queue_redraw()
@@ -229,36 +235,40 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
             draw_texture_rect(tx, Rect2(m.x - r, m.y - r, 2 * r, 2 * r), false, Color(0.09, 0.07, 0.05, 0.45))
             if m.hole: draw_circle(Vector2(m.x, m.y), r * 0.22, Color(0.04, 0.04, 0.04, 0.9))
 
-class Mounts extends Node2D:   # turrets, with their shadows cast in the world's light direction
+class MountLayer extends Node2D:   # turrets of one level: their contact and cast shadows, or the lit mounts themselves
     var view
+    var lvl := 0
+    var lit := false
+    func _visible_mount(s: BattleSim.CShip, m) -> bool:
+        return m.lvl == lvl and m.w.kind != "ssm" and m.w.kind != "sam" and not (s.sub and m.w.kind == "torp") and GameData.sprites.mounts.has(m.wid)
     func _draw() -> void:
         var s: BattleSim.CShip = view.s
         if (s.sub and s.dive > 0.1) or view.battle.zoom() * s.d.L < 30: return
-        var sun = BattleSim.SUN.rotated(-s.a)
-        # level by level from the deck up: each raised turret's shadow falls across the turret below it
-        for lvl in range(0, s.max_lvl + 1):
-            for m in s.mounts:
-                if m.lvl != lvl or m.w.kind == "ssm" or m.w.kind == "sam" or (s.sub and m.w.kind == "torp"): continue
-                var info: Dictionary = GameData.sprites.mounts.get(m.wid, {})
-                if info.is_empty(): continue
-                var sc: float = (1.0 + 0.035 * lvl) / info.spr
-                var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
-                draw_set_transform(p + sun * (1.4 + 2.6 * lvl), m.ta, Vector2(sc, sc))
-                draw_texture(GameData.mount_tex(m.wid, "shadow"), o, Color(1, 1, 1, 0.9 if lvl else 1.0))
-            for m in s.mounts:
-                if m.lvl != lvl or m.w.kind == "ssm" or m.w.kind == "sam" or (s.sub and m.w.kind == "torp"): continue
-                var info: Dictionary = GameData.sprites.mounts.get(m.wid, {})
-                if info.is_empty(): continue
-                var sc: float = (1.0 + 0.035 * lvl) / info.spr
-                var tint = Color(0.3, 0.27, 0.25) if m.dead else Color.WHITE
-                var o = -Vector2(info.ox, info.oy) * info.spr
-                draw_set_transform(Vector2(m.slot.x, m.slot.y), m.ta, Vector2(sc, sc))
-                if info.get("split", false): # only the barrels run back on recoil; the housing stays put
-                    var rc: float = m.recoil * m.w.get("bl", 0.0) * 0.12 * info.spr
-                    draw_texture(GameData.mount_tex(m.wid, s.pal + "_barrels"), o - Vector2(rc, 0), tint)
-                draw_texture(GameData.mount_tex(m.wid, s.pal), o, tint)
+        var sun: Vector2 = BattleSim.SUN.rotated(-s.a)
+        var style: String = view.style
+        for m in s.mounts:
+            if not _visible_mount(s, m): continue
+            var info: Dictionary = GameData.sprites.mounts[m.wid]
+            var sc: float = (1.0 + 0.035 * lvl) / info.spr
+            var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
+            var rc: float = m.recoil * m.w.get("bl", 0.0) * 0.12 * info.spr
+            var split: bool = info.get("split", false)
+            if not lit:
+                # a soft contact shadow round the foot, then a crisp shadow cast from the roof's height (raised turrets cast further)
+                draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04)
+                draw_texture(GameData.mount_ao(m.wid), o, Color(1, 1, 1, 0.75))
+                var reach: float = GameData.turret_h(m.w) * 0.85 + 2.8 * lvl
+                draw_set_transform(p + sun * reach, m.ta, Vector2(sc, sc))
+                var shc = Color(0, 0, 0, 0.42 if lvl else 0.36)
+                if split: draw_texture(GameData.mount_img(m.wid, style, true), o - Vector2(rc, 0), shc)
+                draw_texture(GameData.mount_img(m.wid, style), o, shc)
+            else:
+                var code: Color = GameData.mount_code(sun.rotated(-m.ta), lvl, m.dead)
+                draw_set_transform(p, m.ta, Vector2(sc, sc))
+                if split: draw_texture(GameData.mount_img(m.wid, style, true), o - Vector2(rc, 0), code) # only the barrels run back on recoil
+                draw_texture(GameData.mount_img(m.wid, style), o, code)
         draw_set_transform(Vector2.ZERO)
-        if s.struck: draw_rect(Rect2(-s.d.L / 2 - 6, -2, 5, 4), Color(0.91, 0.91, 0.88))
+        if lit and lvl == s.max_lvl and s.struck: draw_rect(Rect2(-s.d.L / 2 - 6, -2, 5, 4), Color(0.91, 0.91, 0.88))
 
 class Fires extends Node2D:
     var view

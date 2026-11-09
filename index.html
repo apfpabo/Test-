@@ -488,6 +488,193 @@ function boom(vol, freq = 420, rate = 1) {
 }
 function camVol(x, y, v) { if (!C) return v; const d = dist(x, y, C.cam.x, C.cam.y) * C.zoom; return v * clamp(1 - d / 1400, 0, 1); }
 
+/* ================================================================ height mode and national turret styles */
+// Every plan part can be drawn twice: once in colour, and once with HM.on, where each fill is a grey that encodes height
+// above the deck in metres (0..H_MAX). Godot lights the baked heights from the sun's real direction, so roof edges,
+// sloped plates and changes of level read at any heading, and casts shadows from them.
+const HM = { on: false };
+const H_MAX = 40;
+const hgrey = h => { const v = Math.round(clamp(h / H_MAX, 0, 1) * 255); return 'rgb(' + v + ',' + v + ',' + v + ')'; };
+// Fill the current path: a colour normally, the height grey in height mode.
+function pfill(g, col, h) { g.fillStyle = HM.on ? hgrey(h) : col; g.fill(); }
+// Turret style follows the shipbuilder. Combine Marine fits British-pattern guns.
+const YARD_STYLE = { tidewater: 'us', clydemouth: 'uk', ostsee: 'de', neva: 'su', seto: 'jp', tirreno: 'it', marine: 'uk' };
+const STYLES = ['us', 'uk', 'de', 'su', 'jp', 'it'];
+// Mounts are baked in neutral grey and tinted with the flag's paint in Godot: REF_PAL stands in for the paint.
+const REF_PAL = { hull: '#808080', deck: '#808080', sup: '#808080', ens: '#808080' };
+
+// Plan outline of a gunhouse for a style, as the starboard half from the front centreline to the rear centreline.
+// Each point is [x, y, fillet radius]; the port half mirrors it. Also the depth of the sloped bands (face, sides,
+// rear) and how far each falls, and the roof fittings. Proportions follow plans and photographs of each nation's
+// turrets: most are stretched hexagons with a narrower face, angled cheeks and a square rear overhang.
+function turretForm(st, w) {
+  const tw = w.tw, tl = w.tl, F = tl * 0.42, R = -tl * 0.58, Y = tw / 2, big = w.size === 'H' || w.size === 'L', n = w.barrels;
+  const f = { pts: null, face: tl * 0.1, side: 0, rear: 0, faceDrop: 0.55, sideDrop: 0.35, ears: null, hoods: [], rfBar: null, roofSlope: 0 };
+  const earsAt = (x0, x1, out, round) => ({ x0: R + tl * x0, x1: R + tl * x1, out: tw * out, round });
+  if (st === 'us') {
+    if (big || n >= 3) { // Iowa, Baltimore, Cleveland: long cheeks to a narrower face, slab sides, square rear overhang
+      f.pts = [[F, 0, 0], [F, Y * 0.66, tw * 0.04], [F - tl * 0.22, Y, tw * 0.03], [R, Y, tw * 0.05], [R, 0, 0]];
+      f.face = tl * 0.11; if (w.size === 'H') f.ears = earsAt(0.1, 0.24, 0.06, 0.4);
+      f.hoods = [[F - tl * 0.2, Y * 0.62], [F - tl * 0.2, -Y * 0.62], [F - tl * 0.16, 0]];
+    } else { // 5"/38 Mk 38 and Mk 30: a box with chamfered front corners, sloped face and front roof, flat rear
+      f.pts = [[F, 0, 0], [F, Y * 0.72, tw * 0.03], [F - tl * 0.14, Y, tw * 0.03], [R, Y, tw * 0.1], [R, 0, 0]];
+      f.face = tl * 0.16; f.roofSlope = tl * 0.12; f.hoods = [[F - tl * 0.24, Y * 0.66], [F - tl * 0.24, -Y * 0.66]];
+    }
+  } else if (st === 'uk') { // KGV, Vanguard, Fiji, 5.25": slab-sided boxes, small chamfers, sloped front roof plate
+    f.pts = [[F, 0, 0], [F, Y * 0.84, 0], [F - tl * 0.09, Y, tw * 0.02], [R, Y, tw * 0.02], [R, 0, 0]];
+    f.face = tl * 0.06; f.faceDrop = 0.3; f.roofSlope = tl * 0.1;
+    if (big) f.ears = earsAt(0.08, 0.2, 0.06, 0.15);
+    f.hoods = n >= 3 ? [[F - tl * 0.18, Y * 0.7], [F - tl * 0.18, -Y * 0.7], [F - tl * 0.15, 0]] : [[F - tl * 0.2, Y * 0.62], [F - tl * 0.2, -Y * 0.62]];
+  } else if (st === 'de') { // Bismarck, Hipper, 15 cm: stretched hexagon, sloped face and roof plate, big rangefinder ears
+    f.pts = [[F, 0, 0], [F, Y * 0.62, 0], [F - tl * 0.2, Y, 0], [R, Y, tw * 0.015], [R, 0, 0]];
+    f.face = tl * 0.07; f.faceDrop = 0.4; f.roofSlope = tl * 0.12;
+    if (big || w.size === 'M') f.ears = earsAt(0.07, 0.25, 0.1, 0.5);
+    f.hoods = [[F - tl * 0.24, Y * 0.5], [F - tl * 0.24, -Y * 0.5]];
+  } else if (st === 'jp') { // Yamato, 20 cm, 15.5 cm: faceted; narrow face, sloped sides, rangefinder right across the rear
+    f.pts = [[F, 0, 0], [F, Y * 0.52, 0], [F - tl * 0.26, Y, 0], [R + tl * 0.08, Y, 0], [R, Y * 0.88, 0], [R, 0, 0]];
+    f.face = tl * 0.14; f.side = tw * 0.07; f.sideDrop = 0.3; f.rear = tl * 0.03;
+    if (w.size === 'H') f.rfBar = { x: R + tl * 0.16, len: tw * 1.24, wd: tl * 0.075 };
+    else if (n >= 3) f.ears = earsAt(0.1, 0.22, 0.06, 0.3);
+    f.hoods = [[F - tl * 0.22, Y * 0.3], [F - tl * 0.22, -Y * 0.3]];
+  } else if (st === 'it') { // Littorio, Zara, Abruzzi: narrow face, long cheeks, smoother rounded corners, ears aft
+    f.pts = [[F, 0, 0], [F, Y * 0.6, tw * 0.08], [F - tl * 0.3, Y, tw * 0.12], [R, Y, tw * 0.14], [R, 0, 0]];
+    f.face = tl * 0.1; f.side = tw * 0.035;
+    if (big || n >= 3) f.ears = earsAt(0.08, 0.22, 0.08, 0.5);
+    f.hoods = [[F - tl * 0.24, Y * 0.42], [F - tl * 0.24, -Y * 0.42]];
+  } else { // su: Sverdlov MK-5, B-2LM: long and low, sloped face, cheeks and sides, ears aft
+    f.pts = [[F, 0, 0], [F, Y * 0.64, 0], [F - tl * 0.18, Y, 0], [R, Y, tw * 0.04], [R, 0, 0]];
+    f.face = tl * 0.12; f.side = tw * 0.06; f.sideDrop = 0.35;
+    if (big || n >= 3) f.ears = earsAt(0.08, 0.2, 0.07, 0.4);
+    f.hoods = [[F - tl * 0.2, Y * 0.4]];
+  }
+  // era II and later automatic guns are low boxes with every face sloped (Mk 42, AK-726, AK-130, 76 mm)
+  if (w.rel <= 2 || w.tech) { f.pts = [[F, 0, 0], [F, Y * 0.8, tw * 0.1], [R, Y, tw * 0.16], [R, 0, 0]]; f.face = tl * 0.16; f.side = tw * 0.1; f.rear = tl * 0.06; f.ears = null; f.rfBar = null; f.hoods = []; f.roofSlope = 0; }
+  return f;
+}
+// Expand a half outline with fillets into a closed polygon (front, starboard, rear, port).
+function filletPoly(half) {
+  const full = half.concat(half.slice(1, -1).reverse().map(([x, y, r]) => [x, -y, r]));
+  const out = [];
+  for (let i = 0; i < full.length; i++) {
+    const [x, y, r] = full[i]; const a = full[(i + full.length - 1) % full.length], b = full[(i + 1) % full.length];
+    if (!r) { out.push([x, y]); continue; }
+    const ux = a[0] - x, uy = a[1] - y, vx = b[0] - x, vy = b[1] - y, lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
+    const k = Math.min(r, lu * 0.45, lv * 0.45), p = [x + ux / lu * k, y + uy / lu * k], q = [x + vx / lv * k, y + vy / lv * k];
+    for (let s = 0; s <= 6; s++) { const t = s / 6, mt = 1 - t; out.push([mt * mt * p[0] + 2 * mt * t * x + t * t * q[0], mt * mt * p[1] + 2 * mt * t * y + t * t * q[1]]); }
+  }
+  return out.filter((p, i) => { const q = out[(i + 1) % out.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
+}
+// Inset a convex polygon edge by edge: each edge moves inward by insetOf(outward normal).
+function insetPoly(pts, insetOf) {
+  const n = pts.length, area = pts.reduce((s, p, i) => { const q = pts[(i + 1) % n]; return s + p[0] * q[1] - q[0] * p[1]; }, 0), sgn = area > 0 ? 1 : -1;
+  const lines = pts.map((p, i) => { const q = pts[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy) || 1;
+    const nx = dy / l * sgn, ny = -dx / l * sgn, d = insetOf(nx, ny); return { p: [p[0] - nx * d, p[1] - ny * d], d: [dx / l, dy / l] }; });
+  return pts.map((p, i) => { const A = lines[(i + n - 1) % n], B = lines[i]; const cr = A.d[0] * B.d[1] - A.d[1] * B.d[0];
+    if (Math.abs(cr) < 0.02) return [(A.p[0] + B.p[0]) / 2, (A.p[1] + B.p[1]) / 2];
+    const t = ((B.p[0] - A.p[0]) * B.d[1] - (B.p[1] - A.p[1]) * B.d[0]) / cr; return [A.p[0] + A.d[0] * t, A.p[1] + A.d[1] * t]; });
+}
+// outward normal of each edge of a polygon
+function edgeNormals(pts) {
+  const n = pts.length, area = pts.reduce((s, p, i) => { const q = pts[(i + 1) % n]; return s + p[0] * q[1] - q[0] * p[1]; }, 0), sgn = area > 0 ? 1 : -1;
+  return pts.map((p, i) => { const q = pts[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy) || 1; return [dy / l * sgn, -dx / l * sgn]; });
+}
+const polyPath = (g, pts) => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
+// A turret roof with sloped bands around it: in colour each band is a little darker than the roof (it faces the
+// overhead light less squarely); in height mode each band ramps from its outer edge height to the roof height.
+function bevelBlock(g, outer, inner, hRoof, hEdge, colBand, roofFill) {
+  const n = outer.length;
+  polyPath(g, outer); pfill(g, colBand(0), Math.min(...outer.map((_, i) => hEdge(i))));
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n, o0 = outer[i], o1 = outer[j], i0 = inner[i], i1 = inner[j];
+    if (Math.hypot(o0[0] - i0[0], o0[1] - i0[1]) + Math.hypot(o1[0] - i1[0], o1[1] - i1[1]) < 0.02) continue;
+    g.beginPath(); g.moveTo(...o0); g.lineTo(...o1); g.lineTo(...i1); g.lineTo(...i0); g.closePath();
+    if (HM.on) { const mx = (o0[0] + o1[0]) / 2, my = (o0[1] + o1[1]) / 2, ix = (i0[0] + i1[0]) / 2, iy = (i0[1] + i1[1]) / 2;
+      const gr = g.createLinearGradient(mx, my, ix, iy); gr.addColorStop(0, hgrey(hEdge(i))); gr.addColorStop(1, hgrey(hRoof)); g.fillStyle = gr; g.fill(); }
+    else { g.fillStyle = colBand(i); g.fill(); g.strokeStyle = colBand(i); g.lineWidth = 0.03; g.stroke(); } }
+  if (HM.on) { polyPath(g, inner); pfill(g, null, hRoof); } else roofFill();
+}
+function turretHeight(w) { return w.size === 'H' ? 3.4 : w.size === 'L' ? 2.9 : w.size === 'M' ? 2.5 : 2.1; }
+// Guns, AA mounts and torpedo tubes, drawn to scale with barrels along +x. shadow draws only the silhouette.
+// part: 'barrels' or 'house' draws only that half of a gun mount, so an engine can recoil the barrels alone.
+// st: national style (YARD_STYLE), American by default.
+function drawMount(g, wid, ta, P, recoil, stowed, shadow, part, st = 'us') {
+  const w = WEAPONS[wid]; if (!w) return;
+  g.save(); g.rotate(ta);
+  const sh = 'rgba(0,0,0,.26)', S = P.sup;
+  const fill = (col, h) => { if (shadow) { g.fillStyle = sh; g.fill(); } else pfill(g, col, h); };
+  if (w.kind === 'gun') {
+    const tw = w.tw, tl = w.tl, n = w.barrels, gap = w.gap || 0, front = tl * 0.42, rear = -tl * 0.58, rc = recoil * w.bl * 0.12;
+    const hR = turretHeight(w), hB = hR * 0.5;
+    for (let i = 0; i < n && part !== 'house'; i++) {
+      const y = (i - (n - 1) / 2) * gap, x0 = front - 0.6 - rc, x1 = front + w.bl - rc, r0 = w.bw * 0.62, r1 = w.bw * 0.42;
+      g.beginPath(); g.moveTo(x0, y - r0); g.lineTo(x1, y - r1); g.lineTo(x1, y + r1); g.lineTo(x0, y + r0); g.closePath();
+      if (HM.on) { const gr = g.createLinearGradient(0, y - r0, 0, y + r0); gr.addColorStop(0, hgrey(hB)); gr.addColorStop(0.5, hgrey(hB + r0)); gr.addColorStop(1, hgrey(hB)); g.fillStyle = gr; g.fill(); }
+      else if (shadow) { g.fillStyle = sh; g.fill(); }
+      else { const gr = g.createLinearGradient(0, y - r0, 0, y + r0); gr.addColorStop(0, shade(S, -0.42)); gr.addColorStop(0.45, shade(S, -0.14)); gr.addColorStop(1, shade(S, -0.4)); g.fillStyle = gr; g.fill();
+        g.fillStyle = shade(S, -0.5); g.fillRect(x1 - w.bw * 0.5, y - w.bw * 0.46, w.bw * 0.5, w.bw * 0.92); }   // muzzle
+      if (!shadow) { rrect(g, front - 0.35 - rc, y - w.bw * 0.8, Math.max(0.5, w.bw * 1.1), w.bw * 1.6, w.bw * 0.4); pfill(g, shade(S, -0.3), hB + r0 * 1.1); } // blast bag
+    }
+    if (part === 'barrels') { g.restore(); return; }
+    if (w.open || (wid === 'g120t' && (st === 'uk' || st === 'it' || st === 'de'))) { drawShield(g, w, st, shadow, S, hR); g.restore(); return; }
+    const f = turretForm(st, w), outer = filletPoly(f.pts);
+    const inner = insetPoly(outer, (nx, ny) => Math.max(0, nx) ** 2 * f.face + ny * ny * f.side + Math.max(0, -nx) ** 2 * f.rear);
+    const drop = edgeNormals(outer).map(([nx, ny]) => 1 - (Math.max(0, nx) ** 2 * f.faceDrop + ny * ny * f.sideDrop + Math.max(0, -nx) ** 2 * 0.3));
+    // rangefinder ears stick out of the side walls near the rear
+    if (f.ears) for (const sy of [-1, 1]) { const e = f.ears, el = e.x1 - e.x0, eh = tw * 0.08 + e.out;
+      rrect(g, e.x0, sy > 0 ? tw / 2 - eh + e.out : -tw / 2 - e.out, el, eh, el * e.round * 0.5); fill(shade(S, -0.06), hR * 0.72); }
+    if (shadow) { polyPath(g, outer); g.fillStyle = sh; g.fill(); if (f.rfBar) { const b = f.rfBar; rrect(g, b.x - b.wd / 2, -b.len / 2, b.wd, b.len, b.wd / 2); g.fill(); } g.restore(); return; }
+    const roof = () => { polyPath(g, inner); const gr = g.createLinearGradient(0, -tw / 2, 0, tw / 2); gr.addColorStop(0, shade(S, -0.03)); gr.addColorStop(0.5, shade(S, 0.04)); gr.addColorStop(1, shade(S, -0.03)); g.fillStyle = gr; g.fill(); };
+    bevelBlock(g, outer, inner, hR, i => hR * drop[i], i => shade(S, -0.14 - (1 - drop[i]) * 0.18), roof);
+    const xi = Math.max(...inner.map(p => p[0]));
+    if (f.roofSlope) { // a sloped plate across the front of the roof, falling towards the face
+      g.save(); polyPath(g, inner); g.clip(); g.beginPath(); g.rect(xi - f.roofSlope, -tw, f.roofSlope + 0.01, tw * 2);
+      if (HM.on) { const gr = g.createLinearGradient(xi - f.roofSlope, 0, xi, 0); gr.addColorStop(0, hgrey(hR)); gr.addColorStop(1, hgrey(hR * 0.86)); g.fillStyle = gr; g.fill(); }
+      else { g.fillStyle = shade(S, -0.05); g.fill(); g.strokeStyle = 'rgba(0,0,0,.14)'; g.lineWidth = Math.max(0.03, tw * 0.006); g.beginPath(); g.moveTo(xi - f.roofSlope, -tw); g.lineTo(xi - f.roofSlope, tw); g.stroke(); }
+      g.restore(); }
+    if (!HM.on) { // gun ports in the face plate, roof plate seams, a hatch and vents
+      g.fillStyle = 'rgba(10,12,13,.55)'; for (let i = 0; i < n; i++) { const y = (i - (n - 1) / 2) * gap; rrect(g, front - f.face * 0.85, y - w.bw * 0.75, f.face * 0.8, w.bw * 1.5, w.bw * 0.3); g.fill(); }
+      g.save(); polyPath(g, inner); g.clip(); g.strokeStyle = 'rgba(0,0,0,.09)'; g.lineWidth = Math.max(0.03, tw * 0.006); g.beginPath();
+      for (const fy of n >= 3 ? [-0.2, 0.2] : [0]) { g.moveTo(rear, fy * tw); g.lineTo(xi - (f.roofSlope || 0), fy * tw); }
+      g.moveTo(rear + tl * 0.38, -tw); g.lineTo(rear + tl * 0.38, tw); g.stroke(); g.restore();
+      rrect(g, rear + tl * 0.08, -tw * 0.3, tl * 0.07, tw * 0.16, tl * 0.02); g.fillStyle = shade(S, -0.14); g.fill();
+    }
+    for (const [hx, hy] of f.hoods) { const hs = Math.max(0.35, tw * 0.07); rrect(g, hx - hs * 0.7, hy - hs / 2, hs * 1.4, hs, hs * 0.3); pfill(g, shade(S, -0.08), hR + 0.35); // sighting hoods
+      if (!HM.on) { g.fillStyle = 'rgba(10,12,13,.6)'; g.fillRect(hx + hs * 0.55, hy - hs * 0.3, hs * 0.12, hs * 0.6); } }
+    if (f.rfBar) { const b = f.rfBar; rrect(g, b.x - b.wd / 2, -b.len / 2, b.wd, b.len, b.wd / 2); pfill(g, shade(S, -0.04), hR + 0.55); // rangefinder across the rear roof
+      for (const sy of [-1, 1]) { rrect(g, b.x - b.wd * 0.8, sy * b.len / 2 - (sy > 0 ? b.wd * 1.4 : 0), b.wd * 1.6, b.wd * 1.4, b.wd * 0.5); pfill(g, shade(S, -0.1), hR + 0.5); } }
+  } else if (w.kind === 'aa') {
+    const hA = 1.4;
+    if (wid === 'ciws') { g.beginPath(); g.rect(0.4, -0.3, 2.4, 0.6); fill(shade(S, -0.25), 1.6);
+      g.beginPath(); g.arc(-0.2, 0, 1.25, 0, TAU); fill(shade(S, 0.3), 2.6); if (!shadow && !HM.on) { g.beginPath(); g.arc(-0.05, 0, 0.9, 0, TAU); g.fillStyle = shade(S, 0.38); g.fill(); } }
+    else if (wid === 'aa40') { for (const y of [-0.8, -0.32, 0.32, 0.8]) { g.beginPath(); g.rect(0.6, y - 0.09, 3.2, 0.18); fill(shade(S, -0.34), hA); }
+      g.beginPath(); g.arc(0, 0, 1.15, 0, TAU); fill(shade(S, -0.06), hA + 0.3);
+      if (!shadow && !HM.on) { g.fillStyle = shade(S, -0.3); g.fillRect(-0.9, -0.12, 1.4, 0.24); } }
+    else { g.beginPath(); g.rect(0.2, -0.07, 2.2, 0.14); fill(shade(S, -0.32), hA);
+      g.beginPath(); g.arc(0, 0, 0.75, -1.2, 1.2); g.arc(0, 0, 0.6, 1.2, -1.2, true); g.closePath(); fill(shade(S, -0.08), hA + 0.4); }
+  } else if (w.kind === 'torp' && !stowed) {
+    const tl = wid === 'tor93' ? 9 : 7.4, n = Math.min(5, w.count + 1), tw = 0.62;
+    g.beginPath(); g.arc(0, 0, tl * 0.18, 0, TAU); fill(shade(S, -0.25), 0.6);
+    for (let i = 0; i < n; i++) { const y = (i - (n - 1) / 2) * (tw + 0.08); rrect(g, -tl * 0.45, y - tw / 2, tl, tw, tw / 2);
+      if (shadow) { g.fillStyle = sh; g.fill(); continue; }
+      const gr = g.createLinearGradient(0, y - tw / 2, 0, y + tw / 2);
+      if (HM.on) { gr.addColorStop(0, hgrey(0.8)); gr.addColorStop(0.5, hgrey(1.1)); gr.addColorStop(1, hgrey(0.8)); g.fillStyle = gr; g.fill(); }
+      else { gr.addColorStop(0, shade(S, -0.22)); gr.addColorStop(0.5, shade(S, 0.02)); gr.addColorStop(1, shade(S, -0.22)); g.fillStyle = gr; g.fill(); g.fillStyle = '#1b1d1e'; g.fillRect(tl * 0.5, y - tw * 0.32, 0.25, tw * 0.64); } }
+    if (st === 'jp' && tl > 8) { rrect(g, -tl * 0.5, -n * 0.4, tl * 0.5, n * 0.8, 0.3); fill(shade(S, -0.04), 1.7); } // Japanese long-lance mounts carried a light shield
+  }
+  g.restore();
+}
+// Open mounts behind a gun shield: a front plate with angled side wings and an open back, the breeches and the
+// loading platform visible behind it (British 4.7" CP XIX, German 10.5 cm, Italian 120 mm, 4-inch HA).
+function drawShield(g, w, st, shadow, S, hR) {
+  const tw = w.tw, tl = w.tl, sh = 'rgba(0,0,0,.26)', fill = (col, h) => { if (shadow) { g.fillStyle = sh; g.fill(); } else pfill(g, col, h); };
+  g.beginPath(); g.arc(-tl * 0.12, 0, tw * 0.48, 0, TAU); fill(shade(S, -0.22), 0.3);                              // platform
+  if (!shadow && !HM.on) { g.fillStyle = shade(S, -0.34); for (const sy of w.barrels > 1 ? [-1, 1] : [0]) g.fillRect(-tl * 0.42, sy * (w.gap || 0) / 2 - 0.22, tl * 0.55, 0.44); } // breeches
+  const fx = tl * 0.38, Y = tw * 0.5, cheek = st === 'it' ? tl * 0.18 : st === 'de' ? tl * 0.08 : tl * 0.1, back = fx - tl * (st === 'de' ? 0.42 : 0.55), roof = fx - tl * 0.24, th = Math.max(0.1, tw * 0.035);
+  const front = st === 'it' ? Y * 0.35 : Y * 0.78;
+  g.beginPath(); g.moveTo(fx, -front); g.lineTo(fx, front); g.lineTo(fx - cheek, Y); g.lineTo(roof, Y); g.lineTo(roof, -Y); g.lineTo(fx - cheek, -Y); g.closePath(); fill(shade(S, 0.0), hR); // roof over the front
+  for (const sy of [-1, 1]) { g.beginPath(); g.rect(back, sy > 0 ? Y - th : -Y, roof - back + 0.01, th); fill(shade(S, -0.06), hR * 0.85); } // side wings, open behind
+  if (!shadow && !HM.on) { g.fillStyle = 'rgba(10,12,13,.5)'; for (let i = 0; i < w.barrels; i++) { const y = (i - (w.barrels - 1) / 2) * (w.gap || 0); g.fillRect(fx - 0.25, y - w.bw * 0.7, 0.25, w.bw * 1.4); } }
+}
+
 /* ================================================================ ship plans (vector, pre-rendered) */
 // Top-down plans drawn to scale from each design, in the manner of a builder's deck plan. One paint scheme covers hull,
 // superstructure and turrets. Light comes from directly overhead, so higher decks read lighter and every block gets a
@@ -564,23 +751,6 @@ function detailDeck(g, d, P, deckCol, inset) {
   // depth-charge racks on the quarterdeck of sonar ships
   if (d.sonar && d.kind === 'war' && L < 170) { const sx = -h + 2.2; g.fillStyle = shade(P.sup, -0.3); for (const sy of [-1, 1]) { g.fillRect(sx, sy * b * 0.45 - 0.35, 7, 0.7); g.fillStyle = shade(P.sup, -0.05); for (let k = 0; k < 5; k++) { g.beginPath(); g.arc(sx + 0.7 + k * 1.3, sy * b * 0.45, 0.42, 0, TAU); g.fill(); } g.fillStyle = shade(P.sup, -0.3); } }
 }
-function detailSup(g, d, P) {
-  const p = d.p, b = d.B / 2; const r = rng(seedOf(d.id) ^ 0x5bd1);
-  (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
-    // life rafts along the sides of the deckhouse
-    if (w > 5 && d.L > 70) for (const sy of [-1, 1]) for (let k = 0; k < Math.floor(len / 6); k++) { const rx = x - len / 2 + 2 + k * 5.5, ry = sy * (w / 2 + 0.55); rrect(g, rx, ry - 0.45, 2.2, 0.9, 0.35); g.fillStyle = shade(P.sup, 0.22); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.06; g.stroke(); }
-    // bridge wings on the forward block
-    if (bi === 0 && tiers >= 3) { const wx = x + len * 0.5 - len * 0.22, ww = Math.min(b * 1.7, w * 1.25); rrect(g, wx - 1, -ww / 2, 2, ww, 0.4); g.fillStyle = shade(P.sup, 0.05); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.08; g.stroke(); }
-    // directors, searchlights and vents on the upper decks
-    const top = tiers - 1, ll = len * (1 - top * 0.17), ww = w * (1 - top * 0.14), xx = x + len * 0.06 * top;
-    if (tiers >= 3) { const s = Math.min(3.2, ww * 0.45); g.fillStyle = shade(P.sup, -0.1); rrect(g, xx - s / 2, -s / 2, s, s, 0.4); g.fill(); g.fillStyle = shade(P.sup, -0.35); g.fillRect(xx - 0.25, -s * 0.85, 0.5, s * 1.7); }
-    for (let k = 0; k < Math.min(4, tiers); k++) { const sx = x - len * 0.3 + r() * len * 0.6, sy = (r() < 0.5 ? -1 : 1) * w * 0.32; g.beginPath(); g.arc(sx, sy, 0.45, 0, TAU); g.fillStyle = '#d6d8d2'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.06; g.stroke(); }
-    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 0.06; g.beginPath(); for (let k = 1; k < tiers; k++) { const l2 = len * (1 - k * 0.17); g.moveTo(x + len * 0.06 * k - l2 / 2, -w * 0.48 * (1 - k * 0.14)); g.lineTo(x + len * 0.06 * k + l2 / 2, -w * 0.48 * (1 - k * 0.14)); } g.stroke();
-  });
-  // funnel bands, steam pipes and platforms
-  for (const [x, rx, ry, y = 0] of p.fun || []) { g.strokeStyle = shade(P.sup, -0.2); g.lineWidth = 0.12; g.beginPath(); g.ellipse(x, y, rx * 0.92, ry * 0.88, 0, 0, TAU); g.stroke();
-    g.fillStyle = shade(P.sup, -0.4); for (const sy of [-0.35, 0.35]) { g.beginPath(); g.arc(x + rx * 0.82, y + sy * ry, Math.max(0.15, ry * 0.1), 0, TAU); g.fill(); } }
-}
 // part: 'all' draws the whole plan; 'base' the hull and deck; 'top' only what stands above the deck (it casts shadows on it).
 function drawPlan(g, d, P, part = 'all') {
   if (part === 'top') { if (d.kind === 'sub') drawSails(g, d, P); else if (d.kind === 'carrier') drawIslandTop(g, d, P); else drawPlanTop(g, d, P); return; }
@@ -640,54 +810,259 @@ function drawPlan(g, d, P, part = 'all') {
 function drawSails(g, d, P) {
   const p = d.p, ink = 'rgba(14,18,20,.85)';
   for (const [x, len, w] of p.sail || []) {
-      contact(g, k => rrect(g, x - len / 2 - k, -w / 2 - k, len + 2 * k, w + 2 * k, w / 2 + k), 0.5);
-      rrect(g, x - len / 2, -w / 2, len, w, w / 2); crownFill(g, P.sup, w / 2, -0.25);
-      rrect(g, x - len * 0.18, -w * 0.3, len * 0.42, w * 0.6, w * 0.3); crownFill(g, P.sup, w * 0.3, -0.12);
-      g.fillStyle = ink; for (const k of [0.05, 0.16]) { g.beginPath(); g.arc(x + len * k, 0, 0.28, 0, TAU); g.fill(); }
+    aoUnder(g, k => rrect(g, x - len / 2 - k, -w / 2 - k, len + 2 * k, w + 2 * k, w / 2 + k), 0.5);
+    rrect(g, x - len / 2, -w / 2, len, w, w / 2); if (HM.on) pfill(g, null, 4.5); else crownFill(g, P.sup, w / 2, -0.25);
+    rrect(g, x - len * 0.18, -w * 0.3, len * 0.42, w * 0.6, w * 0.3); if (HM.on) pfill(g, null, 5.5); else crownFill(g, P.sup, w * 0.3, -0.12);
+    if (!HM.on) { g.fillStyle = ink; for (const k of [0.05, 0.16]) { g.beginPath(); g.arc(x + len * k, 0, 0.28, 0, TAU); g.fill(); } }
   }
 }
-function drawPlanTop(g, d, P) {
-  const p = d.p || {}, L = d.L, B = d.B, h = L / 2, b = B / 2, ink = 'rgba(14,18,20,.85)';
-  // superstructure: stacked decks, each a little lighter than the one below
-  for (const [x, len, w, tiers = 1] of p.sup || []) {
-    for (let t = 0; t < tiers; t++) {
-      const kl = 1 - t * 0.17, kw = 1 - t * 0.14, ll = len * kl, ww = w * kw, xx = x + len * 0.06 * t;
-      const path = k => rrect(g, xx - ll / 2 - k, -ww / 2 - k, ll + 2 * k, ww + 2 * k, Math.min(ww * 0.3, 2.2) + k);
-      contact(g, path, 0.45); path(0); crownFill(g, P.sup, ww / 2, -0.12 + t * 0.055); g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.15; g.stroke();
-      if (t === tiers - 1 && tiers >= 2) { g.fillStyle = 'rgba(16,22,26,.75)'; g.fillRect(xx + ll / 2 - 0.9, -ww * 0.38, 0.45, ww * 0.76); }     // bridge windows
-      if (t === tiers - 1 && tiers >= 4) { g.fillStyle = shade(P.sup, -0.32); g.fillRect(xx - 0.5, -ww * 0.42, 1, ww * 0.84); g.beginPath(); g.arc(xx + ll * 0.2, 0, Math.min(1.4, ww * 0.18), 0, TAU); g.fill(); } // rangefinder and director
-    }
+/* ================================================================ superstructures by national school */
+// Each superstructure block in a design (p.sup: [x, length, width, tiers]) is its footprint on the deck. Above it the
+// block is built up after the national school of its yard: levels set back one above another, a conning tower, bridge
+// wings, open compass platforms, tower and pagoda masts, directors and rangefinders, searchlights and AA tubs. Every
+// part is also drawn into the height map (HM), so Godot can light each change of level and cast its shadow.
+const DECK_H = 2.5;
+function supSchool(d) {
+  if (d.p.merchant) return 'merchant';
+  if (d.klass === 'pt' || d.klass === 'corvette') return 'small';
+  if (d.era >= 2 && (d.klass === 'ddg' || d.klass === 'cg')) return 'modern';
+  return YARD_STYLE[d.yard] || 'uk';
+}
+// Soft contact shadow round the foot of a raised part (colour pass only).
+function aoUnder(g, pathFn, k = 0.35) {
+  if (HM.on) return; const s = g.getTransform().a; g.save(); g.filter = 'blur(' + Math.max(1, Math.round(s * k)) + 'px)'; g.fillStyle = 'rgba(0,0,0,.32)'; pathFn(k * 0.6); g.fill(); g.restore();
+}
+// Path of a level from x0 (aft) to x1 (forward), half-width hw, centred on y. front: 'round' | 'square' | 'taper' | 'point'.
+function levelPath(g, x0, x1, hw, front = 'square', rear = 'square', grow = 0, y = 0) {
+  x0 -= grow; x1 += grow; hw += grow; const len = x1 - x0, rr = rear === 'round' ? Math.min(hw, len * 0.4) : Math.min(0.5, hw * 0.15);
+  g.beginPath(); g.moveTo(x0 + rr, y - hw);
+  if (front === 'round') { const dp = Math.min(hw * 0.9, len * 0.45); g.lineTo(x1 - dp, y - hw); g.bezierCurveTo(x1 - dp * 0.35, y - hw, x1, y - hw * 0.55, x1, y); g.bezierCurveTo(x1, y + hw * 0.55, x1 - dp * 0.35, y + hw, x1 - dp, y + hw); }
+  else if (front === 'taper') { const dp = Math.min(hw * 0.8, len * 0.35); g.lineTo(x1 - dp, y - hw); g.lineTo(x1, y - hw * 0.6); g.lineTo(x1, y + hw * 0.6); g.lineTo(x1 - dp, y + hw); }
+  else if (front === 'point') { const dp = Math.min(hw * 1.1, len * 0.4); g.lineTo(x1 - dp, y - hw); g.lineTo(x1, y - hw * 0.25); g.lineTo(x1, y + hw * 0.25); g.lineTo(x1 - dp, y + hw); }
+  else { const r = Math.min(0.5, hw * 0.15); g.lineTo(x1 - r, y - hw); g.quadraticCurveTo(x1, y - hw, x1, y - hw + r); g.lineTo(x1, y + hw - r); g.quadraticCurveTo(x1, y + hw, x1 - r, y + hw); }
+  g.lineTo(x0 + rr, y + hw); g.quadraticCurveTo(x0, y + hw, x0, y + hw - rr); g.lineTo(x0, y - hw + rr); g.quadraticCurveTo(x0, y - hw, x0 + rr, y - hw); g.closePath();
+}
+// One level of superstructure. Higher levels read lighter, as on a builder's plan lit from overhead.
+function level(g, P, x0, x1, hw, h, o = {}) {
+  const f = o.front || 'square', r = o.rear || 'square', S = P.sup, y = o.y || 0;
+  aoUnder(g, k => levelPath(g, x0, x1, hw, f, r, k, y));
+  levelPath(g, x0, x1, hw, f, r, 0, y);
+  if (HM.on) pfill(g, null, h);
+  else { crownFill(g, S, hw, clamp(-0.06 + h * 0.008, -0.06, 0.12)); g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 0.08; g.stroke(); }
+  if (o.open) { // open bridge or compass platform: a bulwark round a lower floor
+    const t = Math.min(0.45, hw * 0.12); levelPath(g, x0 + t, x1 - t, hw - t, f, r, 0, y);
+    if (HM.on) pfill(g, null, h - 1.1); else { g.fillStyle = shade(LINO, -0.15); g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.06; g.stroke(); }
   }
-  detailSup(g, d, P);
+  if (hw > 2 && x1 - x0 > 4 && !o.open) { // deck furniture: rails round the edge, then lockers, vents and hatches
+    const rn = rng(Math.round(x0 * 131 + h * 977 + hw * 17));
+    if (!HM.on) { g.save(); g.setLineDash([0.1, 0.7]); g.strokeStyle = 'rgba(225,225,215,.32)'; g.lineWidth = 0.09; levelPath(g, x0 + 0.3, x1 - 0.3, hw - 0.3, f, r, 0, y); g.stroke(); g.restore(); }
+    const n = Math.min(7, Math.floor((x1 - x0) * hw / 9));
+    for (let i = 0; i < n; i++) { const fx = x0 + 1.2 + rn() * (x1 - x0 - 3), fy = y + (rn() - 0.5) * (hw * 2 - 2.2), kind = rn();
+      if (kind < 0.4) { const w2 = 0.9 + rn() * 1.3, h2 = 0.6 + rn() * 0.6; rrect(g, fx - w2 / 2, fy - h2 / 2, w2, h2, 0.15); pfill(g, shade(S, -0.1), h + 0.7); }
+      else if (kind < 0.75) { g.beginPath(); g.arc(fx, fy, 0.3 + rn() * 0.2, 0, TAU); pfill(g, shade(S, -0.02), h + 0.9); if (!HM.on) { g.beginPath(); g.arc(fx + 0.08, fy, 0.18, 0, TAU); g.fillStyle = '#25282a'; g.fill(); } }
+      else if (!HM.on) { g.fillStyle = shade(S, -0.22); g.fillRect(fx - 0.5, fy - 0.4, 1, 0.8); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 0.05; g.strokeRect(fx - 0.5, fy - 0.4, 1, 0.8); } }
+  }
+  if (o.windows && !HM.on) { // wheelhouse windows along the front
+    g.save(); g.beginPath(); g.rect(x1 - Math.min(2.5, (x1 - x0) * 0.3), y - hw, 5, hw * 2); g.clip();
+    g.strokeStyle = 'rgba(14,20,24,.8)'; g.lineWidth = 0.32; g.setLineDash([0.55, 0.25]); levelPath(g, x0 + 0.3, x1 - 0.3, hw - 0.3, f, r, 0, y); g.stroke(); g.restore();
+  }
+}
+// Bridge wings: a light platform right across the ship at the bridge, overhanging the level below.
+function wings(g, P, x, depth, half, h) {
+  aoUnder(g, k => { g.beginPath(); g.rect(x - depth / 2 - k, -half - k, depth + 2 * k, half * 2 + 2 * k); }, 0.25);
+  rrect(g, x - depth / 2, -half, depth, half * 2, Math.min(0.5, depth * 0.3)); pfill(g, shade(P.sup, 0.02), h);
+  if (!HM.on) { g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.07; g.stroke(); g.fillStyle = 'rgba(0,0,0,.2)'; for (const sy of [-1, 1]) g.fillRect(x - depth / 2 + 0.2, sy * (half - 0.35) - 0.12, depth - 0.4, 0.24); }
+}
+function conning(g, P, x, y, rx, ry, h) { // armoured conning tower: a thick oval with a ring of vision slits and a hood on top
+  cyl(g, P, x, y, rx, ry, h, -0.03);
+  if (!HM.on) { g.save(); g.setLineDash([0.35, 0.3]); g.strokeStyle = 'rgba(12,16,18,.75)'; g.lineWidth = 0.18; g.beginPath(); g.ellipse(x, y, rx * 0.86, ry * 0.86, 0, -1.3, 1.3); g.stroke(); g.restore(); }
+  g.beginPath(); g.ellipse(x - rx * 0.15, y, rx * 0.42, ry * 0.42, 0, 0, TAU); pfill(g, shade(P.sup, 0.02), h + 0.7);
+}
+function cyl(g, P, x, y, rx, ry, h, k = 0) { // a round tower or conning tower
+  aoUnder(g, q => { g.beginPath(); g.ellipse(x, y, rx + q, ry + q, 0, 0, TAU); }, 0.3);
+  g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU);
+  if (HM.on) { const gr = g.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry)); gr.addColorStop(0, hgrey(h)); gr.addColorStop(0.75, hgrey(h)); gr.addColorStop(1, hgrey(h - 0.6)); g.fillStyle = gr; g.fill(); }
+  else { const gr = g.createRadialGradient(x - rx * 0.1, y, 0, x, y, Math.max(rx, ry)); gr.addColorStop(0, shade(P.sup, clamp(-0.02 + h * 0.008, -0.04, 0.14) + k)); gr.addColorStop(1, shade(P.sup, clamp(-0.12 + h * 0.008, -0.12, 0.04) + k)); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.07; g.stroke(); }
+}
+// A rangefinder: a long tube across the ship (or at angle a) with a hood at each end.
+function rangefinder(g, P, x, y, len, h, a = PI / 2) {
+  g.save(); g.translate(x, y); g.rotate(a); const wd = Math.max(0.5, len * 0.075);
+  rrect(g, -len / 2, -wd / 2, len, wd, wd / 2); pfill(g, shade(P.sup, -0.12), h);
+  for (const sx of [-1, 1]) { rrect(g, sx * len / 2 - (sx > 0 ? wd * 1.3 : 0), -wd * 0.85, wd * 1.3, wd * 1.7, wd * 0.5); pfill(g, shade(P.sup, -0.05), h + 0.15); if (!HM.on) { g.fillStyle = 'rgba(10,12,13,.7)'; g.fillRect(sx * len / 2 - (sx > 0 ? 0.25 : -0.05) - 0.1, -wd * 0.5, 0.2, wd); } }
+  g.restore();
+}
+// Fire-control directors, each after its nation's pattern, centred on (cx, cy).
+function director(g, P, cx, cy, s, h, kind) {
+  const S = P.sup; g.save(); g.translate(cx, cy);
+  if (kind === 'us') { // Mk 37 / Mk 38: a box with a rounded rear, rangefinder arms through the sides, a radar antenna on top
+    rangefinder(g, P, -s * 0.05, 0, s * 1.65, h - 0.4);
+    aoUnder(g, k => levelPath(g, -s * 0.55, s * 0.5, s * 0.42, 'square', 'round', k), 0.2); levelPath(g, -s * 0.55, s * 0.5, s * 0.42, 'square', 'round'); pfill(g, shade(S, 0.06), h);
+    rrect(g, -s * 0.1, -s * 0.38, s * 0.22, s * 0.76, s * 0.05); pfill(g, shade(S, -0.25), h + 1.2);
+  } else if (kind === 'uk') { // DCT / HACS: a squarish hood with rangefinder arms
+    rangefinder(g, P, -s * 0.1, 0, s * 1.5, h - 0.3);
+    aoUnder(g, k => rrect(g, -s * 0.5 - k, -s * 0.42 - k, s + 2 * k, s * 0.84 + 2 * k, s * 0.12), 0.2); rrect(g, -s * 0.5, -s * 0.42, s, s * 0.84, s * 0.12); pfill(g, shade(S, 0.04), h);
+    if (!HM.on) { g.fillStyle = 'rgba(10,12,13,.6)'; g.fillRect(s * 0.4, -s * 0.3, s * 0.07, s * 0.6); }
+  } else if (kind === 'de' || kind === 'su') { // rotating rangefinder cupola: a dome with long arms
+    rangefinder(g, P, 0, 0, s * (kind === 'de' ? 2.4 : 2.1), h - 0.3);
+    cyl(g, P, 0, 0, s * 0.5, s * 0.5, h + 0.5, 0.04);
+  } else if (kind === 'it') { // stacked rangefinder turrets: a rounded hood with arms
+    rangefinder(g, P, -s * 0.1, 0, s * 2.2, h - 0.2);
+    levelPath(g, -s * 0.55, s * 0.45, s * 0.45, 'round', 'round'); pfill(g, shade(S, 0.05), h + 0.3);
+  } else if (kind === 'jp') { // a long rangefinder over a round base
+    cyl(g, P, 0, 0, s * 0.55, s * 0.55, h - 0.5);
+    rangefinder(g, P, -s * 0.15, 0, s * 2.6, h + 0.4);
+  } else { // modern: a fire-control radar on a pedestal
+    cyl(g, P, 0, 0, s * 0.4, s * 0.4, h - 0.6);
+    g.beginPath(); g.ellipse(s * 0.1, 0, s * 0.18, s * 0.5, 0, 0, TAU); pfill(g, shade(S, 0.25), h + 0.6);
+  }
+  g.restore();
+}
+function searchlight(g, P, x, y, h) {
+  g.beginPath(); g.arc(x, y, 0.55, 0, TAU); pfill(g, shade(P.sup, -0.05), h);
+  if (!HM.on) { g.beginPath(); g.arc(x + 0.08, y, 0.36, 0, TAU); g.fillStyle = '#c9ccc6'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.05; g.stroke(); }
+}
+function tub(g, P, x, y, r, h) { // an AA tub: a ring of plating round the gun
+  aoUnder(g, k => { g.beginPath(); g.arc(x, y, r + k, 0, TAU); }, 0.2);
+  g.beginPath(); g.arc(x, y, r, 0, TAU); pfill(g, shade(P.sup, -0.02), h);
+  g.beginPath(); g.arc(x, y, r * 0.78, 0, TAU);
+  if (HM.on) pfill(g, null, h - 0.8);
+  else { g.fillStyle = shade(P.deck, -0.2); g.fill(); g.fillStyle = shade(P.sup, -0.3); g.fillRect(x - r * 0.1, y - r * 0.5, r * 0.85, r * 0.12); g.fillRect(x - r * 0.1, y + r * 0.38, r * 0.85, r * 0.12); g.beginPath(); g.arc(x - r * 0.15, y, r * 0.3, 0, TAU); g.fill(); }
+}
+// Half-beam of the hull at x, for keeping wings and platforms over the deck.
+function halfBeamAt(d, x) { const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr = (d.p.run || .2) * d.L; let half = d.B / 2;
+  if (x > h - fe) half *= Math.sqrt(Math.max(0, (h - x) / fe)); else if (x < -h + fr) half *= Math.max(d.p.stern === 't' ? (d.p.tw || .5) : 0.2, Math.sqrt(Math.max(0, (x + h) / fr))); return half; }
+
+// The forward (main) block, built after the school.
+function supMain(g, d, P, st, x, len, w, tiers) {
+  const x0 = x - len / 2, x1 = x + len / 2, hw = w / 2, H = t => (t + 1) * DECK_H, cap = xx => Math.max(hw, halfBeamAt(d, xx) - 0.5), big = d.L > 150, mid = d.L > 100;
+  const L = (a, b, k, t, o) => level(g, P, x0 + len * a, x1 - len * b, hw * k, H(t), o);
+  if (st === 'jp' && tiers >= 5 && d.klass === 'bb') { // pagoda tower (Yamato): a slim round tower with platforms stepping up it
+    L(0, 0, 1, 0, { front: 'round', rear: 'round' }); L(0.06, 0.04, 0.9, 1, { front: 'round', rear: 'round' });
+    const tx = x + len * 0.02, plats = [[2, 0.82, 0.62], [3, 0.66, 0.5], [4, 0.62, 0.46], [5, 0.48, 0.36], [6, 0.4, 0.32], [7, 0.34, 0.28], [8, 0.3, 0.26], [9, 0.26, 0.22]];
+    for (const [t, kl, kw] of plats) { level(g, P, tx - len * kl * 0.5, tx + len * kl * 0.5, hw * kw, H(t), { front: 'round', rear: 'round', windows: t === 6 });
+      if (t === 3 || t === 5) for (const sy of [-1, 1]) tub(g, P, tx - len * 0.12, sy * (hw * kw + 1.2), 1.4, H(t) - 0.4); }
+    wings(g, P, tx + len * 0.12, 1.6, Math.min(cap(tx) - 1, hw * 0.95), H(6) + 0.2);
+    director(g, P, tx - len * 0.02, 0, 3.4, H(10) + 1, 'jp');
+    rangefinder(g, P, tx - len * 0.06, 0, 15, H(10) + 2.4);
+    for (const sy of [-1, 1]) tub(g, P, x0 + len * 0.15, sy * hw * 0.78, 1.5, H(1) + 0.6);
+  } else if (st === 'jp' && tiers >= 4 && d.klass !== 'dd') { // Takao's great bridge block: levels terraced back from the front
+    for (let t = 0; t < tiers; t++) L(t * 0.015, t * 0.12, 1 - t * 0.05, t, { front: 'taper', windows: t === tiers - 2 });
+    wings(g, P, x1 - len * 0.12 * (tiers - 2) - 0.8, 1.4, Math.min(cap(x1 - len * 0.3) - 0.4, hw * 1.08), H(tiers - 2) + 0.2);
+    director(g, P, x1 - len * 0.12 * (tiers - 1) - len * 0.1, 0, 3, H(tiers - 1) + 1.2, 'jp');
+    rangefinder(g, P, x0 + len * 0.2, 0, 6, H(tiers - 1) + 0.6);
+    for (const sy of [-1, 1]) searchlight(g, P, x0 + len * 0.1, sy * hw * 0.7, H(1) + 0.6);
+  } else if (st === 'de' && tiers >= 4) { // armoured conning tower ahead, bridge with wings, round tower foremast with a rangefinder cupola
+    L(0, 0, 1, 0, { front: 'taper' }); L(0.06, 0.05, 0.9, 1, { front: 'taper' });
+    const cx = x1 - len * 0.16; conning(g, P, cx, 0, len * 0.1, hw * 0.36, H(2) + 0.4); director(g, P, cx, 0, 1.8, H(3) + 0.4, 'de');
+    L(0.3, 0.32, 0.72, 2, { front: 'round', windows: true });
+    wings(g, P, x1 - len * 0.34, 1.4, Math.min(cap(x) - 0.4, hw * 1.15), H(2) + 0.2);
+    const tx = x0 + len * 0.22; for (const [t, r] of [[3, 0.46], [4, 0.4], [5, 0.36], [6, 0.3], [7, 0.27]]) cyl(g, P, tx, 0, hw * r * (big ? 0.95 : 0.85), hw * r, H(t));
+    director(g, P, tx, 0, big ? 2.6 : 2.1, H(8) + 0.8, 'de');
+    for (const sy of [-1, 1]) searchlight(g, P, tx - hw * 0.25, sy * hw * 0.36, H(5) + 0.5);
+  } else if (st === 'it' && tiers >= 4) { // a cylindrical tower carrying stacked rangefinder turrets
+    L(0, 0, 1, 0, { front: 'round' }); L(0.05, 0.05, 0.9, 1, { front: 'round' }); L(0.12, 0.14, 0.78, 2, { front: 'round', windows: true });
+    wings(g, P, x1 - len * 0.18, 1.4, Math.min(cap(x) - 0.4, hw * 1.15), H(2) + 0.2);
+    const tx = x - len * 0.04; cyl(g, P, tx, 0, hw * 0.38, hw * 0.38, H(4));
+    for (const [hh, s] of big ? [[5, 3], [6.6, 2.4], [8.2, 1.9]] : [[5, 2.2], [6.4, 1.8]]) director(g, P, tx, 0, s, hh * DECK_H, 'it');
+    for (const sy of [-1, 1]) searchlight(g, P, x0 + len * 0.2, sy * hw * 0.62, H(2) + 0.5);
+  } else if (st === 'uk' && tiers >= 4) { // box bridge: square levels, an open compass platform, the DCT on top, HACS directors beside
+    L(0, 0, 1, 0); L(0.05, 0.04, 0.94, 1); L(0.12, 0.1, 0.86, 2, { windows: true });
+    wings(g, P, x1 - len * 0.14, 1.5, Math.min(cap(x1 - len * 0.14) - 0.4, hw * 1.12), H(2) + 0.2);
+    L(0.22, 0.12, 0.7, 3, { open: true });
+    if (tiers >= 5) L(0.3, 0.42, 0.42, 4);
+    if (big) for (const sy of [-1, 1]) tub(g, P, x0 + len * 0.08, sy * hw * 0.78, 1.6, H(1) + 0.6);
+    director(g, P, x0 + len * (tiers >= 5 ? 0.42 : 0.36), 0, big ? 3.4 : 2.8, H(tiers) + 0.6, 'uk');
+    if (mid) for (const sy of [-1, 1]) director(g, P, x0 + len * 0.14, sy * hw * 0.62, 2.2, H(2) + 1.4, 'uk');
+  } else if ((st === 'us' || st === 'su') && tiers >= 4) { // conning tower ahead, rounded bridge levels, a tower with the main director on top
+    L(0, 0, 1, 0, { front: 'round' }); L(0.06, 0.03, 0.92, 1, { front: 'round' });
+    const cx = x1 - len * 0.13; conning(g, P, cx, 0, len * 0.09, hw * 0.42, H(2) + 0.2);
+    if (big) for (const sy of [-1, 1]) { tub(g, P, x1 - len * 0.1, sy * hw * 0.78, 1.5, H(1) + 0.6); tub(g, P, x0 + len * 0.1, sy * hw * 0.8, 1.5, H(1) + 0.6); }
+    L(0.16, 0.24, 0.82, 2, { front: 'round', windows: true });
+    wings(g, P, x1 - len * 0.27, 1.5, Math.min(cap(x) - 0.4, hw * 1.12), H(2) + 0.2);
+    L(0.28, 0.36, 0.6, 3, { front: 'round', open: st === 'us' });
+    if (tiers >= 5) L(0.36, 0.4, 0.5, 4, { front: 'round' });
+    director(g, P, x0 + len * (tiers >= 5 ? 0.48 : 0.46), 0, big ? 4.2 : 3.2, H(tiers) + 0.8, st);
+    if (st === 'us') for (const sy of [-1, 1]) director(g, P, x0 + len * 0.16, sy * hw * 0.55, 2.6, H(2) + 1.6, 'us');
+  } else if (st === 'merchant') { // bridge house with the wheelhouse and wings across the ship on top
+    L(0, 0, 1, 0); L(0.08, 0.06, 0.9, 1); L(0.3, 0.12, 0.6, 2, { windows: true });
+    wings(g, P, x1 - len * 0.18, 1.4, cap(x1 - len * 0.18) - 0.2, H(2) - 0.4);
+  } else if (st === 'modern') { // flat-roofed boxes with fire-control radars on top
+    L(0, 0, 1, 0); if (tiers >= 2) L(0.08, 0.05, 0.86, 1, { windows: tiers === 2 }); if (tiers >= 3) L(0.32, 0.08, 0.64, 2, { windows: true });
+    if (tiers >= 4) L(0.12, 0.5, 0.6, 3);
+    wings(g, P, x1 - len * 0.12, 1.2, Math.min(cap(x1) - 0.3, hw * 1.05), H(Math.min(tiers, 3) - 1) + 0.1);
+    director(g, P, x0 + len * 0.3, 0, 2.6, H(tiers) + 0.6, 'modern');
+  } else { // destroyers and small ships: a deckhouse, the wheelhouse and an open bridge with the director on top
+    const front = st === 'uk' || st === 'de' || st === 'su' ? 'square' : 'round';
+    L(0, 0, 1, 0, { front }); if (tiers >= 2) L(0.1, 0.06, 0.88, 1, { front, windows: tiers === 2 });
+    if (tiers >= 3) { L(0.22, 0.1, 0.78, 2, { front, open: true }); wings(g, P, x1 - len * 0.2, 1.1, Math.min(cap(x1 - len * 0.2) - 0.2, hw * 1.12), H(2) - 0.3);
+      if (st !== 'small') director(g, P, x0 + len * 0.36, 0, Math.min(2.6, w * 0.32), H(3) + 0.4, st); }
+    else if (st === 'small') level(g, P, x1 - len * 0.45, x1 - len * 0.12, hw * 0.75, H(tiers), { front: 'round', open: true });
+  }
+}
+// After superstructure: an after control position or deckhouse, with its director.
+function supAft(g, d, P, st, x, len, w, tiers) {
+  const x0 = x - len / 2, x1 = x + len / 2, hw = w / 2, H = t => (t + 1) * DECK_H, big = d.L > 150;
+  const front = st === 'us' || st === 'it' ? 'round' : st === 'jp' ? 'taper' : 'square';
+  level(g, P, x0, x1, hw, H(0), { rear: st === 'us' || st === 'it' ? 'round' : 'square', front });
+  for (let t = 1; t < tiers; t++) level(g, P, x0 + len * 0.12 * t, x1 - len * 0.08 * t, hw * (1 - t * 0.14), H(t), { front });
+  if (st === 'merchant' || st === 'small' || d.L < 90) return;
+  if (st === 'de' && tiers >= 2) cyl(g, P, x1 - len * 0.3, 0, hw * 0.38, hw * 0.38, H(tiers));
+  director(g, P, x1 - len * 0.3, 0, big ? 2.8 : 2.2, H(tiers) + (st === 'de' && tiers >= 2 ? 3 : 0.8), st);
+  if (st === 'uk' && big) for (const sy of [-1, 1]) director(g, P, x0 + len * 0.18, sy * hw * 0.62, 2.1, H(tiers - 1) + 1.4, 'uk');
+  if (st === 'us' && big) for (const sy of [-1, 1]) tub(g, P, x0 + len * 0.15, sy * hw * 0.6, 1.4, H(tiers - 1) + 0.6);
+}
+function drawPlanTop(g, d, P) {
+  const p = d.p || {}, L = d.L, B = d.B, h = L / 2, b = B / 2, ink = 'rgba(14,18,20,.85)', st = supSchool(d), S = P.sup;
   // boats in their crutches, cranes and catapults
   for (const [x, n] of p.boats || []) for (let i = 0; i < n; i++) for (const sy of [-1, 1]) {
     const bl = Math.min(9, 4 + L * 0.025), bwd = bl * 0.27, bx = x - (i - (n - 1) / 2) * (bl + 1.5), by = sy * (b * 0.62);
-    contact(g, k => { g.beginPath(); g.ellipse(bx, by, bl / 2 + k, bwd / 2 + k, 0, 0, TAU); }, 0.3);
-    g.beginPath(); g.ellipse(bx, by, bl / 2, bwd / 2, 0, 0, TAU); g.fillStyle = shade(P.sup, 0.18); g.fill(); g.beginPath(); g.ellipse(bx, by, bl * 0.4, bwd * 0.28, 0, 0, TAU); g.fillStyle = shade(P.sup, -0.15); g.fill();
+    aoUnder(g, k => { g.beginPath(); g.ellipse(bx, by, bl / 2 + k, bwd / 2 + k, 0, 0, TAU); }, 0.25);
+    g.beginPath(); g.ellipse(bx, by, bl / 2, bwd / 2, 0, 0, TAU); pfill(g, shade(S, 0.18), 1.8);
+    g.beginPath(); g.ellipse(bx, by, bl * 0.4, bwd * 0.28, 0, 0, TAU); pfill(g, shade(S, -0.15), 1.3);
   }
-  for (const [x, y] of p.crane || []) { g.fillStyle = shade(P.sup, -0.25); g.beginPath(); g.arc(x, y, 1, 0, TAU); g.fill(); g.strokeStyle = ink; g.lineWidth = 0.35; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 11, y + (y >= 0 ? -1.5 : 1.5)); g.stroke(); }
+  for (const [x, y] of p.crane || []) { g.beginPath(); g.arc(x, y, 1, 0, TAU); pfill(g, shade(S, -0.25), 4); g.strokeStyle = HM.on ? hgrey(5) : ink; g.lineWidth = 0.35; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 11, y + (y >= 0 ? -1.5 : 1.5)); g.stroke(); }
   for (const [x, y] of p.cat || []) {
-    const a = y ? Math.sign(y) * 0.32 : PI / 2 * 0.0; g.save(); g.translate(x, y); g.rotate(a + (y ? 0 : PI / 2));
-    g.fillStyle = shade(P.sup, -0.3); g.fillRect(-9, -0.5, 18, 1); planePlan(g, 2, 0, 0, 11, shade(P.sup, 0.1)); g.restore();
+    const a = y ? Math.sign(y) * 0.32 : 0; g.save(); g.translate(x, y); g.rotate(a + (y ? 0 : PI / 2));
+    g.beginPath(); g.rect(-9, -0.5, 18, 1); pfill(g, shade(S, -0.3), 1.2);
+    if (!HM.on) planePlan(g, 2, 0, 0, 11, shade(S, 0.1)); else { g.beginPath(); g.ellipse(2, 0, 4.7, 0.7, 0, 0, TAU); pfill(g, null, 2.4); }
+    g.restore();
   }
-  // funnels
-  for (const [x, rx, ry, y = 0] of p.fun || []) {
-    contact(g, k => { g.beginPath(); g.ellipse(x, y, rx + k, ry + k, 0, 0, TAU); }, 0.5);
-    g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); crownFill(g, P.sup, ry, -0.02);
-    g.beginPath(); g.ellipse(x - rx * 0.06, y, rx * 0.8, ry * 0.74, 0, 0, TAU); g.fillStyle = '#1b1d1e'; g.fill();
-    g.strokeStyle = 'rgba(80,84,86,.5)'; g.lineWidth = 0.08; g.beginPath(); for (let k = -0.6; k <= 0.6; k += 0.3) { g.moveTo(x + rx * k * 0.8, y - ry * 0.68 * Math.sqrt(1 - k * k)); g.lineTo(x + rx * k * 0.8, y + ry * 0.68 * Math.sqrt(1 - k * k)); } g.stroke();
-  }
+  // superstructure blocks
+  (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
+    if (bi === 0) supMain(g, d, P, st, x, len, w, tiers); else supAft(g, d, P, st, x, len, w, tiers);
+    if (!HM.on && w > 5 && d.L > 70) for (const sy of [-1, 1]) for (let k = 0; k < Math.floor(len / 6); k++) { // life rafts along the deckhouse sides
+      const rx = x - len / 2 + 2 + k * 5.5, ry = sy * (w / 2 + 0.55); if (Math.abs(ry) > halfBeamAt(d, rx) - 0.6) continue;
+      rrect(g, rx, ry - 0.45, 2.2, 0.9, 0.35); g.fillStyle = shade(S, 0.2); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.06; g.stroke(); }
+  });
+  // funnels: a searchlight platform round the forward funnel of big ships, a black uptake, a cap grille
+  const hf = clamp(B * 0.5, 3.5, 17);
+  (p.fun || []).forEach(([x, rx, ry, y = 0], fi) => {
+    if (fi === 0 && L > 180 && (st === 'de' || st === 'jp' || st === 'it' || st === 'su')) {
+      level(g, P, x - rx * 1.6, x + rx * 1.4, ry * 1.6, hf * 0.62, { front: 'round', rear: 'round' });
+      for (const sy of [-1, 1]) searchlight(g, P, x - rx * 0.4, sy * ry * 1.35, hf * 0.62 + 0.5);
+    }
+    aoUnder(g, k => { g.beginPath(); g.ellipse(x, y, rx + k, ry + k, 0, 0, TAU); }, 0.5);
+    g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU);
+    if (HM.on) pfill(g, null, hf); else { crownFill(g, S, ry, 0.02); g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.08; g.stroke(); g.strokeStyle = shade(S, -0.22); g.lineWidth = 0.12; g.beginPath(); g.ellipse(x, y, rx * 0.92, ry * 0.88, 0, 0, TAU); g.stroke(); }
+    g.beginPath(); g.ellipse(x - rx * 0.06, y, rx * 0.78, ry * 0.72, 0, 0, TAU);
+    if (HM.on) pfill(g, null, hf - 2.5);
+    else { g.fillStyle = '#1b1d1e'; g.fill(); g.strokeStyle = 'rgba(80,84,86,.5)'; g.lineWidth = 0.08; g.beginPath(); for (let k = -0.6; k <= 0.6; k += 0.3) { g.moveTo(x + rx * k * 0.8, y - ry * 0.68 * Math.sqrt(1 - k * k)); g.lineTo(x + rx * k * 0.8, y + ry * 0.68 * Math.sqrt(1 - k * k)); } g.stroke();
+      g.fillStyle = shade(S, -0.4); for (const sy of [-0.35, 0.35]) { g.beginPath(); g.arc(x + rx * 0.86, y + sy * ry, Math.max(0.15, ry * 0.1), 0, TAU); g.fill(); } }
+  });
   // masts, yards and radar
+  const hm = clamp(B * 0.9, 6, 30);
   for (const [x, kind] of p.mast || []) {
-    g.strokeStyle = ink; g.lineWidth = Math.max(0.18, B * 0.012); const yd = b * (kind === 'k' ? 0.2 : 0.62);
-    g.beginPath(); g.moveTo(x, -yd); g.lineTo(x, yd); if (kind === 't') { g.moveTo(x, 0); g.lineTo(x - B * 0.2, -B * 0.12); g.moveTo(x, 0); g.lineTo(x - B * 0.2, B * 0.12); } g.stroke();
+    const yd = b * (kind === 'k' ? 0.2 : 0.62), lw = Math.max(0.18, B * 0.012);
+    g.strokeStyle = HM.on ? hgrey(hm * 0.85) : ink; g.lineWidth = lw; g.beginPath(); g.moveTo(x, -yd); g.lineTo(x, yd); g.stroke();
+    if (kind === 't') { g.strokeStyle = HM.on ? hgrey(hm * 0.5) : ink; g.beginPath(); g.moveTo(x, 0); g.lineTo(x - B * 0.2, -B * 0.12); g.moveTo(x, 0); g.lineTo(x - B * 0.2, B * 0.12); g.stroke();
+      g.beginPath(); g.rect(x - 1.2, -1.3, 2.4, 2.6); pfill(g, shade(S, -0.05), hm * 0.75); }                  // starfish platform at the head of the tripod
     if (kind === 'k') { g.lineWidth = 0.2; g.beginPath(); for (const sy of [-1, 1]) { g.moveTo(x, sy * yd); g.lineTo(x + (x > 0 ? 9 : -9), sy * b * 0.3); } g.stroke(); }
-    if (kind === 'l') { const s = Math.max(1.4, B * 0.12); g.strokeStyle = 'rgba(14,18,20,.7)'; g.lineWidth = 0.1; g.strokeRect(x - s / 2, -s / 2, s, s); g.beginPath(); g.moveTo(x - s / 2, -s / 2); g.lineTo(x + s / 2, s / 2); g.moveTo(x + s / 2, -s / 2); g.lineTo(x - s / 2, s / 2); g.stroke();
-      g.fillStyle = shade(P.sup, 0.1); g.fillRect(x - 0.35, -s * 1.4, 0.7, s * 2.8); }
-    g.fillStyle = '#1c1f21'; g.beginPath(); g.arc(x, 0, Math.max(0.3, B * 0.025), 0, TAU); g.fill();
-    if (d.radar && kind !== 'k') { g.strokeStyle = shade(P.sup, 0.15); g.lineWidth = 0.35; g.beginPath(); g.arc(x - 0.8, 0, Math.max(1.6, B * 0.12), -1.1, 1.1); g.stroke(); }
+    if (kind === 'l') { const s = Math.max(1.4, B * 0.12); g.strokeStyle = HM.on ? hgrey(hm * 0.7) : 'rgba(14,18,20,.7)'; g.lineWidth = 0.12; g.strokeRect(x - s / 2, -s / 2, s, s); g.beginPath(); g.moveTo(x - s / 2, -s / 2); g.lineTo(x + s / 2, s / 2); g.moveTo(x + s / 2, -s / 2); g.lineTo(x - s / 2, s / 2); g.stroke();
+      g.beginPath(); g.rect(x - 0.35, -s * 1.4, 0.7, s * 2.8); pfill(g, shade(S, 0.1), hm * 0.9); }
+    g.beginPath(); g.arc(x, 0, Math.max(0.3, B * 0.025), 0, TAU); pfill(g, '#1c1f21', hm);
+    if (d.radar && kind !== 'k') { g.strokeStyle = HM.on ? hgrey(hm + 1) : shade(S, 0.15); g.lineWidth = 0.35; g.beginPath(); g.arc(x - 0.8, 0, Math.max(1.6, B * 0.12), -1.1, 1.1); g.stroke(); }
   }
-  g.fillStyle = P.ens; g.fillRect(-h + 0.4, -0.6, 1.4, 1.2);                                        // ensign staff
+  if (!HM.on) { g.fillStyle = P.ens; g.fillRect(-h + 0.4, -0.6, 1.4, 1.2); }                       // ensign staff
 }
 function drawFlightDeck(g, d, P) {
   const f = d.p.fd, L = d.L, fl = L * f.len, fx = f.x || 0, w = f.w, x0 = fx - fl / 2, x1 = fx + fl / 2;
@@ -703,13 +1078,14 @@ function drawFlightDeck(g, d, P) {
   g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.2; for (const ex of [0.62, 0.3, -0.25]) g.strokeRect(fx + fl * ex / 2 - 6, -6, 12, 12);                                   // lifts
   g.fillStyle = shade(P.sup, -0.05); for (let i = 0; i < Math.round(fl / 22); i++) planePlan(g, x0 + 9 + i * 7.5, (i % 2 ? 1 : -1) * w * 0.22, 0, 11, shade(P.sup, -0.02)); // ranged aircraft aft
 }
-function drawIslandTop(g, d, P) {
-  const f = d.p.fd, w = f.w; const [ix, il, iw] = f.isl, iy = w / 2 - iw / 2 + 1.2;
-  for (let t = 0; t < 3; t++) { const ll = il * (1 - t * 0.2), ww = iw * (1 - t * 0.16), xx = ix + t * il * 0.05;
-    const p2 = k => rrect(g, xx - ll / 2 - k, iy - ww / 2 - k, ll + 2 * k, ww + 2 * k, 1.2 + k); contact(g, p2, 0.45); p2(0); crownFill(g, P.sup, ww / 2, -0.1 + t * 0.06); }
-  g.beginPath(); g.ellipse(ix - il * 0.12, iy, il * 0.13, iw * 0.3, 0, 0, TAU); g.fillStyle = '#1b1d1e'; g.fill();
-  g.strokeStyle = 'rgba(14,18,20,.85)'; g.lineWidth = 0.3; g.beginPath(); g.moveTo(ix + il * 0.18, iy - iw * 0.7); g.lineTo(ix + il * 0.18, iy + iw * 0.7); g.stroke();
-  if (d.radar) { g.strokeStyle = shade(P.sup, 0.15); g.lineWidth = 0.4; g.beginPath(); g.arc(ix + il * 0.12, iy, 2.4, -1.1, 1.1); g.stroke(); }
+function drawIslandTop(g, d, P) { // the carrier's island: stepped levels, the funnel, a tripod and radar
+  const f = d.p.fd, w = f.w; const [ix, il, iw] = f.isl, iy = w / 2 - iw / 2 + 1.2, hd = 2;  // the flight deck stands ~2 m above the hangar-deck plan
+  for (let t = 0; t < 4; t++) { const ll = il * (1 - t * 0.17), ww = iw * (1 - t * 0.14), xx = ix + t * il * 0.05;
+    level(g, P, xx - ll / 2, xx + ll / 2, ww / 2, hd + (t + 1) * DECK_H, { y: iy, front: 'round', windows: t === 2, open: t === 3 }); }
+  g.beginPath(); g.ellipse(ix - il * 0.12, iy, il * 0.13, iw * 0.3, 0, 0, TAU); pfill(g, '#1b1d1e', hd + 12);
+  director(g, P, ix + il * 0.2, iy, 2.4, hd + 5 * DECK_H + 0.6, YARD_STYLE[d.yard] === 'us' && d.era < 2 ? 'us' : 'modern');
+  g.strokeStyle = HM.on ? hgrey(hd + 18) : 'rgba(14,18,20,.85)'; g.lineWidth = 0.3; g.beginPath(); g.moveTo(ix + il * 0.05, iy - iw * 0.7); g.lineTo(ix + il * 0.05, iy + iw * 0.7); g.stroke();
+  if (d.radar) { g.strokeStyle = HM.on ? hgrey(hd + 20) : shade(P.sup, 0.15); g.lineWidth = 0.4; g.beginPath(); g.arc(ix + il * 0.0, iy, 2.4, -1.1, 1.1); g.stroke(); }
 }
 function spriteWide(d) { const f = d.p && d.p.fd; return f ? Math.max(d.B, f.w * (f.ang ? 1.75 : 1)) : d.B; }
 // A chain of half-size copies, so a ship drawn small samples a level near its on-screen size and stays sharp.
@@ -721,55 +1097,13 @@ function hullSprite(type, pal, withMounts) {
   const key = type + '|' + pal + (withMounts ? '|m' : ''); if (sprCache[key]) return sprCache[key];
   const d = HULLS[type], P = PAL[pal] || PAL.player, wide = spriteWide(d), spr = clamp(1500 / d.L, 4, 16);
   const mk = part => { const c = document.createElement('canvas'); c.width = Math.ceil((d.L + 8) * spr); c.height = Math.ceil((wide + 8) * spr); const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.scale(spr, spr); drawPlan(g, d, P, part);
-    if (withMounts && part === 'all') d.slots.forEach(s => { if (d.kind === 'sub' && s.s === 'T') return; g.save(); g.translate(s.x, s.y); drawMount(g, s.def, s.arcs[0][0], P, 0, d.kind === 'sub'); g.restore(); });
+    if (withMounts && part === 'all') d.slots.forEach(s => { if (d.kind === 'sub' && s.s === 'T') return; g.save(); g.translate(s.x, s.y); drawMount(g, s.def, s.arcs[0][0], P, 0, d.kind === 'sub', false, undefined, YARD_STYLE[d.yard]); g.restore(); });
     return c; };
   const c = mk('all'), out = { c, lv: mipChain(c), spr, w: c.width / spr, h: c.height / spr };
   if (!withMounts) { const base = mk('base'), top = mk('top'); out.base = mipChain(base); out.top = mipChain(top);
     const sh = document.createElement('canvas'); sh.width = top.width; sh.height = top.height; const sg = sh.getContext('2d'); sg.filter = 'blur(' + Math.round(spr * 0.8) + 'px)'; sg.drawImage(top, 0, 0);
     sg.filter = 'none'; sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#000'; sg.fillRect(0, 0, sh.width, sh.height); out.topSh = mipChain(sh); }
   return (sprCache[key] = out);
-}
-// Guns, AA mounts and torpedo tubes, drawn to scale with barrels along +x. shadow draws only the silhouette.
-// part: 'barrels' or 'house' draws only that half of a gun mount, so an engine can recoil the barrels alone.
-function drawMount(g, wid, ta, P, recoil, stowed, shadow, part) {
-  const w = WEAPONS[wid]; if (!w) return;
-  g.save(); g.rotate(ta);
-  const sh = 'rgba(0,0,0,.26)';
-  if (w.kind === 'gun') {
-    const tw = w.tw, tl = w.tl, n = w.barrels, gap = w.gap || 0, front = tl * 0.42, rear = -tl * 0.58, rc = recoil * w.bl * 0.12;
-    for (let i = 0; i < n && part !== 'house'; i++) {
-      const y = (i - (n - 1) / 2) * gap, x0 = front - 0.6 - rc, x1 = front + w.bl - rc;
-      g.fillStyle = shadow ? sh : shade(P.sup, -0.3); g.beginPath(); g.moveTo(x0, y - w.bw * 0.62); g.lineTo(x1, y - w.bw * 0.42); g.lineTo(x1, y + w.bw * 0.42); g.lineTo(x0, y + w.bw * 0.62); g.closePath(); g.fill();
-      if (!shadow) { g.fillStyle = shade(P.sup, -0.45); g.fillRect(x1 - w.bw * 0.5, y - w.bw * 0.48, w.bw * 0.5, w.bw * 0.96); g.fillRect(front - 0.2 - rc, y - w.bw * 0.75, Math.max(0.4, w.bw * 0.9), w.bw * 1.5); }
-    }
-    if (part === 'barrels') { g.restore(); return; }
-    if (w.open) {
-      g.beginPath(); g.arc(-tl * 0.1, 0, tw * 0.5, -1.15, 1.15); g.arc(-tl * 0.1, 0, tw * 0.36, 1.15, -1.15, true); g.closePath(); g.fillStyle = shadow ? sh : shade(P.sup, -0.06); g.fill();
-      g.beginPath(); g.arc(-tl * 0.2, 0, tw * 0.28, 0, TAU); g.fillStyle = shadow ? sh : shade(P.sup, -0.22); g.fill();
-    } else {
-      g.beginPath(); g.moveTo(front, -tw * 0.38); g.lineTo(front - tl * 0.1, -tw / 2); g.lineTo(rear + tl * 0.25, -tw / 2); g.quadraticCurveTo(rear, -tw / 2, rear, 0);
-      g.quadraticCurveTo(rear, tw / 2, rear + tl * 0.25, tw / 2); g.lineTo(front - tl * 0.1, tw / 2); g.lineTo(front, tw * 0.38); g.closePath();
-      if (shadow) { g.fillStyle = sh; g.fill(); }
-      else {
-        crownFill(g, P.sup, tw / 2, -0.03); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = Math.max(0.08, tw * 0.02); g.stroke();
-        g.strokeStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.moveTo(front - tl * 0.35, -tw * 0.46); g.lineTo(front - tl * 0.35, tw * 0.46); g.stroke();
-        g.fillStyle = shade(P.sup, -0.28); for (const sy of [-1, 1]) g.fillRect(front - tl * 0.22, sy * tw * 0.3 - tw * 0.05, tl * 0.09, tw * 0.1);           // sighting hoods
-        g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = Math.max(0.04, tw * 0.008); g.beginPath(); for (const fy of [-0.18, 0.18]) { g.moveTo(rear + tl * 0.12, fy * tw); g.lineTo(front - tl * 0.38, fy * tw); } g.stroke(); // roof plates
-        g.fillStyle = shade(P.sup, -0.18); g.beginPath(); g.arc(rear + tl * 0.3, 0, tw * 0.07, 0, TAU); g.fill();                                                       // access hatch
-        if (tw > 6) { g.fillStyle = '#2a2d2f'; for (const sy of [-1, 1]) { g.beginPath(); g.arc(rear + tl * 0.48, sy * tw * 0.2, tw * 0.035, 0, TAU); g.fill(); } }       // vents
-        if (w.size === 'H' || w.size === 'L') { g.fillStyle = shade(P.sup, -0.12); for (const sy of [-1, 1]) g.fillRect(rear + tl * 0.16, sy > 0 ? tw / 2 - 0.1 : -tw / 2 - tw * 0.07 + 0.1, tl * 0.16, tw * 0.07); } // rangefinder ends
-      }
-    }
-  } else if (w.kind === 'aa') {
-    if (wid === 'ciws') { g.fillStyle = shadow ? sh : shade(P.sup, -0.25); g.fillRect(0.4, -0.3, 2.4, 0.6); g.beginPath(); g.arc(-0.2, 0, 1.25, 0, TAU); g.fillStyle = shadow ? sh : '#c4c6c1'; g.fill(); if (!shadow) { g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.08; g.stroke(); } }
-    else if (wid === 'aa40') { g.fillStyle = shadow ? sh : shade(P.sup, -0.32); for (const y of [-0.8, -0.32, 0.32, 0.8]) g.fillRect(0.6, y - 0.09, 3.2, 0.18); g.beginPath(); g.arc(0, 0, 1.15, 0, TAU); g.fillStyle = shadow ? sh : shade(P.sup, -0.06); g.fill(); }
-    else { g.fillStyle = shadow ? sh : shade(P.sup, -0.32); g.fillRect(0.2, -0.07, 2.2, 0.14); g.beginPath(); g.arc(0, 0, 0.75, -1.2, 1.2); g.lineWidth = 0.2; g.strokeStyle = shadow ? sh : shade(P.sup, -0.1); g.stroke(); }
-  } else if (w.kind === 'torp' && !stowed) {
-    const tl = wid === 'tor93' ? 9 : 7.4, n = Math.min(5, w.count + 1), tw = 0.62;
-    g.beginPath(); g.arc(0, 0, tl * 0.18, 0, TAU); g.fillStyle = shadow ? sh : shade(P.sup, -0.25); g.fill();
-    for (let i = 0; i < n; i++) { const y = (i - (n - 1) / 2) * (tw + 0.08); rrect(g, -tl * 0.45, y - tw / 2, tl, tw, tw / 2); g.fillStyle = shadow ? sh : shade(P.sup, -0.08); g.fill(); if (!shadow) { g.fillStyle = '#1b1d1e'; g.fillRect(tl * 0.5, y - tw * 0.32, 0.25, tw * 0.64); } }
-  }
-  g.restore();
 }
 // Static plan (hull and standard armament) used in menus.
 const thumbCache = {};
@@ -780,7 +1114,7 @@ function shipThumb(type, fit, pal = 'player', width = 220) {
   c.width = Math.ceil((d.L + 10) * scale * s2); c.height = Math.ceil((sp.h + 6) * scale * s2);
   const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.scale(scale * s2, scale * s2);
   g.drawImage(sp.c, -sp.w / 2, -sp.h / 2, sp.w, sp.h);
-  d.slots.forEach((s, i) => { const wid = fit ? fit[i] : s.def; if (!wid || d.kind === 'sub' && s.s === 'T') return; g.save(); g.translate(s.x, s.y); drawMount(g, wid, s.arcs[0][0], P, 0, d.kind === 'sub'); g.restore(); });
+  d.slots.forEach((s, i) => { const wid = fit ? fit[i] : s.def; if (!wid || d.kind === 'sub' && s.s === 'T') return; g.save(); g.translate(s.x, s.y); drawMount(g, wid, s.arcs[0][0], P, 0, d.kind === 'sub', false, undefined, YARD_STYLE[d.yard]); g.restore(); });
   return (thumbCache[key] = c.toDataURL());
 }
 
@@ -2501,7 +2835,7 @@ function drawCShip(s) {
     const tx = lx * 1.4, ty = ly * 1.4;
     for (const pass of [1, 0]) for (const m of s.mounts) {
       if (m.w.kind === 'ssm' || m.w.kind === 'sam') continue;
-      ctx.save(); ctx.translate(m.slot.x + (pass ? tx : 0), m.slot.y + (pass ? ty : 0)); drawMount(ctx, m.wid, m.ta, P, m.recoil, s.sub, pass === 1);
+      ctx.save(); ctx.translate(m.slot.x + (pass ? tx : 0), m.slot.y + (pass ? ty : 0)); drawMount(ctx, m.wid, m.ta, P, m.recoil, s.sub, pass === 1, undefined, YARD_STYLE[d.yard]);
       if (!pass && m.dead) drawPuff('15,12,10', 0, 0, (m.w.tw || 2) * 0.75, 0.75 * alpha);
       ctx.restore();
     }

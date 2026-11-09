@@ -660,22 +660,35 @@ class ShipThumb extends Control:
     var id = ""
     var pal = "player"
     var fit = null
-    func _ready() -> void: texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+    var guns: Control
+    func _ready() -> void:
+        texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+        guns = ThumbMounts.new(); guns.thumb = self; guns.material = GameData.mount_material(pal); guns.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        guns.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(guns)
     func _draw() -> void:
-        var info: Dictionary = GameData.sprites.ships[id]; var d: Dictionary = GameData.hulls[id]
+        var info: Dictionary = GameData.sprites.ships[id]
         var k = size.x / info.w   # pixels per metre
         var c = size / 2
         for layer in ["base", "top"]:
             var t = GameData.ship_tex(id, pal, layer); draw_texture_rect(t, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false)
+        if guns: guns.queue_redraw()
+
+## The armament over a thumbnail, lit by the mount shader in the yard's national style.
+class ThumbMounts extends Control:
+    var thumb
+    func _draw() -> void:
+        var id: String = thumb.id; var fit = thumb.fit
+        var info: Dictionary = GameData.sprites.ships[id]; var d: Dictionary = GameData.hulls[id]
+        var k = size.x / info.w; var c = size / 2; var style := GameData.style_of(id)
         for i in d.slots.size():
             var sl: Dictionary = d.slots[i]; var wid = fit[i] if fit != null else sl.def
             if wid == null or wid == "" or not GameData.sprites.mounts.has(wid): continue
             if d.kind == "sub" and sl.s == "T": continue
-            var mi: Dictionary = GameData.sprites.mounts[wid]; var sc: float = k / mi.spr
-            draw_set_transform(c + Vector2(sl.x, sl.y) * k, sl.arcs[0][0], Vector2(sc, sc))
-            var o = -Vector2(mi.ox, mi.oy) * mi.spr
-            if mi.get("split", false): draw_texture(GameData.mount_tex(wid, pal + "_barrels"), o)
-            draw_texture(GameData.mount_tex(wid, pal), o)
+            var mi: Dictionary = GameData.sprites.mounts[wid]; var sc: float = k / mi.spr; var ta: float = sl.arcs[0][0]
+            draw_set_transform(c + Vector2(sl.x, sl.y) * k, ta, Vector2(sc, sc))
+            var o = -Vector2(mi.ox, mi.oy) * mi.spr; var code := GameData.mount_code(Vector2(0.55, 0.85).rotated(-ta), 0)
+            if mi.get("split", false): draw_texture(GameData.mount_img(wid, style, true), o, code)
+            draw_texture(GameData.mount_img(wid, style), o, code)
         draw_set_transform(Vector2.ZERO)
 
 func _yard(box: Control, p: Dictionary) -> void:

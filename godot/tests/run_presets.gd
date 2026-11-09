@@ -18,5 +18,6 @@ func _ready() -> void:
         var r: Dictionary = sim.result
         if not sim.finished: ok = false
         print("%-18s %s  battle %4d s  %.2f ms/step  sunk %d struck %d escaped %d lost %d" % [pr.name, "WIN " if r.get("victory", false) else "----", int(sim.t), float(Time.get_ticks_msec() - t0) / steps, r.get("sunk", []).size(), r.get("struck", []).size(), r.get("escaped", []).size(), r.get("lost", []).size()])
+        print("    systems: ", sim.sys_log)
     print("ALL FINISHED" if ok else "SOME DID NOT FINISH")
     get_tree().quit()

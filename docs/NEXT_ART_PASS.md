@@ -1,4 +1,6 @@
-# Next: art pass 2 — turrets and superstructures
+# Art pass 2: turrets and superstructures (done)
+
+> **Status, 10 Nov 2026:** done. See "What was built" at the end. The brief below is kept for reference.
 
 Brief for the next working session. Written from the owner's feedback after playing the Godot build (9 Nov 2026). Read [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION.md) and [`ROADMAP.md`](ROADMAP.md) first; the art reference remains **Rule the Waves 3**: realistic top-down plans at true proportions, one consistent paint and lighting scheme, no cartoon outlines or bright decorative colours.
 
@@ -55,3 +57,30 @@ This probably needs richer design data per block (shape kind, platforms, directo
 - After changing turret footprints or superstructure blocks, run `godot --headless --path godot -s res://tests/overlap_audit.gd` (gun mounts must not overlap superstructure, except deliberate gun-house mounts) and the arcs test; `BattleSim.clear_bearings` derives firing arcs from the same blocks.
 - `godot --headless --path godot res://tests/run_presets.tscn` must still play every preset to the end.
 - Export for the owner (Windows 11): `godot --headless --path godot --export-release "Windows Desktop" ../build/IronMeridian.exe`, then zip and send it. The Windows template is in `~/.local/share/godot/export_templates/4.3.stable/`; in a fresh container run `tools/fetch_from_zip.py` (usage in its header) to pull only `windows_release_x86_64.exe` out of the 1 GB export-templates archive.
+
+## What was built
+
+- **Height maps.** `drawPlan(…, 'top')` and `drawMount` draw every part twice: in colour, and with `HM.on`, where each fill is a grey that encodes height in metres (`H_MAX` = 40 m). The bake writes `ships/<id>/top_h.png` per design. Mounts are baked once per national style in neutral grey, with height packed into the green channel (`mounts/<wid>/<style>.png`, `<style>_barrels.png`) and a blurred contact shadow (`ao.webp`). The old per-palette mount images and `top_shadow` are gone.
+- **Lighting in Godot.** `shaders/ship_light.gdshader` lights the superstructure's slopes and step edges from the sun's direction, one screen pixel wide at any zoom. It also marches through the height map towards the sun to cast shadows across lower levels and the deck, cone-traced through blurrier mip levels and jittered so edges stay soft. `shaders/mount_light.gdshader` tints mounts with the flag's paint and lights their roofs, sloped plates and edges. Each draw's vertex colour carries the sun direction in the mount's frame and its level. In `battle.gd`, `MountLayer` draws each level's contact shadows and crisp cast shadows (raised turrets cast further), then the lit mounts.
+- **National turret styles** (`turretForm` in `src/game.html`; style from `YARD_STYLE`). Research found most big-gun houses are stretched hexagons with rangefinder ears at the rear sides, and the styles vary that shape:
+  - American: long cheeks, slab sides; ears on 16-inch turrets only.
+  - British: slab-sided boxes with a sloped front roof plate.
+  - German: sloped face and roof plate, big ears.
+  - Japanese: faceted, with sloped sides, and Yamato's rangefinder right across the rear.
+  - Italian: rounded corners.
+  - Soviet: long and low, with sloped sides.
+  - Open-backed shields for the British 4.7-inch and the German and Italian 120 mm guns.
+  - Era II automatic guns: low boxes sloped on every face.
+  - Caveat: navweaps.com refused automated fetches, so most of these details are standard reference knowledge rather than re-checked against plans. Check them against photographs before fine-tuning.
+- **Superstructures by school** (`supMain`, `supAft`):
+  - Japanese: Yamato's pagoda; Takao's terraced bridge block.
+  - German: conning tower, round tower mast and rangefinder cupolas.
+  - British: box bridge, compass platform, DCT and HACS directors.
+  - American: conning tower, rounded bridge, open bridge, Mk 37/38 directors and 40 mm tubs.
+  - Italian: cylindrical tower with stacked rangefinders.
+  - Soviet, modern (missile ships) and merchant forms.
+  - Every school gets bridge wings, searchlights, deck furniture and funnel platforms.
+  - Footprints (`p.sup`) are unchanged, so arcs and the overlap audit are unaffected.
+- **Checks.** `tests/shot_art.tscn -- <out.png> <zoom> <ids> [heading] [offset]` frames any designs.
+
+Open items: per-design overrides where a school's procedural form misses a class's signature; tower shadows falling across turrets (mounts are drawn after the superstructure); a playtest of the shadow strength at the default zoom.

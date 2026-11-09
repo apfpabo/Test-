@@ -72,6 +72,15 @@ func _draw() -> void:
         _text(Vector2(x + 10, y + 46), line, DIM, 12)
         _text(Vector2(x + 10, y + 64), "Hull", DIM, 12); _bar(Vector2(x + 60, y + 56), 350, 7, f.hull / f.max_hull, GREEN)
         _text(Vector2(x + 10, y + 78), "Armour", DIM, 12); _bar(Vector2(x + 60, y + 72), 350, 5, f.armor / maxf(1.0, f.d.armor), Color(0.62, 0.67, 0.67))
+        # damaged subsystems, shown only when something is wrong
+        var sysl = []
+        if f.mag_fire > 0: sysl.append("MAGAZINE FIRE %d s" % int(f.mag_fire))
+        if f.eng_out > 0: sysl.append("engines stopped %d s" % int(f.eng_out))
+        elif f.eng < 0.95: sysl.append("machinery %d%%" % int(f.eng * 100))
+        if f.jam > 0: sysl.append("rudder jammed %d s" % int(f.jam))
+        if f.fc < 0.95: sysl.append("fire control %d%%" % int(f.fc * 100))
+        if f.cf < 0.9: sysl.append("crew %d%%" % int(f.cf * 100))
+        if sysl.size(): _text(Vector2(x + 10, y - 8), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 13)
         var groups = {}
         for m in f.mounts: if not groups.has(m.w.name): groups[m.w.name] = []
         for m in f.mounts: groups[m.w.name].append(m)

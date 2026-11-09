@@ -82,6 +82,14 @@ class CShip:
     var main_sz = ""
     var max_lvl = 0
     var view: Node = null
+    # internal subsystems (see hit_systems): machinery and fire control as 0..1, timers in battle seconds
+    var eng = 1.0          # machinery: scales top speed
+    var eng_out = 0.0      # engines stopped for this long
+    var jam = 0.0          # rudder jammed for this long
+    var jam_r = 0.0        # where it jammed
+    var fc = 1.0           # fire control: salvo spread grows as it falls
+    var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
+    var mag_x = 0.0        # where along the hull
 
 class Part:
     var t: int
@@ -130,6 +138,8 @@ var enemy_era = 1
 var sonar_tech = false
 var on_boom: Callable    # (pos, vol, freq, rate) for sound
 var on_pop: Callable     # (pos, vol) for light AA fire
+var sys_log := {}        # subsystem events this battle, for tests and balance
+func _log(k: String) -> void: sys_log[k] = sys_log.get(k, 0) + 1
 var small_craft = [false, false]  # whether each side still has torpedo boats or submarines afloat
 var dcs: Array = []              # depth charges sinking towards their set depth
 
@@ -336,7 +346,7 @@ func visible_to(s: CShip, side: int) -> bool:
     return s.side == side or not s.sub or detected_by(s, side)
 
 func speed_mult(s: CShip) -> float:
-    return (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull)
+    return (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
 
 func gun_range(s: CShip, w: Dictionary) -> float:
     return w.range * (1.15 if s.tech.has("radar") and w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0)
@@ -430,7 +440,7 @@ func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary) -> void:
     var p = world_pt(s, m.slot.x, m.slot.y); var ang = s.a + m.ta
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
     var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1.15 if s.side == 1 else 1.0)
-    var spread: float = w.spread * fc
+    var spread: float = w.spread * fc / maxf(0.3, s.fc)
     for i in int(w.get("barrels", 1)):
         var a = ang + (randf() - 0.5) * 2 * spread
         var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
@@ -639,6 +649,74 @@ func damage(s: CShip, dmg: float, type: String) -> void:
         s.struck = true; s.throttle = 0; say(s.rec.name + " strikes her colours!")
         if lock == s: lock = null
 
+## Internal subsystems. Where a hit lands along the hull decides what it reaches, and how far it gets through the armour
+## decides whether it does: magazines under each centreline turret (a fire that damage control must flood before it
+## reaches the charges, or outright detonation from a deep hit), machinery amidships (power falls, and a heavy hit
+## stops the engines for a while), steering gear right aft (the rudder jams), fire control in the bridge block (salvo
+## spread grows) and crew spaces forward (crew lost). Torpedoes strike below the belt and reach machinery and steering.
+func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
+    if not s.alive or s.d.kind == "carrier" and kind == "torp" and randf() < 0.3: return
+    var l = (wp - s.pos).rotated(-s.a); var L: float = s.d.L
+    var pen: float
+    match kind:
+        "shell": pen = dmg / (dmg + s.armor)
+        "bomb": pen = dmg / (dmg + s.armor * 0.6)
+        "torp": pen = 1.0 - minf(0.5, s.d.armor / 700.0)
+        _: pen = 0.75
+    var heavy: float = clampf(dmg / 250.0, 0.15, 1.5)
+    var ours: bool = s.side == 0
+    var nm: String = s.rec.name
+    # magazines: below the centreline turrets of the main and secondary batteries
+    if kind != "torp" or randf() < 0.4:
+        for m in s.mounts:
+            if m.w.kind != "gun" or m.slot.y != 0 or not ["M", "L", "H"].has(m.w.size): continue
+            if absf(l.x - m.slot.x) > m.w.tl * 0.6 + 2.0: continue
+            if randf() < 0.035 * pen * pen * heavy: _log("detonation (hit)"); detonate(s); return
+            if s.mag_fire <= 0 and randf() < 0.14 * pen * heavy:
+                s.mag_fire = 25.0 + randf() * 25.0; s.mag_x = m.slot.x; _log("magazine fire")
+                say(("Fire in the %s magazine! Damage control is fighting it." if ours else "A fire is spreading aboard the %s.") % (nm if not ours else ("forward" if m.slot.x > 0 else "after")), 2.5)
+            break
+    # machinery amidships
+    if absf(l.x) < L * 0.2 and pen > 0.3:
+        s.eng = maxf(0.0, s.eng - (0.05 + 0.12 * pen) * heavy * (2.0 if kind == "torp" else 1.0))
+        if s.eng_out <= 0 and (s.eng < 0.15 or randf() < 0.035 * pen * heavy):
+            s.eng_out = 30.0 + randf() * 60.0; _log("engines stopped")
+            say(("Engine room hit! The %s has lost power." if ours else "The %s loses way, her engines stopped.") % nm, 2.5)
+    # steering gear right aft
+    if l.x < -L * 0.38 and s.jam <= 0 and randf() < (0.6 if kind == "torp" else 0.3 * pen):
+        _log("rudder jammed"); s.jam = 20.0 + randf() * 50.0; s.jam_r = clampf(s.rud + (randf() - 0.5) * 0.6, -1.0, 1.0)
+        if ours: say("Steering gear hit! The %s's rudder is jammed." % nm, 2.5)
+    # fire control in the bridge block
+    var sup: Array = s.d.p.get("sup", [])
+    if not sup.is_empty() and absf(l.x - float(sup[0][0])) < float(sup[0][1]) / 2 + 2.0 and randf() < 0.35 * maxf(pen, 0.3):
+        s.fc = maxf(0.3, s.fc - 0.3 * heavy)
+        if ours: say("The %s's director is hit: gunnery suffers." % nm, 2.0)
+    # crew spaces
+    s.cf = maxf(0.2, s.cf - 0.003 * dmg / 100.0 * pen * (3.0 if l.x > L * 0.15 and l.x < L * 0.4 else 1.0))
+
+## A magazine goes up: the ship is lost.
+func detonate(s: CShip) -> void:
+    for i in 4: fx_boom(s.pos + Vector2((randf() - 0.5) * s.d.L * 0.5, 0).rotated(s.a), s.d.L * (0.4 + randf() * 0.3), 1.6)
+    part(P.FLASH, s.pos, 0.5, s.d.L * 0.8); boom(s.pos, 1.0, 160.0, 0.5); boom(s.pos, 0.8, 220.0, 0.7)
+    say(("Her magazine explodes! The %s is gone." if s.side == 1 else "The %s's magazine explodes!") % s.rec.name, 3.5)
+    s.mag_fire = 0.0; damage(s, s.hull + 1.0, "magazine")
+
+## Subsystems over time: damage control fights magazine fires (flooding them silences the guns above) and gets
+## machinery, steering and fire control partly back.
+func systems_tick(s: CShip, dt: float) -> void:
+    var dc: float = 1.0 + 0.3 * s.sk.dc
+    if s.mag_fire > 0:
+        s.mag_fire -= dt
+        if randf() < dt * 0.08 * dc * (0.6 + 0.4 * s.cf):
+            s.mag_fire = 0.0; _log("magazine flooded")
+            for m in s.mounts: if m.w.kind == "gun" and m.slot.y == 0 and absf(m.slot.x - s.mag_x) < m.w.tl * 0.6 + 2.0: m.dead = true
+            say(("Magazine flooded aboard the %s: the turret above is out of action." if s.side == 0 else "The %s floods a magazine.") % s.rec.name, 2.5)
+        elif s.mag_fire <= 0: _log("detonation (fire)"); detonate(s); return
+    if s.eng_out > 0: s.eng_out = maxf(0.0, s.eng_out - dt * dc); if s.eng_out == 0 and s.side == 0: say("The %s has steam again." % s.rec.name, 2.0)
+    if s.eng < 0.8: s.eng = minf(0.8, s.eng + dt * 0.002 * dc)
+    if s.jam > 0: s.jam = maxf(0.0, s.jam - dt * dc)
+    if s.fc < 0.85: s.fc = minf(0.85, s.fc + dt * 0.002 * dc)
+
 ## A hit leaves a scorch (and a hole for shells) in ship space; heavier hits may start a fire or knock out a mount.
 func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool) -> void:
     if not s.alive: return
@@ -753,7 +831,7 @@ func update_air(dt: float) -> void:
                 for k in int(q.n):
                     var hit = randf() < (0.55 if q.jet else 0.4)
                     var bp = tg.pos + Vector2((randf() - 0.5) * (tg.d.L * 0.4 if hit else 220.0), (randf() - 0.5) * (tg.d.B if hit else 220.0))
-                    if hit: mark_hit(tg, bp, 3.0, true); damage(tg, 260 if q.jet else 230, "bomb"); fx_boom(bp, 26.0, 0.8)
+                    if hit: mark_hit(tg, bp, 3.0, true); hit_systems(tg, bp, 260 if q.jet else 230, "bomb"); damage(tg, 260 if q.jet else 230, "bomb"); fx_boom(bp, 26.0, 0.8)
                     else: fx_splash(bp, 22.0)
                 q.state = "home"; boom(tg.pos, 0.4, 250.0)
         else:
@@ -796,7 +874,9 @@ func step(dtv: float) -> void:
         var t_acc: float = 40.0 + s.d.L * 0.6
         s.v += clampf(want - s.v, -top / (t_acc * 1.4) * dt, top / t_acc * dt)
         # helm: about 10 s to put the rudder hard over, then the ship settles into a turn on its tactical diameter
-        s.rud += clampf(s.rudder - s.rud, -dt / 10.0, dt / 10.0)
+        if s.jam > 0: s.rud = s.jam_r   # steering gear out: the rudder stays where it jammed
+        else: s.rud += clampf(s.rudder - s.rud, -dt / 10.0, dt / 10.0)
+        systems_tick(s, dt)
         var w_target: float = s.rud * s.v / (s.d.td / 2) * (1 + 0.1 * s.sk.helm) * (0.8 if sm else 1.0)
         s.w += (w_target - s.w) * minf(1.0, dt / yaw_lag(s))
         s.a += s.w * dt
@@ -862,7 +942,7 @@ func step(dtv: float) -> void:
             if absf(l.x) < s.d.L / 2 + 3 and absf(l.y) < s.d.B / 2 + 3: hit = s; break
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
         if hit != null:
-            mark_hit(hit, sh.pos, sz, true); damage(hit, sh.dmg, "shell"); fx_boom(sh.pos, 7 * sz, 0.6)
+            mark_hit(hit, sh.pos, sz, true); hit_systems(hit, sh.pos, sh.dmg, "shell"); damage(hit, sh.dmg, "shell"); fx_boom(sh.pos, 7 * sz, 0.6)
             for k2 in 3: part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * 60.0)
             boom(sh.pos, 0.12 * sz, 600.0)
         elif land_at(sh.pos): part(P.DUST, sh.pos, 1.6, 9 * sz)
@@ -882,7 +962,7 @@ func step(dtv: float) -> void:
                 if s.side == tp.side or not active(s) or submerged(s): continue
                 var l: Vector2 = (tp.pos - s.pos).rotated(-s.a)
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
-                    mark_hit(s, tp.pos, 4.0, false); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.FOAM, tp.pos, 12.0, 60.0)
+                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.FOAM, tp.pos, 12.0, 60.0)
                     boom(tp.pos, 0.5, 200.0, 0.7); gone = true; break
         if not gone and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
         if gone: torps.remove_at(i)
@@ -908,7 +988,7 @@ func step(dtv: float) -> void:
                     else: m.target.n -= 2; part(P.FALL, tpos, 1.4, 6.0)
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B):
-                mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); damage(m.target, m.dmg, "missile")
+                mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")
                 fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); boom(m.pos, 0.5, 220.0); missiles.remove_at(i); continue
         m.pos += Vector2.from_angle(m.a) * m.v * dt
         if randf() < dtv * 30: part(P.MTRAIL, m.pos, 1.0 if m.kind == "sam" else 2.0, 4.0)

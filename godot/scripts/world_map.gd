@@ -56,10 +56,11 @@ func _ready() -> void:
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
     ui = Control.new(); ui.set_anchors_preset(Control.PRESET_FULL_RECT); ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.theme = UI.theme(); cl.add_child(ui)
     overlay = Overlay.new(); overlay.map = self; overlay.set_anchors_preset(Control.PRESET_FULL_RECT); overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(overlay)
-    _build_top(); _build_toasts(); _build_orders(); _build_telegraph()
+    _build_top(); _build_toasts(); _build_orders(); _build_telegraph(); _build_cmdbar()
     dock = UI.button("Dock", _on_dock, true); dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM); dock.position = Vector2(-80, -60); dock.visible = false; ui.add_child(dock)
     dock.set_anchor_and_offset(SIDE_LEFT, 0.5, -90); dock.set_anchor_and_offset(SIDE_RIGHT, 0.5, 90); dock.set_anchor_and_offset(SIDE_TOP, 1.0, -64); dock.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -26)
     panel_layer = Control.new(); panel_layer.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(panel_layer)
+    ui.move_child(cmdbar, -1)   # the Command tabs stay clickable over an open panel
     Campaign.toast.connect(_toast); Campaign.encounter.connect(_on_encounter); Campaign.reached_port.connect(open_port)
     cam = Vector2(Campaign.G.player.x, Campaign.G.player.y)
     if Campaign.show_origin: Campaign.show_origin = false; Campaign.paused = true; _show_origin()
@@ -135,6 +136,10 @@ func _process(delta: float) -> void:
     _orders_t -= delta
     if _orders_t <= 0.0: _orders_t = 0.5; _update_orders()
     _update_top(); _update_dock(); _update_telegraph()
+    for k in cmd_btns:   # the tab of the Command page that is open, underlined in gold
+        var on: bool = panel_open and _panel_key == "cmd:" + k
+        cmd_btns[k].get_theme_stylebox("normal").border_color = UI.GOLD if on else Color(0, 0, 0, 0)
+        cmd_btns[k].add_theme_color_override("font_color", UI.GOLD if on else UI.DIM)
     # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
     var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
     Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 6.0, 0.03, 0.3) if under_way else 0.0)
@@ -492,12 +497,7 @@ func _build_top() -> void:
         var v: int = pair[0]
         var b = UI.button(pair[1], func(): _speed(v)); b.custom_minimum_size.x = 40; b.focus_mode = Control.FOCUS_NONE
         b.add_theme_font_size_override("font_size", 14); seg.add_child(b); speed_btns.append([v, b])
-    for t in [["Centre", func(): free_cam = false], ["Command", func(): show_command()]]:
-        var b := UI.button(t[0], t[1]); b.focus_mode = Control.FOCUS_NONE; top.add_child(b)
-    var snd := UI.button("Sound" if not Sfx.muted else "Muted", func(): pass); snd.focus_mode = Control.FOCUS_NONE
-    snd.tooltip_text = "Sound on or off (everything, the sea and gulls too)"
-    snd.pressed.connect(func(): Sfx.muted = not Sfx.muted; snd.text = "Muted" if Sfx.muted else "Sound")
-    top.add_child(snd)
+    var cb := UI.button("Centre", func(): free_cam = false); cb.focus_mode = Control.FOCUS_NONE; top.add_child(cb)
 
 func _speed(v: int) -> void:
     if v == 0: Campaign.paused = not Campaign.paused
@@ -505,7 +505,7 @@ func _speed(v: int) -> void:
 
 func _update_top() -> void:
     var G: Dictionary = Campaign.G
-    stats.DATE.text = Campaign.date_str(G.day); stats.FUNDS.text = Campaign.fmt(G.credits)
+    stats.DATE.text = Campaign.date_str(G.day) + (" · TEST" if Campaign.test_mode() else ""); stats.FUNDS.text = Campaign.fmt(G.credits)
     var fu = Campaign.fuel_use()
     if G.cargo.fuel > 0 or fu <= 0: stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / Campaign.fuel_burn())) if fu > 0 else "∞"]
     elif Campaign.reserve() > 0: stats.FUEL.text = "Reserve %dd" % int(ceil(Campaign.reserve() / (fu / 3.0)))
@@ -584,7 +584,7 @@ func _course_to_order(it: Dictionary) -> void:
 
 func _build_toasts() -> void:
     toasts = VBoxContainer.new(); toasts.add_theme_constant_override("separation", 6); ui.add_child(toasts)
-    toasts.set_anchor_and_offset(SIDE_LEFT, 0, 14); toasts.set_anchor_and_offset(SIDE_RIGHT, 0, 460); toasts.set_anchor_and_offset(SIDE_TOP, 1, -300); toasts.set_anchor_and_offset(SIDE_BOTTOM, 1, -14)
+    toasts.set_anchor_and_offset(SIDE_LEFT, 0, 14); toasts.set_anchor_and_offset(SIDE_RIGHT, 0, 460); toasts.set_anchor_and_offset(SIDE_TOP, 1, -350); toasts.set_anchor_and_offset(SIDE_BOTTOM, 1, -66)   # above the Command tabs
     toasts.alignment = BoxContainer.ALIGNMENT_END; toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _toast(text: String) -> void:
@@ -594,6 +594,28 @@ func _toast(text: String) -> void:
     var l = UI.label(text, UI.INK, 14, true); l.custom_minimum_size.x = 420; pc.add_child(l); pc.mouse_filter = Control.MOUSE_FILTER_IGNORE; toasts.add_child(pc)
     while toasts.get_child_count() > 5: toasts.get_child(0).queue_free(); toasts.remove_child(toasts.get_child(0))
     get_tree().create_timer(6.5).timeout.connect(func(): if is_instance_valid(pc): pc.queue_free())
+
+# ------------------------------------------------------------------ the Command tabs (bottom left)
+const CMD_TABS := [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["codex", "Codex"]]
+var cmd_btns := {}
+var cmdbar: Control
+func _build_cmdbar() -> void:
+    var pc := PanelContainer.new(); ui.add_child(pc); cmdbar = pc
+    var sb := StyleBoxFlat.new(); sb.bg_color = Color(UI.PANEL, 0.9); sb.border_color = UI.LINE; sb.set_border_width_all(1); sb.border_width_top = 2
+    sb.content_margin_left = 6; sb.content_margin_right = 6; sb.content_margin_top = 2; sb.content_margin_bottom = 2; sb.set_corner_radius_all(3)
+    pc.add_theme_stylebox_override("panel", sb)
+    pc.set_anchor_and_offset(SIDE_LEFT, 0, 14); pc.set_anchor_and_offset(SIDE_BOTTOM, 1, -14); pc.set_anchor_and_offset(SIDE_TOP, 1, -54)   # bottom first: Godot pushes the other anchor
+    pc.grow_vertical = Control.GROW_DIRECTION_BEGIN
+    var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 0); pc.add_child(row)
+    for t in CMD_TABS:
+        var key: String = t[0]
+        var b := UI.tab(t[1], func(): _cmd_tab(key), false); b.focus_mode = Control.FOCUS_NONE; row.add_child(b); cmd_btns[key] = b
+
+## A Command tab from the bar: opens Command at that tab, or closes it if it is already showing.
+func _cmd_tab(key: String) -> void:
+    if _blocking: return   # answer the contact first
+    if panel_open and _panel_key == "cmd:" + key: close_panel(); return
+    cmd_tab = key; show_command()
 
 # ------------------------------------------------------------------ the engine-room telegraph (bottom right)
 var tele_btns := {}
@@ -815,6 +837,9 @@ func _pause_menu() -> void:
         box.add_child(UI.button("Command", func(): show_command()))
         box.add_child(UI.button("Codex", func(): cmd_tab = "codex"; show_command()))
         box.add_child(UI.button("Settings", func(): _pause_settings()))
+        var snd := UI.button("Sound: off (click to turn on)" if Sfx.muted else "Sound: on (click to mute)", func(): pass)
+        snd.pressed.connect(func(): Sfx.muted = not Sfx.muted; snd.text = "Sound: off (click to turn on)" if Sfx.muted else "Sound: on (click to mute)")
+        box.add_child(snd)
         box.add_child(UI.button("Save & exit to title", func(): Campaign.save(); get_tree().change_scene_to_file("res://scenes/main_menu.tscn")))
         box.add_child(UI.button("Save & quit to desktop", func(): Campaign.save(); get_tree().quit()))
     , false, 420)
@@ -1144,8 +1169,7 @@ func _render_port() -> void:
 func show_command() -> void:
     cur_port = {}
     open_panel(func(box):
-        box.add_child(UI.title("Command"))
-        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["codex", "Codex"]], cmd_tab, func(k): cmd_tab = k; show_command())
+        box.add_child(UI.title("Command · " + str(CMD_TABS.filter(func(t): return t[0] == cmd_tab)[0][1])))
         match cmd_tab:
             "fleet": _fleet_table(box, false)
             "officers": _officers(box, {})
@@ -1198,6 +1222,11 @@ func _captain_pick(s: Dictionary) -> OptionButton:
 
 # shipyard: the classes a flag builds, in every design its own shipbuilders offer at your technology level
 func yard_of(p: Dictionary) -> Array:
+    if Campaign.test_mode():   # test mode: every design, in every port
+        var all := []
+        for id in GameData.hulls: if Campaign.design_ok(id, Campaign.G.tech): all.append(id)
+        all.sort_custom(func(a, b): return GameData.hull_order.find(GameData.hulls[a].klass) * 10000 + GameData.hulls[a].year < GameData.hull_order.find(GameData.hulls[b].klass) * 10000 + GameData.hulls[b].year)
+        return all
     var makers: Array = GameData.fac_makers.get(p.fac, []) if GameData.fac_makers.get(p.fac) != null else []
     var out = []
     for c in Campaign.C.YARDS[p.fac]:

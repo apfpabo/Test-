@@ -73,6 +73,10 @@ static func theme() -> Theme:
 	t.set_constant("v_separation", "PopupMenu", 8)
 	var tip := _flat(Color(0.03, 0.05, 0.06, 0.97), Color(GOLD, 0.45), 1, 3, 12, 9)
 	t.set_stylebox("panel", "TooltipPanel", tip); t.set_color("font_color", "TooltipLabel", INK); t.set_font_size("font_size", "TooltipLabel", 14)
+	# check boxes: a hairline box, filled gold with a dark tick when ticked
+	for k in ["normal", "hover", "pressed", "focus", "hover_pressed"]: t.set_stylebox(k, "CheckBox", _flat(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 2, 4, 4))
+	t.set_icon("unchecked", "CheckBox", _check_icon(false)); t.set_icon("checked", "CheckBox", _check_icon(true))
+	t.set_color("font_color", "CheckBox", INK); t.set_color("font_hover_color", "CheckBox", Color.WHITE); t.set_color("font_pressed_color", "CheckBox", INK)
 	# separators and slim scrollbars
 	var sep := StyleBoxLine.new(); sep.color = LINE; sep.thickness = 1
 	t.set_stylebox("separator", "HSeparator", sep); t.set_constant("separation", "HSeparator", 14)
@@ -82,6 +86,20 @@ static func theme() -> Theme:
 		t.set_stylebox("scroll", sb, track); t.set_stylebox("grabber", sb, grab)
 		t.set_stylebox("grabber_highlight", sb, _flat(Color(GOLD, 0.6), Color(0, 0, 0, 0), 0, 3, 3, 3)); t.set_stylebox("grabber_pressed", sb, _flat(GOLD, Color(0, 0, 0, 0), 0, 3, 3, 3))
 	return t
+
+static func _check_icon(on: bool) -> Texture2D:
+	var n := 18; var img := Image.create(n, n, false, Image.FORMAT_RGBA8); img.fill(Color(0, 0, 0, 0))
+	for y in n:
+		for x in n:
+			var edge := x == 1 or y == 1 or x == n - 2 or y == n - 2
+			if x < 1 or y < 1 or x > n - 2 or y > n - 2: continue
+			if on: img.set_pixel(x, y, GOLD.darkened(0.1) if edge else GOLD)
+			elif edge: img.set_pixel(x, y, Color(0.45, 0.55, 0.58))
+			else: img.set_pixel(x, y, Color(0.05, 0.08, 0.1))
+	if on:   # the tick
+		for p in [[4, 9], [5, 10], [6, 11], [7, 12], [8, 11], [9, 10], [10, 9], [11, 8], [12, 7], [13, 6]]:
+			for d in [0, 1]: img.set_pixel(p[0], p[1] + d, Color(0.08, 0.07, 0.03))
+	return ImageTexture.create_from_image(img)
 
 ## Text. A short all-capitals label at a small size is a section header: condensed, spaced, with a rule under it.
 static func label(text: String, col := INK, size := 15, wrap := false) -> Label:

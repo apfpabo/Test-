@@ -37,4 +37,10 @@ func _ready() -> void:
     print("save/load: ", Campaign.load_game(), " day ", Campaign.G.day == day, " fleets ", Campaign.G.fleets.size())
     for i in 300: Campaign.update(1.0 / 30.0)
     print("after load ok, day ", Campaign.G.day)
+    # test mode: everything researched, money and research that never run out, every design in every yard
+    Campaign.new_game("academy", "concord", true)
+    var map = load("res://scenes/world_map.tscn").instantiate(); add_child(map)
+    var yard: Array = map.yard_of(Campaign.G.ports[1])
+    Campaign.G.credits = 10.0; Campaign.new_day(false)
+    print("test mode: tech %d of %d, credits %d, rp %d, designs in a minor yard %d of %d" % [Campaign.G.tech.size(), Campaign.C.TECH.size(), int(Campaign.G.credits), int(Campaign.G.rp), yard.size(), GameData.hulls.size()])
     get_tree().quit()

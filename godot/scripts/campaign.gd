@@ -357,7 +357,7 @@ func market_mods(fac: String) -> Dictionary:
     return {"mod": mod, "drift": drift}
 
 ## A new campaign from an origin (see Origins and docs/LORE.md); navy picks the great navy for origins tied to one.
-func new_game(start_key: String, navy := "concord") -> void:
+func new_game(start_key: String, navy := "concord", test := false) -> void:
     var st: Dictionary = Origins.build(start_key, navy) if Origins.INFO.has(start_key) else C.STARTS[start_key]
     var ports = []
     for p in C.ports:
@@ -383,6 +383,9 @@ func new_game(start_key: String, navy := "concord") -> void:
     for h in G.perks.get("hunted", []): h.until = int(h.days)
     Diplomacy.ensure(st)
     Structures.ensure()
+    if test:
+        G.test = true; _test_topup()
+        for t in C.TECH: if not G.tech.has(t.id): G.tech.append(t.id)
     for g in C.GOODS: G.cargo[g.id] = st.cargo.get(g.id, 0)
     var p0: Dictionary = {}
     for p in G.ports: if p.name == st.port: p0 = p
@@ -392,6 +395,12 @@ func new_game(start_key: String, navy := "concord") -> void:
     toast.emit(date_str(1) + ". You put to sea from " + p0.name + ". Click the chart to set a course (Ctrl+Click adds waypoints, right-click a fleet for orders); scroll to zoom out to the whole world.")
     toast.emit("Wreck fields and abandoned bases (◇ on the chart) can be surveyed for salvage and research.")
     save()
+
+## Test mode (title screen, New campaign): every technology, every design in every yard (world_map.yard_of), and
+## money and research points that never run out.
+func test_mode() -> bool: return G.get("test", false)
+func _test_topup() -> void:
+    G.credits = maxf(float(G.credits), 5000000.0); G.rp = maxi(int(G.rp), 5000)
 
 func water_point(pad := 8.0, near = null, rad := 0.0) -> Vector2:
     for i in 400:
@@ -662,6 +671,7 @@ func new_day(moved: bool) -> void:
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()
+    if G.get("test", false): _test_topup()
     if G.day % 3 == 0: save()   # autosave every few days at sea
     var era = enemy_era()
     if era > G.get("seenEra", 1): G.seenEra = era; toast.emit("Intelligence: Directorate yards are fielding " + C.ERA_NAME[str(era)].split("· ")[1].to_lower() + ".")

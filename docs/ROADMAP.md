@@ -71,7 +71,7 @@ Follow-ups: a display font and UI polish; touch controls; moving the plan render
 
 ## Suggested order of work
 
-**Art pass 2 is done** (turret separation, national turret styles, superstructures by school). Open art items: per-design superstructure overrides where the school's procedural form misses a class's signature (Takao's trunked funnel, KGV's hangar), tower shadows falling across turrets, and a playtest of the shadow strength. Next up is missions and diplomacy (item 2).
+**Next up: a fictional world map** ([`NEXT_WORLD_MAP.md`](NEXT_WORLD_MAP.md)), then factions with lore, then diplomacy and contracts, then land structures (air strikes, capture for passive income) and claiming territory. **Art pass 2 is done** (turret separation, national turret styles, superstructures by school). Open art items: per-design superstructure overrides where the school's procedural form misses a class's signature (Takao's trunked funnel, KGV's hangar), tower shadows falling across turrets, and a playtest of the shadow strength. Next up is missions and diplomacy (item 2).
 
 0. **World map (done):** Alternate Earth oceans, ports, factions, surveys, ice, sea routes, map momentum and wakes.
 1. **Feel and art passes (done):** art pass 2 lit turrets and superstructures from height maps, with national styles. Before it: Rule the Waves 3-style deck plans at real scale, 7 yards and 50 era designs, combat rebuilt on real knots and turning circles. Follow-ups: playtest the ×2 default clock and the 1/5 range scale, add formation orders, and give the player helm orders by course as well as by rudder.

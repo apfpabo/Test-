@@ -158,10 +158,10 @@ The owner's world-building for the fictional map, kept word for word in [`lore/f
 - **Halvard Enclaves:** Grimvik moved from the far south to Skarn, so the Enclaves' stations sit in the Rime and the Skarn Passages; Sudrhavn stays as a southern station.
 - **Halcyon Federation:** a coaling station and listening post, Senkai Station, in the Stepping Stones.
 - The officer surname "Varga" became "Vardy", now that Varga is a continent.
+- **The armistice (owner approved):** no flag's warships fire on you just because you serve its old enemy. They engage on sight only at standing -60 or worse, for three months after you open fire on their ships (an incident), or when your origin makes you their declared target (the hijacker with every legitimate flag; the privateer with the Directorate). Ports still close below -10. Raiders, hunter groups and mission targets always fight.
 
 ### Where the lore and the game still differ (for the owner)
 
-- **The armistice.** The lore makes 1946 a nervous peace ("one serious incident away from open war"); the game still has Concord and Halcyon ships fight the Directorate on sight. Turning that into an armistice with incidents belongs to diplomacy (step 3).
 - **Halcyon in the Entente.** The lore calls the Federation wary of both sides and fond of profitable neutrality, but also a member of the Entente; the game keeps it at war with the Directorate.
 - **Privateer sponsor.** The lore offers a Tarsene or a Syndicate letter of marque; the game has only the Republic's.
 - **Survivor's lost fleet.** The lore names the Concord's Central Hesperian squadron and the Directorate's 4th Battle Division; the Halcyon navy has no named lost fleet.

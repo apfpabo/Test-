@@ -275,11 +275,27 @@ var show_origin := false   # the chart opens with the origin's story once, at th
 func perk(k: String, default = null): return G.get("perks", {}).get(k, default)
 
 ## Hunter groups (and anything else that comes for you on sight) are hostile whatever your standing with their flag.
-func hostile_fleet(f: Dictionary) -> bool: return hostile(f.fac) or f.get("hunter", false)
+## Whether this force will fire on you. The armistice of 1945 holds: a flag's warships only engage you on sight if
+## your standing with it has fallen to -60, if you caused an incident with it lately (opened fire under the
+## armistice), or if your origin made you its declared target. Raiders, hunters and mission targets always fight.
+func hostile_fleet(f: Dictionary) -> bool: return at_war(f.fac) or f.get("hunter", false) or f.get("mission", false)
+const WAR_STANDING := -60
+const INCIDENT_DAYS := 90
+func at_war(fac: String) -> bool:
+    if fac == "raiders": return true
+    if fac == "player": return false
+    return G.rep.get(fac, 0) <= WAR_STANDING or int(G.get("incidents", {}).get(fac, 0)) > G.day or (perk("outlaw", []) as Array).has(fac)
+## Days left of an incident with this flag (0 if none).
+func incident_days(fac: String) -> int: return maxi(0, int(G.get("incidents", {}).get(fac, 0)) - G.day)
+## You fired on a flag's ships under the armistice: its warships engage you on sight for three months.
+func incident(fac: String) -> void:
+    if not G.has("incidents"): G.incidents = {}
+    G.incidents[fac] = G.day + INCIDENT_DAYS
 
 ## Limited services at this flag's ports: your origin left you a stain there.
 func restricted(fac: String) -> bool: return (perk("restricted", []) as Array).has(fac)
 
+## Ports closed: a flag's harbours refuse you while your standing is below -10 (its ships may still keep the peace).
 func hostile(fac: String) -> bool: return fac == "raiders" or G.rep.get(fac, 0) < -10
 func enemies_of(f: String) -> Array:
     var out = []

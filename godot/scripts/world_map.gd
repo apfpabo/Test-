@@ -379,7 +379,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             if sp.x < -150 or sp.x > vs.x + 150: continue
             var s = 7.0 if p.capital else 5.5; var closed = Campaign.hostile(p.fac)
             _t(sp - Vector2(0, s + 5), p.name, Color("#eef0ec"), 15 if p.capital else 13)
-            if z > 0.45: _t(sp + Vector2(0, s + 15), GameData.fac[p.fac].short + (" · capital" if p.capital else "") + (" · hostile" if closed else ""), Color("#d9614a") if closed else Color(GameData.fac[p.fac].map), 11)
+            if z > 0.45: _t(sp + Vector2(0, s + 15), GameData.fac[p.fac].short + (" · capital" if p.capital else "") + (" · closed to you" if closed else ""), Color("#d9614a") if closed else Color(GameData.fac[p.fac].map), 11)
         for f in G.fleets:
             var hos = Campaign.hostile_fleet(f)
             if not (z >= 0.6 or hos or f.get("mission", false) or f.kind == "bounty"): continue
@@ -570,10 +570,10 @@ func _on_encounter(f: Dictionary) -> void:
         if not Campaign.hostile_fleet(f):
             var en = Campaign.enemies_of(f.fac)
             box.add_child(UI.title(f.name)); box.add_child(_lead_pic(f)); _p(box, "%s ships close to signalling distance: %s." % [GameData.fac[f.fac].name, _counts(f.ships)])
-            _p(box, odds + " Attacking costs 30 %s standing%s." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else ""], UI.DIM)
+            _p(box, odds + " Opening fire breaks the armistice: it costs 30 %s standing%s, and %s warships will engage you on sight for three months." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else "", GameData.fac[f.fac].short], UI.DIM)
             box.add_child(UI.row([UI.button("Exchange signals and pass", func(): f.cool = 8.0; P.cool = 3.0; close_panel(), true),
                 UI.button("Open fire", func():
-                    G.rep[f.fac] -= 30
+                    G.rep[f.fac] -= 30; Campaign.incident(f.fac)
                     for e in en: G.rep[e] = mini(100, G.rep[e] + 5)
                     _toast("%s standing is now %d." % [GameData.fac[f.fac].name, G.rep[f.fac]]); _battle(f))]))
         else:
@@ -714,7 +714,7 @@ func open_port(p: Dictionary) -> void:
         p.offDay = Campaign.G.day; p.officers = [Campaign.new_officer(randi_range(1, 2)), Campaign.new_officer(randi_range(1, 3))]
         if randf() < 0.4: p.officers.append(Campaign.new_officer(randi_range(2, 4)))
     if Campaign.hostile(p.fac):
-        open_panel(func(box): box.add_child(UI.title(p.name)); _p(box, "Shore batteries track your ships as you close the harbour. %s ports are closed to you while you are at war with them. Raise your standing, or dock somewhere friendlier." % GameData.fac[p.fac].name); box.add_child(UI.button("Stand off", close_panel, true)))
+        open_panel(func(box): box.add_child(UI.title(p.name)); _p(box, "Shore batteries track your ships as you close the harbour. %s ports are closed to you while your standing with them is this low. Raise your standing, or dock somewhere friendlier." % GameData.fac[p.fac].name); box.add_child(UI.button("Stand off", close_panel, true)))
         return
     cur_port = p; port_tab = "market"; _render_port(); Campaign.save()
 
@@ -1108,11 +1108,14 @@ func _missions(box: Control, at_admiralty: bool) -> void:
     elif m != null: _p(box, "New orders await at the Concord Admiralty in Calder Roads.", UI.DIM, 14)
     else: _p(box, "The war is won. The world's oceans settle into an armed peace, and the arms race goes on. Directorate fleets keep modernising, so keep your research ahead of theirs.")
     box.add_child(UI.label("STANDING", UI.DIM, 12))
+    _p(box, "The armistice of November 1945 holds, just. A flag's warships engage you on sight only if your standing with it falls to %d, or for three months after you open fire on its ships. Its ports close below -10." % Campaign.WAR_STANDING, UI.DIM, 13)
     for f in GameData.fac:
         if f == "raiders": continue
         var r: int = G.rep.get(f, 0)
         var nl := UI.label(GameData.fac[f].name); nl.tooltip_text = GameData.fac[f].get("desc", ""); nl.mouse_filter = Control.MOUSE_FILTER_PASS
-        box.add_child(UI.row([nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label("hostile" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"), UI.RED if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM), 13)]))
+        var stt: String = ("at war · engages on sight" + (" (incident, %d days)" % Campaign.incident_days(f) if Campaign.incident_days(f) > 0 else "")) if Campaign.at_war(f) else ("ports closed" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"))
+        var sc: Color = UI.RED if Campaign.at_war(f) else (UI.GOLD if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM))
+        box.add_child(UI.row([nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label(stt, sc, 13)]))
     if G.log.size():
         box.add_child(UI.label("LOG", UI.DIM, 12))
         var lg: Array = G.log.slice(-8); lg.reverse()

@@ -11,6 +11,8 @@ class_name Origins
 ##   trade: 0.06              better buying and selling margins
 ##   evade: 15                added to the chance to break off from a hostile force (percentage points)
 ##   prize: {fac: 1.3}        prize money multiplier for ships of that flag sunk or taken
+##   outlaw: [fac]            these flags' warships engage you on sight despite the armistice (a wanted hijacker; a
+##                            privateer's letter of marque makes you a combatant to the sponsor's enemy)
 ##   rp: 40                   research points at the start (intelligence brought over)
 
 const NAVIES := ["concord", "directorate", "pacific"]
@@ -56,7 +58,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.fleet = [["fr_liberty", "Ashen Wake", {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
 			st.cargo = {"fuel": 60, "food": 25, "munitions": 20}
 			st.rep = {"concord": -35, "directorate": -35, "pacific": -35, "combine": -45, "republic": -20, "enclave": -15, "freeport": 15}
-			st.perks = {"evade": 5, "hunted": [{"fac": "raiders", "name": "Bounty hunters", "days": 240, "max": 2, "every": 0.06, "budget": 30000}, {"fac": "combine", "name": "Combine reprisal squadron", "days": 150, "max": 1, "every": 0.03, "budget": 45000}]}
+			st.perks = {"evade": 5, "outlaw": ["concord", "directorate", "pacific", "combine", "republic"], "hunted": [{"fac": "raiders", "name": "Bounty hunters", "days": 240, "max": 2, "every": 0.06, "budget": 30000}, {"fac": "combine", "name": "Combine reprisal squadron", "days": 150, "max": 1, "every": 0.03, "budget": 45000}]}
 		"merchant":
 			st.fleet = [["fr_victory", "Southern Trader", {}]]; st.credits = 45000; st.port = "Cape Ombra"
 			st.cargo = {"fuel": 120, "food": 60, "steel": 60, "electronics": 20}
@@ -70,7 +72,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 		"privateer":
 			st.fleet = [["dd_soldati", null, {}]]; st.credits = 20000; st.officer = 2; st.port = "Puerto Corvo"
 			st.rep = {"republic": 30, "directorate": -40, "concord": -5, "pacific": -5, "combine": -5}
-			st.perks = {"prize": {"directorate": 1.3}}
+			st.perks = {"prize": {"directorate": 1.3}, "outlaw": ["directorate"]}
 		"defector":
 			var to: String = en
 			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 20000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Tarsa"

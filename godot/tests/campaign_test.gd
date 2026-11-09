@@ -15,6 +15,10 @@ func _ready() -> void:
             if not Campaign.sight_line(prev.x, prev.y, q.x, q.y): bad += 1
             prev = q
         print("%-12s -> %-12s %3d legs, %5.0f units (%4.1f days), %d legs over land, %d ms" % [pair[0], pair[1], path.size(), len, len / 12.0 * 0.1, bad, Time.get_ticks_msec() - t1])
+    # the armistice: a Concord captain is unwelcome in Directorate ports but not shot at, until an incident
+    var d0 := [Campaign.hostile("directorate"), Campaign.at_war("directorate")]
+    Campaign.incident("directorate"); var d1 := Campaign.at_war("directorate"); Campaign.G.incidents = {}
+    print("armistice: Directorate ports closed %s, engages on sight %s; after an incident %s; raiders %s" % [d0[0], d0[1], d1, Campaign.at_war("raiders")])
     var P: Dictionary = Campaign.G.player
     Campaign.set_course(P, Campaign.lon_x(30), Campaign.lat_y(40))
     var met := []

@@ -62,6 +62,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - Pack ice reads as ice: a broken white edge, loose floes off it, and a "PACK ICE · MAR LIMIT" label that follows the season.
   - Gunnery: director-style salvos. Turrets fire together, rippling fore to aft a fraction of a second apart, in alternating half-salvos (one gun of each turret, then the others half a reload later), as 1940s battleships fired while spotting the fall of shot.
   - The world follows the owner's lore: see [`LORE.md`](LORE.md) ("Changed to follow the lore").
+  - The armistice (owner approved): warships engage you on sight only at standing -60, after an incident (you opened fire on that flag: three months), or as an origin's declared target. Ports close below -10. The standing list says which flags are at war with you, which ports are closed, and for how long an incident lasts.
   - Question answered: the lines that stop short of the range ring in battle are shells still in flight (the white dots at their heads); the ring is the guns' maximum range.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.

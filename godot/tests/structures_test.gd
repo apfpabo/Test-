@@ -65,6 +65,22 @@ func _ready() -> void:
 	while G.fleets.has(f) and steps < 30 * 10 * 40:
 		Campaign.paused = false; G.player.cool = 99.0; Campaign.update(1.0 / 30.0); steps += 1
 	ok(not G.fleets.has(f), "the assault landed after %.1f days: the %s is %s" % [steps / 300.0, oil.name, Structures.owner_name(oil)])
+	# bombardment: a battleship off a Directorate battery shells it until it is silenced; its guns answer
+	var bat: Dictionary = {}
+	for s2 in S: if s2.kind == "battery" and s2.fac == "directorate": bat = s2; break
+	G.fleet = [Campaign.new_ship("bb_iowa", "Bombarder", "player", []), Campaign.new_ship("dd_fletcher", "Screen", "player", [])]
+	var cw := Structures.coast_point(bat); G.player.x = cw.x; G.player.y = cw.y
+	print("bombard: %s, can: '%s'" % [bat.name, Structures.can_bombard(bat)])
+	var nb := 0
+	while not Structures.silenced(bat) and nb < 6 and Structures.can_bombard(bat).begins_with("") :
+		G.bombardReady = 0.0
+		if Structures.can_bombard(bat) != "": break
+		var br := Structures.bombard(bat); nb += 1
+		print("  shoot %d: %d%% -> %d%%, answered: %s, ammo %.2f" % [nb, int(br.before * 100), int(br.after * 100), br.answers, float(G.fleet[0].ammo)])
+	ok(Structures.silenced(bat), "a battleship silenced the battery in %d shoots" % nb)
+	ok(float(G.fleet[0].ammo) < 1.0, "the shells came out of her magazines")
+	G.player.x = Campaign.lon_x(0.0); G.player.y = Campaign.lat_y(-40.0)
+	ok(Structures.can_bombard(bat).begins_with("Out of range"), "out of range from mid-ocean")
 	# the powers fight over structures in a war
 	Diplomacy.declare("concord", "directorate")
 	var before := S.filter(func(s): return s.fac == "concord").size()

@@ -393,7 +393,7 @@ func _make(p: Dictionary) -> Dictionary:
 			var s: Dictionary = tg.pick_random()
 			c.merge({"struct": int(s.id), "target": s.fac, "days": 50, "reward": int(round((9000.0 + 5000.0 * float(Structures.kind(s).military) + randf() * 4000.0) / 500.0) * 500), "rep": 8,
 				"title": "Strike the %s" % s.name})
-			c.text = "The %s is at war with the %s. Knock out at least 70%% of the defences of the %s from the air. You need carriers. Taking this makes you a combatant to the %s." % [GameData.fac[fac].name, GameData.fac[s.fac].name, s.name, GameData.fac[s.fac].short]
+			c.text = "The %s is at war with the %s. Knock out at least 70%% of the defences of the %s, from the air or with your guns from the sea. Taking this makes you a combatant to the %s." % [GameData.fac[fac].name, GameData.fac[s.fac].name, s.name, GameData.fac[s.fac].short]
 		"war":
 			var foe: String = foes.pick_random()
 			c.merge({"target": foe, "need": 3, "got": 0, "days": 60, "reward": int(round((14000.0 + randf() * 8000.0) / 500.0) * 500), "rep": 10,

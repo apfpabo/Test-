@@ -37,9 +37,14 @@ class SkyLayer extends Node2D:
 	var raid
 	func _draw() -> void: raid._sky(self)
 
+var naval := false   # a bombardment from the sea: shells instead of aircraft, and the shore's guns answering
+var muzzles := []    # the structure's guns firing back: {t0, o}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	face = float(s.get("face", 0.0))
+	naval = res.get("mode", "") == "naval"
+	if naval: _ready_naval(); return
 	var r := RandomNumberGenerator.new(); r.seed = int(s.id) * 31 + int(res.planes) * 7 + int(Time.get_ticks_msec() % 1000)
 	var n := mini(int(res.planes), 18); var k := float(n) / maxf(1.0, float(res.planes))
 	var lost_f := int(round(int(res.lost_fighters) * k)); var lost_a := int(round(int(res.lost_flak) * k))
@@ -58,10 +63,19 @@ func _ready() -> void:
 	for i in flak_n: puffs.append({"t0": r.randf_range(6.0, 10.5), "o": Vector2(r.randf_range(-170, 90), r.randf_range(-150, 150))})
 	var hits := mini(int(res.bombers), 30)
 	for i in hits: booms.append({"t0": 9.0 + i * 0.09 + r.randf_range(0, 0.5), "o": Vector2.from_angle(r.randf() * TAU) * r.randf() * 0.85, "k": r.randf_range(0.7, 1.3), "burn": r.randf() < 0.45})
-	# the battle's effects, in the style chosen in Settings (modern or classic)
+	_setup_fx()   # the battle's effects, in the style chosen in Settings (modern or classic)
+
+## A bombardment: ranging shots, then salvos walking across the target, the shore's guns answering out to sea.
+func _ready_naval() -> void:
+	var r := RandomNumberGenerator.new(); r.seed = int(s.id) * 17 + int(Time.get_ticks_msec() % 1000)
+	for i in int(res.shells): booms.append({"t0": 1.5 + i * (7.0 / float(res.shells)) + r.randf_range(0, 0.3), "o": Vector2.from_angle(r.randf() * TAU) * r.randf() * (0.95 if i > 2 else 1.6), "k": r.randf_range(0.8, 1.3) * (1.25 if res.heavy else 0.9), "burn": r.randf() < 0.35})
+	for i in int(round(float(res.guns) * 2.0)): muzzles.append({"t0": 2.5 + r.randf() * 6.0, "o": Vector2.from_angle(face + PI / 2) * r.randf_range(-0.6, 0.6)})
+	_setup_fx()
+
+func _setup_fx() -> void:
 	fx = BattleSim.new(); fx.modern = Settings.fx_modern
 	var host := FxHost.new(); host.sim = fx; host.raid = self
-	for kind in ["above", "light"]:
+	for kind in ["below", "above", "light"]:
 		var d = Battle.Drawer.new(); d.battle = host; d.kind = kind
 		if kind == "light": var mat := CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; d.material = mat
 		add_child(d)
@@ -81,9 +95,16 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _process(dt: float) -> void:
 	t += dt
-	if t >= DUR: _end(); return
+	if t >= (11.0 if naval else DUR): _end(); return
 	C = size / 2 + Vector2(0, 30); R = minf(size.x, size.y) * 0.33
 	var P := BattleSim.P
+	if naval:   # the shore's guns answering: flash and smoke at the casemates, splashes out at sea
+		for m in muzzles:
+			if m.get("fired", false) or t < m.t0: continue
+			m.fired = true; Sfx.event("gun_H", 0.3)
+			var at: Vector2 = C + m.o * R + Vector2.from_angle(face) * R * 0.2
+			fx.fx_muzzle(at, face, "H", 1)
+			fx.fx_splash(C + Vector2.from_angle(face + randf_range(-0.5, 0.5)) * R * randf_range(1.3, 2.2), 26.0)
 	# flak bursts round the formation
 	for p in puffs:
 		if p.get("heard", false) or t < p.t0: continue
@@ -97,6 +118,7 @@ func _process(dt: float) -> void:
 		if b.get("heard", false) or t < b.t0: continue
 		b.heard = true; Sfx.event("hit_big", 0.35 * b.k, randf_range(0.8, 1.1))
 		var at: Vector2 = C + b.o * R
+		if naval and b.o.length() > 1.0 and Vector2(b.o).dot(Vector2.from_angle(face)) > 0.3: fx.fx_splash(at, 30.0 * b.k); continue   # a short one, into the sea
 		fx.fx_boom(at, R * 0.11 * b.k, 1.0)
 		fx.part(P.DUST, at, 2.4, R * 0.1 * b.k)
 		if b.k > 1.15: fx.flash = maxf(fx.flash, 0.5)
@@ -154,6 +176,7 @@ func _draw() -> void:
 	InstallationArt.draw(self, s.kind, C, R, int(s.id), face, dmg_now, float(res.ruin) * clampf((t - 9.0) / 3.0, 0.0, 1.0), false, t)
 
 func _sky(ci: CanvasItem) -> void:
+	if naval: _sky_naval(ci); return
 	var jet: bool = res.jets
 	for pl in planes:   # our aircraft, with their shadows on the ground
 		if pl.get("fell", false) or t > 15.5: continue
@@ -179,6 +202,23 @@ func _sky(ci: CanvasItem) -> void:
 	if t > 6.0: phase = "Over the target: flak"
 	if t > 8.8: phase = "Bombs away"
 	if t > 11.5: phase = "Defences %d%% out of action  ·  %d aircraft lost  ·  turning for home" % [int(float(res.after) * 100), int(res.lost_fighters) + int(res.lost_flak)]
+	ci.draw_string(font, Vector2(24, 52), phase, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#e3b23c"))
+
+## Shells in the last second of their flight, coming in from the sea, and the caption.
+func _sky_naval(ci: CanvasItem) -> void:
+	for b in booms:
+		var a: float = t - (b.t0 - 0.6)
+		if a < 0.0 or a > 0.6: continue
+		var to: Vector2 = C + b.o * R; var from: Vector2 = to + Vector2.from_angle(face) * size.length() * 0.6
+		var head: Vector2 = from.lerp(to, a / 0.6); var dir: Vector2 = (to - from).normalized()
+		ci.draw_line(head - dir * 40.0, head, Color(1.0, 0.92, 0.7, 0.45), 2.0); ci.draw_circle(head, 2.2, Color(1.0, 0.95, 0.8))
+	var font := ThemeDB.fallback_font
+	ci.draw_rect(Rect2(0, 0, size.x, 64), Color(0.03, 0.07, 0.09, 0.75))
+	ci.draw_string(font, Vector2(24, 30), "BOMBARDMENT · " + s.name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#eef0ec"))
+	var phase := "Ranging shots from %d km offshore" % int(res.km)
+	if t > 3.0: phase = "Fire for effect"
+	if t > 4.0 and float(res.guns) > 0.05: phase = "Fire for effect · the shore's guns are answering"
+	if t > 9.0: phase = "Cease fire · defences %d%% out of action" % int(float(res.after) * 100)
 	ci.draw_string(font, Vector2(24, 52), phase, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#e3b23c"))
 
 ## An aircraft from above: fuselage, wings, tailplane (swept wings for a jet).

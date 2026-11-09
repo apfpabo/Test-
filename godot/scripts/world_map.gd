@@ -1511,6 +1511,11 @@ func _foreign_struct(box: Control, s: Dictionary) -> void:
         var sb := UI.button("Launch an air strike", func(): _launch_strike(s), true, why != "")
         box.add_child(sb)
         if why != "": _p(box, why, UI.DIM, 13)
+        var wb := Structures.can_bombard(s)
+        box.add_child(UI.button("Bombard it from the sea", func(): _launch_strike(s, true), wb == "" and why != "", wb != ""))
+        if wb != "": _p(box, wb, UI.DIM, 13)
+        elif float(Structures.defences(s).guns) > 0.05: _p(box, "Its heavy guns will answer: expect hits on your ships. Each bombardment uses about a sixth of each ship's magazines.", UI.DIM, 13)
+        else: _p(box, "Each bombardment uses about a sixth of each firing ship's magazines.", UI.DIM, 13)
     var tw := Structures.can_take(s)
     var lbl := ("Land a garrison (%d men)" % Structures.garrison_need(s)) if s.fac == "" else ("Demand its surrender (garrison %d men)" % Structures.garrison_need(s))
     box.add_child(UI.button(lbl, func():
@@ -1581,18 +1586,18 @@ func _base_do(s: Dictionary, what: String, cost: int, n := 0) -> void:
     open_struct(s)
 
 ## The strike: a warning if it breaks the armistice, then the raid, then the report.
-func _launch_strike(s: Dictionary) -> void:
+func _launch_strike(s: Dictionary, naval := false) -> void:
     if Structures.breaks_armistice(s):
         open_panel(func(box):
             box.add_child(UI.title("Break the armistice?"))
             _p(box, "The %s is a %s installation, and the %s is not at war with you. A strike on it is an act of war: %s standing -30%s, and their warships will engage you on sight for three months." % [s.name, GameData.fac[s.fac].short, GameData.fac[s.fac].name, GameData.fac[s.fac].short, (". It is also betrayal of the flag you serve" if Campaign.G.get("commission") != null and Campaign.G.commission.fac == s.fac else "")])
-            box.add_child(UI.row([UI.button("Launch the strike", func(): _fly_strike(s), true), UI.button("Stand down", func(): open_struct(s))]))
+            box.add_child(UI.row([UI.button("Open fire" if naval else "Launch the strike", func(): _fly_strike(s, naval), true), UI.button("Stand down", func(): open_struct(s))]))
         , true, 640)
         return
-    _fly_strike(s)
+    _fly_strike(s, naval)
 
-func _fly_strike(s: Dictionary) -> void:
-    var res := Structures.strike(s)
+func _fly_strike(s: Dictionary, naval := false) -> void:
+    var res := Structures.bombard(s) if naval else Structures.strike(s)
     close_panel(); panel_open = true; _blocking = true; Campaign.paused = true
     face_of(s)
     var raid := AirRaid.new(); raid.res = res; raid.s = s; raid.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1600,6 +1605,7 @@ func _fly_strike(s: Dictionary) -> void:
     panel_layer.add_child(raid)
 
 func _strike_report(s: Dictionary, r: Dictionary) -> void:
+    if r.get("mode", "") == "naval": _bombard_report(s, r); return
     open_panel(func(box):
         box.add_child(UI.title("Strike on the " + s.name))
         _p(box, "%d %s aircraft took off%s." % [int(r.planes), "jet" if r.jets else "piston-engined", (", %d of them flying escort" % int(r.escorts)) if int(r.escorts) > 0 else ""])
@@ -1610,6 +1616,17 @@ func _strike_report(s: Dictionary, r: Dictionary) -> void:
         for n in r.get("notes", []): _p(box, n, UI.GOLD)
         var lost := int(r.lost_fighters) + int(r.lost_flak)
         if lost > 0: _p(box, "%d aircraft lost. %d left aboard your carriers; replace them in port (%s each)." % [lost, Structures.air_group(), Campaign.fmt(Structures.plane_cost())], UI.DIM, 14)
+        box.add_child(UI.row([UI.button("Back to the target", func(): open_struct(s), true), UI.button("Return to the chart", close_panel)]))
+    , true, 720)
+
+func _bombard_report(s: Dictionary, r: Dictionary) -> void:
+    open_panel(func(box):
+        box.add_child(UI.title("Bombardment of the " + s.name))
+        _p(box, "From %d km offshore, %s shelled it for an hour%s." % [int(r.km), ", ".join(r.ships), " with heavy guns" if r.heavy else ""])
+        if r.answers.is_empty(): _p(box, "Nothing answered from the shore." if float(r.guns) < 0.05 else "Its guns answered, but found nothing.", UI.DIM)
+        else: _p(box, "Its guns answered: " + "; ".join(r.answers) + ".", Color(0.95, 0.75, 0.71))
+        _p(box, "Its defences: %d%% out of action before, %d%% now.%s" % [int(r.before * 100), int(r.after * 100), " The defences are silenced: demand its surrender." if r.silenced else " The guns can fire again in six hours."], UI.GOLD if r.silenced else UI.INK)
+        for n in r.get("notes", []): _p(box, n, UI.GOLD)
         box.add_child(UI.row([UI.button("Back to the target", func(): open_struct(s), true), UI.button("Return to the chart", close_panel)]))
     , true, 720)
 

@@ -209,6 +209,78 @@ func strike(s: Dictionary) -> Dictionary:
 	Campaign.save()
 	return res
 
+# ------------------------------------------------------------------ bombardment from the sea
+## How far a weapon can reach ashore, in km: guns at their real range (battle ranges are a fifth of real), anti-ship
+## missiles 120 km. 0 for anything that cannot.
+static func shore_reach_km(w: Dictionary) -> float:
+	if w.kind == "gun": return float(w.range) * 5.0 / 1000.0
+	if w.kind == "ssm": return 120.0
+	return 0.0
+
+## Weight of fire a ship can put on a target this far away (km), allowing for what is left in her magazines; heavy
+## shells count for more against concrete and earthworks.
+func _ship_weight(rec: Dictionary, km: float) -> float:
+	var wsum := 0.0
+	for wid in rec.get("fit", []):
+		if wid == null or wid == "" or not GameData.weapons.has(wid): continue
+		var w: Dictionary = GameData.weapons[wid]
+		if shore_reach_km(w) < km: continue
+		if w.kind == "gun": wsum += float(w.dmg) * float(w.barrels) * 60.0 / float(w.rel) * float({"S": 0.4, "M": 0.6, "L": 0.9, "H": 1.4}.get(w.size, 0.5))
+		else: wsum += float(w.dmg) * float(w.get("count", 2)) * 3.0
+	return wsum * clampf(float(rec.get("ammo", 1.0)) / 0.15, 0.0, 1.0)
+
+## Why the fleet cannot shell this structure now, or "".
+func can_bombard(s: Dictionary) -> String:
+	var G := g(); var P: Dictionary = G.player
+	if s.fac == "player": return "It is yours."
+	if s.fac == "": return "Nobody holds it. Land a garrison to claim it."
+	var km := Campaign.mdist(P.x, P.y, s.x, s.y) * Campaign.KM_PER_UNIT
+	var best := 0.0; var any := false
+	for r in G.fleet:
+		for wid in r.get("fit", []):
+			if wid != null and wid != "" and GameData.weapons.has(wid): best = maxf(best, shore_reach_km(GameData.weapons[wid]))
+		if _ship_weight(r, km) > 0.0: any = true
+	if best <= 0.0: return "Your ships carry no guns or missiles that can reach ashore."
+	if km > best: return "Out of range: %d km away, and your longest reach ashore is %d km (heavy guns about 30 km, missiles 120 km). Close the coast." % [int(km), int(best)]
+	if not any: return "Your magazines are too low to shoot. Rearm in port."
+	var wait := maxf(0.0, float(G.get("bombardReady", 0.0)) - (G.day + G.dayF))
+	if wait > 0.0: return "The guns are being made ready: %d hours." % int(ceil(wait * 24.0))
+	return ""
+
+## A bombardment: every ship with guns (or missiles) in reach shoots for an hour. The structure's heavy guns answer.
+## Shells come out of the magazines. Returns its story for the bombardment view and the report.
+func bombard(s: Dictionary) -> Dictionary:
+	var G := g(); var P: Dictionary = G.player; var dfn := defences(s)
+	if breaks_armistice(s):
+		G.rep[s.fac] = G.rep.get(s.fac, 0) - 30; Campaign.incident(s.fac); Diplomacy.on_open_fire(s.fac)
+		for e in Campaign.enemies_of(s.fac): G.rep[e] = mini(100, G.rep.get(e, 0) + 5)
+	elif s.fac != "" and s.fac != "player": G.rep[s.fac] = G.rep.get(s.fac, 0) - 3
+	var km := Campaign.mdist(P.x, P.y, s.x, s.y) * Campaign.KM_PER_UNIT
+	var weight := 0.0; var firing := []; var heavy := false
+	for r in G.fleet:
+		var wgt := _ship_weight(r, km)
+		if wgt <= 0.0: continue
+		weight += wgt; firing.append(r.name); r.ammo = maxf(0.0, float(r.get("ammo", 1.0)) - 0.15)
+		for wid in r.fit: if wid != "" and GameData.weapons.has(wid) and GameData.weapons[wid].get("size", "") == "H": heavy = true
+	var before := float(s.dmg)
+	var hit: float = weight * randf_range(0.75, 1.25) / (float(kind(s).hard) * 7000.0)
+	s.dmg = clampf(before + hit, 0.0, 1.0); s.ruin = clampf(float(s.ruin) + hit * 0.25, 0.0, 0.9); s.struck = G.day
+	# the answer from the shore: its heavy guns, while they stand
+	var answers := []; var g_n := int(round(float(dfn.guns) * randf_range(0.5, 1.2)))
+	for i in g_n:
+		if G.fleet.is_empty() or randf() > 0.45: continue
+		var sh: Dictionary = G.fleet.pick_random(); var h: Dictionary = Campaign.hull(sh)
+		var d := randf_range(0.02, 0.06) * clampf(1500.0 / float(h.hull), 0.3, 1.5)
+		sh.hullFrac = maxf(0.05, float(sh.hullFrac) - d); answers.append("%s hit (hull %d%%)" % [sh.name, int(sh.hullFrac * 100)])
+	G.bombardReady = G.day + G.dayF + 0.25
+	var res := {"mode": "naval", "id": s.id, "name": s.name, "kind": s.kind, "fac": s.fac, "km": int(km), "ships": firing, "heavy": heavy,
+		"shells": clampi(int(weight / 400.0), 6, 40), "guns": float(dfn.guns), "answers": answers, "before": before, "after": float(s.dmg),
+		"silenced": silenced(s), "ruin": float(s.ruin), "x": s.x, "y": s.y, "planes": 0, "jets": false, "fighters": 0, "lost_fighters": 0, "downed": 0, "flak": 0.0, "lost_flak": 0, "bombers": 0}
+	Campaign.log_ev("Bombarded %s: defences %d%% out of action" % [s.name, int(float(s.dmg) * 100)])
+	_strike_contracts(s, res)
+	Campaign.save()
+	return res
+
 func _strike_contracts(s: Dictionary, res: Dictionary) -> void:
 	var notes := []
 	for c in g().get("contracts", []).duplicate():

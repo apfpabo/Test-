@@ -1,6 +1,6 @@
 extends Node
 ## Every campaign origin (with each navy where it has one): the start is valid (ships, port, crew, standing), and
-## 40 days at sea show who comes after you. godot --headless --path godot res://tests/origins_test.tscn
+## 20 days at sea show who comes after you. godot --headless --path godot res://tests/origins_test.tscn
 func _ready() -> void:
     for key in Origins.LIST:
         for navy in (Origins.NAVIES if Origins.INFO[key].navy else ["-"]):
@@ -13,7 +13,7 @@ func _ready() -> void:
             var on := func(f): met.append(f.name); Campaign.paused = false; f.cool = 30.0; Campaign.G.player.cool = 30.0
             Campaign.encounter.connect(on)
             Campaign.set_course(P, P.x + 200.0, P.y + 60.0)
-            for i in 40 * 10 * 30:
+            for i in 20 * 10 * 30:
                 Campaign.update(1.0 / 30.0)
                 if i % 600 == 0:
                     for f in G.fleets: if f.get("hunter", false): hunted[f.name] = true

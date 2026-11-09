@@ -73,7 +73,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.perks = {"prize": {"directorate": 1.3}}
 		"defector":
 			var to: String = en
-			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 12000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Lisbon"
+			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 20000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Lisbon"
 			st.rep = {navy: -60, to: 5}; for o in GameData.fac: if not st.rep.has(o) and o != "raiders" and o != "freeport": st.rep[o] = -5
 			st.perks = {"rp": 40, "hunted": [{"fac": navy, "name": GameData.fac[navy].short + " intelligence squadron", "days": 300, "max": 2, "every": 0.04, "budget": 60000}]}
 		"smuggler":

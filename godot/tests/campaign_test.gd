@@ -37,6 +37,15 @@ func _ready() -> void:
     print("save/load: ", Campaign.load_game(), " day ", Campaign.G.day == day, " fleets ", Campaign.G.fleets.size())
     for i in 300: Campaign.update(1.0 / 30.0)
     print("after load ok, day ", Campaign.G.day)
+    # each power's own Quiet Race: your research does not drag the world along; some powers advance faster
+    Campaign.new_game("commission"); Campaign.G.day = 30
+    for t in Campaign.C.TECH: Campaign.G.tech.append(t.id)
+    var e0 := []
+    for fc in ["concord", "directorate", "combine", "republic"]: e0.append(Campaign.fac_era(fc))
+    for d in 500: Campaign._research_day(); Campaign.G.day += 1
+    var e1 := {}
+    for fc in Campaign.RESEARCH_PACE: e1[fc] = Campaign.fac_era(fc)
+    print("research race: you at era %d; on day 30 the powers at %s; 500 days later %s" % [Campaign.player_era(), e0, e1])
     # test mode: everything researched, money and research that never run out, every design in every yard
     Campaign.new_game("academy", "concord", true)
     var map = load("res://scenes/world_map.tscn").instantiate(); add_child(map)

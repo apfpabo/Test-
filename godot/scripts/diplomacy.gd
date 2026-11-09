@@ -422,7 +422,7 @@ func accept(c: Dictionary) -> void:
 		"hunt":
 			var f: Dictionary = Campaign.spawn_fleet("raiders", "raiders")
 			# a flotilla worth the pay: about twice the reward in ships
-			var tl: Array = Campaign.enemy_tech(maxi(1, Campaign.enemy_era() - 1))
+			var tl: Array = Campaign.enemy_tech(Campaign.fac_era("raiders"))
 			var ships: Array = Campaign.build_by_budget(Campaign.C.PATROL_POOL.raiders, float(c.reward) * 2.4, 6, "raiders", tl)
 			if ships.size() >= 2: f.ships = ships
 			f.x = c.x; f.y = c.y; f.home = {"x": c.x, "y": c.y}; f.contract = int(c.id); f.name = "Raider flotilla (contract)"; c.fleet = int(f.id)

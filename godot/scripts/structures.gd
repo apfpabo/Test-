@@ -106,7 +106,7 @@ func _name(s: Dictionary, p, strait: String, used: Dictionary) -> String:
 
 # ------------------------------------------------------------------ defences
 func _doc(fac: String, k: String) -> float: return float(D.doctrine.get(fac, D.doctrine[""]).get(k, 1.0))
-func _era() -> float: return 1.0 + 0.25 * (Campaign.enemy_era() - 1)
+func _era(fac := "") -> float: return 1.0 + 0.25 * (Campaign.fac_era(fac) - 1) if fac != "" and fac != "player" else 1.0
 
 ## Is a structure on watch for another: same owner, or an ally (relations 50+).
 func _friend(a: String, b: String) -> bool:
@@ -132,7 +132,7 @@ func cover_fields(s: Dictionary) -> Array:
 ## What defends a structure now: flak batteries, fighter squadrons (its own and half of each covering airfield's),
 ## heavy guns, and the radar multiplier.
 func defences(s: Dictionary) -> Dictionary:
-	var k := kind(s); var up: float = 1.0 - float(s.dmg); var fac: String = s.fac; var era := _era() if fac != "player" else 1.0
+	var k := kind(s); var up: float = 1.0 - float(s.dmg); var fac: String = s.fac; var era := _era(fac)
 	var flak: float = float(k.flak) * _doc(fac, "flak") * era * up
 	var guns: float = float(k.guns) * _doc(fac, "guns") * up
 	var own: float = float(k.fighters) * _doc(fac, "fighters") * up
@@ -525,7 +525,7 @@ func launch_assault(s: Dictionary, by: String) -> Dictionary:
 		var d := Campaign.mdist(p.sx, p.sy, s.x, s.y)
 		if d < bd: bd = d; from = p
 	var f: Dictionary = Campaign.spawn_fleet("patrol", by)
-	var tl: Array = Campaign.enemy_tech(Campaign.enemy_era())
+	var tl: Array = Campaign.enemy_tech(Campaign.fac_era(by))
 	var esc: Array = Campaign.build_by_budget(Campaign.C.PATROL_POOL[by], (20000.0 + randf() * 30000.0) * (1.0 + G.day / 200.0), 4, by, tl)
 	if not esc.is_empty(): f.ships = esc
 	for i in randi_range(1, 2): var tr: Dictionary = Campaign.new_ship("freighter", null, by, tl); tr.troops = true; f.ships.append(tr)

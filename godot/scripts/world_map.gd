@@ -1499,7 +1499,10 @@ func _research(box: Control) -> void:
     var G: Dictionary = Campaign.G; var pr = rp_price(cur_port) if not cur_port.is_empty() else 0
     _p(box, "%d research points available. You earn them by sinking and capturing ships, surveying sites and completing missions." % G.rp, UI.DIM, 14)
     if pr: box.add_child(UI.button(("The enclave trades research data" if cur_port.fac == "enclave" else "The Admiralty sells research") + ": buy 10 RP · " + Campaign.fmt(pr), func(): G.credits -= pr; G.rp += 10; _rerender(), false, G.credits < pr))
-    _p(box, "%s. Enemy fleets are at %s." % [Campaign.C.ERA_NAME[str(Campaign.player_era())], Campaign.C.ERA_NAME[str(Campaign.enemy_era())].to_lower()])
+    _p(box, "You: %s." % Campaign.C.ERA_NAME[str(Campaign.player_era())])
+    var eras := []
+    for f in Campaign.RESEARCH_PACE: if GameData.fac.has(f): eras.append("%s %s" % [GameData.fac[f].short, ["I", "II", "III"][Campaign.fac_era(f) - 1]])
+    _p(box, "Each power runs its own Quiet Race; their fleets carry what their own research has reached. Eras now: " + " · ".join(eras) + ".", UI.DIM, 13)
     for t in Campaign.C.TECH:
         var done: bool = G.tech.has(t.id); var ok: bool = t.req.all(func(r): return G.tech.has(r))
         var col = VBoxContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL

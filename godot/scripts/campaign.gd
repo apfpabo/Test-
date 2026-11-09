@@ -203,7 +203,33 @@ func era_of(tech: Array) -> int:
     return e
 func has_tech(t: String) -> bool: return G.tech.has(t)
 func player_era() -> int: return era_of(G.tech)
-func enemy_era() -> int: return clampi(maxi(player_era(), 1 + int(G.day / 400)), 1, 3)
+## Each power runs its own Quiet Race. Its research points grow every day at its own pace (faster at war); its era,
+## and with it the ships, guns and defences it fields, follows its own points, not yours. Reaching the missile age
+## early does not drag the world along. 400 points for Era II, 800 for Era III: at the base pace, the old calendar.
+const RESEARCH_PACE := {"concord": 1.0, "directorate": 1.15, "pacific": 0.95, "combine": 1.2, "republic": 0.65, "freeport": 0.55,
+    "enclave": 0.9, "ombria": 0.6, "isles": 0.6}
+const ERA_POINTS := [0.0, 400.0, 800.0]
+func fac_rp(fac: String) -> float:
+    if fac == "raiders": return maxf(0.0, fac_rp("freeport") - 400.0)   # scavenged ships, a step behind the freeports
+    return float(G.get("facRp", {}).get(fac, float(G.get("day", 1)) * float(RESEARCH_PACE.get(fac, 0.8))))
+func fac_era(fac: String) -> int:
+    var p := fac_rp(fac); var e := 1
+    for i in ERA_POINTS.size(): if p >= ERA_POINTS[i]: e = i + 1
+    return clampi(e, 1, 3)
+## The newest era fielded by any power (for things not tied to one flag).
+func enemy_era() -> int:
+    var e := 1
+    for f in RESEARCH_PACE: e = maxi(e, fac_era(f))
+    return e
+func _research_day() -> void:
+    if not G.has("facRp"): G.facRp = {}
+    for f in RESEARCH_PACE:
+        var at_war := Diplomacy.POWERS.any(func(o): return o != f and Diplomacy.at_war(f, o))
+        var before := fac_era(f)
+        G.facRp[f] = fac_rp(f) + float(RESEARCH_PACE[f]) * (1.3 if at_war else 1.0) * randf_range(0.8, 1.2)
+        var now := fac_era(f)
+        if now > before and GameData.fac.has(f):
+            toast.emit("Intelligence: %s yards are fielding %s." % [GameData.fac[f].short, C.ERA_NAME[str(now)].split("· ")[1].to_lower()])
 func enemy_tech(era: int) -> Array:
     var t = []
     if era >= 2: t.append_array(["radar", "homing", "missiles", "jets", "nuclear"])
@@ -436,7 +462,7 @@ func _garrison_port(fac: String) -> Dictionary:
     return ps.back()
 
 func spawn_fleet(kind: String, fac: String, initial := false, mission = null) -> Dictionary:
-    var P: Dictionary = G.player; var era = enemy_era(); var tl = enemy_tech(maxi(1, era - 1) if kind == "raiders" else era); var scale = 1.0 + G.day / 120.0
+    var P: Dictionary = G.player; var era = fac_era(mission.fac if mission != null else fac); var tl = enemy_tech(era); var scale = 1.0 + G.day / 120.0
     var f = {"id": G.nextId, "kind": kind, "fac": mission.fac if mission != null else fac, "h": randf() * TAU, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {}}
     G.nextId += 1
     var pos = Vector2.ZERO; var from_id = -1
@@ -508,7 +534,7 @@ func spawn_hunter(h: Dictionary) -> Dictionary:
         if mdist(pos.x, pos.y, P.x, P.y) > 220: break
         pos = water_point(8, Vector2(P.x, P.y), 420.0)
     f.x = pos.x; f.y = pos.y; f.home = {"x": pos.x, "y": pos.y}
-    var tl = enemy_tech(enemy_era()); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
+    var tl = enemy_tech(fac_era(fac)); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
     f.ships = build_by_budget(pool, float(h.budget) * (1.0 + G.day / 200.0), 4, fac, tl)
     if f.ships.is_empty(): f.ships.append(new_ship("dd", null, fac, tl))
     G.fleets.append(f)
@@ -673,8 +699,7 @@ func new_day(moved: bool) -> void:
     Structures.new_day()
     if G.get("test", false): _test_topup()
     if G.day % 3 == 0: save()   # autosave every few days at sea
-    var era = enemy_era()
-    if era > G.get("seenEra", 1): G.seenEra = era; toast.emit("Intelligence: Directorate yards are fielding " + C.ERA_NAME[str(era)].split("· ")[1].to_lower() + ".")
+    _research_day()
 
 ## One tick of the chart: the calendar, your task force, and every other fleet. Emits encounter() on contact.
 func update(dt: float) -> void:
@@ -899,7 +924,7 @@ func battle_setup(f: Dictionary) -> Dictionary:
     var recs = []
     for s in G.fleet: recs.append(s)
     for o in G.officers: o.lastShip = o.ship
-    return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(enemy_era()),
+    return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(fac_era(f.fac)),
         "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0}
 
 func _islands_here() -> int:

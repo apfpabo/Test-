@@ -19,8 +19,7 @@ var toasts: VBoxContainer
 var dock: Button
 var panel_layer: Control
 var panel_open = false
-var wakes: Array = []
-var wake_t = 0.0
+var trails: Dictionary = {}   # wake trails: fleet id ("player" for yours) -> points {x, y, h, t, s}, newest last
 var tnow = 0.0
 var land_tris: Array = []       # [PackedVector2Array] parts that triangulate
 var coast_lines: Array = []     # PackedVector2Array per polygon, closed
@@ -34,6 +33,9 @@ func _ready() -> void:
     var sea = SeaDrawer.new(); sea.map = self; world.add_child(sea)
     for k in [-1, 0, 1]:
         var copy = LandCopy.new(); copy.map = self; copy.position.x = k * Campaign.MW; world.add_child(copy); land_copies.append(copy)
+        # land is static geometry, triangulated once; redrawing it on every zoom step made zooming crawl
+        for pv in land_tris:
+            var poly = Polygon2D.new(); poly.polygon = pv; poly.color = Color("#c9bb93"); poly.show_behind_parent = true; copy.add_child(poly)
         # shallow-water glow along the coasts, with rounded joins so sharp headlands don't throw spikes
         for pl in coast_lines:
             for g in [[14.0, 0.09], [5.0, 0.14]]:
@@ -89,23 +91,32 @@ func _process(delta: float) -> void:
     cam.x = Campaign.wrap_x(cam.x)
     cam.y = clampf(cam.y, vs.y / 2 / zoom - 40, Campaign.MH - vs.y / 2 / zoom + 40) if vs.y / zoom < Campaign.MH else Campaign.MH / 2
     world.scale = Vector2(zoom, zoom); world.position = vs / 2 - cam * zoom
-    if absf(zoom - last_coast_zoom) / maxf(last_coast_zoom, 0.01) > 0.08:
+    if absf(zoom - last_coast_zoom) / maxf(last_coast_zoom, 0.01) > 0.4:  # coast lines keep roughly a pixel wide; redrawing 16k points per wheel step was slow
         last_coast_zoom = zoom
         for c in land_copies: c.queue_redraw()
     marks.queue_redraw(); overlay.queue_redraw(); world.get_child(0).queue_redraw()
     _update_top(); _update_dock()
 
+## Wake trails, recorded only for fleets on or near the screen. Each point ages out after a few seconds; every ship in
+## the column draws its own wake along the trail (see Marks._wake).
 func _wakes(dt: float) -> void:
-    wake_t -= dt
-    if wake_t <= 0:
-        wake_t = 0.07
-        var G: Dictionary = Campaign.G; var vs = get_viewport_rect().size
-        var add = func(o: Dictionary): if o.v > 0.8: wakes.append({"x": o.x - cos(o.h) * 0.6, "y": o.y - sin(o.h) * 0.6, "h": o.h, "t": 0.0, "s": minf(1.0, o.v / 16.0)})
-        add.call(G.player)
-        for f in G.fleets: if Campaign.mdist(f.x, f.y, G.player.x, G.player.y) < vs.x / zoom: add.call(f)
-    for i in range(wakes.size() - 1, -1, -1):
-        wakes[i].t += dt
-        if wakes[i].t > 3: wakes.remove_at(i)
+    var G: Dictionary = Campaign.G; var vs = get_viewport_rect().size; var seen := {}
+    var step := clampf(2.5 / zoom, 0.04, 3.0)
+    var rec = func(key, o: Dictionary):
+        seen[key] = true
+        var tr: Array = trails.get(key, [])
+        if o.v > 0.8 and (tr.is_empty() or Campaign.mdist(tr[-1].x, tr[-1].y, o.x, o.y) > step):
+            tr.append({"x": o.x, "y": o.y, "h": o.h, "t": 0.0, "s": minf(1.0, o.v / 16.0)})
+        trails[key] = tr
+    rec.call("player", G.player)
+    var half: Vector2 = vs / 2 / zoom + Vector2(60, 60)
+    for f in G.fleets:
+        if absf(Campaign.wdx(cam.x, f.x)) < half.x and absf(f.y - cam.y) < half.y: rec.call(f.id, f)
+    for key in trails.keys():
+        if not seen.has(key): trails.erase(key); continue
+        var tr: Array = trails[key]
+        for q in tr: q.t += dt
+        while not tr.is_empty() and tr[0].t > 4.0: tr.pop_front()
 
 # ------------------------------------------------------------------ drawing
 class SeaDrawer extends Node2D:   # open sea, graticule and pack ice
@@ -132,7 +143,6 @@ class LandCopy extends Node2D:    # one copy of the world's land; three side by 
     var map
     func _draw() -> void:
         var z: float = map.zoom
-        for pv in map.land_tris: draw_colored_polygon(pv, Color("#c9bb93"))
         for pl in map.coast_lines: draw_polyline(pl, Color("#7e6e4a"), maxf(1.0 / z, 0.4))
         for pl in map.chan_lines: draw_polyline(pl, Color("#183039"), maxf(2.5, 1.6 / z))
 
@@ -143,26 +153,18 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         var hw = vs.x / 2 / z; var b: float = map.boost()
         for p in G.pois:
             var x: float = map.rx(p.x)
-            if absf(x - map.cam.x) > hw + 50: continue
+            if absf(x - map.cam.x) > hw + 50 or absf(p.y - map.cam.y) > vs.y / 2 / z + 50: continue
             var ready: bool = G.day >= p.next; var s = 6.0 / z; var col = Color(0.89, 0.7, 0.24, 1.0 if ready else 0.35)
             draw_polyline(PackedVector2Array([Vector2(x, p.y - s), Vector2(x + s, p.y), Vector2(x, p.y + s), Vector2(x - s, p.y), Vector2(x, p.y - s)]), col, 1.5 / z)
             if p.type == "wreck": draw_line(Vector2(x - s * 0.5, p.y), Vector2(x + s * 0.5, p.y), col, 1.5 / z)
         for p in G.ports:
             var x: float = map.rx(p.x)
-            if absf(x - map.cam.x) > hw + 80: continue
+            if absf(x - map.cam.x) > hw + 80 or absf(p.y - map.cam.y) > vs.y / 2 / z + 80: continue
             var s = (7.0 if p.capital else 5.5) / z
             draw_line(Vector2(x, p.y), Vector2(map.rx(p.sx), p.sy), Color(0.89, 0.91, 0.89, 0.35), 1.0 / z)
             var col = Color(GameData.fac[p.fac].map)
             if p.capital: draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), Color("#ecebe2")); draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), col, false, 3.0 / z)
             else: draw_circle(Vector2(x, p.y), s, Color("#ecebe2")); draw_arc(Vector2(x, p.y), s, 0, TAU, 20, col, 3.0 / z)
-        var zb = minf(b, 3.0)
-        for w in map.wakes:
-            var x: float = map.rx(w.x)
-            if absf(x - map.cam.x) > hw + 20: continue
-            var k: float = w.t / 3.0; var spread: float = (1.5 + w.t * 5) * zb; var n = Vector2(-sin(w.h), cos(w.h))
-            var r = maxf(0.6, 1.1 * b / z * (1 - k * 0.5)); var c = Color(0.88, 0.94, 0.94, 0.45 * (1 - k) * w.s)
-            draw_circle(Vector2(x, w.y) + n * spread, r, c); draw_circle(Vector2(x, w.y) - n * spread, r, c)
-            draw_circle(Vector2(x, w.y), r * 1.6, Color(0.88, 0.94, 0.94, 0.18 * (1 - k) * w.s))
         # planned route
         if P.get("tx") != null and P.get("route") != null:
             var r: Array = P.route; var off: Vector2 = Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
@@ -170,10 +172,12 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             for i in range(P.ri + 1, r.size()): pts.append(r[i] + off)
             for i in pts.size() - 1: _dash(pts[i], pts[i + 1], Color(0.89, 0.91, 0.89, 0.6), 1.5 / z, 8 / z)
             draw_arc(pts[-1], 5 / z, 0, TAU, 16, Color(0.89, 0.91, 0.89, 0.6), 1.5 / z)
-        # fleets
+        # fleets (and their wakes), only those on screen
+        var hh = vs.y / 2 / z
         for f in G.fleets:
             var x: float = map.rx(f.x)
-            if absf(x - map.cam.x) > hw + 60: continue
+            if absf(x - map.cam.x) > hw + 60 or absf(f.y - map.cam.y) > hh + 60: continue
+            if z >= 0.32: _wakes_of(f.id, f.ships)
             var col = Color("#e3b23c") if f.get("mission", false) else Color(GameData.fac[f.fac].map); var hos = Campaign.hostile(f.fac)
             if z < 0.32:
                 draw_colored_polygon(PackedVector2Array([Vector2(x, f.y) + Vector2.from_angle(f.h) * 7 / z, Vector2(x, f.y) + Vector2.from_angle(f.h + 2.5) * 4 / z, Vector2(x, f.y) + Vector2.from_angle(f.h - 2.5) * 4 / z]), col)
@@ -181,6 +185,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             if f.get("chasing", false): draw_arc(Vector2(x, f.y), 160, 0, TAU, 64, Color(0.85, 0.38, 0.29, 0.28), 1.0 / z)
             if hos or f.get("mission", false) or P.follow == f.id: draw_arc(Vector2(x, f.y), 16 * b / z, 0, TAU, 32, Color(Color("#e3b23c") if P.follow == f.id else col, 0.7), 1.5 / z)
             _fleet(f.ships, f.fac, Vector2(x, f.y), f.h)
+        if G.fleet.size() and z >= 0.32: _wakes_of("player", G.fleet)
         draw_arc(Vector2(P.x, P.y), 17 * b / z, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
         if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h)
 
@@ -191,22 +196,53 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             if t0 >= 1: break
             draw_line(a.lerp(b, t0), a.lerp(b, t1), c, w)
 
-    ## Past 2x zoom every ship of a fleet is drawn, steaming in a staggered column behind the largest.
-    func _fleet(ships: Array, pal: String, p: Vector2, h: float) -> void:
+    ## Where each ship of a fleet sits: past 2x zoom every ship is drawn, steaming in a staggered column behind the
+    ## largest; below that the fleet shows as its largest ship. Returns [ship, metres astern, metres abeam, length, scale].
+    func _layout(ships: Array) -> Array:
         var z: float = map.zoom; var b: float = map.boost()
         var sorted = ships.duplicate(); sorted.sort_custom(func(a, c): return GameData.hulls[a.type].L > GameData.hulls[c.type].L)
-        var n = sorted.size() if z >= 2 else 1; var back = 0.0
+        var n = sorted.size() if z >= 2 else 1; var back = 0.0; var out = []
         for k in n:
             var s: Dictionary = sorted[k]; var L: float = GameData.hulls[s.type].L
             var sc = (22 + L * 0.07) * b / (L * z) * (0.9 if k else 1.0); var len = L * sc
             if k: back += len * 1.35
-            var side = ((1 if k % 2 else -1) * len * 0.35) if k else 0.0
-            var q = p - Vector2.from_angle(h) * back + Vector2(-sin(h), cos(h)) * side
+            out.append([s, back, ((1 if k % 2 else -1) * len * 0.35) if k else 0.0, len, sc])
+        return out
+
+    func _fleet(ships: Array, pal: String, p: Vector2, h: float) -> void:
+        for e in _layout(ships):
+            var s: Dictionary = e[0]
+            var q = p - Vector2.from_angle(h) * e[1] + Vector2(-sin(h), cos(h)) * e[2]
             var info: Dictionary = GameData.sprites.ships[s.type]
-            draw_set_transform(q, h, Vector2.ONE * sc / info.spr)
+            draw_set_transform(q, h, Vector2.ONE * e[4] / info.spr)
             for layer in ["base", "top"]:
                 var t = GameData.ship_tex(s.type, pal, layer); draw_texture(t, -t.get_size() / 2)
         draw_set_transform(Vector2.ZERO)
+
+    ## Wakes along the fleet's trail, one per ship: two arms spreading from the stern and a churned band between them,
+    ## all fading with age.
+    func _wakes_of(key, ships: Array) -> void:
+        var tr: Array = map.trails.get(key, [])
+        if tr.size() < 2: return
+        var z: float = map.zoom
+        for e in _layout(ships):
+            var back: float = e[1]; var side: float = e[2]; var len: float = e[3]
+            var arm_l = PackedVector2Array(); var arm_r = PackedVector2Array(); var mid = PackedVector2Array()
+            var ca = PackedColorArray(); var cm = PackedColorArray()
+            var run := 0.0; var prev = null; var reach: float = len * 3.0   # a wake runs about three ship lengths
+            for i in range(tr.size() - 1, -1, -1):
+                var q: Dictionary = tr[i]
+                var d = Vector2.from_angle(q.h); var nrm = Vector2(-d.y, d.x)
+                var base = Vector2(map.rx(q.x), q.y) - d * (back + len * 0.48) + nrm * side
+                if prev != null: run += base.distance_to(prev)
+                prev = base
+                var k: float = minf(1.0, maxf(q.t / 4.0, run / reach))
+                var spread: float = len * (0.05 + 0.6 * k) * (0.6 + 0.4 * q.s)
+                arm_l.append(base + nrm * spread); arm_r.append(base - nrm * spread); mid.append(base)
+                ca.append(Color(0.9, 0.95, 0.95, 0.45 * (1.0 - k) * (1.0 - k) * q.s)); cm.append(Color(0.85, 0.93, 0.93, 0.2 * (1.0 - k) * (1.0 - k) * q.s))
+                if k >= 1.0: break
+            draw_polyline_colors(mid, cm, maxf(len * 0.1, 1.5 / z))
+            draw_polyline_colors(arm_l, ca, maxf(len * 0.012, 1.0 / z)); draw_polyline_colors(arm_r, ca, maxf(len * 0.012, 1.0 / z))
 
 class Overlay extends Control:    # text on the chart, at fixed pixel sizes
     var map

@@ -645,8 +645,8 @@ func update_weapons(s: CShip, dt: float) -> void:
         return
     for m in s.mounts:
         if m.dead: m.st = ""; continue
-        var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 1.2)
-        for b in m.rec.size(): m.rec[b] = maxf(0.0, m.rec[b] - dt * 1.2)
+        var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 0.5)
+        for b in m.rec.size(): m.rec[b] = maxf(0.0, m.rec[b] - dt * 0.5)   # the barrel runs out again over about two seconds
         if not m.queue.is_empty(): _ripple(s, m, dt)
         if m.ammo == 0: m.st = "empty"; continue   # magazine dry
         var p = world_pt(s, m.slot.x, m.slot.y)

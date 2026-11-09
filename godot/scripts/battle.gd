@@ -301,7 +301,7 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
             var y0: float = 0.0 if i == 0 else (float(info.oy) + (i - 0.5 - (n - 1) / 2.0) * g) * spr
             var y1: float = hpx if i == n - 1 else (float(info.oy) + (i + 0.5 - (n - 1) / 2.0) * g) * spr
             var r: float = m.rec[i] if i < m.rec.size() else m.recoil
-            var rc: float = r * float(m.w.get("bl", 0.0)) * 0.12 * spr
+            var rc: float = pow(r, 0.6) * float(m.w.get("bl", 0.0)) * 0.22 * spr   # slams back at once, runs out slowly
             var src = Rect2(0, y0, tex.get_width(), y1 - y0)
             draw_texture_rect_region(tex, Rect2(o + Vector2(-rc, y0), src.size), src, col)
     func _visible_mount(s: BattleSim.CShip, m) -> bool:
@@ -333,7 +333,24 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
                 if split: _barrels(bt, m, info, o, code) # only the barrels run back on recoil, each on its own
                 draw_texture(GameData.mount_img(m.wid, style), o, code)
         draw_set_transform(Vector2.ZERO)
-        if lit and lvl == s.max_lvl and s.struck: draw_rect(Rect2(-s.d.L / 2 - 6, -2, 5, 4), Color(0.91, 0.91, 0.88))
+        if lit and lvl == s.max_lvl and s.struck: _white_flag(s)
+
+    ## A ship that has struck her colours flies a white flag from the stern: a staff, and a flag rippling downwind
+    ## with its shadow on the deck and the sea. Drawn larger than life (about 14 m) so it reads at battle zoom.
+    func _white_flag(s) -> void:
+        var tn := Time.get_ticks_msec() / 1000.0; var st := Vector2(-s.d.L / 2 + 3.0, 0.0)
+        var wind := (BattleSim.WIND.normalized()).rotated(-s.a)   # the flag streams downwind, in the ship's frame
+        var side := Vector2(-wind.y, wind.x); var L := 14.0; var H := 9.0
+        var pts := PackedVector2Array(); var low := PackedVector2Array()
+        for i in 7:
+            var k := i / 6.0; var wave := sin(tn * 6.0 - k * 5.0) * 1.4 * k
+            pts.append(st + wind * L * k + side * (H * 0.5 + wave)); low.append(st + wind * L * k + side * (-H * 0.5 + wave))
+        low.reverse(); pts.append_array(low)
+        var sh := BattleSim.SUN.rotated(-s.a) * 5.0
+        var shadow := PackedVector2Array(); for q in pts: shadow.append(q + sh)
+        if Geometry2D.triangulate_polygon(shadow).size() > 0: draw_colored_polygon(shadow, Color(0, 0, 0, 0.3))
+        if Geometry2D.triangulate_polygon(pts).size() > 0: draw_colored_polygon(pts, Color(0.95, 0.95, 0.92))
+        draw_line(st - side * (H * 0.6), st + side * (H * 0.6), Color(0.25, 0.22, 0.2), 1.2)   # the staff
 
 class Fires extends Node2D:
     var view

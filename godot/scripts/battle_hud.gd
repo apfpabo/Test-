@@ -115,6 +115,7 @@ func _draw() -> void:
         ry += 8
     # flagship panel
     var f = sim.flag
+    if f == null or sim.finished: _hide_mirror()
     if f != null:
         var x = 16.0; var y = H - 152.0; var w = 420.0; var h = 138.0
         draw_rect(Rect2(x, y, w, h), PANEL); draw_rect(Rect2(x, y, w, h), Color(GOLD, 0.55), false, 1)
@@ -256,30 +257,10 @@ func _schematic(f, r: Rect2) -> void:
     var mouse := get_local_mouse_position()
     if sil.has_point(mouse): _tip = TIPS.map
     var at = func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * k
-    var tex = GameData.ship_tex(f.rec.type, f.pal, "base")
-    draw_texture_rect(tex, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false, Color(0.42, 0.46, 0.47, 0.95))
-    var blink: bool = int(Time.get_ticks_msec() / 250) % 2 == 0
-    var hurt = func(v: float) -> Color: return Color(0.85, 0.2, 0.15, clampf((1.0 - v) * 1.6, 0.0, 0.9))
-    var L: float = d.L
-    # machinery, steering gear and fire control show only once damaged
-    if f.eng_out > 0 or f.eng < 0.97: draw_rect(Rect2(at.call(-L * 0.18, -d.B * 0.2), Vector2(L * 0.36, d.B * 0.4) * k), Color(0.12, 0.02, 0.02, 0.9) if f.eng_out > 0 else hurt.call(f.eng))
-    if f.jam > 0: draw_rect(Rect2(at.call(-L * 0.48, -d.B * 0.14), Vector2(L * 0.07, d.B * 0.28) * k), Color(0.85, 0.2, 0.15, 0.9))
-    var sup: Array = d.p.get("sup", [])
-    if not sup.is_empty() and f.fc < 0.97: draw_circle(at.call(float(sup[0][0]), 0.0), maxf(3.0, float(sup[0][2]) * 0.3 * k), hurt.call(f.fc))
-    for fi in f.fires: draw_circle(at.call(float(fi.x), float(fi.y)), maxf(2.0, float(fi.r) * k), Color(1.0, 0.55 if blink else 0.4, 0.1, 0.9))
-    for m in f.mounts:
-        var sl: Dictionary = m.slot; var mp: Vector2 = at.call(float(sl.x), float(sl.y))
-        var sz: float = maxf(2.5, float(m.w.get("tw", 2.5)) * 0.5 * k)
-        if m.w.kind == "gun" and sl.y == 0 and ["M", "L", "H"].has(m.w.size):
-            var mc := Color(0, 0, 0, 0)
-            if f.mag_fire > 0 and absf(f.mag_x - sl.x) < 1.0: mc = Color(1.0, 0.45, 0.1) if blink else Color(1.0, 0.85, 0.3)
-            for fx in f.flooded: if absf(fx - sl.x) < 1.0: mc = Color(0.35, 0.6, 0.85)
-            if mc.a > 0: draw_rect(Rect2(mp - Vector2(sz * 1.3, sz * 1.1), Vector2(sz * 2.6, sz * 2.2)), mc)
-        if m.dead:
-            if m.w.kind == "gun": draw_rect(Rect2(mp - Vector2(sz, sz * 0.8), Vector2(sz * 2, sz * 1.6)), Color(0.08, 0.06, 0.06))
-            else: draw_circle(mp, sz * 0.7, Color(0.08, 0.06, 0.06))
-            draw_line(mp - Vector2(sz, sz), mp + Vector2(sz, sz), RED, 1.5); draw_line(mp + Vector2(-sz, sz), mp + Vector2(sz, -sz), RED, 1.5)
-        elif m.ammo == 0: draw_circle(mp, sz * 0.6, Color(0.9, 0.62, 0.2, 0.9))
+    # the ship herself, in her paint, as she is now: hull and deck here, then the mounts at their bearings and the
+    # superstructure in layers above (MirrorLayer), then the damage over them
+    draw_texture_rect(GameData.ship_tex(f.rec.type, f.pal, "base"), Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false)
+    _mirror(f, c, k)
     # badges
     var main_left := 0; var main_cap := 0
     for m in f.mounts: if m.w.kind == "gun" and m.w.size == f.main_sz and m.ammo_max > 0: main_left += maxi(0, m.ammo); main_cap += m.ammo_max
@@ -298,6 +279,64 @@ func _schematic(f, r: Rect2) -> void:
         _icon(String(b[0]), ctr, Color(1, 0.88, 0.85) if bad else Color(0.8, 0.84, 0.84))
         _text(ctr + Vector2(-30, 26), b[1], RED if bad else DIM, 11, HORIZONTAL_ALIGNMENT_CENTER, 60)
         bx += step
+
+## The layers of the flagship's mirror over the status panel: mounts on the deck, the superstructure, superfiring
+## mounts, then the damage. Each is a child so the mounts can use the mount shader.
+var _layers: Array = []
+func _mirror(f, c: Vector2, k: float) -> void:
+    if _layers.is_empty():
+        for kind in ["mounts0", "top", "mounts1", "damage"]:
+            var l := MirrorLayer.new(); l.kind = kind; l.mouse_filter = Control.MOUSE_FILTER_IGNORE; l.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(l); _layers.append(l)
+    for l in _layers:
+        if l.kind.begins_with("mounts") and l.pal != f.pal: l.material = GameData.mount_material(f.pal); l.pal = f.pal
+        l.f = f; l.c = c; l.k = k; l.queue_redraw()
+
+func _hide_mirror() -> void:
+    for l in _layers: l.f = null; l.queue_redraw()
+
+class MirrorLayer extends Control:
+    var kind := ""
+    var f = null
+    var c := Vector2.ZERO
+    var k := 1.0
+    var pal := ""
+    func _draw() -> void:
+        if f == null: return
+        var d: Dictionary = f.d; var info: Dictionary = GameData.sprites.ships[f.rec.type]
+        var at = func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * k
+        match kind:
+            "top": draw_texture_rect(GameData.ship_tex(f.rec.type, f.pal, "top"), Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false)
+            "mounts0", "mounts1":
+                var style := GameData.style_of(f.rec.type)
+                for m in f.mounts:
+                    if (m.lvl > 0) != (kind == "mounts1") or not GameData.sprites.mounts.has(m.wid) or m.w.kind == "ssm" or m.w.kind == "sam": continue
+                    if d.kind == "sub" and m.w.kind == "torp": continue
+                    var mi: Dictionary = GameData.sprites.mounts[m.wid]; var sc: float = k / mi.spr
+                    draw_set_transform(at.call(float(m.slot.x), float(m.slot.y)), m.ta, Vector2(sc, sc))
+                    var o = -Vector2(mi.ox, mi.oy) * mi.spr; var code := GameData.mount_code(Vector2(0.55, 0.85).rotated(-m.ta), m.lvl, m.dead)
+                    if mi.get("split", false): draw_texture(GameData.mount_img(m.wid, style, true), o, code)
+                    draw_texture(GameData.mount_img(m.wid, style), o, code)
+                draw_set_transform(Vector2.ZERO)
+            "damage":
+                var L: float = d.L
+                for mk in f.marks:   # shell holes and soot where the hits landed
+                    var r: float = maxf(1.5, float(mk.r) * k)
+                    draw_texture_rect(GameData.fx_tex("cloud%d" % int(mk.v)), Rect2(at.call(float(mk.x), float(mk.y)) - Vector2(r, r), Vector2(r, r) * 2), false, Color(0.08, 0.06, 0.05, 0.6))
+                var hurt = func(v: float) -> Color: return Color(0.85, 0.2, 0.15, clampf((1.0 - v) * 1.4, 0.0, 0.7))
+                if f.eng_out > 0 or f.eng < 0.97:   # machinery spaces: a red wash and outline, darker when the engines are stopped
+                    var mr := Rect2(at.call(-L * 0.18, -d.B * 0.2), Vector2(L * 0.36, d.B * 0.4) * k)
+                    draw_rect(mr, Color(0.6, 0.05, 0.03, 0.5) if f.eng_out > 0 else Color(0.85, 0.2, 0.15, clampf((1.0 - f.eng) * 0.6, 0.08, 0.3)))
+                    draw_rect(mr, Color(0.95, 0.3, 0.22, 0.8), false, 1.0)
+                if f.jam > 0: draw_rect(Rect2(at.call(-L * 0.48, -d.B * 0.14), Vector2(L * 0.07, d.B * 0.28) * k), Color(0.85, 0.2, 0.15, 0.85))
+                var sup: Array = d.p.get("sup", [])
+                if not sup.is_empty() and f.fc < 0.97: draw_circle(at.call(float(sup[0][0]), 0.0), maxf(3.0, float(sup[0][2]) * 0.3 * k), hurt.call(f.fc))
+                for m in f.mounts:
+                    var sl: Dictionary = m.slot; var mp: Vector2 = at.call(float(sl.x), float(sl.y))
+                    var sz: float = maxf(2.5, float(m.w.get("tw", 2.5)) * 0.5 * k)
+                    for fx in f.flooded: if absf(fx - sl.x) < 1.0 and m.w.kind == "gun": draw_rect(Rect2(mp - Vector2(sz * 1.3, sz * 1.1), Vector2(sz * 2.6, sz * 2.2)), Color(0.35, 0.6, 0.85, 0.55))
+                    if m.dead:
+                        draw_line(mp - Vector2(sz, sz), mp + Vector2(sz, sz), Color(0.95, 0.3, 0.22), 1.8); draw_line(mp + Vector2(-sz, sz), mp + Vector2(sz, -sz), Color(0.95, 0.3, 0.22), 1.8)
+                    elif m.ammo == 0: draw_arc(mp, sz * 0.8, 0, TAU, 16, Color(0.9, 0.62, 0.2, 0.95), 1.5)
 
 ## Small line-drawn badge icons.
 func _icon(kind: String, c: Vector2, col: Color) -> void:

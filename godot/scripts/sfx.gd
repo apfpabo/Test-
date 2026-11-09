@@ -1,4 +1,7 @@
 extends Node
+## Recorded sound effects (godot/assets/sfx, built by tools/build_sfx.py from CC0 and CC BY sources; see CREDITS.md
+## there): gun reports by calibre, hits, splashes, blasts, missile launches, CIWS and light AA bursts, and the sea and
+## engine-room loops. Each event plays a recording, varied a little in pitch, louder the nearer the camera.
 ## Synthesised sound, rendered once at start-up and played through a small pool of players, louder the nearer the
 ## camera. A gun report is three parts: a low pressure thump (a falling sine), a sharp crack (bright noise, a few
 ## milliseconds) and a rolling tail (low-passed noise); heavier guns have a deeper thump and a longer tail. Light AA
@@ -16,8 +19,13 @@ var _pool: Array[AudioStreamPlayer] = []
 var _next = 0
 var _engine: AudioStreamPlayer
 var _recent: Array[float] = []   # start times of recent reports, to keep a big gunfight from turning to mush
+var _rec: Dictionary = {}       # recorded banks by event: Array of AudioStream
+var _room: AudioStreamPlayer     # engine room under the sea ambience
 var muted = false:
-	set(v): muted = v; if _engine: _engine.stream_paused = v
+	set(v):
+		muted = v
+		if _engine: _engine.stream_paused = v
+		if _room: _room.stream_paused = v
 
 func _ready() -> void:
 	for c in _cut:
@@ -30,7 +38,22 @@ func _ready() -> void:
 	for k in 2: _bof.append(_auto(4.0, 0.62, 0.06, 500.0, false))
 	for i in 24:
 		var p = AudioStreamPlayer.new(); add_child(p); _pool.append(p)
-	_engine = AudioStreamPlayer.new(); _engine.stream = _engine_loop(); _engine.volume_db = -80.0; add_child(_engine)
+	var names = {"gun_H": ["gun_heavy_1", "gun_heavy_2"], "gun_L": ["gun_heavy_1", "gun_heavy_2"], "gun_M": ["gun_medium"], "gun_S": ["gun_small"],
+		"hit": ["hit_1", "hit_2"], "hit_big": ["hit_big"], "splash": ["splash_1", "splash_2", "splash_3", "splash_4"], "blast": ["blast"], "launch": ["launch"],
+		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa40": ["bofors"]}
+	for k in names:
+		var bank = []
+		for n in names[k]:
+			var st = load("res://assets/sfx/%s.ogg" % n)
+			if st != null: bank.append(st)
+		if not bank.is_empty(): _rec[k] = bank
+	_engine = AudioStreamPlayer.new(); _engine.volume_db = -80.0; add_child(_engine)
+	var amb = load("res://assets/sfx/sea_ambient.ogg")
+	if amb: amb.loop = true; _engine.stream = amb
+	else: _engine.stream = _engine_loop()
+	_room = AudioStreamPlayer.new(); _room.volume_db = -80.0; add_child(_room)
+	var er = load("res://assets/sfx/engine_room.ogg")
+	if er: er.loop = true; _room.stream = er
 	var comp = AudioEffectCompressor.new(); comp.threshold = -16.0; comp.ratio = 4.0; comp.attack_us = 2000.0; comp.release_ms = 250.0; comp.gain = 4.0
 	AudioServer.add_bus_effect(0, comp)
 	var lim = AudioEffectHardLimiter.new() if ClassDB.class_exists("AudioEffectHardLimiter") else AudioEffectLimiter.new()
@@ -92,6 +115,19 @@ func _engine_loop() -> AudioStreamWAV:
 	out.resize(n - fade)
 	return _wav(out, true)
 
+## A recorded event: kind is gun_H / gun_L / gun_M / gun_S, hit, hit_big, splash, blast, launch, depth, torp_hit,
+## ciws, aa20 or aa40. Falls back to the synthesised sounds if the recordings are missing.
+func event(kind: String, vol: float, rate := 1.0) -> void:
+	if muted or vol < 0.01: return
+	match kind:
+		"depth": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.55 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol * 0.6, 0.6); return
+		"torp_hit": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.7 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol, 0.8); return
+	if not _rec.has(kind):
+		boom(vol, {"gun_H": 160.0, "gun_L": 350.0, "gun_M": 520.0, "gun_S": 700.0, "hit": 600.0, "hit_big": 220.0, "blast": 160.0, "launch": 1200.0}.get(kind, 420.0), rate); return
+	# the 8-inch and other L guns use the heavy report a little higher
+	if kind == "gun_L": rate *= 1.15
+	_play(_rec[kind].pick_random(), vol, rate)
+
 ## vol 0..1, freq picks the nearest bank (lower is heavier), rate scales playback speed.
 func boom(vol: float, freq := 420.0, rate := 1.0) -> void:
 	if muted or vol < 0.01: return
@@ -120,6 +156,7 @@ func _auto(rate: float, dur: float, shot: float, cutoff: float, gatling: bool) -
 ## A CIWS burst, an Oerlikon rattle or a Bofors pom-pom: wid picks which.
 func auto_fire(wid: String, vol: float) -> void:
 	if muted or vol < 0.01: return
+	if _rec.has(wid): _play(_rec[wid].pick_random(), vol, randf_range(0.96, 1.04)); return
 	var bank: Array = _gat if wid == "ciws" else (_bof if wid == "aa40" else _oer)
 	_play(bank.pick_random(), vol, randf_range(0.95, 1.05))
 
@@ -142,10 +179,17 @@ func _play(stream: AudioStream, vol: float, rate: float) -> void:
 	p.stream = stream; p.pitch_scale = rate * randf_range(0.92, 1.08); p.volume_db = linear_to_db(clampf(vol, 0.0, 1.0)) + 2.0; p.play()
 
 ## Engine level 0..1 (0 silences it). Called every frame by the battle.
+## Sea and engines, level 0..1 (0 silences them). The sea along the hull swells with speed; the engine room
+## underneath runs a little faster with it. Called every frame by the battle and the chart.
 func engine(level: float) -> void:
 	if not _engine: return
-	if level <= 0.01: if _engine.playing: _engine.stop()
-	else:
-		if not _engine.playing and not muted: _engine.play()
-		_engine.volume_db = lerpf(_engine.volume_db, linear_to_db(clampf(0.25 + level * 0.75, 0.0, 1.0)) - 3.0, 0.1)
-		_engine.pitch_scale = 0.8 + 0.4 * level
+	for pl in [_engine, _room]:
+		if pl == null or pl.stream == null: continue
+		if level <= 0.01:
+			if pl.playing: pl.stop()
+			continue
+		if not pl.playing and not muted: pl.play()
+		var room: bool = pl == _room
+		var target: float = linear_to_db(clampf((0.15 + level * 0.6) if room else (0.25 + level * 0.75), 0.0, 1.0)) - (8.0 if room else 2.0)
+		pl.volume_db = lerpf(pl.volume_db, target, 0.1)
+		pl.pitch_scale = (0.9 + 0.2 * level) if room else (0.85 + 0.25 * level)

@@ -25,6 +25,7 @@ func _ready() -> void:
     var cfg: Dictionary = GameData.pending
     sim = BattleSim.new()
     sim.on_boom = _boom
+    sim.on_sound = func(kind: String, p: Vector2, vol: float): Sfx.event(kind, vol * _near(p)); if (kind == "gun_H" or kind == "blast") and vol >= 0.4: shake = maxf(shake, vol * _near(p) * _near(p) * 6.0)
     sim.on_pop = func(p: Vector2, vol: float, wid: String): Sfx.auto_fire(wid, vol * _near(p))
     var pt: Array = cfg.get("player_tech", []); var et: Array = cfg.get("enemy_tech", [])
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])

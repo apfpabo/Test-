@@ -27,7 +27,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - Missile launches show flame, a white cloud and dark smoke, and the booster burns for the first second and a half.
   - CIWS, Oerlikon and Bofors each have their own rate-of-fire sound.
   - The damage display follows War Thunder's: damage-only silhouette plus a badge row (crew, fires, machinery, ammunition, steering, fire control).
-  - Open question for the owner: free (CC0) recorded sounds to replace the synthesised ones.
+  - Recorded sound effects (owner approved CC0 and CC BY) replace the synthesised ones: gun reports by calibre, hits, splashes on misses, blasts, missile launches, depth charges, sea and engine-room loops; CIWS and light AA are built from recorded transients at each weapon's rate of fire. Sources: `godot/assets/sfx/CREDITS.md`.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

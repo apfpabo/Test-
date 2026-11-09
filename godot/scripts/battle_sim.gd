@@ -144,6 +144,7 @@ var enemy_era = 1
 var sonar_tech = false
 var on_boom: Callable    # (pos, vol, freq, rate) for sound
 var on_pop: Callable     # (pos, vol, weapon id) for light AA and point-defence fire
+var on_sound: Callable   # (kind, pos, vol) for recorded events: see Sfx.event
 var sys_log := {}        # subsystem events this battle, for tests and balance
 func _log(k: String) -> void: sys_log[k] = sys_log.get(k, 0) + 1
 var small_craft = [false, false]  # whether each side still has torpedo boats or submarines afloat
@@ -157,6 +158,9 @@ func say(m: String, dur := 3.0) -> void:
 
 func boom(p: Vector2, vol: float, freq := 420.0, rate := 1.0) -> void:
     if on_boom.is_valid(): on_boom.call(p, vol, freq, rate)
+
+func sound(kind: String, p: Vector2, vol: float) -> void:
+    if on_sound.is_valid(): on_sound.call(kind, p, vol)
 
 func pop(p: Vector2, vol: float, wid := "") -> void:
     if on_pop.is_valid(): on_pop.call(p, vol, wid)
@@ -497,7 +501,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     if m.rec.size() != n: m.rec.resize(n)
     m.rec[i] = 1.0; m.recoil = 1.0
     fx_muzzle(p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl), ang, w.size, 1)
-    boom(p, {"S": 0.18, "M": 0.26, "L": 0.42, "H": 0.7}[w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 160.0}[w.size])
+    sound("gun_" + w.size, p, {"S": 0.2, "M": 0.3, "L": 0.45, "H": 0.75}[w.size])
 
 func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     if not use_round(m): return
@@ -553,7 +557,7 @@ func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
         var ang = (sq.pos - p).angle(); tracer(p, sq.pos); m.recoil = 1.0
         m.rec.resize(int(m.w.get("barrels", 1))); m.rec.fill(1.0)
         fx_muzzle(p + Vector2.from_angle(ang) * (m.w.tl * 0.42 + m.w.bl), ang, m.w.size, int(m.w.get("barrels", 1)))
-        boom(p, {"S": 0.16, "M": 0.24, "L": 0.4, "H": 0.6}[m.w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 220.0}[m.w.size])
+        sound("gun_" + m.w.size, p, {"S": 0.16, "M": 0.24, "L": 0.4, "H": 0.6}[m.w.size])
     else: aa_shot(s, m, p, sq.pos)
     part(P.FLAK, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 50.0, 0.6, 8.0)
     if randf() < chance * (0.6 if sq.jet else 1.0):
@@ -706,7 +710,7 @@ func damage(s: CShip, dmg: float, type: String) -> void:
             var q = part(P.FIRE if i % 3 == 0 else P.SMOKE, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.6, (randf() - 0.5) * s.d.B).rotated(s.a), 2.0 + randf() * 3.0, 10.0 + randf() * 18.0, Vector2(randf() - 0.5, randf() - 0.5) * 40.0, true)
         fx_boom(s.pos, s.d.L * 0.5, 1.0)
         say(("Enemy " if s.side == 1 else "Our ") + s.d.name.to_lower() + " " + s.rec.name + " is sinking!")
-        boom(s.pos, 0.6, 160.0, 0.6)
+        sound("blast", s.pos, 0.65)
         if lock == s: lock = null
         if s == flag: next_flag("Flagship lost! You transfer your flag to the ")
     elif s.side == 1 and not s.struck and not s.sub and s.hull / s.max_hull < 0.12 and s.d.kind != "pt":
@@ -761,7 +765,7 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
 ## A magazine goes up: the ship is lost.
 func detonate(s: CShip) -> void:
     for i in 4: fx_boom(s.pos + Vector2((randf() - 0.5) * s.d.L * 0.5, 0).rotated(s.a), s.d.L * (0.4 + randf() * 0.3), 1.6)
-    part(P.FLASH, s.pos, 0.5, s.d.L * 0.8); boom(s.pos, 1.0, 160.0, 0.5); boom(s.pos, 0.8, 220.0, 0.7)
+    part(P.FLASH, s.pos, 0.5, s.d.L * 0.8); sound("blast", s.pos, 1.0); sound("hit_big", s.pos, 0.8)
     say(("Her magazine explodes! The %s is gone." if s.side == 1 else "The %s's magazine explodes!") % s.rec.name, 3.5)
     s.mag_fire = 0.0; damage(s, s.hull + 1.0, "magazine")
 
@@ -899,7 +903,7 @@ func update_air(dt: float) -> void:
                     var bp = tg.pos + Vector2((randf() - 0.5) * (tg.d.L * 0.4 if hit else 220.0), (randf() - 0.5) * (tg.d.B if hit else 220.0))
                     if hit: mark_hit(tg, bp, 3.0, true); hit_systems(tg, bp, 260 if q.jet else 230, "bomb"); damage(tg, 260 if q.jet else 230, "bomb"); fx_boom(bp, 26.0, 0.8)
                     else: fx_splash(bp, 22.0)
-                q.state = "home"; boom(tg.pos, 0.4, 250.0)
+                q.state = "home"; sound("hit_big", tg.pos, 0.4)
         else:
             var home: CShip = q.home
             if not home.alive: q.n = 0; continue
@@ -1010,9 +1014,9 @@ func step(dtv: float) -> void:
         if hit != null:
             mark_hit(hit, sh.pos, sz, true); hit_systems(hit, sh.pos, sh.dmg, "shell"); damage(hit, sh.dmg, "shell"); fx_boom(sh.pos, 7 * sz, 0.6)
             for k2 in 3: part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * 60.0)
-            boom(sh.pos, 0.12 * sz, 600.0)
+            sound("hit", sh.pos, 0.14 * sz)
         elif land_at(sh.pos): part(P.DUST, sh.pos, 1.6, 9 * sz)
-        else: fx_splash(sh.pos, 6 * sz)
+        else: fx_splash(sh.pos, 6 * sz); sound("splash", sh.pos, 0.05 * sz)
     # torpedoes
     for i in range(torps.size() - 1, -1, -1):
         var tp: Dictionary = torps[i]; tp.life -= dt; tp.arm -= dt
@@ -1029,7 +1033,7 @@ func step(dtv: float) -> void:
                 var l: Vector2 = (tp.pos - s.pos).rotated(-s.a)
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
                     mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.FOAM, tp.pos, 12.0, 60.0)
-                    boom(tp.pos, 0.5, 200.0, 0.7); gone = true; break
+                    sound("torp_hit", tp.pos, 0.55); gone = true; break
         if not gone and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
         if gone: torps.remove_at(i)
     # missiles
@@ -1044,7 +1048,7 @@ func step(dtv: float) -> void:
             var f = part(P.FLASH, m.pos, 0.18, 6.0 if m.kind == "ssm" else 3.5); f.a = m.a + PI
             part(P.MTRAIL, m.pos + back * 4.0, 4.0, 9.0 if m.kind == "ssm" else 5.0)
             for k2 in 3: part(P.GUNSMOKE, m.pos + back * (2.0 + k2 * 3.0) + Vector2(randf() - 0.5, randf() - 0.5) * 6.0, 3.0 + randf() * 2.0, 4.0 + randf() * 3.0, Vector2(randf() - 0.5, randf() - 0.5) * 8.0, true)
-            boom(m.pos, 0.2 if m.kind == "ssm" else 0.12, 1200.0, 0.6)
+            sound("launch", m.pos, 0.35 if m.kind == "ssm" else 0.2)
             age = 0.0
         m.age = age + dt
         m.life -= dt; m.v = minf(m.speed, m.v + m.speed * dt)
@@ -1065,7 +1069,7 @@ func step(dtv: float) -> void:
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B):
                 mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")
-                fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); boom(m.pos, 0.5, 220.0); missiles.remove_at(i); continue
+                fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); sound("hit_big", m.pos, 0.55); missiles.remove_at(i); continue
         m.pos += Vector2.from_angle(m.a) * m.v * dt
         if randf() < dtv * 30: part(P.MTRAIL, m.pos, 1.0 if m.kind == "sam" else 2.0, 4.0)
         if m.age < 1.6: # the booster burning: flame at the tail, darker smoke mixed into the trail
@@ -1078,7 +1082,7 @@ func step(dtv: float) -> void:
     for i in range(dcs.size() - 1, -1, -1):
         var q = dcs[i]; q.t -= dt
         if q.t > 0: continue
-        dcs.remove_at(i); boom(q.pos, 0.25, 150.0, 0.6)
+        dcs.remove_at(i); sound("depth", q.pos, 0.3)
         for s in ships:
             if s.sub and active(s) and s.side != q.side and s.pos.distance_to(q.pos) < 60: damage(s, 160, "dc"); s.reveal_t = 30.0
     # end of the action: one side gone, or fifteen battle minutes without a hit and nothing in flight

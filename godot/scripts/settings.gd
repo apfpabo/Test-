@@ -12,6 +12,7 @@ var fx_modern := true             # battle effects: modern (layered explosions, 
 const MINIMAP_W := [190.0, 280.0, 400.0]
 
 func _ready() -> void:
+	UI.setup(get_tree().root)   # Barlow and the shared theme for every screen
 	for b in ["Effects", "Ambience"]:
 		if AudioServer.get_bus_index(b) < 0:
 			AudioServer.add_bus(); var i := AudioServer.bus_count - 1

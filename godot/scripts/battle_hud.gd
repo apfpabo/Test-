@@ -99,8 +99,9 @@ func _draw() -> void:
         var on: bool = sim.order == orders[i][2]
         _text(Vector2(16, 28 + i * 18), ("▸ " if on else "   ") + orders[i][0] + " " + orders[i][1], GOLD if on else Color(INK, 0.55))
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
-    _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire · right-drag: pan, Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torps · Q missiles · F air · C dive · Tab ship · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
-    var ry = 116.0
+    _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
+    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    var ry = 128.0
     for side in [0, 1]:
         _text(Vector2(16, ry), "Enemy" if side else "Task force", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
         for s in sim.ships:

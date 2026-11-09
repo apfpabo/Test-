@@ -45,6 +45,13 @@ Rules: `godot/scripts/structures.gd` (autoload `Structures`), tuning in `godot/d
 - Replace aircraft in port (Repairs & crew) or at your naval base: 1,500 each, 3,000 once you have jets.
 - Defences mend 4% a day; wrecked output 1% a day.
 
+## Bombardment from the sea (owner request)
+
+- Any structure within reach of the fleet's guns or missiles can be shelled without carriers: guns reach ashore at their real range (battle ranges are a fifth of real: about 12 km for small guns, 15–20 km for medium, 23 km for 8-inch, 27–33 km for heavy guns), anti-ship missiles 120 km. Coastal batteries (22 km inland or less), naval bases and coastal works are in reach; most inland works need aircraft.
+- An hour's shoot from every ship with a weapon in reach: weight of fire by gun (heavy shells count more against concrete), against how hard the target is. A battleship silences a Directorate battery in about two shoots; a destroyer chips at it.
+- Each ship that fires uses a sixth of her magazines. The structure's heavy guns answer, hitting your ships (small ships suffer more). Six hours between shoots. Same armistice rules as a strike. Strike contracts count it.
+- Shown like a raid: ranging shots and salvos coming in from the sea, the shore's guns answering with flashes and splashes, then a report.
+
 ## Capture: surrender
 
 - When 80% of the defences are out of action and the fleet lies off the coast nearest the structure (within its distance inland plus about 75 km), "Demand its surrender" lands a garrison from your crews. An unclaimed structure needs only the garrison.
@@ -75,7 +82,10 @@ A structure held by `"player"` already behaves like a small territory: garrison,
 
 ## Not yet
 
+(Done since: naval bombardment, Syndicate carriers.)
+
+
 - Troop transports (auxiliaries) to replace landing from the crews.
-- Bombarding coastal structures with a fleet's guns; land-based air raids on your fleet (airfields only spot).
+- Land-based air raids on your fleet (airfields only spot).
 - Defend contracts (sink an assault force sailing against a power's structure) and structures changing hands through NPC assault fleets you can watch.
 - Investing in your structures (more flak, a radar, rebuilding faster).

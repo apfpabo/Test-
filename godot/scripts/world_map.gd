@@ -464,20 +464,29 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
 # ------------------------------------------------------------------ top bar, toasts, dock
 func _build_top() -> void:
     var bg = PanelContainer.new(); bg.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    var sb = StyleBoxFlat.new(); sb.bg_color = Color(0.04, 0.09, 0.11, 0.85); sb.content_margin_left = 14; sb.content_margin_right = 14; sb.content_margin_top = 6; sb.content_margin_bottom = 6
+    var sb = StyleBoxFlat.new(); sb.bg_color = Color(UI.PANEL, 0.93); sb.border_color = UI.LINE; sb.border_width_bottom = 1
+    sb.content_margin_left = 16; sb.content_margin_right = 12; sb.content_margin_top = 5; sb.content_margin_bottom = 5
     bg.add_theme_stylebox_override("panel", sb); ui.add_child(bg)
-    top = HBoxContainer.new(); top.add_theme_constant_override("separation", 18); bg.add_child(top)
+    top = HBoxContainer.new(); top.add_theme_constant_override("separation", 22); bg.add_child(top)
+    # stats as two-line chips: a small condensed key over its value
     for k in ["DATE", "FUNDS", "FUEL", "CREW", "HOLD", "RESEARCH", "SERVING"]:
-        var box = HBoxContainer.new(); box.add_theme_constant_override("separation", 6)
-        box.add_child(UI.label(k, UI.DIM, 11)); var v = UI.label("", UI.INK, 14); box.add_child(v); stats[k] = v; top.add_child(box)
+        var box = VBoxContainer.new(); box.add_theme_constant_override("separation", -3)
+        var key := Label.new(); key.text = k; key.add_theme_font_override("font", UI.font("cond")); key.add_theme_font_size_override("font_size", 11); key.add_theme_color_override("font_color", Color(UI.DIM, 0.8))
+        var v := Label.new(); v.add_theme_font_override("font", UI.font("semi")); v.add_theme_font_size_override("font_size", 15); v.add_theme_color_override("font_color", UI.INK)
+        box.add_child(key); box.add_child(v); stats[k] = v; top.add_child(box)
+        if k == "SERVING": box.mouse_filter = Control.MOUSE_FILTER_PASS
     var spacer = Control.new(); spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL; top.add_child(spacer)
+    # time: a segmented control
+    var seg := HBoxContainer.new(); seg.add_theme_constant_override("separation", 0); top.add_child(seg)
     for pair in [[0, "❚❚"], [1, "1×"], [2, "2×"], [4, "4×"], [8, "8×"]]:
         var v: int = pair[0]
-        var b = UI.button(pair[1], func(): _speed(v)); b.custom_minimum_size.x = 38; top.add_child(b); speed_btns.append([v, b])
-    top.add_child(UI.button("Centre", func(): free_cam = false))
-    top.add_child(UI.button("Command", func(): show_command()))
-    var snd := UI.button("Sound off" if Sfx.muted else "Sound on", func(): pass)
-    snd.pressed.connect(func(): Sfx.muted = not Sfx.muted; snd.text = "Sound off" if Sfx.muted else "Sound on")
+        var b = UI.button(pair[1], func(): _speed(v)); b.custom_minimum_size.x = 40; b.focus_mode = Control.FOCUS_NONE
+        b.add_theme_font_size_override("font_size", 14); seg.add_child(b); speed_btns.append([v, b])
+    for t in [["Centre", func(): free_cam = false], ["Command", func(): show_command()]]:
+        var b := UI.button(t[0], t[1]); b.focus_mode = Control.FOCUS_NONE; top.add_child(b)
+    var snd := UI.button("Sound" if not Sfx.muted else "Muted", func(): pass); snd.focus_mode = Control.FOCUS_NONE
+    snd.tooltip_text = "Sound on or off (everything, the sea and gulls too)"
+    snd.pressed.connect(func(): Sfx.muted = not Sfx.muted; snd.text = "Muted" if Sfx.muted else "Sound")
     top.add_child(snd)
 
 func _speed(v: int) -> void:
@@ -491,17 +500,18 @@ func _update_top() -> void:
     stats.FUEL.add_theme_color_override("font_color", UI.RED if fu > 0 and G.cargo.fuel / fu < 5 else UI.INK)
     var cm = G.get("commission")
     if cm != null:
-        stats.SERVING.text = "%s · %s" % [GameData.fac[cm.fac].short, Diplomacy.commission_title(cm.fac)]
+        stats.SERVING.text = GameData.fac[cm.fac].short + (" · marque" if str(cm.get("marque", "")) != "" else "")
         stats.SERVING.add_theme_color_override("font_color", Color(GameData.fac[cm.fac].map))
         stats.SERVING.tooltip_text = "You serve the %s (%s) since %s. Its wars are yours%s; sinking its enemies earns double standing. Resign at its capital." % [GameData.fac[cm.fac].name, Diplomacy.commission_title(cm.fac), Campaign.date_str(int(cm.since)), (", and you are a combatant to the " + GameData.fac[cm.marque].name) if str(cm.get("marque", "")) != "" else ""]
     else:
         stats.SERVING.text = "Independent"; stats.SERVING.add_theme_color_override("font_color", UI.DIM)
         stats.SERVING.tooltip_text = "You fly no flag but your own. Powers offer commissions and letters of marque at their capitals once your standing reaches 20."
-    stats.SERVING.mouse_filter = Control.MOUSE_FILTER_PASS
+    stats.SERVING.mouse_filter = Control.MOUSE_FILTER_PASS; stats.SERVING.get_parent().tooltip_text = stats.SERVING.tooltip_text
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()]; stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
-        pair[1].modulate = UI.GOLD if on else Color.WHITE
+        pair[1].add_theme_color_override("font_color", UI.GOLD if on else UI.DIM)
+        pair[1].add_theme_color_override("font_hover_color", UI.GOLD if on else UI.INK)
 
 # ------------------------------------------------------------------ the orders box (top right)
 ## Your story orders and contracts at a glance: hover one for its full brief, click it to plot a course to its target.
@@ -512,7 +522,7 @@ var _orders_sig := ""
 var _orders_t := 0.0
 func _build_orders() -> void:
     orders_box = PanelContainer.new(); ui.add_child(orders_box)
-    var sb := StyleBoxFlat.new(); sb.bg_color = Color(0.04, 0.09, 0.11, 0.82); sb.border_color = Color(0.21, 0.31, 0.35); sb.set_border_width_all(1)
+    var sb := StyleBoxFlat.new(); sb.bg_color = Color(UI.PANEL, 0.9); sb.border_color = UI.LINE; sb.set_border_width_all(1); sb.border_width_top = 2
     sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 6; sb.content_margin_bottom = 8; sb.set_corner_radius_all(3)
     orders_box.add_theme_stylebox_override("panel", sb)
     orders_box.set_anchor_and_offset(SIDE_RIGHT, 1, -14); orders_box.set_anchor_and_offset(SIDE_LEFT, 1, -330); orders_box.set_anchor_and_offset(SIDE_TOP, 0, 58)   # right first: Godot pushes the other anchor
@@ -536,7 +546,8 @@ func _update_orders(force := false) -> void:
     _orders_sig = sig
     for ch in orders_list.get_children(): ch.queue_free()
     var head := Button.new(); head.flat = true; head.alignment = HORIZONTAL_ALIGNMENT_LEFT
-    head.text = ("▾ " if orders_open else "▸ ") + "ORDERS & CONTRACTS (%d)" % items.size(); head.add_theme_font_size_override("font_size", 12); head.add_theme_color_override("font_color", UI.DIM)
+    head.text = ("▾ " if orders_open else "▸ ") + "ORDERS & CONTRACTS (%d)" % items.size(); head.add_theme_font_size_override("font_size", 14); head.add_theme_color_override("font_color", Color(UI.GOLD, 0.85))
+    head.add_theme_font_override("font", UI.font("cond"))
     head.pressed.connect(func(): orders_open = not orders_open; _update_orders(true)); orders_list.add_child(head)
     if not orders_open: return
     for it in items:
@@ -561,7 +572,8 @@ func _build_toasts() -> void:
     toasts.alignment = BoxContainer.ALIGNMENT_END; toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _toast(text: String) -> void:
-    var pc = PanelContainer.new(); var sb = StyleBoxFlat.new(); sb.bg_color = Color(0.086, 0.149, 0.172, 0.94); sb.border_color = UI.GOLD; sb.border_width_left = 3
+    var pc = PanelContainer.new(); var sb = StyleBoxFlat.new(); sb.bg_color = Color(UI.PANEL, 0.94); sb.border_color = UI.GOLD; sb.border_width_left = 3
+    sb.shadow_color = Color(0, 0, 0, 0.35); sb.shadow_size = 8; sb.corner_radius_top_right = 3; sb.corner_radius_bottom_right = 3
     sb.content_margin_left = 12; sb.content_margin_right = 12; sb.content_margin_top = 7; sb.content_margin_bottom = 7; pc.add_theme_stylebox_override("panel", sb)
     var l = UI.label(text, UI.INK, 14, true); l.custom_minimum_size.x = 420; pc.add_child(l); pc.mouse_filter = Control.MOUSE_FILTER_IGNORE; toasts.add_child(pc)
     while toasts.get_child_count() > 5: toasts.get_child(0).queue_free(); toasts.remove_child(toasts.get_child(0))
@@ -967,11 +979,7 @@ var cmd_tab = "fleet"
 var refit_idx = 0
 
 func _tabs(box: Control, tabs: Array, cur: String, cb: Callable) -> void:
-    var tr = HBoxContainer.new(); tr.add_theme_constant_override("separation", 2)
-    for t in tabs:
-        var key: String = t[0]
-        tr.add_child(UI.button(t[1], func(): cb.call(key), key == cur))
-    box.add_child(tr)
+    box.add_child(UI.tabs(tabs, cur, cb))
 
 func _render_port() -> void:
     var p = cur_port; var G: Dictionary = Campaign.G

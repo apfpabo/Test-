@@ -40,9 +40,7 @@ static func profile(fac: String) -> Dictionary: return world().get("profiles", {
 ## Fills `box` with one codex tab and a row of tab buttons; `on_tab` is called with the key of the tab chosen.
 static func build(box: Container, tab: String, on_tab: Callable) -> void:
 	var W := world()
-	var row := []
-	for t in TABS: row.append(UI.button(t[1], func(): on_tab.call(t[0]), t[0] == tab))
-	box.add_child(UI.row(row))
+	box.add_child(UI.tabs(TABS, tab, on_tab))
 	if W.is_empty(): box.add_child(UI.label("The codex is missing (data/lore.json).", UI.RED)); return
 	match tab:
 		"world":

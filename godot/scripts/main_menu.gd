@@ -3,11 +3,15 @@ extends Control
 
 func _ready() -> void:
     theme = UI.theme(); set_anchors_preset(Control.PRESET_FULL_RECT)
-    var bg = ColorRect.new(); bg.color = Color(0.086, 0.227, 0.267); bg.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(bg)
+    # a dark sea with a little light at its heart
+    var bg = TextureRect.new(); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.stretch_mode = TextureRect.STRETCH_SCALE
+    var gt := GradientTexture2D.new(); gt.fill = GradientTexture2D.FILL_RADIAL; gt.fill_from = Vector2(0.5, 0.42); gt.fill_to = Vector2(1.15, 1.1)
+    var gr := Gradient.new(); gr.colors = PackedColorArray([Color(0.07, 0.17, 0.2), Color(0.02, 0.04, 0.05)]); gt.gradient = gr; bg.texture = gt; add_child(bg)
     var center = CenterContainer.new(); center.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(center)
     var pc = PanelContainer.new(); pc.custom_minimum_size = Vector2(900, 0); center.add_child(pc)
     var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box)
-    box.add_child(UI.label("Iron Meridian", UI.GOLD, 52))
+    var hero := UI.label("IRON MERIDIAN", UI.GOLD, 60); hero.add_theme_font_override("font", UI.font("cond")); box.add_child(hero)
+    var tag := UI.label("A NAVAL CAMPAIGN · 1946", Color(UI.INK, 0.6), 16); tag.add_theme_font_override("font", UI.font("cond_med")); box.add_child(tag)
     box.add_child(UI.label("1946. The Great War of the 1940s ended in an armistice nobody honours. Legacy empires, successor states, corporations and pirates contest the world's oceans, and sea control is the only currency that counts. You are a free captain with one tired ship. Trade, salvage, fight and research your way from late-war gunnery towards the missile age, and serve a flag or stay your own master.", UI.DIM, 15, true))
     if Campaign.has_save() and Campaign.save_version() < Campaign.SAVE_VERSION:
         box.add_child(UI.label("The world has been redrawn: your saved campaign was played on the old chart of the real Earth and can't be continued. Start a new campaign below (it replaces the old save).", UI.GOLD, 14, true))

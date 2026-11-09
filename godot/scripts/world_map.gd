@@ -56,7 +56,7 @@ func _ready() -> void:
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
     ui = Control.new(); ui.set_anchors_preset(Control.PRESET_FULL_RECT); ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.theme = UI.theme(); cl.add_child(ui)
     overlay = Overlay.new(); overlay.map = self; overlay.set_anchors_preset(Control.PRESET_FULL_RECT); overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(overlay)
-    _build_top(); _build_toasts()
+    _build_top(); _build_toasts(); _build_orders()
     dock = UI.button("Dock", _on_dock, true); dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM); dock.position = Vector2(-80, -60); dock.visible = false; ui.add_child(dock)
     dock.set_anchor_and_offset(SIDE_LEFT, 0.5, -90); dock.set_anchor_and_offset(SIDE_RIGHT, 0.5, 90); dock.set_anchor_and_offset(SIDE_TOP, 1.0, -64); dock.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -26)
     panel_layer = Control.new(); panel_layer.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(panel_layer)
@@ -120,6 +120,8 @@ func _process(delta: float) -> void:
         last_coast_zoom = zoom
         for c in land_copies: c.queue_redraw()
     marks.queue_redraw(); overlay.queue_redraw(); world.get_child(0).queue_redraw()
+    _orders_t -= delta
+    if _orders_t <= 0.0: _orders_t = 0.5; _update_orders()
     _update_top(); _update_dock()
     # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
     var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
@@ -436,6 +438,54 @@ func _update_top() -> void:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
         pair[1].modulate = UI.GOLD if on else Color.WHITE
 
+# ------------------------------------------------------------------ the orders box (top right)
+## Your story orders and contracts at a glance: hover one for its full brief, click it to plot a course to its target.
+var orders_box: PanelContainer
+var orders_list: VBoxContainer
+var orders_open := true
+var _orders_sig := ""
+var _orders_t := 0.0
+func _build_orders() -> void:
+    orders_box = PanelContainer.new(); ui.add_child(orders_box)
+    var sb := StyleBoxFlat.new(); sb.bg_color = Color(0.04, 0.09, 0.11, 0.82); sb.border_color = Color(0.21, 0.31, 0.35); sb.set_border_width_all(1)
+    sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 6; sb.content_margin_bottom = 8; sb.set_corner_radius_all(3)
+    orders_box.add_theme_stylebox_override("panel", sb)
+    orders_box.set_anchor_and_offset(SIDE_RIGHT, 1, -14); orders_box.set_anchor_and_offset(SIDE_LEFT, 1, -330); orders_box.set_anchor_and_offset(SIDE_TOP, 0, 58)   # right first: Godot pushes the other anchor
+    orders_list = VBoxContainer.new(); orders_list.add_theme_constant_override("separation", 4); orders_box.add_child(orders_list)
+    _update_orders(true)
+
+func _update_orders(force := false) -> void:
+    var G: Dictionary = Campaign.G; var items := []
+    if G.mission != null:
+        var m: Dictionary = Campaign.mission_def(); var by: String = G.mission.get("by", "concord")
+        items.append({"t": "★ " + m.title, "tip": "%s\n%s\nOrders from the %s. Target near %s. Reward %s, %d RP, %s standing +%d." % [m.title, m.brief, Campaign.story_office(by), m.near, Campaign.fmt(m.reward.credits), m.reward.rp, GameData.fac[by].short, m.reward.rep], "fleet": int(G.mission.fleet), "col": UI.GOLD})
+    for c in G.get("contracts", []):
+        items.append({"t": "%s · %dd" % [c.title, maxi(0, int(c.deadline) - G.day)], "tip": Diplomacy.contract_info(c), "c": c, "col": UI.INK if int(c.deadline) - G.day > 7 else UI.RED})
+    var sig := str(orders_open) + "|" + "|".join(items.map(func(i): return i.t))
+    orders_box.visible = not items.is_empty()
+    if sig == _orders_sig and not force: return
+    _orders_sig = sig
+    for ch in orders_list.get_children(): ch.queue_free()
+    var head := Button.new(); head.flat = true; head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+    head.text = ("▾ " if orders_open else "▸ ") + "ORDERS & CONTRACTS (%d)" % items.size(); head.add_theme_font_size_override("font_size", 12); head.add_theme_color_override("font_color", UI.DIM)
+    head.pressed.connect(func(): orders_open = not orders_open; _update_orders(true)); orders_list.add_child(head)
+    if not orders_open: return
+    for it in items:
+        var b := Button.new(); b.flat = true; b.alignment = HORIZONTAL_ALIGNMENT_LEFT; b.text = it.t; b.tooltip_text = it.tip + "\n\nClick to set a course to the target."
+        b.clip_text = true; b.custom_minimum_size.x = 296; b.add_theme_font_size_override("font_size", 13); b.add_theme_color_override("font_color", it.col)
+        b.pressed.connect(func(): _course_to_order(it))
+        orders_list.add_child(b)
+
+func _course_to_order(it: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var t = null
+    if it.has("c"): t = Diplomacy.target_of(it.c)
+    elif it.has("fleet"):
+        for f in G.fleets: if int(f.id) == int(it.fleet): t = Vector2(f.x, f.y)
+    if t == null: _toast("No fix on that target yet."); return
+    var P: Dictionary = G.player; P.follow = null; P.destPort = null
+    if it.has("c") and (it.c.kind == "delivery" or it.c.kind == "smuggle"): P.destPort = int(it.c.dest)
+    if Campaign.set_course(P, t.x, t.y): free_cam = false; _toast("Course set: " + it.t.split(" · ")[0] + ".")
+
 func _build_toasts() -> void:
     toasts = VBoxContainer.new(); toasts.add_theme_constant_override("separation", 6); ui.add_child(toasts)
     toasts.set_anchor_and_offset(SIDE_LEFT, 0, 14); toasts.set_anchor_and_offset(SIDE_RIGHT, 0, 460); toasts.set_anchor_and_offset(SIDE_TOP, 1, -300); toasts.set_anchor_and_offset(SIDE_BOTTOM, 1, -14)
@@ -516,22 +566,32 @@ func _click(sp: Vector2) -> void:
 var _blocking = false   # a panel that must be answered (an encounter or an aftermath)
 var cur_panel: Control
 
-func open_panel(build: Callable, blocking := false, width := 760.0) -> VBoxContainer:
+## `key` names what the panel shows (a port and tab, a Command tab): redrawn with the same key, it keeps its scroll
+## position, so pressing a button far down a long list doesn't throw you back to the top.
+var _panel_key := ""
+var _panel_scroll: ScrollContainer
+func open_panel(build: Callable, blocking := false, width := 760.0, key := "") -> VBoxContainer:
+    var keep := 0
+    if key != "" and key == _panel_key and is_instance_valid(_panel_scroll): keep = _panel_scroll.scroll_vertical
+    _panel_key = key
     close_panel(); panel_open = true; _blocking = blocking; Campaign.paused = true
     var shade = ColorRect.new(); shade.color = Color(0.016, 0.047, 0.063, 0.6); shade.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.add_child(shade); shade.mouse_filter = Control.MOUSE_FILTER_STOP
     var center = CenterContainer.new(); center.set_anchors_preset(Control.PRESET_FULL_RECT); shade.add_child(center)
     var pc = PanelContainer.new(); pc.custom_minimum_size = Vector2(width, 0); center.add_child(pc)
     var scroll = ScrollContainer.new(); scroll.custom_minimum_size = Vector2(width - 44, 0); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; pc.add_child(scroll)
     var box = VBoxContainer.new(); box.size_flags_horizontal = Control.SIZE_EXPAND_FILL; box.add_theme_constant_override("separation", 8); scroll.add_child(box)
-    cur_panel = shade
+    cur_panel = shade; _panel_scroll = scroll
     build.call(box)
-    _fit_panel.call_deferred(scroll, box)
+    _fit_panel.call_deferred(scroll, box, keep)
     return box
 
 ## Panels grow with their contents up to the screen height, then scroll.
-func _fit_panel(scroll: ScrollContainer, box: Control) -> void:
+func _fit_panel(scroll: ScrollContainer, box: Control, keep := 0) -> void:
     if not is_instance_valid(scroll): return
     scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y - 140)
+    if keep > 0:
+        await get_tree().process_frame
+        if is_instance_valid(scroll): scroll.scroll_vertical = keep
 
 ## Esc on the chart: the game stops while this is open. Like the battle's pause menu.
 func _pause_menu() -> void:
@@ -816,7 +876,7 @@ func _render_port() -> void:
             "commission": _commission(box, p)
             "research": _research(box)
         box.add_child(UI.button("Put to sea", func(): cur_port = {}; G.player.cool = maxf(G.player.cool, 2.5); Campaign.save(); close_panel(), true))
-    , false, 960)
+    , false, 960, "port:%s:%s:%d" % [p.name, port_tab, refit_idx])
 
 func show_command() -> void:
     cur_port = {}
@@ -833,7 +893,7 @@ func show_command() -> void:
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
                 _p(box, "%d / %d used. %d enemy ships sunk or taken." % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.G.kills], UI.DIM, 14)
         box.add_child(UI.row([UI.button("Close", close_panel, true), UI.button("Save & exit to title", func(): Campaign.save(); get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))]))
-    , false, 960)
+    , false, 960, "cmd:" + cmd_tab)
 
 func _repairs(box: Control) -> void:
     var G: Dictionary = Campaign.G
@@ -889,11 +949,14 @@ class ShipThumb extends Control:
     var id = ""
     var pal = "player"
     var fit = null
+    var sel := -1          # a mount to ring in gold (the one being refitted), or -1
     var guns: Control
     func _ready() -> void:
         texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
         guns = ThumbMounts.new(); guns.thumb = self; guns.material = GameData.mount_material(pal); guns.mouse_filter = Control.MOUSE_FILTER_IGNORE
         guns.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(guns)
+        if sel >= 0:
+            var hl := ThumbHighlight.new(); hl.thumb = self; hl.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(hl)
     func _draw() -> void:
         var info: Dictionary = GameData.sprites.ships[id]
         var k = size.x / info.w   # pixels per metre
@@ -901,6 +964,24 @@ class ShipThumb extends Control:
         for layer in ["base", "top"]:
             var t = GameData.ship_tex(id, pal, layer); draw_texture_rect(t, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false)
         if guns: guns.queue_redraw()
+
+## A gold ring round the mount being refitted, pulsing gently, with corner ticks so it reads on any deck.
+class ThumbHighlight extends Control:
+    var thumb
+    func _process(_d: float) -> void: queue_redraw()
+    func _draw() -> void:
+        var d: Dictionary = GameData.hulls[thumb.id]; var info: Dictionary = GameData.sprites.ships[thumb.id]
+        if thumb.sel < 0 or thumb.sel >= d.slots.size(): return
+        var sl: Dictionary = d.slots[thumb.sel]; var k: float = size.x / info.w; var c: Vector2 = size / 2 + Vector2(sl.x, sl.y) * k
+        var wid = thumb.fit[thumb.sel] if thumb.fit != null else sl.def
+        var w: Dictionary = GameData.weapons.get(wid if wid != null else "", {})
+        var r := maxf(9.0, maxf(float(w.get("tw", 3.0)), float(w.get("tl", 3.0))) * 0.75 * k + 5.0)
+        var pulse := 0.65 + 0.35 * sin(Time.get_ticks_msec() * 0.006)
+        draw_arc(c, r + 3.0, 0, TAU, 40, Color(0.89, 0.7, 0.24, 0.25 * pulse), 6.0)
+        draw_arc(c, r, 0, TAU, 40, Color(0.95, 0.78, 0.3, 0.95 * pulse), 2.0)
+        for q in 4:
+            var a := q * PI / 2 + PI / 4; var p0 := c + Vector2.from_angle(a) * (r + 5.0)
+            draw_line(p0, p0 + Vector2.from_angle(a) * 6.0, Color(0.95, 0.78, 0.3, pulse), 2.0)
 
 ## The armament over a thumbnail, lit by the mount shader in the yard's national style.
 class ThumbMounts extends Control:
@@ -957,7 +1038,7 @@ func _refit(box: Control) -> void:
         var k = i
         picks.add_child(UI.button(G.fleet[i].name, func(): refit_idx = k; refit_sel = 0; _render_port(), i == refit_idx))
     box.add_child(picks)
-    box.add_child(_thumb(s.type, "player", 520, plan))
+    var th = _thumb(s.type, "player", 520, plan); th.sel = refit_sel; box.add_child(th)
     box.add_child(UI.label("%s · %s · %s class (%s) · %s t · %s kn · belt %d mm · Hull %d" % [s.name, d.name, d.dn, GameData.makers[d.yard].short, Campaign.fmt(d.t), str(d.kn), d.armor, d.hull], UI.INK, 15))
     var sizes = {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / PD", "T": "Torpedo", "V": "Launch cells"}
     var body = HBoxContainer.new(); body.add_theme_constant_override("separation", 18)
@@ -996,6 +1077,28 @@ func _refit(box: Control) -> void:
     var std = UI.button("Standard fit", func(): refit_plan[s.id] = BattleSim.default_fit(d, G.tech); _render_port())
     box.add_child(UI.row([confirm, undo, std]))
     if changes and G.credits < net: _p(box, "You need %s more for this refit." % Campaign.fmt(net - G.credits), UI.RED, 14)
+    _systems(box, s)
+
+## Ship systems: machinery, hull, magazine protection, fire control, radar and sonar, each fitted in two marks.
+func _systems(box: Control, s: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var d: Dictionary = GameData.hulls[s.type]
+    if not s.has("up"): s.up = {}
+    box.add_child(UI.label("SHIP SYSTEMS", UI.DIM, 12))
+    _p(box, "Yard work on the %s herself: fitted at once, paid now, and kept for the life of the ship." % s.name, UI.DIM, 13)
+    for k in BattleSim.UPGRADES:
+        var u: Dictionary = BattleSim.UPGRADES[k]; var lvl: int = int(s.up.get(k, 0))
+        if u.get("needs_sonar", false) and not d.get("sonar", false): continue
+        var name_l := UI.label(u.name, UI.INK, 14); name_l.custom_minimum_size.x = 170
+        var mk := UI.label(["standard", "Mk I", "Mk II"][lvl], UI.GREEN if lvl > 0 else UI.DIM, 13); mk.custom_minimum_size.x = 70
+        var eff := UI.label(u.per + " per mark", UI.DIM, 12); eff.custom_minimum_size.x = 300
+        if lvl >= 2: box.add_child(UI.row([name_l, mk, eff, UI.label("fully fitted", UI.DIM, 12)])); continue
+        var cost := int(round(float(d.price) * float(u.cost) * (1.0 if lvl == 0 else 1.8) / 100.0) * 100)
+        var needs: String = u.get("mk2", "") if lvl == 1 else ""
+        var locked: bool = needs != "" and not G.tech.has(needs)
+        var b := UI.button("Fit Mk %s · %s" % ["I" if lvl == 0 else "II", Campaign.fmt(cost)], func():
+            G.credits -= cost; s.up[k] = lvl + 1; _toast("%s: %s Mk %s fitted." % [s.name, u.name, "I" if lvl == 0 else "II"]); _render_port(), false, locked or G.credits < cost)
+        if locked: b.tooltip_text = "Mk II needs the research: " + needs
+        box.add_child(UI.row([name_l, mk, eff, b]))
 
 ## A card for the weapon planned in one mount: its picture in the builder's style, its figures, and how it compares
 ## with the weapon fitted there now.
@@ -1128,7 +1231,9 @@ func _active_contracts(box: Control) -> void:
     box.add_child(UI.label("YOUR CONTRACTS", UI.DIM, 12))
     for c in G.contracts:
         var prog: String = (" · %d of %d sunk" % [int(c.got), int(c.need)]) if c.kind == "war" else ""
-        box.add_child(UI.row([UI.label("%s (%s)%s · %d days left" % [c.title, c.from, prog, maxi(0, int(c.deadline) - G.day)], UI.INK, 14),
+        var cl := UI.label("%s (%s)%s · %d days left" % [c.title, c.from, prog, maxi(0, int(c.deadline) - G.day)], UI.INK, 14)
+        cl.tooltip_text = Diplomacy.contract_info(c); cl.mouse_filter = Control.MOUSE_FILTER_PASS
+        box.add_child(UI.row([cl,
             UI.button("Abandon", func(): Diplomacy.fail(c, "Abandoned."); _rerender())]))
 
 func _commission(box: Control, p: Dictionary) -> void:

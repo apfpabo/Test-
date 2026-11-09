@@ -315,7 +315,7 @@ func new_officer(lvl: int) -> Dictionary:
 ## Cruise speed on the chart in map units a second: about 70% of the slowest ship's top speed.
 func fleet_map_speed(ships: Array) -> float:
     var m = INF
-    for s in ships: m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac))
+    for s in ships: m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * int(s.get("up", {}).get("eng", 0))))
     return m * 0.576
 func fleet_turn_rate(ships: Array) -> float:
     var L = 0.0
@@ -745,7 +745,7 @@ func battle_setup(f: Dictionary) -> Dictionary:
     for s in G.fleet: recs.append(s)
     for o in G.officers: o.lastShip = o.ship
     return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(enemy_era()),
-        "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers}
+        "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0}
 
 func _islands_here() -> int:
     var dens = land_density(G.player.x, G.player.y, 25)

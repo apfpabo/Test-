@@ -72,6 +72,12 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - Wakes: bow spray flung out at speed, a churning stern, and sun glints twinkling in the wake.
   - A magazine explosion lights the whole sky for a moment.
   - Backup: the commit before the overhaul is `3dbf780` (local tag `backup-before-fx`), and the owner has that build (IronMeridian_backup_before_fx.zip). `tests/shot_fx.tscn -- <dir> <modern|classic>` captures both styles for comparison.
+- **Playtest feedback, round 7 (done, 9 Nov 2026):**
+  - Refit: the mount being changed is ringed in gold on the ship's plan; pressing Details far down the list keeps the scroll position (every port and Command panel now keeps its scroll when it redraws itself).
+  - Ship systems, fitted in port (Refit tab) in two marks each: machinery (+4% speed a mark, battle and chart), hull and armour (+8% hull, +10% armour), magazine protection (fewer magazine fires, more time to flood them), fire control (salvos 12% tighter), radar (+6% gun range), sonar (+30% range, sonar ships only). Mk II radar and sonar need the research. Costs are a share of the hull's price.
+  - An orders box at the top right of the chart lists your story orders and contracts with days left; hover for the full brief (who posted it, pay, deadline, where the target is and how far), click to plot a course to the target. Contracts in Command show the same brief on hover.
+  - The battle's flagship panel shows each battery's reload: the bar fills as the guns reload (gold), turns green when ready, and the seconds left are shown.
+  - Dry bunkers now carry into battle: your ships make only steerage way (a quarter of their speed), and the battle says so.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

@@ -98,6 +98,8 @@ class CShip:
     var mag_x = 0.0        # where along the hull
     var flooded: Array = [] # magazines flooded by damage control (their x along the hull)
     var dc_left = 0        # depth-charge patterns left
+    var up: Dictionary = {} # fitted system upgrades, 0-2 each: eng, hull, mag, fc, radar, sonar (see UPGRADES)
+    var fuel_k = 1.0       # 0.25 when the bunkers are dry: steerage way on emergency reserves
 
 class Part:
     var t: int
@@ -240,7 +242,8 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
 func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) -> CShip:
     var s = CShip.new(); var d: Dictionary = GameData.hulls[rec.type]
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
-    s.v = d.kn * KN * 0.6; s.max_hull = d.hull; s.hull = d.hull * rec.hullFrac; s.armor = d.armor * (0.6 + 0.4 * rec.hullFrac)
+    s.up = rec.get("up", {}) if side == 0 else {}
+    s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     for i in d.slots.size():
         var wid: String = rec.fit[i]
@@ -383,17 +386,28 @@ func detected_by(sb: CShip, side: int) -> bool:
     for o in ships:
         if o.side != side or not active(o): continue
         var dd = o.pos.distance_to(sb.pos)
-        if dd < 500.0 or (o.d.get("sonar", false) and dd < sonar_r) or (o.sub and dd < sonar_r * 1.4): return true  # a boat's passive sonar hears another
+        if dd < 500.0 or (o.d.get("sonar", false) and dd < sonar_r * (1.0 + 0.3 * upg(o, "sonar"))) or (o.sub and dd < sonar_r * 1.4): return true  # a boat's passive sonar hears another
     return false
 
 func visible_to(s: CShip, side: int) -> bool:
     return s.side == side or not s.sub or detected_by(s, side)
 
+## System upgrades (bought in port, Refit tab): what each does per mark, and what it costs as a share of the hull's price.
+const UPGRADES := {
+    "eng": {"name": "Machinery", "per": "+4% speed", "cost": 0.10},
+    "hull": {"name": "Hull and armour", "per": "+8% hull strength, +10% armour", "cost": 0.12},
+    "mag": {"name": "Magazine protection", "per": "fewer magazine fires, and longer to flood them", "cost": 0.06},
+    "fc": {"name": "Fire control", "per": "salvos 12% tighter", "cost": 0.08},
+    "radar": {"name": "Radar", "per": "+6% gun range", "cost": 0.07, "mk2": "radar"},
+    "sonar": {"name": "Sonar", "per": "+30% sonar range", "cost": 0.05, "mk2": "sonar", "needs_sonar": true},
+}
+static func upg(s: CShip, k: String) -> int: return int(s.up.get(k, 0))
+
 func speed_mult(s: CShip) -> float:
-    return (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
+    return s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
 
 func gun_range(s: CShip, w: Dictionary) -> float:
-    return w.range * (1.15 if s.tech.has("radar") and w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0)
+    return w.range * ((1.15 if s.tech.has("radar") else 1.0) * (1.0 + 0.06 * upg(s, "radar")) if w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0)
 
 func max_gun_range(s: CShip) -> float:
     var r = 0.0
@@ -538,7 +552,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     var ang = s.a + m.ta; var off: float = (i - (n - 1) / 2.0) * float(w.get("gap", 0.0))
     var p = world_pt(s, m.slot.x, m.slot.y) + Vector2.from_angle(ang + PI / 2) * off
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
-    var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1.15 if s.side == 1 else 1.0)
+    var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.15 if s.side == 1 else 1.0)
     var spread: float = w.spread * fc / maxf(0.3, s.fc)
     var a = ang + (randf() - 0.5) * 2 * spread
     var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
@@ -811,9 +825,10 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
         for m in s.mounts:
             if m.w.kind != "gun" or m.slot.y != 0 or not ["M", "L", "H"].has(m.w.size): continue
             if absf(l.x - m.slot.x) > m.w.tl * 0.6 + 2.0: continue
-            if randf() < 0.035 * pen * pen * heavy: _log("detonation (hit)"); detonate(s); return
-            if s.mag_fire <= 0 and randf() < 0.14 * pen * heavy:
-                s.mag_fire = 25.0 + randf() * 25.0; s.mag_x = m.slot.x; _log("magazine fire")
+            var mp: float = [1.0, 0.6, 0.35][clampi(upg(s, "mag"), 0, 2)]   # magazine protection: flash-tight hoists, better stowage
+            if randf() < 0.035 * pen * pen * heavy * mp: _log("detonation (hit)"); detonate(s); return
+            if s.mag_fire <= 0 and randf() < 0.14 * pen * heavy * mp:
+                s.mag_fire = 25.0 + randf() * 25.0 + 12.0 * upg(s, "mag"); s.mag_x = m.slot.x; _log("magazine fire")
                 say(("Fire in the %s magazine! Damage control is fighting it." if ours else "A fire is spreading aboard the %s.") % (nm if not ours else ("forward" if m.slot.x > 0 else "after")), 2.5)
             break
     # machinery amidships

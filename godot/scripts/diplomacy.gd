@@ -516,3 +516,26 @@ func run_contraband(c: Dictionary, p: Dictionary) -> String:
 	G.contracts.erase(c); G.rep[c.fac] = G.rep.get(c.fac, 0) - 4
 	Campaign.log_ev("Caught smuggling at " + p.name)
 	return "Customs launches catch you at %s. The cargo is seized; %s standing -12%s." % [p.name, GameData.fac[p.fac].short, " and their warships will be looking for you" if Campaign.hostile(p.fac) else ""]
+
+# ------------------------------------------------------------------ for the chart's orders box and tooltips
+## Where a contract leads now (a port, a site, a fleet), or null.
+func target_of(c: Dictionary):
+	var G := g()
+	match c.kind:
+		"delivery", "smuggle": var p: Dictionary = G.ports[int(c.dest)]; return Vector2(p.sx, p.sy)
+		"survey": var q: Dictionary = G.pois[int(c.poi)]; return Vector2(q.x, q.y)
+		"hunt", "escort":
+			for f in G.fleets: if int(f.get("contract", 0)) == int(c.id) or int(f.get("escort", 0)) == int(c.id): return Vector2(f.x, f.y)
+	return null
+
+## The full story of a contract, for a tooltip: what it asks, who posted it, the pay and the time left.
+func contract_info(c: Dictionary) -> String:
+	var G := g(); var lines := [c.title, c.text]
+	lines.append("Posted by the %s at %s." % [GameData.fac[c.fac].name, c.from])
+	lines.append("Pays %s and %s standing +%d. Failing costs 8 standing." % [Campaign.fmt(int(c.reward)), GameData.fac[c.fac].short, int(c.rep)])
+	if c.kind == "war": lines.append("Progress: %d of %d enemy ships." % [int(c.got), int(c.need)])
+	if c.kind == "delivery" or c.kind == "smuggle": lines.append("In your hold: %d of %d %s." % [int(G.cargo.get(c.good, 0)), int(c.qty), c.good])
+	var t = target_of(c)
+	if t != null: lines.append("Target %s, %d km from you." % [where(t.x, t.y), int(Campaign.mdist(G.player.x, G.player.y, t.x, t.y) * Campaign.KM_PER_UNIT)])
+	lines.append("Deadline %s: %d days left." % [Campaign.date_str(int(c.deadline)), maxi(0, int(c.deadline) - G.day)])
+	return "\n".join(lines)

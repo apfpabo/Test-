@@ -138,14 +138,21 @@ func _draw() -> void:
         var gx = x + 10; var gy = y + 98
         for n in groups:
             var ms: Array = groups[n]; var ready = 0; var dead = 0; var left = 0; var cap = 0
+            var prog := 0.0; var live := 0; var secs := 0.0   # reload progress over the working mounts, and the longest wait
             for m in ms:
                 if m.ammo_max > 0: left += maxi(0, m.ammo); cap += m.ammo_max
                 if m.dead: dead += 1
-                elif m.cd <= 0 and m.ammo != 0: ready += 1
+                else:
+                    live += 1; prog += 1.0 - clampf(m.cd / maxf(float(m.w.rel), 0.01), 0.0, 1.0)
+                    if m.cd > 0: secs = maxf(secs, m.cd / maxf(sim.reload_mult(f, m.w), 0.01))
+                    elif m.ammo != 0: ready += 1
             var unit: String = {"gun": "rds", "aa": "bursts", "torp": "salvos", "ssm": "salvos", "sam": "rds"}.get(ms[0].w.kind, "")
             var am: String = (" · empty" if left == 0 else (" · %d%%" % int(100.0 * left / cap) if unit == "bursts" else (" · %s %s" % [("%.1fk" % (left / 1000.0)) if left >= 1000 else str(left), unit]))) if cap > 0 else ""
             _text(Vector2(gx, gy), str(ms.size()) + "× " + n + ((" (" + str(dead) + " out)") if dead else "") + am, RED if cap > 0 and left == 0 else (GOLD if cap > 0 and left < cap * 0.2 else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_LEFT, 196)
-            _bar(Vector2(gx, gy + 4), 130, 3, float(ready) / ms.size(), GREEN if ready else GOLD)
+            var fill := prog / maxf(1.0, float(live))
+            _bar(Vector2(gx, gy + 4), 130, 3, fill, GREEN if ready == live and live > 0 else GOLD)
+            if live > 0 and ms[0].w.kind != "aa" and cap > 0 and left > 0:
+                _text(Vector2(gx + 134, gy + 8), "ready" if ready == live else ("%d s" % ceili(secs)), GREEN if ready == live else GOLD, 10, HORIZONTAL_ALIGNMENT_LEFT, 60)
             gx += 200
             if gx > x + 330: gx = x + 10; gy += 22
             if gy > y + h - 6: break

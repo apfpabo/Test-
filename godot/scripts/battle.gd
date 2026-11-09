@@ -35,8 +35,10 @@ func _ready() -> void:
         for sh in sim.ships:
             if sh.side == 0:
                 sh.cf = cfg.get("crew_frac", 1.0)
+                if cfg.get("no_fuel", false): sh.fuel_k = 0.25   # dry bunkers: emergency reserves give steerage way, little more
                 for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk
             else: sh.sk = {"gun": mini(2, int(Campaign.G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
+        if cfg.get("no_fuel", false): sim.say("Bunkers are dry: your ships can make steerage way on emergency reserves, little more.", 4.0)
     else:
         sim.setup(_recs(mine, "player", pt), _recs(theirs, efac, et), pt, et, cfg.get("islands", randi_range(0, 4)))
     # sea

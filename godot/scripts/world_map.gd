@@ -194,9 +194,11 @@ class SeaDrawer extends Node2D:   # open sea, graticule and pack ice
                     var fx = g * 6.0 + h1 * 5.0
                     var base_y: float = Campaign.lat_y(Campaign.ice_north_at(Campaign.x_lon(fx), ie)) + jag.call(fx) if side > 0 else Campaign.lat_y(ie.y) - jag.call(fx + 977.0)
                     var fy = base_y + side * (1.5 + h1 * 9.0); var r = 0.5 + fposmod(h1 * 7.31, 1.0) * 1.6
+                    # drawn round its own centre: a floe a map unit across, given in map coordinates in the thousands,
+                    # is too fine for the triangulator's float precision and fails to fill
                     var pts = PackedVector2Array()
-                    for k in 6: var a = k * TAU / 6 + h1 * 4.0; pts.append(Vector2(fx, fy) + Vector2.from_angle(a) * r * (0.7 + 0.5 * fposmod(h1 * (k + 3) * 5.7, 1.0)))
-                    draw_colored_polygon(pts, Color(0.88, 0.92, 0.94, 0.55))
+                    for k in 6: var a = k * TAU / 6 + h1 * 4.0; pts.append(Vector2.from_angle(a) * r * (0.7 + 0.5 * fposmod(h1 * (k + 3) * 5.7, 1.0)))
+                    draw_set_transform(Vector2(fx, fy)); draw_colored_polygon(pts, Color(0.88, 0.92, 0.94, 0.55)); draw_set_transform(Vector2.ZERO)
 
 class LandCopy extends Node2D:    # one copy of the world's land; three side by side make the chart wrap
     var map
@@ -1038,6 +1040,8 @@ func yard_of(p: Dictionary) -> Array:
         if (c == "bb" or c == "cv") and not p.capital: continue
         for id in Campaign.C.DESIGNS_OF.get(c, []):
             if makers.has(GameData.hulls[id].yard) and Campaign.design_ok(id, Campaign.G.tech): out.append(id)
+    if p.fac == "freeport":   # the Syndicate's improvised carriers: escort carriers bought second-hand from any yard and refitted
+        for id in Campaign.C.DESIGNS_OF.get("cve", []): if Campaign.design_ok(id, Campaign.G.tech) and not out.has(id): out.append(id)
     out.sort_custom(func(a, b): return GameData.hull_order.find(GameData.hulls[a].klass) * 10000 + GameData.hulls[a].year < GameData.hull_order.find(GameData.hulls[b].klass) * 10000 + GameData.hulls[b].year)
     return out
 func ship_price(p: Dictionary, t: String) -> int: return int(round(GameData.hulls[t].price * (1.1 if p.fac == "freeport" else 1.0) * (0.9 if Campaign.G.rep.get(p.fac, 0) > 30 else 1.0)))
@@ -1123,6 +1127,7 @@ func _yard(box: Control, p: Dictionary) -> void:
         box.add_child(HSeparator.new())
     var mk: Array = GameData.fac_makers.get(p.fac, []) if GameData.fac_makers.get(p.fac) != null else []
     _p(box, "Shipbuilders here: " + ", ".join(mk.map(func(m): return GameData.makers[m].name)) + ". " + " ".join(mk.map(func(m): return GameData.makers[m].desc)), UI.DIM, 13)
+    if p.fac == "freeport": _p(box, "Improvised carriers: the Syndicate buys escort carriers second-hand from any yard that will sell, no questions asked, and refits them here for anyone who can pay.", UI.DIM, 13)
     if Campaign.era_of(G.tech) < 3: _p(box, "Newer designs appear here as your research reaches the next era.", UI.DIM, 13)
 
 ## Refit: weapons chosen here form a plan for the ship; nothing is bought until the refit is confirmed. Undo discards

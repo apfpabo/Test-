@@ -87,6 +87,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - The powers take each other's structures in wars, structures follow their port when it falls, and the flag you took one from sends assault forces with troopships (shown in the orders box) to retake it. Strike contracts on the boards of powers at war.
   - Map symbols at normal zoom, drawn installations (runways, casemates, tank farms, pitheads, fields, piers) from 3× zoom.
 - **Right-click menu on the chart (done, 9 Nov 2026, owner request):** right-click a fleet: friendly ones offer *Escort her* (keep station astern at her speed, no contact; handy for escort contracts), *Close and hail* (the signals contact) and *Cancel orders*; hostile ones *Intercept*. The escorted fleet is ringed in green. `tests/escort_test.tscn`, `shot_context.tscn`.
+- **Owner follow-ups (done, 9 Nov 2026):** the raid view now uses the battle's own effects (modern or classic, as set in Settings): layered explosions with fireballs, shock rings, debris and embers, shaded smoke, burning fires and flak. Freeport yards sell the Syndicate's improvised carriers (second-hand escort carriers). The chart's "triangulation failed" errors are fixed: small ice floes at large map coordinates were too fine for the triangulator, so each floe is now drawn round its own centre.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

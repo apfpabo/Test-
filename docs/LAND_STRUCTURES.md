@@ -36,12 +36,12 @@ Rules: `godot/scripts/structures.gd` (autoload `Structures`), tuning in `godot/d
 
 ## Striking from the air
 
-- Needs carriers (escort carriers from the Concord, Federation and Combine yards; fleet carriers at their capitals with jets). Planes aboard: 6 a squadron, tracked per carrier (`air` on the ship record), also in battle.
+- Needs carriers (escort carriers from the Concord, Federation and Combine yards, and second-hand as the Syndicate's improvised carriers in every freeport yard; fleet carriers at the Concord and Federation capitals with jets). Planes aboard: 6 a squadron, tracked per carrier (`air` on the ship record), also in battle.
 - Reach: the fleet's strike reach (250 km from an escort carrier, 350 km from a fleet carrier), the same measure that starts carrier fights at sea.
 - One strike every half day. On a flag you are not at war with it breaks the armistice (standing -30, an incident: its warships engage you on sight for three months; betrayal if it is the flag you serve), and earns thanks from its enemies. The panel warns first.
 - **Settled before it is shown** (`Structures.strike`): the defending fighters (its own and half of each covering airfield's, times the radar) shoot down part of the strike while the escorts (30% of it) shoot some of them down; flak over the target takes its share; each bomber's load against how hard the target is (batteries are hardest) knocks out part of the defences (`dmg`) and wrecks part of the output (`ruin`). Jets do half as much again, and a carrier captain's ordnance skill helps.
 - Two escort carriers (30 aircraft) silence a Directorate airfield in two strikes, losing about a third of their aircraft; farms go in one or two.
-- **The raid view** (about 16 seconds, Skip/Space/Esc): the strike group in vics coming in from the sea over the countryside, the fighters rising to meet it, flak bursts, aircraft going down trailing smoke, the bombs bursting across the installation as the craters appear, and the survivors turning for home. Then the report: fighters met, losses to fighters and flak, how much of the defences are out of action.
+- **The raid view** (about 16 seconds, Skip/Space/Esc), drawn with the battle's own particle effects in the style chosen in Settings (modern or classic): the strike group in vics coming in from the sea over the countryside, the fighters rising to meet it, flak bursts, aircraft going down trailing smoke, the bombs bursting across the installation as the craters appear, and the survivors turning for home. Then the report: fighters met, losses to fighters and flak, how much of the defences are out of action.
 - Replace aircraft in port (Repairs & crew) or at your naval base: 1,500 each, 3,000 once you have jets.
 - Defences mend 4% a day; wrecked output 1% a day.
 
@@ -79,4 +79,3 @@ A structure held by `"player"` already behaves like a small territory: garrison,
 - Bombarding coastal structures with a fleet's guns; land-based air raids on your fleet (airfields only spot).
 - Defend contracts (sink an assault force sailing against a power's structure) and structures changing hands through NPC assault fleets you can watch.
 - Investing in your structures (more flak, a radar, rebuilding faster).
-- Carriers in the Syndicate's yards ("improvised carriers" in the lore), so the outlaw starts can strike too.

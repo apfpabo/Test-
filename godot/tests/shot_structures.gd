@@ -69,4 +69,7 @@ func _process(_d: float) -> void:
 		_shot("st_warehouse"); map.close_panel()
 		var fl: Dictionary = Structures.launch_assault(tgt, "directorate"); fl.warned = true
 		map.free_cam = true; map.cam = Vector2(tgt.x, tgt.y); map.zoom = 0.6; map._update_orders(true)
-	if f == 1340: _shot("st_assault"); get_tree().quit()
+	if f == 1340:
+		_shot("st_assault")
+		for p in Campaign.G.ports: if p.name == "Port Saffron": Campaign.G.rep.freeport = 20; map.open_port(p); map.port_tab = "yard"; map._render_port()
+	if f == 1348: _shot("st_saffron_yard"); get_tree().quit()

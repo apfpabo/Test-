@@ -11,16 +11,31 @@ var t := 0.0
 const DUR := 16.0
 var planes := []      # ours: {off, fate ("ok", "fighter", "flak"), tdie, bomb, dropped}
 var foes := []        # defending fighters: {side, tdie}
-var booms := []       # bomb bursts on the target: {p, t0, k}
-var puffs := []       # flak bursts: {p, t0}
+var booms := []       # bomb bursts on the target: {o, t0, k, burn}
+var puffs := []       # flak bursts: {o, t0}
 var falls := []       # aircraft going down: {p, v, a, t0, ours}
-var smoke := []       # smoke columns over the target: {p, t0}
-var tracers := []
 var C := Vector2.ZERO
 var R := 200.0
 var face := 0.0
 var _ended := false
 var _sfx_t := 0.0
+
+const Battle := preload("res://scripts/battle.gd")
+var fx: BattleSim          # used only for its particles: the battle's own explosions, smoke, flak and fire
+var _fx_t := 0.0
+var sky: Node2D
+
+## What the battle's particle renderer asks of its host: the particles, the zoom (one pixel a unit) and the view.
+class FxHost extends RefCounted:
+	var sim: BattleSim
+	var raid: Control
+	func zoom() -> float: return 1.0
+	func view_rect() -> Rect2: return Rect2(Vector2.ZERO, raid.size)
+
+## The aircraft and the caption, drawn above the smoke.
+class SkyLayer extends Node2D:
+	var raid
+	func _draw() -> void: raid._sky(self)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -42,7 +57,15 @@ func _ready() -> void:
 	var flak_n := int(clampf(float(res.flak) * 9.0, 4.0, 60.0))
 	for i in flak_n: puffs.append({"t0": r.randf_range(6.0, 10.5), "o": Vector2(r.randf_range(-170, 90), r.randf_range(-150, 150))})
 	var hits := mini(int(res.bombers), 30)
-	for i in hits: booms.append({"t0": 9.0 + i * 0.09 + r.randf_range(0, 0.5), "o": Vector2.from_angle(r.randf() * TAU) * r.randf() * 0.85, "k": r.randf_range(0.7, 1.3)})
+	for i in hits: booms.append({"t0": 9.0 + i * 0.09 + r.randf_range(0, 0.5), "o": Vector2.from_angle(r.randf() * TAU) * r.randf() * 0.85, "k": r.randf_range(0.7, 1.3), "burn": r.randf() < 0.45})
+	# the battle's effects, in the style chosen in Settings (modern or classic)
+	fx = BattleSim.new(); fx.modern = Settings.fx_modern
+	var host := FxHost.new(); host.sim = fx; host.raid = self
+	for kind in ["above", "light"]:
+		var d = Battle.Drawer.new(); d.battle = host; d.kind = kind
+		if kind == "light": var mat := CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; d.material = mat
+		add_child(d)
+	sky = SkyLayer.new(); sky.raid = self; add_child(sky)
 	var skip := UI.button("Skip ▸", func(): _end(), true); skip.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	skip.set_anchor_and_offset(SIDE_LEFT, 1, -130); skip.set_anchor_and_offset(SIDE_TOP, 1, -60); skip.set_anchor_and_offset(SIDE_RIGHT, 1, -20); skip.set_anchor_and_offset(SIDE_BOTTOM, 1, -22)
 	add_child(skip)
@@ -60,9 +83,35 @@ func _process(dt: float) -> void:
 	t += dt
 	if t >= DUR: _end(); return
 	C = size / 2 + Vector2(0, 30); R = minf(size.x, size.y) * 0.33
-	# sound: flak, the bombs, the fighters' guns
-	for p in puffs: if not p.get("heard", false) and t >= p.t0: p.heard = true; Sfx.event("aa40", 0.18)
-	for b in booms: if not b.get("heard", false) and t >= b.t0: b.heard = true; Sfx.event("hit_big", 0.35 * b.k, randf_range(0.8, 1.1)); smoke.append({"p": C + b.o * R, "t0": t})
+	var P := BattleSim.P
+	# flak bursts round the formation
+	for p in puffs:
+		if p.get("heard", false) or t < p.t0: continue
+		p.heard = true; Sfx.event("aa40", 0.18)
+		var at: Vector2 = _group(p.t0) + p.o
+		fx.part(P.FLAK, at, 2.2, 13.0)
+		if fx.modern: fx.part(P.CORE, at, 0.1, 9.0); fx.part(P.GLOW, at, 0.3, 30.0)
+		else: fx.part(P.FLASH, at, 0.12, 8.0)
+	# the bombs: the battle's explosions, earth thrown up, and fires that keep burning
+	for b in booms:
+		if b.get("heard", false) or t < b.t0: continue
+		b.heard = true; Sfx.event("hit_big", 0.35 * b.k, randf_range(0.8, 1.1))
+		var at: Vector2 = C + b.o * R
+		fx.fx_boom(at, R * 0.11 * b.k, 1.0)
+		fx.part(P.DUST, at, 2.4, R * 0.1 * b.k)
+		if b.k > 1.15: fx.flash = maxf(fx.flash, 0.5)
+	_fx_t -= dt
+	if _fx_t <= 0.0:
+		_fx_t = 0.12
+		for b in booms:
+			if not b.burn or t < b.t0 + 0.4: continue
+			var at: Vector2 = C + b.o * R + Vector2(randf() - 0.5, randf() - 0.5) * 8.0
+			fx.part(P.FIRE, at, 0.7, R * 0.025 * b.k)
+			if randf() < 0.5: fx.part(P.SMOKE, at, 6.0 + randf() * 3.0, R * 0.045 * b.k, Vector2(randf() - 0.5, randf() - 0.5) * 6.0, true)
+		for fl in falls:   # aircraft going down trail fire and smoke, and burst where they hit the ground
+			var a: float = t - fl.t0
+			if a < 2.5: var at := _fall_pos(fl, a); fx.part(P.SMOKE, at, 3.5, 7.0, Vector2.ZERO, true); fx.part(P.FIRE, at, 0.3, 4.0)
+			elif not fl.get("crashed", false): fl.crashed = true; fx.fx_boom(_fall_pos(fl, 2.5), 14.0, 0.6)
 	_sfx_t -= dt
 	if foes.size() and t > 3.0 and t < 7.5 and _sfx_t <= 0.0: _sfx_t = 0.35; Sfx.event("aa20", 0.12)
 	for pl in planes:
@@ -70,7 +119,11 @@ func _process(dt: float) -> void:
 			pl.fell = true; falls.append({"p": _plane_pos(pl, pl.tdie), "a": _heading(pl.tdie), "t0": t, "ours": true})
 	for f in foes:
 		if not f.get("fell", false) and t >= f.tdie: f.fell = true; falls.append({"p": _foe_pos(f, f.tdie), "a": randf() * TAU, "t0": t, "ours": false})
+	fx.fx(dt)
 	queue_redraw()
+	for c in get_children(): if c is Node2D: c.queue_redraw()
+
+func _fall_pos(fl: Dictionary, a: float) -> Vector2: return fl.p + Vector2.from_angle(fl.a) * a * 40.0 + Vector2(0, a * a * 6.0)
 
 ## The strike group's track: in from the sea to the target by about 9 s, then a turn away for home.
 func _group(tt: float) -> Vector2:
@@ -88,8 +141,9 @@ func _foe_pos(f: Dictionary, tt: float) -> Vector2:
 	if tt > 7.2: p = p.lerp(land, clampf((tt - 7.2) / 2.0, 0.0, 1.0))
 	return p
 
+## The ground, the sea on the structure's seaward side, the installation as it is at this moment. Smoke and fire
+## are drawn over it by the battle's particle renderer, and the aircraft over those (SkyLayer).
 func _draw() -> void:
-	# the ground, the sea on the structure's seaward side, the installation as it is at this moment
 	InstallationArt.landscape(self, Rect2(Vector2.ZERO, size), int(s.id), Campaign.y_lat(s.y), C, R * 1.1)
 	var u := Vector2.from_angle(face)
 	if Structures.kind(s).military and s.kind != "airfield" and s.kind != "radar" or s.kind == "navalbase":
@@ -98,66 +152,37 @@ func _draw() -> void:
 		draw_line(shore + n, shore - n, Color(0.6, 0.72, 0.75, 0.6), 4.0)
 	var dmg_now: float = lerpf(float(res.before), float(res.after), clampf((t - 9.0) / 3.0, 0.0, 1.0))
 	InstallationArt.draw(self, s.kind, C, R, int(s.id), face, dmg_now, float(res.ruin) * clampf((t - 9.0) / 3.0, 0.0, 1.0), false, t)
-	# bomb bursts and the smoke that follows them, drifting downwind
-	for b in booms:
-		var a: float = t - b.t0
-		if a < 0.0: continue
-		var p: Vector2 = C + b.o * R
-		if a < 1.2:   # the burst: a white flash, a fireball cooling to red, a ring of blast and earth thrown out
-			var k := a / 1.2; var rr: float = R * 0.1 * b.k
-			draw_circle(p, rr * (0.6 + 1.2 * k), Color(0.25, 0.2, 0.15, 0.6 * (1.0 - k)))
-			draw_circle(p, rr * (0.5 + 0.8 * k), Color(1.0, 0.55 - 0.3 * k, 0.15, 0.95 * (1.0 - k)))
-			if k < 0.3: draw_circle(p, rr * 0.5, Color(1.0, 0.97, 0.85, 1.0 - k / 0.3))
-			draw_arc(p, rr * 2.5 * k, 0, TAU, 24, Color(0.95, 0.9, 0.8, 0.45 * (1.0 - k)), 2.0)
-	for sm in smoke:
-		var a: float = t - sm.t0
-		for j in 5:
-			var q: Vector2 = sm.p + Vector2(18.0, -8.0) * (a * 0.6 + j * 0.8) + Vector2(sin(j * 1.7) * 6.0, 0)
-			draw_circle(q, 10.0 + j * 5.0 + a * 3.0, Color(0.18, 0.17, 0.16, clampf(0.45 - j * 0.07 - a * 0.015, 0.0, 0.5)))
-	# our aircraft, with their shadows on the ground
+
+func _sky(ci: CanvasItem) -> void:
 	var jet: bool = res.jets
-	for pl in planes:
+	for pl in planes:   # our aircraft, with their shadows on the ground
 		if pl.get("fell", false) or t > 15.5: continue
 		var p := _plane_pos(pl, t); var h := _heading(t)
-		_aircraft(p + Vector2(55, 75), h, 17.0, Color(0, 0, 0, 0.13), jet)
-		_aircraft(p, h, 17.0, Color("#56646d"), jet)
-		if not pl.dropped and t >= pl.bomb and t < pl.bomb + 0.6: draw_circle(p.lerp(C, (t - pl.bomb) / 0.6 * 0.4), 2.5, Color(0.15, 0.15, 0.15))
-	# the defending fighters and their gunfire
-	for f in foes:
+		_aircraft(ci, p + Vector2(55, 75), h, 17.0, Color(0, 0, 0, 0.13), jet)
+		_aircraft(ci, p, h, 17.0, Color("#56646d"), jet)
+		if t >= pl.bomb and t < pl.bomb + 0.6: ci.draw_circle(p.lerp(C, (t - pl.bomb) / 0.6 * 0.4), 2.5, Color(0.15, 0.15, 0.15))
+	for f in foes:   # the defending fighters and their gunfire
 		if f.get("fell", false) or t < 1.5 or t > 9.5: continue
 		var p := _foe_pos(f, t); var tg := _group(t)
-		_aircraft(p + Vector2(45, 60), (tg - p).angle(), 14.0, Color(0, 0, 0, 0.12), false)
-		_aircraft(p, (tg - p).angle(), 14.0, Color("#857f5a"), false)
+		_aircraft(ci, p + Vector2(45, 60), (tg - p).angle(), 14.0, Color(0, 0, 0, 0.12), false)
+		_aircraft(ci, p, (tg - p).angle(), 14.0, Color("#857f5a"), false)
 		if t > 3.5 and t < 7.5 and fmod(t * 7.0 + f.ph, 1.0) < 0.35:
-			draw_line(p, p + (tg - p).normalized() * 60.0, Color(1.0, 0.85, 0.5, 0.8), 1.2)
-	# flak: a flash, then a black puff that spreads and thins
-	for pf in puffs:
-		var a: float = t - pf.t0
-		if a < 0.0 or a > 3.0: continue
-		var p: Vector2 = _group(pf.t0) + pf.o
-		if a < 0.12: draw_circle(p, 7.0, Color(1.0, 0.8, 0.4, 0.9))
-		draw_circle(p, 6.0 + a * 7.0, Color(0.09, 0.09, 0.09, 0.75 * (1.0 - a / 3.0)))
-	# aircraft going down, trailing smoke
-	for fl in falls:
+			ci.draw_line(p, p + (tg - p).normalized() * 60.0, Color(1.0, 0.85, 0.5, 0.8), 1.2)
+	for fl in falls:   # aircraft going down
 		var a: float = t - fl.t0
-		if a > 4.0: continue
-		var p: Vector2 = fl.p + Vector2.from_angle(fl.a) * a * 40.0 + Vector2(0, a * a * 6.0)
-		for j in 8: draw_circle(p - Vector2.from_angle(fl.a) * j * 9.0 - Vector2(0, j * 2.0), 3.0 + j * 1.6, Color(0.15, 0.14, 0.13, 0.5 * (1.0 - j / 8.0) * (1.0 - a / 4.0)))
-		if a < 2.5: _aircraft(p, fl.a + a * 2.5, 17.0 * (1.0 - a / 4.0), Color("#5f6c74") if fl.ours else Color("#7d7a5c"), jet and fl.ours)
-		if a < 2.5: draw_circle(p, 3.0, Color(1.0, 0.6, 0.2, 0.9))
-	# the caption
-	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(0, 0, size.x, 64), Color(0.03, 0.07, 0.09, 0.75))
-	draw_string(font, Vector2(24, 30), "AIR STRIKE · " + s.name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#eef0ec"))
+		if a < 2.5: _aircraft(ci, _fall_pos(fl, a), fl.a + a * 2.5, 17.0 * (1.0 - a / 4.0), Color("#5f6c74") if fl.ours else Color("#7d7a5c"), jet and fl.ours)
+	var font := ThemeDB.fallback_font   # the caption
+	ci.draw_rect(Rect2(0, 0, size.x, 64), Color(0.03, 0.07, 0.09, 0.75))
+	ci.draw_string(font, Vector2(24, 30), "AIR STRIKE · " + s.name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#eef0ec"))
 	var phase := "Strike group inbound: %d aircraft" % int(res.planes)
 	if t > 3.0 and int(res.fighters) > 0: phase = "Fighters rising to meet the strike"
 	if t > 6.0: phase = "Over the target: flak"
 	if t > 8.8: phase = "Bombs away"
 	if t > 11.5: phase = "Defences %d%% out of action  ·  %d aircraft lost  ·  turning for home" % [int(float(res.after) * 100), int(res.lost_fighters) + int(res.lost_flak)]
-	draw_string(font, Vector2(24, 52), phase, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#e3b23c"))
+	ci.draw_string(font, Vector2(24, 52), phase, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#e3b23c"))
 
 ## An aircraft from above: fuselage, wings, tailplane (swept wings for a jet).
-func _aircraft(p: Vector2, a: float, s: float, col: Color, jet: bool) -> void:
+func _aircraft(ci: CanvasItem, p: Vector2, a: float, s: float, col: Color, jet: bool) -> void:
 	var u := Vector2.from_angle(a); var v := Vector2(-u.y, u.x)
 	var pts: PackedVector2Array
 	if jet:   # swept wings
@@ -170,5 +195,5 @@ func _aircraft(p: Vector2, a: float, s: float, col: Color, jet: bool) -> void:
 			p - u * s * 0.9 - v * s * 0.45, p - u * s * 0.72 - v * s * 0.45, p - u * s * 0.7 - v * s * 0.08, p - u * s * 0.05 - v * s * 0.14,
 			p + u * s * 0.05 - v * s * 1.1, p + u * s * 0.3 - v * s * 1.05, p + u * s * 0.35 - v * s * 0.14])
 	if Geometry2D.triangulate_polygon(pts).is_empty(): return
-	draw_colored_polygon(pts, col)
-	if col.a > 0.5: draw_line(p + u * s * 0.9, p - u * s * 0.6, col.lightened(0.25), s * 0.1)   # light along the spine
+	ci.draw_colored_polygon(pts, col)
+	if col.a > 0.5: ci.draw_line(p + u * s * 0.9, p - u * s * 0.6, col.lightened(0.25), s * 0.1)   # light along the spine

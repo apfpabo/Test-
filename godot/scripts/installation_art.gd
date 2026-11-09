@@ -51,7 +51,8 @@ static func damage(ci: CanvasItem, c: Vector2, R: float, seed: int, dmg: float, 
 	var r := _rng(seed + 991)
 	for i in int(ruin * 10.0):
 		var p := c + Vector2.from_angle(r.randf() * TAU) * r.randf() * R * 0.8
-		ci.draw_circle(p, R * r.randf_range(0.08, 0.16), Color(0.12, 0.1, 0.08, 0.35))
+		var sr := R * r.randf_range(0.08, 0.16)   # scorch: soft-edged, darkest at the middle
+		for k in 5: ci.draw_circle(p, sr * (1.0 - k * 0.17), Color(0.12, 0.1, 0.08, 0.09))
 	for i in int(dmg * 22.0):
 		var p := c + Vector2.from_angle(r.randf() * TAU) * r.randf() * R * 0.9; var cr := R * r.randf_range(0.025, 0.05)
 		ci.draw_circle(p, cr * 1.5, Color(0.55, 0.5, 0.42, 0.5)); ci.draw_circle(p, cr, Color(0.16, 0.14, 0.11, 0.9))

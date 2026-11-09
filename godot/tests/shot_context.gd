@@ -1,5 +1,5 @@
 extends Node
-## Screenshot of the chart's right-click menu on a friendly fleet, then of your squadron escorting it.
+## Screenshots of the chart's right-click menu on a friendly fleet, your squadron escorting it, hailing it and trading.
 ## xvfb-run -a godot --path godot --rendering-driver opengl3 res://tests/shot_context.tscn -- <dir>
 var f := 0
 var out := ""
@@ -16,4 +16,6 @@ func _process(_d: float) -> void:
 	if f == 3: map.close_panel(); map.zoom = 2.2
 	if f == 8: map._context(map.to_screen(Vector2(cv.x, cv.y))); Campaign.paused = true
 	if f == 14: get_viewport().get_texture().get_image().save_png(out + "/context_menu.png"); map._context_pick(1)
-	if f == 300: get_viewport().get_texture().get_image().save_png(out + "/escorting.png"); get_tree().quit()
+	if f == 300: get_viewport().get_texture().get_image().save_png(out + "/escorting.png"); Campaign.G.cargo.fuel = 0; map._hail(cv)
+	if f == 306: get_viewport().get_texture().get_image().save_png(out + "/hail.png"); map._trade(cv)
+	if f == 312: get_viewport().get_texture().get_image().save_png(out + "/trade.png"); get_tree().quit()

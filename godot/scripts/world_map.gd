@@ -506,8 +506,13 @@ func _speed(v: int) -> void:
 func _update_top() -> void:
     var G: Dictionary = Campaign.G
     stats.DATE.text = Campaign.date_str(G.day); stats.FUNDS.text = Campaign.fmt(G.credits)
-    var fu = Campaign.fuel_use(); stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / fu)) if fu > 0 else "∞"]
+    var fu = Campaign.fuel_use()
+    if G.cargo.fuel > 0 or fu <= 0: stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / fu)) if fu > 0 else "∞"]
+    elif Campaign.reserve() > 0: stats.FUEL.text = "Reserve %dd" % int(ceil(Campaign.reserve() / (fu / 3.0)))
+    else: stats.FUEL.text = "Under tow" if G.player.get("towed") != null else "DEAD IN WATER"
     stats.FUEL.add_theme_color_override("font_color", UI.RED if fu > 0 and G.cargo.fuel / fu < 5 else UI.INK)
+    stats.FUEL.get_parent().tooltip_text = "Fuel oil in the bunkers, and days of steaming left. Behind it, a reserve of %d tons (%d days at a crawl) that fills again whenever the bunkers have fuel." % [int(Campaign.reserve()), int(Campaign.reserve() / maxf(0.1, fu / 3.0))]
+    stats.FUEL.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     var cm = G.get("commission")
     if cm != null:
         stats.SERVING.text = GameData.fac[cm.fac].short + (" · marque" if str(cm.get("marque", "")) != "" else "")
@@ -644,6 +649,8 @@ func _zoom_at(f: float, sp: Vector2) -> void:
 func _click(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
     var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / zoom   # r in screen pixels
+    if P.get("towed") != null: _toast("You are under tow. Right-click to cast off the tow."); return
+    if Campaign.dead_in_water(): _toast("Your squadron is dead in the water: no fuel, no reserve. Right-click a friendly fleet to call it by wireless.")
     if Input.is_key_pressed(KEY_CTRL) and P.get("route") != null and P.get("follow") == null and P.get("escort") == null:   # another waypoint
         var tp = null
         for p in G.ports: if near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10): tp = p
@@ -681,7 +688,7 @@ func _context(sp: Vector2) -> void:
         _menu = PopupMenu.new(); _menu.add_theme_font_size_override("font_size", 14); ui.add_child(_menu)
         _menu.id_pressed.connect(_context_pick)
     _menu.clear()
-    var busy: bool = P.get("escort") != null or P.get("follow") != null or P.get("route") != null
+    var busy: bool = P.get("towed") != null or P.get("escort") != null or P.get("follow") != null or P.get("route") != null
     if hit != null:
         _menu.set_meta("fleet", int(hit.id))
         _menu.add_separator(hit.name + " (%d)" % hit.ships.size())
@@ -690,7 +697,11 @@ func _context(sp: Vector2) -> void:
             _menu.add_item("Escort her" if P.get("escort") != int(hit.id) else "Escorting her (keep station)", 1)
             _menu.set_item_disabled(_menu.get_item_index(1), P.get("escort") == int(hit.id))
             _menu.add_item("Close and hail", 2)
+            var dP: float = Campaign.mdist(hit.x, hit.y, P.x, P.y)
+            if dP < Campaign.CONTACT * 1.5: _menu.add_item("Hail her now (signals)", 5)
+            else: _menu.add_item("Call her by wireless (%d km)" % int(dP * Campaign.KM_PER_UNIT), 4); _menu.set_item_disabled(_menu.get_item_index(4), dP > Campaign.WIRELESS)
     elif not busy: return
+    if P.get("towed") != null: _menu.add_item("Cast off the tow", 6)
     _menu.add_item("Cancel orders (heave to)", 3)
     _menu.set_item_disabled(_menu.get_item_index(3), not busy)
     _menu.position = Vector2i(sp)
@@ -708,8 +719,15 @@ func _context_pick(id: int) -> void:
             P.escort = null; P.destPort = null; P.follow = int(f.id); P.repathT = 0.0; f.cool = 0.0; Campaign.paused = false
             _toast(("Intercept course locked on the %s." if Campaign.hostile_fleet(f) else "Closing the %s to signalling distance.") % f.name.to_lower())
         3:
+            if P.get("towed") != null: _context_pick(6)
             P.escort = null; P.follow = null; P.destPort = null; P.route = null; P.tx = null
             _toast("Orders cancelled. The squadron heaves to.")
+        4: if f != null: _toast(Campaign.call_fleet(f))
+        5: if f != null: _hail(f)
+        6:
+            var tf = Campaign._fleet(P.towed); P.towed = null; P.route = null; P.tx = null; P.destPort = null
+            if tf != null: tf.cool = 20.0
+            _toast("You cast off the tow. The fee is not returned.")
 
 ## The fleet under a chart point: within 16 pixels or about its drawn size, whichever is larger; the nearest wins.
 func fleet_at(w: Vector2):
@@ -792,14 +810,7 @@ func _on_encounter(f: Dictionary) -> void:
     var evade = int(round(clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0, 0.1, 0.92) * 100))
     open_panel(func(box):
         if not Campaign.hostile_fleet(f):
-            var en = Campaign.enemies_of(f.fac)
-            box.add_child(UI.title(f.name)); box.add_child(_lead_pic(f)); _p(box, "%s ships close to signalling distance: %s." % [GameData.fac[f.fac].name, _counts(f.ships)])
-            _p(box, odds + " Opening fire breaks the armistice: it costs 30 %s standing%s, and %s warships will engage you on sight for three months." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else "", GameData.fac[f.fac].short], UI.DIM)
-            box.add_child(UI.row([UI.button("Exchange signals and pass", func(): f.cool = 8.0; P.cool = 3.0; close_panel(), true),
-                UI.button("Open fire", func():
-                    G.rep[f.fac] -= 30; Campaign.incident(f.fac); Diplomacy.on_open_fire(f.fac)
-                    for e in en: G.rep[e] = mini(100, G.rep[e] + 5)
-                    _toast("%s standing is now %d." % [GameData.fac[f.fac].name, G.rep[f.fac]]); _battle(f))]))
+            _hail_body(box, f)
         else:
             var who: String = ("Your mission target, " + f.name + ",") if f.get("mission", false) else ("The flotilla you were hired to hunt" if int(f.get("contract", 0)) > 0 else (("%s's squadron, worth %s," % [f.captain, Campaign.fmt(f.reward)]) if f.kind == "bounty" else "A " + GameData.fac[f.fac].name + " force"))
             box.add_child(UI.title("Contact")); box.add_child(_lead_pic(f)); _p(box, "%s is closing on you: %s." % [who, _counts(f.ships)]); _p(box, _contact_line(f), UI.DIM); _p(box, odds, UI.DIM)
@@ -810,6 +821,62 @@ func _on_encounter(f: Dictionary) -> void:
     , true)
 
 ## Where the contact was made and whose reach made it: lookouts and radar, missiles, or a carrier's search planes.
+## Hailing a fleet that does not fire on you (alongside, or come to your wireless call): pass on, trade with a
+## merchant convoy, ask a warship for a tow when your bunkers are dry, or open fire.
+func _hail(f: Dictionary) -> void:
+    open_panel(func(box): _hail_body(box, f), true)
+
+func _hail_body(box: Control, f: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; f.answering = false
+    var en = Campaign.enemies_of(f.fac)
+    var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
+    var odds = "They badly outgun you." if ratio > 1.6 else ("They have the heavier squadron." if ratio > 1.1 else ("It would be an even fight." if ratio > 0.75 else "You outgun them."))
+    box.add_child(UI.title(f.name)); box.add_child(_lead_pic(f)); _p(box, "%s ships close to signalling distance: %s." % [GameData.fac[f.fac].name, _counts(f.ships)])
+    var merchant: bool = f.kind == "convoy" or f.ships.all(func(s): return Campaign.hull(s).kind == "merchant")
+    var dry: bool = G.cargo.fuel <= 0
+    var acts := [UI.button("Exchange signals and pass", func(): f.cool = 8.0; P.cool = 3.0; close_panel(), true)]
+    if merchant: acts.append(UI.button("Trade", func(): _trade(f)))
+    if not merchant and dry:
+        var fee := Campaign.tow_fee(); var np = Campaign.nearest_open_port()
+        acts.append(UI.button("Request a tow to %s · %s" % [np.name if np != null else "port", Campaign.fmt(fee)], func(): f.cool = 8.0; _toast(Campaign.take_tow(f)); close_panel(), false, np == null or G.credits < fee))
+    if merchant: _p(box, "Merchant ships carry spare bunker fuel and a little of everything, and will deal at sea, at worse prices than a port.", UI.DIM, 14)
+    elif dry: _p(box, "Your bunkers are dry. A warship can take you in tow to the nearest harbour open to you, for a fee.", UI.GOLD, 14)
+    _p(box, odds + " Opening fire breaks the armistice: it costs 30 %s standing%s, and %s warships will engage you on sight for three months." % [GameData.fac[f.fac].short, (" and earns thanks from " + " and ".join(en.map(func(e): return GameData.fac[e].short))) if en.size() else "", GameData.fac[f.fac].short], UI.DIM, 13)
+    acts.append(UI.button("Open fire", func():
+        G.rep[f.fac] -= 30; Campaign.incident(f.fac); Diplomacy.on_open_fire(f.fac)
+        for e in en: G.rep[e] = mini(100, G.rep[e] + 5)
+        _toast("%s standing is now %d." % [GameData.fac[f.fac].name, G.rep[f.fac]]); _battle(f)))
+    box.add_child(UI.row(acts))
+
+## Trading with a merchant convoy at sea: a small floating market. What they carry, their own cash, and prices a
+## third worse than a port's either way.
+func _trade(f: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    if not f.has("cash"): f.cash = 12000
+    open_panel(func(box):
+        box.add_child(UI.title("Trade with the " + f.name))
+        _p(box, "Funds %s · Hold %d / %d · Bunkers %d (40 days: %d) · Their cash %s" % [Campaign.fmt(G.credits), Campaign.cargo_used(), Campaign.cargo_cap(), int(G.cargo.fuel), int(Campaign.fuel_use() * 40), Campaign.fmt(int(f.cash))], UI.DIM, 14)
+        for g in Campaign.C.GOODS:
+            var gid: String = g.id; var have := int(f.cargo.get(gid, 0)); var held := int(floor(G.cargo[gid]))
+            var bp := int(ceil(float(g.base) * 1.35)); var sp := int(floor(float(g.base) * 0.7))
+            var room: int = maxi(0, int(ceil(Campaign.fuel_use() * 40 - G.cargo.fuel))) if gid == "fuel" else Campaign.cargo_cap() - Campaign.cargo_used()
+            var can_buy := mini(mini(have, room), int(G.credits / bp)); var can_sell := mini(held, int(int(f.cash) / maxi(1, sp)))
+            var nm := UI.label(g.name, UI.INK); nm.custom_minimum_size.x = 160
+            box.add_child(UI.row([nm, UI.label("they have %d · buy %d · sell %d · you hold %d" % [have, bp, sp, held], UI.DIM, 13),
+                UI.button("Buy %d" % mini(10, can_buy), func(): _deal(f, gid, mini(10, can_buy), bp, true), false, can_buy <= 0),
+                UI.button("Buy max", func(): _deal(f, gid, can_buy, bp, true), false, can_buy <= 0),
+                UI.button("Sell %d" % mini(10, can_sell), func(): _deal(f, gid, mini(10, can_sell), sp, false), false, can_sell <= 0)]))
+        box.add_child(UI.row([UI.button("Done", func(): f.cool = 8.0; Campaign.G.player.cool = 3.0; close_panel(), true), UI.button("Back", func(): _hail(f))]))
+    , true, 860)
+
+func _deal(f: Dictionary, gid: String, n: int, price: int, buying: bool) -> void:
+    var G: Dictionary = Campaign.G
+    if n <= 0: return
+    if buying: G.credits -= n * price; G.cargo[gid] += n; f.cargo[gid] = int(f.cargo.get(gid, 0)) - n; f.cash = int(f.cash) + n * price
+    else: G.credits += n * price; G.cargo[gid] -= n; f.cargo[gid] = int(f.cargo.get(gid, 0)) + n; f.cash = int(f.cash) - n * price
+    if gid == "fuel" and buying: G.deadWarned = false
+    _trade(f)
+
 func _contact_line(f: Dictionary) -> String:
     var km := int(f.get("contactKm", 0)); var er := Campaign.strike_reach(f.ships); var pr := Campaign.strike_reach(Campaign.G.fleet)
     var by := func(r: float) -> String: return "search planes" if r * Campaign.KM_PER_UNIT >= 240.0 else "missile ships"

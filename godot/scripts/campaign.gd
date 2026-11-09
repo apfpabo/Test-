@@ -268,6 +268,13 @@ func fuel_use() -> float:
     var t = 0.0
     for s in G.fleet: t += hull(s).fuel
     return t
+## The reserve: the last few days of fuel kept back in the bunkers, burned at a third of the normal rate at a
+## crawl once the bunkers are dry. When it is gone the squadron is dead in the water: call a friendly fleet by
+## wireless for a tow or a merchant convoy for fuel. It fills again from the bunkers once you have fuel.
+func reserve_cap() -> float: return fuel_use() * 4.0
+func reserve() -> float: return float(G.get("reserve", reserve_cap()))
+func dead_in_water() -> bool: return G.cargo.fuel <= 0 and reserve() <= 0.0 and fuel_use() > 0 and G.player.get("towed") == null
+
 func wages() -> float:
     var t: float = G.crew * 0.15
     for o in G.officers: t += 40 * o.lvl
@@ -440,6 +447,8 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         var d: Dictionary = dests.pick_random() if dests.size() else G.ports.filter(func(p): return p.id != from_id).pick_random()
         f.dest = d.id; f.from = from_id
         for g in C.GOODS: if randf() < 0.55: f.cargo[g.id] = randi_range(15, 50) * n
+        f.cargo.fuel = int(f.cargo.get("fuel", 0)) + randi_range(40, 120)   # bunker fuel to spare: a merchant will sell it
+        f.cash = randi_range(8, 25) * 1000
     elif kind == "raiders": f.name = "Raider flotilla"; f.ships = build_by_budget(C.PATROL_POOL.raiders, (12000 + randf() * 30000) * scale, 6, "raiders", tl)
     else:
         f.captain = ["\"Hook\" Marlowe", "Ysolde Crane", "\"Bosun\" Teague", "Anika Vell", "Black Corwin", "Mother Grist", "\"Lantern\" Pike", "Severin Oakes"].pick_random()
@@ -610,12 +619,22 @@ func nearest_poi(max_d: float):
 func new_day(moved: bool) -> void:
     G.day += 1
     var P: Dictionary = G.player
-    if moved:
-        G.cargo.fuel -= fuel_use() * (1.5 if in_ice(P.x, P.y) else 1.0)
+    if not G.has("reserve"): G.reserve = reserve_cap()
+    if moved and P.get("towed") == null:
+        var burn: float = fuel_use() * (1.5 if in_ice(P.x, P.y) else 1.0)
+        if G.cargo.fuel > 0: G.cargo.fuel -= burn
+        else:
+            G.reserve = maxf(0.0, float(G.reserve) - burn / 3.0)
+            if G.reserve <= 0.0 and not G.get("deadWarned", false):
+                G.deadWarned = true
+                toast.emit("The reserve is gone. Your squadron is dead in the water. Right-click a friendly fleet and call it by wireless: a warship can tow you to port, a merchant convoy can sell you fuel.")
         if G.cargo.fuel < 0:
             G.cargo.fuel = 0
-            if not G.get("noFuelWarned", false): toast.emit("Bunkers are dry. The fleet crawls on emergency reserves. Buy fuel oil at any port."); G.noFuelWarned = true
-        else: G.noFuelWarned = false
+            if not G.get("noFuelWarned", false): toast.emit("Bunkers are dry. The fleet crawls on its reserve, about %d days of it. Buy fuel oil at a port, or from a merchant convoy." % int(ceil(reserve() / maxf(0.1, fuel_use() / 3.0)))); G.noFuelWarned = true
+        elif G.cargo.fuel > 0: G.noFuelWarned = false
+    # the reserve fills again from the bunkers
+    if G.cargo.fuel > 0 and reserve() < reserve_cap():
+        var k: float = minf(reserve_cap() - reserve(), G.cargo.fuel); G.reserve = reserve() + k; G.cargo.fuel -= k; G.deadWarned = false
         if in_ice(P.x, P.y):
             for s in G.fleet: s.hullFrac = maxf(0.05, s.hullFrac - 0.015)
             if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
@@ -667,9 +686,13 @@ func update(dt: float) -> void:
     if P.get("route") != null:
         var no_fuel: bool = G.cargo.fuel <= 0 and fuel_use() > 0
         var sp = fleet_map_speed(G.fleet) * (0.2 if no_fuel else 1.0) * (0.4 if ice else 1.0)
+        if dead_in_water(): sp = 0.0
+        var tow = _fleet(P.towed) if P.get("towed") != null else null
+        if tow != null: sp = minf(fleet_map_speed(G.fleet), fleet_map_speed(tow.ships) * 0.55)   # under tow: slow, but moving
         if esc != null: sp = minf(sp, maxf(esc.v, 0.5) + maxf(0.0, mdist(P.x, P.y, esc.x, esc.y) - 6.0) * 0.6 + 0.3)   # close up, then match her speed
-        G.movedToday = true
-        if route_move(P, sp, fleet_turn_rate(G.fleet), dt):
+        G.movedToday = sp > 0.0
+        if sp <= 0.0: coast(P, dt)   # dead in the water: way comes off her, and she drifts to a stop
+        elif route_move(P, sp, fleet_turn_rate(G.fleet), dt):
             P.tx = null; P.route = null
             if P.follow == null and P.get("escort") == null: _arrive()
             else: P.repathT = 0.0
@@ -680,6 +703,9 @@ func update(dt: float) -> void:
     var pr := strike_reach(G.fleet)
     for f in G.fleets.duplicate():
         f.cool = maxf(0.0, f.cool - dt)
+        if P.get("towed") != null and f.id == P.towed:   # the towing ship keeps station ahead of you on the hawser
+            f.x = wrap_x(P.x + cos(P.h) * 2.5); f.y = P.y + sin(P.h) * 2.5; f.h = P.h; f.v = P.v; f.route = null
+            continue
         var dP = mdist(f.x, f.y, P.x, P.y); var hos = hostile_fleet(f)
         var merchant = true
         for s in f.ships: if hull(s).kind != "merchant": merchant = false
@@ -694,7 +720,13 @@ func update(dt: float) -> void:
             f.chasing = chase
         else:
             if f.get("chasing", false): f.chasing = false; f.route = null
-            if f.get("route") == null:
+            if f.get("answering", false):   # answering your wireless call: steam to where you are
+                f.ansT = f.get("ansT", 0.0) - dt
+                if f.ansT <= 0.0:
+                    f.ansT = 1.5
+                    if not set_course(f, P.x, P.y): f.answering = false
+                rate = 1.0
+            elif f.get("route") == null:
                 if Structures._is_assault(f):   # an assault force bound for your structure: land, or get back on course
                     var tg: Dictionary = f.get("tgt", {"x": f.x, "y": f.y})
                     if mdist(f.x, f.y, tg.x, tg.y) < 8.0: Structures.assault_lands(f); continue
@@ -729,7 +761,7 @@ func update(dt: float) -> void:
         # A force that has been met stays quiet until the range opens past its reach again.
         var reach := maxf(strike_reach(f.ships), pr) if hos else 0.0
         if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
-        var close_in: bool = (P.follow == f.id or hos) and dP < CONTACT   # inside gun range there is always contact
+        var close_in: bool = (P.follow == f.id or hos or f.get("answering", false)) and dP < CONTACT   # inside gun range there is always contact
         if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
             f.met = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
 
@@ -747,12 +779,54 @@ func strike_reach(ships: Array) -> float:
             if w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm": r = maxf(r, 120.0 / KM_PER_UNIT)
     return r
 
+## A wireless call to a fleet that does not fire on you: it comes to you if its flag thinks well enough of you.
+## Within signalling distance it answers at once. Returns what happens, for a toast.
+const WIRELESS := 900.0   # map units, about 5,000 km: the long-range sets of 1946
+func call_fleet(f: Dictionary) -> String:
+    var d := mdist(f.x, f.y, G.player.x, G.player.y)
+    if d > WIRELESS: return "The %s is beyond the range of your wireless (%d km)." % [f.name.to_lower(), int(d * KM_PER_UNIT)]
+    if hostile_fleet(f) or f.kind == "raiders" or f.kind == "bounty": return "That is no friend to call on."
+    if f.fac != "player" and G.rep.get(f.fac, 0) < -10: return "The %s acknowledges your call and steams on. Your standing with the %s is too low for help." % [f.name.to_lower(), GameData.fac[f.fac].short]
+    f.answering = true; f.ansT = 0.0; f.cool = 0.0; f.met = false
+    return "The %s answers your call and alters course to close you, %d km off." % [f.name.to_lower(), int(d * KM_PER_UNIT)]
+
+## The nearest harbour open to you, by sea.
+func nearest_open_port():
+    var best = null; var bd := INF
+    for p in G.ports:
+        if hostile(p.fac): continue
+        var d := mdist(p.sx, p.sy, G.player.x, G.player.y)
+        if d < bd: bd = d; best = p
+    return best
+
+func tow_fee() -> int:
+    var p = nearest_open_port()
+    if p == null: return 0
+    return int(round((1500.0 + mdist(p.sx, p.sy, G.player.x, G.player.y) * 6.0) / 100.0) * 100)
+
+## A warship takes you in tow to the nearest open port: the fee is paid now, and she stays alongside until you
+## reach harbour.
+func take_tow(f: Dictionary) -> String:
+    var p = nearest_open_port()
+    if p == null: return "There is no harbour open to you to be towed to."
+    var fee := tow_fee()
+    if G.credits < fee: return "The tow costs %s, and you have %s." % [fmt(fee), fmt(G.credits)]
+    G.credits -= fee; var P: Dictionary = G.player
+    P.towed = int(f.id); P.follow = null; P.escort = null; P.destPort = int(p.id); f.answering = false
+    if not set_course(P, p.sx, p.sy): P.towed = null; G.credits += fee; return "No sea route to %s." % p.name
+    log_ev("Towed to %s by the %s" % [p.name, f.name])
+    return "The %s passes a hawser and takes you in tow for %s (%s)." % [f.name.to_lower(), p.name, fmt(fee)]
+
 func _fleet(id):
     for f in G.fleets: if f.id == id: return f
     return null
 
 func _arrive() -> void:
     var P: Dictionary = G.player
+    if P.get("towed") != null:
+        var tf = _fleet(P.towed); P.towed = null
+        if tf != null: tf.answering = false; tf.cool = 20.0; tf.route = null
+        toast.emit("The tow is cast off in the roads. Your squadron is in harbour.")
     if P.get("destPort") != null:
         var p: Dictionary = G.ports[P.destPort]; P.destPort = null
         if mdist(P.x, P.y, p.sx, p.sy) < 30: reached_port.emit(p)
@@ -950,6 +1024,7 @@ func _ints(g: Dictionary) -> void:
     if g.player.get("destPort") != null: g.player.destPort = int(g.player.destPort)
     if g.player.get("follow") != null: g.player.follow = int(g.player.follow)
     if g.player.get("escort") != null: g.player.escort = int(g.player.escort)
+    if g.player.get("towed") != null: g.player.towed = int(g.player.towed)
     if g.player.get("wps") != null: g.player.wps = g.player.wps.map(func(i): return int(i))
     for f in g.fleets:
         f.id = int(f.id)

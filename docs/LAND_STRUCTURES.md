@@ -17,6 +17,9 @@ Rules: `godot/scripts/structures.gd` (autoload `Structures`), tuning in `godot/d
 
 ## The structures
 
+Batteries, radar stations and naval bases stand on the coast itself, about 2 km inland (`Structures._to_shore`; the world build's 0.1° grid had placed them on the first inland cell, 11 km in). Close in, an inland structure is drawn no larger than its distance from the sea, and a coastal one no larger than about 15 km.
+
+
 384 in all: the 266 inland sites of the world build (95 farms, 96 mines, 54 oil works, 21 industrial works) and 118 military installations placed by `build.js`: a coastal battery by every port (two by the Directorate's fortified harbours, Gatehold and Strelsk), batteries on both shores of every strait and canal and a radar station by each, airfields by the capitals, the garrison ports, every Federation port and every other port besides, radar stations by capitals and some great-power ports, and 16 naval bases (old wartime harbours) on quiet coasts away from the ports. Hand additions: `world.json` `"installations": [{"kind": ..., "at": [lon, lat]}]`.
 
 | Kind | Output a month | Defences | Garrison | What else it does |

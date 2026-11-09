@@ -18,5 +18,5 @@ Godot 4.3 project, GL Compatibility renderer. This is the game; the browser buil
 | `scripts/sfx.gd` | Autoload: synthesised gunfire and explosions |
 | `shaders/water.gdshader` | The sea: swell, chop, light, glints, vignette |
 | `shaders/ship_light.gdshader` | Sun-side light and shade on ship plans, soot on damaged hulls |
-| `assets/`, `data/` | Baked by `node ../tools/bake_assets.js` and `bake_world.js` from the browser build; do not edit by hand |
+| `assets/`, `data/` | Baked by `node ../tools/bake_assets.js` and `bake_world.js` from the browser build, and by `node ../tools/worldgen/build.js` (the world); do not edit by hand |
 | `tests/` | `run_presets.tscn`, `campaign_test.tscn` (headless); `shot_battle`, `shot_turrets`, `shot_map`, `full_loop` (screenshots) |

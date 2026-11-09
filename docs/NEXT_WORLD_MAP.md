@@ -1,5 +1,7 @@
 # Next: a fictional world map
 
+> **Done (9 Nov 2026).** The owner chose candidate C (seed 16). What was built, and how to change it: [`WORLD.md`](WORLD.md). This brief is kept for its reasoning.
+
 Brief for the next working session (written 9 Nov 2026). Read [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION.md) (never edit it), [`ROADMAP.md`](ROADMAP.md) and [`LORE.md`](LORE.md) first.
 
 ## The owner's request

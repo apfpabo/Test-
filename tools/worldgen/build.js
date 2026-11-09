@@ -194,6 +194,62 @@ fs.writeFileSync(path.join(DATA, 'nav_edges.bin'), Buffer.from(new Int32Array(ed
 fs.writeFileSync(path.join(DATA, 'nav_routes.json'), JSON.stringify({ S, routes }));
 log('lanes:', nodes.length, 'points,', edges.length / 2, 'links');
 
+// ------------------------------------------------------------------ landmasses and land sites (ready for land structures)
+// Every land cell gets the landmass it belongs to (named in world.json); then a spread of inland sites is chosen where
+// a later structure could stand: farmland (food), mines (steel), or oil and industry (money), each tied to its
+// nearest port. The game doesn't use them yet: they are the hooks for air strikes and capture.
+const comp = new Int32Array(CW * CH).fill(-1), compSize = []; {
+  const st = new Int32Array(CW * CH);
+  for (let s0 = 0; s0 < mask.length; s0++) {
+    if (!mask[s0] || comp[s0] >= 0) continue; const id = compSize.length; let sp = 0, n = 0; st[sp++] = s0; comp[s0] = id;
+    while (sp) { const k = st[--sp]; n++; const i = k % CW, j = (k / CW) | 0;
+      for (const q of [j * CW + (i + 1) % CW, j * CW + (i - 1 + CW) % CW, j > 0 ? k - CW : -1, j < CH - 1 ? k + CW : -1]) if (q >= 0 && mask[q] && comp[q] < 0) { comp[q] = id; st[sp++] = q; } }
+    compSize.push(n);
+  }
+}
+const massPts = new Map();   // component -> named points on it (a landmass joined by an isthmus has several)
+for (const m of W.landmasses || []) {
+  const x = lonX(m.at[0]), y = latY(m.at[1]), k = Math.floor(y / MASK_RES) * CW + Math.floor(x / MASK_RES);
+  if (comp[k] >= 0) (massPts.get(comp[k]) || massPts.set(comp[k], []).get(comp[k])).push({ name: m.name, x, y }); else console.warn('landmass point at sea:', m.name);
+}
+const landOf = k => {
+  const pts = massPts.get(comp[k]);
+  if (!pts) {   // an island: the group whose box holds it, if any
+    const lo = ((k % CW) + 0.5) * MASK_RES / DEG - 180, la = LAT0 - (((k / CW) | 0) + 0.5) * MASK_RES / DEG;
+    const g = (W.islandGroups || []).find(g => lo >= g.box[0] && la >= g.box[1] && lo <= g.box[2] && la <= g.box[3]);
+    return g ? g.name : compSize[comp[k]] > 4000 ? 'unnamed land' : 'island';
+  }
+  const x = (k % CW + 0.5) * MASK_RES, y = (((k / CW) | 0) + 0.5) * MASK_RES; let best = pts[0], bd = 1e18;
+  for (const p of pts) { const d = Math.hypot(wdx(p.x, x), p.y - y); if (d < bd) { bd = d; best = p; } }
+  return best.name;
+};
+// distance inland in cells (up to 40), by breadth-first search from the sea
+const inland = new Uint8Array(CW * CH).fill(255); {
+  let front = []; for (let k = 0; k < mask.length; k++) if (!mask[k]) { inland[k] = 0; front.push(k); }
+  for (let d = 1; d <= 40 && front.length; d++) { const next = [];
+    for (const k of front) { const i = k % CW, j = (k / CW) | 0;
+      for (const q of [j * CW + (i + 1) % CW, j * CW + (i - 1 + CW) % CW, j > 0 ? k - CW : -1, j < CH - 1 ? k + CW : -1]) if (q >= 0 && inland[q] === 255) { inland[q] = d; next.push(q); } }
+    front = next; }
+}
+const landSites = []; {
+  const r = require('./noise').rng(W.seed * 101 + 5), cand = [];
+  for (let j = 0; j < CH; j += 5) for (let i = 0; i < CW; i += 5) { const k = j * CW + i, la = LAT0 - (j + 0.5) * MASK_RES / DEG;
+    if (mask[k] && inland[k] >= 4 && inland[k] <= 30 && Math.abs(la) < 64) cand.push([r(), k]); }
+  cand.sort((a, b) => a[0] - b[0]);
+  const minD = 5 * DEG;   // about 5° apart
+  for (const [, k] of cand) {
+    const x = (k % CW + 0.5) * MASK_RES, y = (((k / CW) | 0) + 0.5) * MASK_RES;
+    if (landSites.some(q => Math.hypot(wdx(q.x, x), q.y - y) < minD)) continue;
+    const lat = LAT0 - y / DEG, al = Math.abs(lat), f = field[k];
+    const kind = f > 0.38 ? 'mine' : (al > 15 && al < 34) ? 'oil' : (inland[k] < 10 && landSites.length % 3 === 0) ? 'industry' : 'farm';
+    let port = -1, pd = 1e9; for (const p of ports) { const d = Math.hypot(wdx(p.x, x), p.y - y); if (d < pd) { pd = d; port = p.id; } }
+    landSites.push({ id: landSites.length, kind, yields: { farm: 'food', mine: 'steel', oil: 'money', industry: 'money' }[kind], x: r2(x), y: r2(y), land: landOf(k), port, coastKm: Math.round(inland[k] * 0.1 * 111) });
+  }
+}
+for (const q of landSites) if (q.land === 'unnamed land') console.log('  unnamed land at', (q.x / DEG - 180).toFixed(1), (LAT0 - q.y / DEG).toFixed(1));
+log('land sites:', landSites.length, Object.entries(landSites.reduce((o, q) => (o[q.kind] = (o[q.kind] || 0) + 1, o), {})).map(e => e.join(' ')).join(', '));
+for (const p of ports) p.land = landOf(Math.floor(p.y / MASK_RES) * CW + Math.floor(p.x / MASK_RES));
+
 // ------------------------------------------------------------------ campaign tables: geography in, the rest kept
 const campPath = path.join(DATA, 'campaign.json'), camp = JSON.parse(fs.readFileSync(campPath, 'utf8'));
 const names = W.channelNames || {};
@@ -204,6 +260,7 @@ Object.assign(camp, {
   channels: world.channels.map(c => c.pts.map(([lo, la]) => [r2(lonX(lo)), r2(latY(la))])),
   STRAITS: world.channels.map(c => { const p = c.pts[c.pts.length >> 1]; return { name: names[c.name] || c.name, kind: c.role, x: r2(wrapX(lonX(p[0]))), y: r2(latY(p[1])) }; }),
   ICE_BIAS: W.iceBias,
+  LANDMASSES: [...new Set((W.landmasses || []).map(m => m.name))], LAND_SITES: landSites,
   land, landMinX: minX, landMaxX: maxX,
 });
 for (const [k, v] of Object.entries(W.starts || {})) if (camp.STARTS[k]) Object.assign(camp.STARTS[k], v);

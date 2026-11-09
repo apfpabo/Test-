@@ -216,5 +216,28 @@
       "port": "Halbrook",
       "blurb": "One war-surplus Submarine and a hand-picked crew at Halbrook. Strike unseen and slip away. The Concord pays well for Directorate tonnage."
     }
-  }
+  },
+  "landmasses": [
+    { "name": "Varga", "note": "the great northern continent: Directorate heartland, the Kesh peninsula, the Lantern coast", "at": [-60, 55] },
+    { "name": "Ombria", "note": "the southern lobe below the Cradle Sea", "at": [-20, 0] },
+    { "name": "Hallandia", "note": "the Concord's continent across the Hesperian Ocean", "at": [95, 50] },
+    { "name": "Austrine", "note": "Hallandia's southern half, beyond the Corvo Canal", "at": [60, -25] },
+    { "name": "Skarn", "note": "the boreal island between the Arctic passages", "at": [38, 70] },
+    { "name": "Coralind", "note": "the south-eastern land below the Lantern archipelago", "at": [-133, -25] },
+    { "name": "the Austral Barrier", "note": "polar land, west part", "at": [-100, -74] },
+    { "name": "the Austral Barrier", "note": "polar land, east part", "at": [100, -74] }
+  ],
+  "islandGroups": [
+    { "name": "the Lantern Isles", "box": [-162, -13, -93, 16] },
+    { "name": "the Amakura Isles", "box": [-172, 30, -156, 51] },
+    { "name": "the Stepping Stones", "box": [-180, 48, -150, 60] },
+    { "name": "the Stepping Stones", "box": [155, 46, 180, 56] },
+    { "name": "Saffron Isle", "box": [45, 17, 72, 31] },
+    { "name": "the Greywater Isles", "box": [-180, -50, -160, -36] },
+    { "name": "the Greywater Isles", "box": [160, -50, 180, -36] },
+    { "name": "the Anvil Chain", "box": [148, 17, 168, 30] },
+    { "name": "the Halcyon Reefs", "box": [100, -45, 180, 17] },
+    { "name": "the Howling Rocks", "box": [-180, -60, 180, -46] },
+    { "name": "the Rime Isles", "box": [-20, 63, 30, 82] }
+  ]
 }

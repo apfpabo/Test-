@@ -92,6 +92,7 @@ class CShip:
     var fc = 1.0           # fire control: salvo spread grows as it falls
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
     var mag_x = 0.0        # where along the hull
+    var flooded: Array = [] # magazines flooded by damage control (their x along the hull)
 
 class Part:
     var t: int
@@ -728,7 +729,7 @@ func systems_tick(s: CShip, dt: float) -> void:
     if s.mag_fire > 0:
         s.mag_fire -= dt
         if randf() < dt * 0.08 * dc * (0.6 + 0.4 * s.cf):
-            s.mag_fire = 0.0; _log("magazine flooded")
+            s.mag_fire = 0.0; _log("magazine flooded"); s.flooded.append(s.mag_x)
             for m in s.mounts: if m.w.kind == "gun" and m.slot.y == 0 and absf(m.slot.x - s.mag_x) < m.w.tl * 0.6 + 2.0: m.dead = true
             say(("Magazine flooded aboard the %s: the turret above is out of action." if s.side == 0 else "The %s floods a magazine.") % s.rec.name, 2.5)
         elif s.mag_fire <= 0: _log("detonation (fire)"); detonate(s); return

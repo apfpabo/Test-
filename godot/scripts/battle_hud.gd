@@ -75,12 +75,11 @@ func _draw() -> void:
         # damaged subsystems, shown only when something is wrong
         var sysl = []
         if f.mag_fire > 0: sysl.append("MAGAZINE FIRE %d s" % int(f.mag_fire))
-        if f.eng_out > 0: sysl.append("engines stopped %d s" % int(f.eng_out))
-        elif f.eng < 0.95: sysl.append("machinery %d%%" % int(f.eng * 100))
+        if f.eng_out > 0: sysl.append("engines out %d s" % int(f.eng_out))
+        elif f.eng < 0.95: sysl.append("power %d%%" % int(f.eng * 100))
         if f.jam > 0: sysl.append("rudder jammed %d s" % int(f.jam))
-        if f.fc < 0.95: sysl.append("fire control %d%%" % int(f.fc * 100))
-        if f.cf < 0.9: sysl.append("crew %d%%" % int(f.cf * 100))
-        if sysl.size(): _text(Vector2(x + 10, y - 8), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 13)
+        if f.fc < 0.95: sysl.append("director %d%%" % int(f.fc * 100))
+        if sysl.size(): _text(Vector2(x + 10, y - 4), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 12, HORIZONTAL_ALIGNMENT_LEFT, w - 10)
         var groups = {}
         for m in f.mounts: if not groups.has(m.w.name): groups[m.w.name] = []
         for m in f.mounts: groups[m.w.name].append(m)
@@ -99,6 +98,7 @@ func _draw() -> void:
             var st = ""
             for q in f.squads: st += ("▲" + str(q.n) if q.state == "ready" else ("→" if q.state == "out" else ("…" if q.state == "rearm" else "✕"))) + " "
             _text(Vector2(x + w - 10 - 200, y + 26), "Air: " + st, Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
+        _schematic(f, Rect2(x, y - 118, w, 98))
     _reticle()
     # minimap
     var mw = 190.0; var mh = mw * sim.AH / sim.AW; var mx = W - mw - 16; var my = H - mh - 16; var k = mw / sim.AW
@@ -166,3 +166,45 @@ func show_results() -> void:
         return
     var again = Button.new(); again.text = "Fight again"; again.pressed.connect(func(): get_tree().reload_current_scene()); row.add_child(again)
     var back = Button.new(); back.text = "Back to battle setup"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")); row.add_child(back)
+
+## Damage schematic of the flagship, after the manner of a damage-control board: the ship's own plan as a dark
+## silhouette, with each part coloured by its state. Mounts: grey in action, red when wrecked. Magazines (under the
+## centreline turrets): amber, flashing red while on fire, blue once flooded. Machinery, steering gear and fire
+## control: green, yellow, red by damage; machinery dark red while the engines are stopped.
+func _schematic(f, r: Rect2) -> void:
+    draw_rect(r, PANEL); draw_rect(r, Color(GOLD, 0.35), false, 1)
+    var d: Dictionary = f.d; var info: Dictionary = GameData.sprites.ships[f.rec.type]
+    var k: float = minf((r.size.x - 20) / float(info.w), (r.size.y - 26) / float(info.h))   # pixels per metre
+    var c := r.position + Vector2(r.size.x / 2, r.size.y / 2 + 6)
+    var at = func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * k
+    var tex = GameData.ship_tex(f.rec.type, f.pal, "base")
+    draw_texture_rect(tex, Rect2(c - Vector2(info.w, info.h) * k / 2, Vector2(info.w, info.h) * k), false, Color(0.32, 0.38, 0.4, 0.95))
+    var blink: bool = int(Time.get_ticks_msec() / 250) % 2 == 0
+    var state = func(v: float) -> Color: return GREEN if v > 0.75 else (GOLD if v > 0.4 else RED)
+    var L: float = d.L
+    # machinery amidships
+    var eng_col: Color = Color(0.55, 0.12, 0.1) if f.eng_out > 0 else state.call(f.eng)
+    draw_rect(Rect2(at.call(-L * 0.18, -d.B * 0.18), Vector2(L * 0.36, d.B * 0.36) * k), Color(eng_col, 0.75))
+    # steering gear right aft
+    draw_rect(Rect2(at.call(-L * 0.47, -d.B * 0.1), Vector2(L * 0.06, d.B * 0.2) * k), Color(RED if f.jam > 0 else GREEN, 0.85))
+    # fire control in the bridge block
+    var sup: Array = d.p.get("sup", [])
+    if not sup.is_empty(): draw_circle(at.call(float(sup[0][0]), 0.0), maxf(3.0, float(sup[0][2]) * 0.22 * k), Color(state.call(f.fc), 0.9))
+    # magazines and mounts
+    for m in f.mounts:
+        var sl: Dictionary = m.slot; var mp: Vector2 = at.call(float(sl.x), float(sl.y))
+        if m.w.kind == "gun" and sl.y == 0 and ["M", "L", "H"].has(m.w.size):
+            var mc: Color = Color(0.85, 0.62, 0.2)
+            if f.mag_fire > 0 and absf(f.mag_x - sl.x) < 1.0: mc = RED if blink else Color(1, 0.85, 0.4)
+            for fx in f.flooded: if absf(fx - sl.x) < 1.0: mc = Color(0.35, 0.6, 0.85)
+            var mw: float = maxf(4.0, float(m.w.tl) * 0.5 * k)
+            draw_rect(Rect2(mp + Vector2(-mw / 2, float(m.w.tw) * 0.3 * k + 2), Vector2(mw, 3)), mc)
+        var sz: float = maxf(3.0, float(m.w.get("tw", 2.5)) * 0.5 * k)
+        var col: Color = Color(0.82, 0.85, 0.83) if not m.dead else RED
+        if m.w.kind == "gun": draw_rect(Rect2(mp - Vector2(sz, sz * 0.8), Vector2(sz * 2, sz * 1.6)), col)
+        else: draw_circle(mp, sz * 0.7, Color(col, 0.85))
+        if m.dead: draw_line(mp - Vector2(sz, sz), mp + Vector2(sz, sz), Color(0.1, 0.05, 0.05), 1.5); draw_line(mp + Vector2(-sz, sz), mp + Vector2(sz, -sz), Color(0.1, 0.05, 0.05), 1.5)
+    # key
+    var kx := r.position.x + 10; var ky := r.position.y + 14
+    for e in [["Machinery", eng_col], ["Steering", RED if f.jam > 0 else GREEN], ["Fire control", state.call(f.fc)], ["Magazines", RED if f.mag_fire > 0 else Color(0.85, 0.62, 0.2)], ["Crew %d%%" % int(f.cf * 100), state.call(f.cf)]]:
+        draw_rect(Rect2(kx, ky - 7, 7, 7), e[1]); _text(Vector2(kx + 10, ky), e[0], DIM, 11); kx += 22 + font.get_string_size(e[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x

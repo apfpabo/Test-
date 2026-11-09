@@ -10,6 +10,16 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 - **No boarding.** Capturing ships that strike their colours is fine.
 - **Turrets and superstructures (art pass 2, done 10 Nov 2026):** after feedback that adjacent turrets blended together, turrets lacked national character and superstructures were low-detail. Turrets and superstructures are now baked with height maps that Godot lights from the sun's direction, with shadows cast between levels. Gun mounts follow the shipbuilder's national style, and superstructures are built up by national school. Brief and notes: [`NEXT_ART_PASS.md`](NEXT_ART_PASS.md).
 - **Playtest feedback, 10 Nov 2026 (done):** map zoom lag fixed; refit is planned and confirmed (undo, standard fit, weapon cards with stats); punchier gun sound and visuals, light AA no longer silent, engine and sea sound; wakes for every ship on the chart; damageable subsystems (magazines, machinery, steering, fire control, crew).
+- **Playtest feedback, round 2 (done):**
+  - "Battle stations" replaces "Action stations"; the aiming readout says "turning to bear" and "blocked by own ship".
+  - The sea moves: travelling swell on the real clock, glints that ride it, cloud shadows.
+  - Muzzle blasts spread outboard only, not back across the ship.
+  - Guns fire barrel by barrel.
+  - Gun reports have more bass, and crowd control keeps big fights distinct.
+  - Ship engines and the sea along the hull are now audible in battle and on the chart.
+  - Ships in a column follow the leader's track, so they stay off the land.
+  - A damage schematic of the flagship shows mounts, magazines, machinery, steering and fire control.
+  - The owner is sending a reference picture for the damage display; match it when it arrives.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

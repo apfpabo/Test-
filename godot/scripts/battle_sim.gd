@@ -129,6 +129,7 @@ var result: Dictionary = {}
 var enemy_era = 1
 var sonar_tech = false
 var on_boom: Callable    # (pos, vol, freq, rate) for sound
+var on_pop: Callable     # (pos, vol) for light AA fire
 var small_craft = [false, false]  # whether each side still has torpedo boats or submarines afloat
 var dcs: Array = []              # depth charges sinking towards their set depth
 
@@ -140,6 +141,15 @@ func say(m: String, dur := 3.0) -> void:
 
 func boom(p: Vector2, vol: float, freq := 420.0, rate := 1.0) -> void:
     if on_boom.is_valid(): on_boom.call(p, vol, freq, rate)
+
+func pop(p: Vector2, vol: float) -> void:
+    if on_pop.is_valid(): on_pop.call(p, vol)
+
+## Light AA or point-defence burst: a tracer, a small flash at the mount and its report.
+func aa_shot(s: CShip, m: Mount, p: Vector2, q: Vector2) -> void:
+    tracer(p, q)
+    var f = part(P.FLASH, p, 0.12, 3.0 if m.wid != "aa20" else 2.0); f.a = (q - p).angle()
+    pop(p, 0.22 if m.wid == "aa20" else 0.32)
 
 # ------------------------------------------------------------------ setup
 func setup(player_recs: Array, enemy_recs: Array, player_tech: Array, enemy_tech: Array, n_islands: int) -> void:
@@ -400,10 +410,11 @@ func fx_splash(p: Vector2, size: float) -> void:
     part(P.SPLASH, p, 1.8, size); part(P.FOAM, p, 10.0, size * 1.5)
 
 func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
-    var S: float = {"S": 5.0, "M": 9.0, "L": 15.0, "H": 26.0}[size]
-    var n: int = {"S": 2, "M": 3, "L": 5, "H": 8}[size] + barrels
-    var f = part(P.FLASH, p, 0.22, S * (1 + barrels * 0.12)); f.a = ang
-    part(P.BLAST, p, 0.7, S * 2.6)
+    var S: float = {"S": 6.5, "M": 12.0, "L": 20.0, "H": 34.0}[size]
+    var n: int = {"S": 3, "M": 4, "L": 7, "H": 11}[size] + barrels
+    var f = part(P.FLASH, p, 0.26, S * (1 + barrels * 0.12)); f.a = ang
+    part(P.BLAST, p, 0.9, S * 3.0)
+    if size == "H" or size == "L": part(P.FOAM, p - Vector2.from_angle(ang) * S * 0.3, 4.0, S * 2.2) # the blast flattens the sea alongside
     for i in ceili(n / 2.0):
         var a = ang + (randf() - 0.5) * 0.9
         part(P.SPARK, p, 0.3 + randf() * 0.3, S * 0.12, Vector2.from_angle(a) * (60.0 + randf() * 120.0))
@@ -427,7 +438,7 @@ func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary) -> void:
     m.recoil = 1.0
     var mz = p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl)
     fx_muzzle(mz, ang, w.size, int(w.get("barrels", 1)))
-    boom(p, {"S": 0.1, "M": 0.16, "L": 0.26, "H": 0.42}[w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 220.0}[w.size])
+    boom(p, {"S": 0.2, "M": 0.3, "L": 0.48, "H": 0.8}[w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 160.0}[w.size])
 
 func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y); var base = (aim - p).angle()
@@ -476,7 +487,12 @@ func kill_missile(ms: Dictionary) -> void:
     ms.dead = true; fx_boom(ms.pos, 18.0, 0.5)
 
 func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
-    var p = world_pt(s, m.slot.x, m.slot.y); tracer(p, sq.pos)
+    var p = world_pt(s, m.slot.x, m.slot.y)
+    if m.w.kind == "gun": # dual-purpose guns firing at aircraft: a real gun report, flash and recoil
+        var ang = (sq.pos - p).angle(); tracer(p, sq.pos); m.recoil = 1.0
+        fx_muzzle(p + Vector2.from_angle(ang) * (m.w.tl * 0.42 + m.w.bl), ang, m.w.size, int(m.w.get("barrels", 1)))
+        boom(p, {"S": 0.16, "M": 0.24, "L": 0.4, "H": 0.6}[m.w.size], {"S": 700.0, "M": 520.0, "L": 350.0, "H": 220.0}[m.w.size])
+    else: aa_shot(s, m, p, sq.pos)
     part(P.FLAK, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 50.0, 0.6, 8.0)
     if randf() < chance * (0.6 if sq.jet else 1.0):
         sq.n -= 1; part(P.FALL, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 30.0, 1.4, 6.0)
@@ -544,7 +560,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var done = false
                 var ms = nearest_missile(s.side, p, w.range)
                 if ms != null:
-                    m.ta = ang_diff((ms.pos - p).angle(), s.a); m.cd = w.rel; tracer(p, ms.pos)
+                    m.ta = ang_diff((ms.pos - p).angle(), s.a); m.cd = w.rel; aa_shot(s, m, p, ms.pos)
                     if randf() < w.pd: kill_missile(ms)
                     done = true
                 if not done:
@@ -553,7 +569,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 if not done and small_craft[1 - s.side]:
                     var o = nearest_enemy(p, s.side, w.range, func(x: CShip) -> bool: return not submerged(x) and (x.d.kind == "pt" or x.d.kind == "sub"))
                     if o != null:
-                        m.ta = ang_diff((o.pos - p).angle(), s.a); m.cd = w.rel * 2; tracer(p, o.pos)
+                        m.ta = ang_diff((o.pos - p).angle(), s.a); m.cd = w.rel * 2; aa_shot(s, m, p, o.pos)
                         if randf() < 0.35: damage(o, w.dmg * 3, "shell")
             "sam":
                 if m.cd > 0: continue

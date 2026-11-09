@@ -25,6 +25,7 @@ func _ready() -> void:
     var cfg: Dictionary = GameData.pending
     sim = BattleSim.new()
     sim.on_boom = _boom
+    sim.on_pop = func(p: Vector2, vol: float): Sfx.pop(vol * _near(p))
     var pt: Array = cfg.get("player_tech", []); var et: Array = cfg.get("enemy_tech", [])
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])
     var efac: String = cfg.get("enemy_fac", "directorate")
@@ -66,10 +67,16 @@ func _recs(ids: Array, pal: String, tech: Array) -> Array:
 func _add_view(s: BattleSim.CShip) -> void:
     var v = ShipView.new(); v.battle = self; v.s = s; layers.ships.add_child(v); v.build(); s.view = v; views.append(v)
 
+var shake := 0.0
+## How near a point is to the camera, in screen terms (1 on screen centre, 0 well off screen).
+func _near(p: Vector2) -> float:
+    return clampf(1.0 - p.distance_to(camera.position) * camera.zoom.x / 1400.0, 0.0, 1.0)
 func _boom(p: Vector2, vol: float, freq: float, rate: float) -> void:
-    var d = p.distance_to(camera.position) * camera.zoom.x
-    Sfx.boom(vol * clampf(1.0 - d / 1400.0, 0.0, 1.0), freq, rate)
+    var k := _near(p)
+    Sfx.boom(vol * k, freq, rate)
+    if freq <= 360.0 and vol >= 0.4: shake = maxf(shake, vol * k * k * 6.0) # heavy guns and big blasts jolt the view
 
+func _exit_tree() -> void: Sfx.engine(0.0)
 func zoom() -> float: return camera.zoom.x
 func combat_speed() -> float: return speeds[speed_i]
 
@@ -91,6 +98,14 @@ func _process(delta: float) -> void:
             var f = sim.flag; var look = minf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 0.18 / zoom()
             camera.position = camera.position.lerp(f.pos + Vector2.from_angle(f.a) * look, minf(1.0, dt * cs * 1.5))
     if sim.finished and not hud.results_shown: hud.show_results()
+    shake = maxf(0.0, shake - dt * 14.0)
+    camera.offset = Vector2(randf() - 0.5, randf() - 0.5) * shake / zoom() if shake > 0.05 else Vector2.ZERO
+    # engines and sea: the ships under the camera, louder the faster they steam
+    var eng := 0.0
+    if not paused and not sim.finished:
+        for x in sim.ships:
+            if x.alive and not x.escaped: eng = maxf(eng, _near(x.pos) * clampf(x.v / maxf(1.0, x.d.kn * 0.5144), 0.0, 1.0) * clampf(x.d.L / 200.0, 0.35, 1.0))
+    Sfx.engine(eng)
     var vs = get_viewport_rect().size
     water_mat.set_shader_parameter("cam", camera.position); water_mat.set_shader_parameter("zoom", zoom())
     water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t)

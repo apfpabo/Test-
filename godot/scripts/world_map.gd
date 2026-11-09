@@ -749,35 +749,116 @@ func _yard(box: Control, p: Dictionary) -> void:
     _p(box, "Shipbuilders here: " + ", ".join(mk.map(func(m): return GameData.makers[m].name)) + ". " + " ".join(mk.map(func(m): return GameData.makers[m].desc)), UI.DIM, 13)
     if Campaign.era_of(G.tech) < 3: _p(box, "Newer designs appear here as your research reaches the next era.", UI.DIM, 13)
 
+## Refit: weapons chosen here form a plan for the ship; nothing is bought until the refit is confirmed. Undo discards
+## the plan, Standard fit plans the design's own armament, and the card shows the selected mount against what is fitted.
+var refit_plan := {}   # ship id -> planned fit
+var refit_sel := 0     # slot shown on the weapon card
 func _refit(box: Control) -> void:
     var G: Dictionary = Campaign.G
     refit_idx = clampi(refit_idx, 0, G.fleet.size() - 1); var s: Dictionary = G.fleet[refit_idx]; var d: Dictionary = GameData.hulls[s.type]
-    _p(box, "Swap the weapon in any mount. The old weapon sells back for half its price. Smaller guns fit larger mounts.", UI.DIM, 14)
+    var plan: Array = refit_plan.get(s.id, s.fit.duplicate()); refit_plan[s.id] = plan
+    refit_sel = clampi(refit_sel, 0, d.slots.size() - 1)
+    _p(box, "Choose a weapon for any mount, then confirm the refit. Old weapons sell back for half their price. Smaller guns fit larger mounts.", UI.DIM, 14)
     var picks = HBoxContainer.new()
     for i in G.fleet.size():
         var k = i
-        picks.add_child(UI.button(G.fleet[i].name, func(): refit_idx = k; _render_port(), i == refit_idx))
+        picks.add_child(UI.button(G.fleet[i].name, func(): refit_idx = k; refit_sel = 0; _render_port(), i == refit_idx))
     box.add_child(picks)
-    box.add_child(_thumb(s.type, "player", 520, s.fit))
+    box.add_child(_thumb(s.type, "player", 520, plan))
     box.add_child(UI.label("%s · %s · %s class (%s) · %s t · %s kn · belt %d mm · Hull %d" % [s.name, d.name, d.dn, GameData.makers[d.yard].short, Campaign.fmt(d.t), str(d.kn), d.armor, d.hull], UI.INK, 15))
     var sizes = {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / PD", "T": "Torpedo", "V": "Launch cells"}
+    var body = HBoxContainer.new(); body.add_theme_constant_override("separation", 18)
+    var rows = VBoxContainer.new(); body.add_child(rows)
     for i in d.slots.size():
-        var sl: Dictionary = d.slots[i]; var cur: String = s.fit[i] if s.fit[i] != null else ""
+        var sl: Dictionary = d.slots[i]; var cur: String = plan[i] if plan[i] != null else ""; var fitted: String = s.fit[i] if s.fit[i] != null else ""
         var lab: String = sizes[sl.s] + (" · fwd" if sl.x > 10 else (" · aft" if sl.x < -10 else " · mid"))
         var ob = OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, "")
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
             if not _fits(wid, sl.s) or not Campaign.tech_ok(w.get("tech"), G.tech): continue
-            ob.add_item(w.name + ("" if wid == cur else " · " + Campaign.fmt(w.price))); ob.set_item_metadata(ob.item_count - 1, wid)
+            ob.add_item(w.name + ("" if wid == fitted else " · " + Campaign.fmt(w.price))); ob.set_item_metadata(ob.item_count - 1, wid)
             if wid == cur: ob.selected = ob.item_count - 1
-        var idx = i
-        ob.item_selected.connect(func(j):
-            var nw: String = ob.get_item_metadata(j); var cost: int = GameData.weapons[nw].price if nw != "" else 0; var refund: int = int(GameData.weapons[cur].price / 2) if cur != "" else 0
-            if G.credits + refund < cost: _toast("You need %s more for that weapon." % Campaign.fmt(cost - refund - G.credits))
-            else: G.credits += refund - cost; s.fit[idx] = nw
-            _render_port())
-        var l = UI.label(lab, UI.DIM, 14); l.custom_minimum_size.x = 180
-        box.add_child(UI.row([l, ob]))
+        var idx = i; ob.custom_minimum_size.x = 290
+        ob.item_selected.connect(func(j): plan[idx] = ob.get_item_metadata(j); refit_sel = idx; _render_port())
+        ob.pressed.connect(func(): if refit_sel != idx: refit_sel = idx; call_deferred("_render_port"))
+        var l = UI.label(("▸ " if i == refit_sel else "") + lab + (" *" if cur != fitted else ""), UI.INK if i == refit_sel else UI.DIM, 14); l.custom_minimum_size.x = 180
+        var info = UI.button("Details", func(): refit_sel = idx; _render_port(), i == refit_sel)
+        rows.add_child(UI.row([l, ob, info]))
+    body.add_child(_weapon_card(s, plan, refit_sel))
+    box.add_child(body)
+    # what the plan costs, and the buttons to act on it
+    var buy := 0; var refund := 0; var changes := 0
+    for i in d.slots.size():
+        var a: String = s.fit[i] if s.fit[i] != null else ""; var b: String = plan[i] if plan[i] != null else ""
+        if a == b: continue
+        changes += 1
+        if b != "": buy += int(GameData.weapons[b].price)
+        if a != "": refund += int(GameData.weapons[a].price / 2)
+    var net: int = buy - refund
+    if changes: _p(box, "%d mount%s changed · new weapons %s · sold back %s · %s %s" % [changes, "" if changes == 1 else "s", Campaign.fmt(buy), Campaign.fmt(refund), "net cost" if net >= 0 else "net refund", Campaign.fmt(absi(net))], UI.INK, 14)
+    var can: bool = changes > 0 and G.credits >= net
+    var confirm = UI.button(("Confirm refit · " + Campaign.fmt(net)) if net > 0 else "Confirm refit", func():
+        G.credits -= net; s.fit = plan.duplicate(); refit_plan.erase(s.id); _toast("%s refitted." % s.name); _render_port(), true, not can)
+    var undo = UI.button("Undo changes", func(): refit_plan.erase(s.id); _render_port(), false, changes == 0)
+    var std = UI.button("Standard fit", func(): refit_plan[s.id] = BattleSim.default_fit(d, G.tech); _render_port())
+    box.add_child(UI.row([confirm, undo, std]))
+    if changes and G.credits < net: _p(box, "You need %s more for this refit." % Campaign.fmt(net - G.credits), UI.RED, 14)
+
+## A card for the weapon planned in one mount: its picture in the builder's style, its figures, and how it compares
+## with the weapon fitted there now.
+func _weapon_card(s: Dictionary, plan: Array, i: int) -> Control:
+    var col = VBoxContainer.new(); col.custom_minimum_size.x = 300
+    var wid: String = plan[i] if plan[i] != null else ""; var was: String = s.fit[i] if s.fit[i] != null else ""
+    if wid == "": col.add_child(UI.label("Mount left empty.", UI.DIM, 14)); return col
+    var w: Dictionary = GameData.weapons[wid]
+    col.add_child(UI.label(w.name, UI.INK, 16))
+    var pic = MountPicture.new(); pic.wid = wid; pic.style = GameData.style_of(s.type); pic.custom_minimum_size = Vector2(300, 120); pic.material = GameData.mount_material("player")
+    col.add_child(pic)
+    for line in _weapon_lines(w, GameData.weapons.get(was, {}) if was != wid else {}): col.add_child(UI.label(line, UI.DIM, 13))
+    col.add_child(UI.label(("Fitted now: " + GameData.weapons[was].name) if was != "" and was != wid else ("Fitted now" if was == wid else "Mount empty now"), UI.DIM, 13))
+    return col
+
+func _weapon_lines(w: Dictionary, o: Dictionary) -> Array:
+    var cmp = func(k: String, v: float, better_low := false) -> String:
+        if o.is_empty() or not o.has(k): return ""
+        var dv: float = v - float(o[k])
+        if absf(dv) < 0.001: return ""
+        return "  (%s%s, %s)" % ["+" if dv > 0 else "", str(snappedf(dv, 0.01)), "better" if (dv > 0) != better_low else "worse"]
+    var out = []
+    match w.kind:
+        "gun":
+            out.append("Shell damage %d × %d barrel%s%s" % [w.dmg, w.barrels, "" if w.barrels == 1 else "s", cmp.call("dmg", w.dmg)])
+            out.append("Reload %s s%s · %d per minute a mount" % [str(w.rel), cmp.call("rel", w.rel, true), int(60.0 / w.rel * w.barrels)])
+            out.append("Weight of fire %d a minute" % int(w.dmg * w.barrels * 60.0 / w.rel))
+            out.append("Range %s m%s · shell %d m/s" % [Campaign.fmt(w.range), cmp.call("range", w.range), w.speed])
+            if w.get("aa", 0) > 0: out.append("Anti-aircraft %d%s" % [int(w.aa * 100), cmp.call("aa", w.aa)])
+            out.append("Gunhouse %s × %s m" % [str(w.tw), str(w.tl)])
+        "aa":
+            out.append("Anti-aircraft %d · point defence %d" % [int(w.aa * 100), int(w.get("pd", 0) * 100)])
+            out.append("Range %s m · %d barrel%s" % [Campaign.fmt(w.range), w.barrels, "" if w.barrels == 1 else "s"])
+        "torp":
+            out.append("Warhead %d · %d tubes%s" % [w.dmg, w.count, " · homing" if w.get("homing", false) else ""])
+            out.append("Range %s m · %d kn · reload %d s" % [Campaign.fmt(w.range), w.speed, w.rel])
+        _:
+            out.append("Damage %d · range %s m · reload %d s" % [w.dmg, Campaign.fmt(w.range), w.rel])
+            if w.get("aa", 0) > 0: out.append("Air defence %d · point defence %d" % [int(w.aa * 100), int(w.get("pd", 0) * 100)])
+    out.append("Price %s" % Campaign.fmt(w.price))
+    return out
+
+## A mount drawn large, lit by the mount shader, barrels to the right.
+class MountPicture extends Control:
+    var wid := ""
+    var style := "us"
+    func _draw() -> void:
+        if not GameData.sprites.mounts.has(wid): return
+        var mi: Dictionary = GameData.sprites.mounts[wid]
+        var k: float = minf(size.x / mi.w, size.y / mi.h) * 0.92 # pixels per metre
+        var sc: float = k / mi.spr; var c = size / 2
+        draw_set_transform(c - Vector2(mi.w / 2 - mi.ox, 0) * k, 0.0, Vector2(sc, sc))
+        var o = -Vector2(mi.ox, mi.oy) * mi.spr; var code := GameData.mount_code(Vector2(0.55, 0.85), 0)
+        if mi.get("split", false): draw_texture(GameData.mount_img(wid, style, true), o, code)
+        draw_texture(GameData.mount_img(wid, style), o, code)
+        draw_set_transform(Vector2.ZERO)
 
 func _fits(wid: String, slot: String) -> bool:
     var w: Dictionary = GameData.weapons[wid]; var gs = ["S", "M", "L", "H"]

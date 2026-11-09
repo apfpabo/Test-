@@ -34,7 +34,7 @@ function blueprint(seed) {
   if (opts.west === 'isthmus') {   // joined by a narrow isthmus with a canal across it (Panama role)
     const mid = [(ithA[0] + ithB[0]) / 2 + J(0, 2), (ithA[1] + ithB[1]) / 2];
     B([ithA, mid, ithB], 2.2);
-    C('western canal', 'canal', [[mid[0] - 3.5, mid[1] + 3.5], [mid[0] + 3.5, mid[1] - 3.5]], 4);
+    C('western canal', 'canal', [[mid[0] - 3.5, mid[1] + 3.5], [mid[0] + 3.5, mid[1] - 3.5]], 5);
   } else {                          // parted by a strait with stepping-stone islands
     const mid = [(ithA[0] + ithB[0]) / 2, (ithA[1] + ithB[1]) / 2];
     L([mid], 1.6); L([[mid[0] - 4, mid[1] + 2]], 1.1);
@@ -76,8 +76,8 @@ function blueprint(seed) {
   S([[-3, 36.5], [J(8, 2), J(37.5, 1)], [J(20, 2), J(36, 1)], [30, 35]], [3.2, J(5.6, 0.6), J(5.2, 0.6), 3.4]);
   S([[J(29, 1), eS + 1.5], [J(37, 1.5), eS + 1.5]], [2.6, 2.8]);                 // the inner basin (Black Sea role)
   C('west gate', 'strait', [[-10.5, 35.6], [-8, 36.3], [-5.5, 36.1], [-3, 36.6]], 7);
-  C('narrows', 'strait', [[J(26, 0.5), 37.5], [26.8, 40], [28.2, eS - 1], [29, eS + 1]], 5);
-  C('eastern canal', 'canal', [[29.6, 34.6], [32.5, 31.5], [35.5, 29], [38, 27.6]], 4);
+  C('narrows', 'strait', [[J(26, 0.5), 37.5], [26.8, 40], [28.2, eS - 1], [29, eS + 1]], 6);
+  C('eastern canal', 'canal', [[29.6, 34.6], [32.5, 31.5], [35.5, 29], [38, 27.6]], 6);
   S([[38.3, 27.3], [J(41.5, 0.7), J(20, 1)], [44, 12.8]], [1.1, 1.7, 1.0]);          // the long gulf to the monsoon ocean
   C('gulf mouth', 'strait', [[43.2, 13.6], [45.5, 11.4]], 5);
   S([[48, 29.5], [53, 26.5], [56, 25.5]], [1.8, 2.2, 1.0]);                    // a second gulf behind a strait

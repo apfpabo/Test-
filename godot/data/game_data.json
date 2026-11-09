@@ -9522,32 +9522,32 @@
   "tidewater": {
    "name": "Tidewater Naval Shipbuilding",
    "short": "Tidewater",
-   "desc": "Atlantic seaboard yards building big, fast, heavily gunned ships in long series."
+   "desc": "Hesperian seaboard yards building big, fast, heavily gunned ships in long series."
   },
   "clydemouth": {
-   "name": "Clydemouth & Tyne",
-   "short": "Clydemouth",
+   "name": "Calder & Wexmouth",
+   "short": "Calder",
    "desc": "Old northern yards: well-armoured, seaworthy ships with conservative engineering."
   },
   "ostsee": {
-   "name": "Ostsee-Werke",
-   "short": "Ostsee",
-   "desc": "Baltic yards known for broad, stable hulls, high-pressure machinery and twin turrets."
+   "name": "Strelsk-Werke",
+   "short": "Strelsk",
+   "desc": "Vargan sound yards known for broad, stable hulls, high-pressure machinery and twin turrets."
   },
   "neva": {
-   "name": "Neva Admiralty Yards",
-   "short": "Neva",
-   "desc": "Directorate state yards that took over the Ostsee drawings after the armistice and built on them."
+   "name": "Korvagrad Admiralty Yards",
+   "short": "Korvagrad",
+   "desc": "Directorate state yards that took over the Strelsk drawings after the armistice and built on them."
   },
   "seto": {
-   "name": "Seto Naval Arsenal",
-   "short": "Seto",
-   "desc": "Pacific yards favouring speed, very heavy guns and long-range torpedoes on light hulls."
+   "name": "Amakura Naval Arsenal",
+   "short": "Amakura",
+   "desc": "Halcyon yards favouring speed, very heavy guns and long-range torpedoes on light hulls."
   },
   "tirreno": {
-   "name": "Cantieri del Tirreno",
-   "short": "Tirreno",
-   "desc": "Mediterranean yards building elegant, very fast ships that trade armour for speed."
+   "name": "Cantieri del Corvo",
+   "short": "Corvo",
+   "desc": "Cradle Sea yards building elegant, very fast ships that trade armour for speed."
   },
   "marine": {
    "name": "Combine Marine",
@@ -9587,19 +9587,19 @@
  },
  "FAC": {
   "concord": {
-   "name": "Atlantic Concord",
+   "name": "Hesperian Concord",
    "short": "Concord",
    "map": "#7fb0dc",
-   "desc": "Legacy maritime empire: the Anglo-American naval compact that never stood down after the armistice."
+   "desc": "Legacy maritime empire: the Hallandian naval compact that never stood down after the armistice."
   },
   "directorate": {
-   "name": "Eurasian Directorate",
+   "name": "Vargan Directorate",
    "short": "Directorate",
    "map": "#d9614a",
-   "desc": "Continental successor state still fighting the unfinished war from the Baltic, the Arctic and the Black Sea."
+   "desc": "Continental successor state still fighting the unfinished war from the Vargan sounds, the Rime and the Sable Sea."
   },
   "pacific": {
-   "name": "Pacific Federation",
+   "name": "Halcyon Federation",
    "short": "Federation",
    "map": "#b59ce0",
    "desc": "Rising industrial power with a vast merchant marine and an ambitious young navy."
@@ -9611,10 +9611,10 @@
    "desc": "Corporate trading consortium whose private fleets guard the Indian Ocean arteries."
   },
   "republic": {
-   "name": "Iberian Free Republic",
+   "name": "Tarsene Free Republic",
    "short": "Free Republic",
    "map": "#e39a5a",
-   "desc": "Revolutionary breakaway regime holding the Atlantic gate to the Mediterranean."
+   "desc": "Revolutionary breakaway regime holding the Tarsene Gate to the Cradle Sea."
   },
   "freeport": {
    "name": "Freeport Syndicate",

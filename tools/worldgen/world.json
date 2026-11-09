@@ -1,0 +1,220 @@
+{
+  "about": "The campaign world. Generated from `seed` by tools/worldgen (blueprint.js, generate.js), then hand-tuned by `edits`. Positions are [lon, lat] in degrees (1 map unit = 0.05 deg). Ports snap to the nearest coast within 3 deg of the given point. Rebuild the game data with: node tools/worldgen/build.js",
+  "name": "The Meridian World",
+  "seed": 16,
+  "edits": {
+    "islands": [
+      { "note": "Halcyon home islands, off the Vargan east coast", "pts": [[-167.5, 46], [-165, 42]], "r": 1.7 },
+      { "pts": [[-164, 39.5], [-161.5, 35]], "r": 2.1 },
+      { "pts": [[-159.5, 32.5]], "r": 1.0 },
+      { "pts": [[-170, 49.5]], "r": 0.8 },
+      { "note": "St. Aldric, mid-ocean", "pts": [[32, 34]], "r": 0.9 },
+      { "note": "Isla Parda and its neighbour", "pts": [[17.5, 27], [18.3, 28]], "r": 1.0 },
+      { "pts": [[20, 30]], "r": 0.6 },
+      { "note": "Mbaraka", "pts": [[-50.5, -6.5]], "r": 1.0 },
+      { "note": "more island chains in the Halcyon Ocean", "pts": [[140, 8], [142, 9]], "r": 1.1 },
+      { "pts": [[145.5, 11.5], [148, 13]], "r": 0.9 },
+      { "pts": [[151, 14]], "r": 0.6 },
+      { "pts": [[120, 12.5], [124, 14.5]], "r": 1.4 },
+      { "pts": [[132, -2]], "r": 0.8 },
+      { "pts": [[169, -5], [172.5, -7]], "r": 1.0 },
+      { "pts": [[176, -11]], "r": 0.7 },
+      { "pts": [[150, -30], [153, -32.5]], "r": 1.3 },
+      { "pts": [[158, -36]], "r": 0.7 },
+      { "pts": [[110, -40], [113, -43]], "r": 0.9 },
+      { "note": "a weather-station rock in the Howling Seas", "pts": [[10, -55]], "r": 0.6 },
+      { "note": "islands in the Strelsk Sounds", "pts": [[8.6, 61.3]], "r": 0.7 },
+      { "pts": [[9.2, 58.4]], "r": 0.6 }
+    ],
+    "carve": [
+      { "note": "the Gulf of Strelsk, behind the Strelsk Sounds", "pts": [[7.5, 59.9], [3, 59.3], [-3, 58.6], [-9, 58], [-14, 57.2]], "r": [1.0, 1.9, 2.6, 2.6, 1.7] }
+    ],
+    "channels": [
+      { "name": "Strelsk Sounds", "role": "strait", "pts": [[11.5, 60.1], [9.5, 60.0], [6.5, 59.8]], "w": 7 }
+    ]
+  },
+  "channelNames": {
+    "western canal": "Corvo Canal",
+    "west gate": "Tarsene Gate",
+    "narrows": "the Throat",
+    "eastern canal": "Kessel Canal",
+    "gulf mouth": "Hakar Strait",
+    "oil gulf narrows": "Amber Narrows",
+    "archipelago strait": "Lantern Strait"
+  },
+  "iceBias": [[10, 7, 38], [-168, -9, 25]],
+  "iceNote": "Pack-ice edge shifts in degrees of latitude: [lon, shift, width]. A warm current keeps the Vargan north-west coast and the Skarn passages open far north; the cold northern Halcyon freezes further south.",
+  "theaters": [
+    [
+      "HESPERIAN OCEAN",
+      28,
+      44
+    ],
+    [
+      "THE RIME",
+      10,
+      77
+    ],
+    [
+      "SKARN PASSAGES",
+      40,
+      66
+    ],
+    [
+      "SAFFRON SEA",
+      61,
+      17
+    ],
+    [
+      "SOUTH HESPERIAN",
+      18,
+      -24
+    ],
+    [
+      "CRADLE SEA",
+      -14,
+      36.5
+    ],
+    [
+      "SABLE SEA",
+      -29,
+      47.5
+    ],
+    [
+      "GULF OF MONSOONS",
+      -63,
+      12
+    ],
+    [
+      "BAY OF KESH",
+      -92,
+      13
+    ],
+    [
+      "MONSOON OCEAN",
+      -78,
+      -18
+    ],
+    [
+      "LANTERN SEA",
+      -118,
+      10
+    ],
+    [
+      "THE ARCS",
+      -152,
+      20
+    ],
+    [
+      "NORTH HALCYON",
+      162,
+      40
+    ],
+    [
+      "SOUTH HALCYON",
+      132,
+      -24
+    ],
+    [
+      "CORAL REACH",
+      -112,
+      -22
+    ],
+    [
+      "HOWLING SEAS",
+      -40,
+      -57
+    ],
+    [
+      "HOWLING SEAS",
+      110,
+      -60
+    ],
+    [
+      "HOWLING SEAS",
+      -150,
+      -58
+    ]
+  ],
+  "ports": [
+    { "name": "Calder Roads", "fac": "concord", "capital": true, "at": [74.5, 38] },
+    { "name": "Halbrook", "fac": "concord", "at": [59, 52] },
+    { "name": "Wexmouth", "fac": "concord", "at": [14, 52] },
+    { "name": "Gatehold", "fac": "concord", "at": [7.5, 35.2] },
+    { "name": "St. Aldric", "fac": "concord", "at": [32, 34] },
+    { "name": "Freeholm", "fac": "concord", "at": [11.5, 18] },
+    { "name": "Anvil Harbour", "fac": "concord", "at": [157, 24] },
+    { "name": "Port Merrow", "fac": "concord", "at": [-130, -30] },
+    { "name": "Strelsk", "fac": "directorate", "capital": true, "at": [-12, 57.4] },
+    { "name": "Korvagrad", "fac": "directorate", "at": [-4, 64] },
+    { "name": "Norvask", "fac": "directorate", "at": [-17, 72.5] },
+    { "name": "Tavrosk", "fac": "directorate", "at": [-27, 46] },
+    { "name": "Ostrozhny", "fac": "directorate", "at": [-151, 48] },
+    { "name": "Amakura", "fac": "pacific", "capital": true, "at": [-162.5, 37.5] },
+    { "name": "Senhai", "fac": "pacific", "at": [-140, 31] },
+    { "name": "Lumaya", "fac": "pacific", "at": [-147, 8] },
+    { "name": "Kotaraya", "fac": "combine", "capital": true, "at": [-104, 3] },
+    { "name": "Varanpur", "fac": "combine", "at": [-85, 14] },
+    { "name": "Bab Hakar", "fac": "combine", "at": [-46, 12] },
+    { "name": "Cape Ombra", "fac": "combine", "at": [-27, -33] },
+    { "name": "Sanpo", "fac": "combine", "at": [-120, 24] },
+    { "name": "Tarsa", "fac": "republic", "capital": true, "at": [11, 44] },
+    { "name": "Puerto Corvo", "fac": "republic", "at": [-5, 42] },
+    { "name": "Isla Parda", "fac": "republic", "at": [17.5, 27] },
+    { "name": "Port Saffron", "fac": "freeport", "capital": true, "at": [58, 25] },
+    { "name": "Kesselport", "fac": "freeport", "at": [-31, 34] },
+    { "name": "Mbaraka", "fac": "freeport", "at": [-50.5, -6.5] },
+    { "name": "Puerto Vela", "fac": "freeport", "at": [67, -33] },
+    { "name": "Halvardsby", "fac": "enclave", "capital": true, "at": [14, 66.5] },
+    { "name": "Isfjell", "fac": "enclave", "at": [7, 72.5] },
+    { "name": "Grimvik", "fac": "enclave", "at": [41.5, -52] },
+    { "name": "Sudrhavn", "fac": "enclave", "at": [1, -50.5] }
+  ],
+  "pois": [
+    { "name": "Skarn Strait wrecks", "type": "wreck", "at": [50, 62] },
+    { "name": "Korvagrad graveyard", "type": "wreck", "at": [5, 69] },
+    { "name": "Cradle Sea wrecks", "type": "wreck", "at": [-15, 35] },
+    { "name": "Austrine approaches", "type": "wreck", "at": [38, -30] },
+    { "name": "Ironbottom Reach", "type": "wreck", "at": [-135, -3] },
+    { "name": "Lantern Sea wrecks", "type": "wreck", "at": [-120, 8] },
+    { "name": "Shallows of Kesh", "type": "wreck", "at": [-128, -6] },
+    { "name": "Halcyon shoals", "type": "wreck", "at": [165, 22] },
+    { "name": "Coral Reach wrecks", "type": "wreck", "at": [-118, -20] },
+    { "name": "Strelsk scuttled fleet", "type": "base", "at": [0, 61.5] },
+    { "name": "Lumaya lagoon anchorage", "type": "base", "at": [-160, 5] },
+    { "name": "Stepping Stones forward base", "type": "base", "at": [-170, 54] },
+    { "name": "Monsoon atoll airstrip", "type": "base", "at": [-75, -10] },
+    { "name": "Rime black site", "type": "site", "at": [25, 70] },
+    { "name": "Ice-shelf station", "type": "site", "at": [-40, -63] },
+    { "name": "Howling Seas weather station", "type": "site", "at": [10, -55] }
+  ],
+  "factions": {
+    "concord": { "name": "Hesperian Concord", "desc": "Legacy maritime empire: the Hallandian naval compact that never stood down after the armistice." },
+    "directorate": {
+      "desc": "Continental successor state still fighting the unfinished war from the Vargan sounds, the Rime and the Sable Sea."
+    },
+    "pacific": { "name": "Halcyon Federation" },
+    "republic": { "name": "Tarsene Free Republic", "desc": "Revolutionary breakaway regime holding the Tarsene Gate to the Cradle Sea." }
+  },
+  "story": [
+    { "near": "St. Aldric", "brief": "Black Flag raiders are stalking Concord colliers off the Calder capes. Find the flotilla led by the destroyer Jackal and sink it." },
+    { "near": "Halbrook", "brief": "A Directorate submarine pack is sinking tankers on the Halbrook convoy route. Bring sonar ships (destroyers or corvettes). Submerged boats stay invisible until a sonar ship gets close." },
+    { "near": "Wexmouth", "brief": "The Directorate destroyer Vigil carries a cipher machine and patrols the Wexmouth approaches. Sinking her gains nothing. Batter her until she strikes her colours, then take her as a prize." },
+    { "near": "Strelsk", "title": "Breaking the Strelsk Sounds", "brief": "A Directorate cruiser squadron under Admiral Orlov holds the Strelsk Sounds shut. Break it and the Vargan coast is open to Concord trade." },
+    { "near": "Strelsk", "brief": "The battleship Iron Will has sortied from Strelsk with her screen. Sink her and Directorate sea power is broken for a generation." }
+  ],
+  "starts": {
+    "commission": {
+      "port": "Calder Roads",
+      "blurb": "An old Destroyer and a Corvette under Hesperian Concord colours, based at Calder Roads. The Admiralty has work for you. The Directorate will shoot on sight."
+    },
+    "smuggler": {
+      "port": "Port Saffron",
+      "blurb": "A worn Freighter and a Torpedo Boat out of Port Saffron. Neutral with every flag, so every market is open to you, at least for now."
+    },
+    "wolf": {
+      "port": "Halbrook",
+      "blurb": "One war-surplus Submarine and a hand-picked crew at Halbrook. Strike unseen and slip away. The Concord pays well for Directorate tonnage."
+    }
+  }
+}

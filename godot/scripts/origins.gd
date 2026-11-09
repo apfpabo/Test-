@@ -16,9 +16,9 @@ class_name Origins
 const NAVIES := ["concord", "directorate", "pacific"]
 # per great navy: its enemy in the unfinished war, home and second port, a neutral bolt-hole, and its ships
 const NAVY := {
-	"concord": {"enemy": "directorate", "home": "Norfolk", "second": "Halifax", "neutral": "Reykjavík", "dd": "dd_fletcher", "cl": "cl_cleveland", "small": "co_flower"},
-	"directorate": {"enemy": "concord", "home": "Kiel", "second": "Murmansk", "neutral": "Longyearbyen", "dd": "dd_narvik", "cl": "ca_hipper", "small": "pt_sboot"},
-	"pacific": {"enemy": "directorate", "home": "Yokosuka", "second": "Manila", "neutral": "Hong Kong", "dd": "dd_kagero", "cl": "cl_agano", "small": "co_tacoma"},
+	"concord": {"enemy": "directorate", "home": "Calder Roads", "second": "Halbrook", "neutral": "Halvardsby", "dd": "dd_fletcher", "cl": "cl_cleveland", "small": "co_flower"},
+	"directorate": {"enemy": "concord", "home": "Strelsk", "second": "Norvask", "neutral": "Isfjell", "dd": "dd_narvik", "cl": "ca_hipper", "small": "pt_sboot"},
+	"pacific": {"enemy": "directorate", "home": "Amakura", "second": "Lumaya", "neutral": "Sanpo", "dd": "dd_kagero", "cl": "cl_agano", "small": "co_tacoma"},
 }
 
 const LIST := ["disgraced", "hijacker", "merchant", "survivor", "privateer", "defector", "smuggler", "academy"]
@@ -31,8 +31,8 @@ const INFO := {
 		"start": "A Victory-type freighter, a good stake and cargo, better trading margins. Tolerated by the great powers, welcome among traders; raiders see easy prey."},
 	"survivor": {"label": "The Survivor of the Lost Fleet", "navy": true, "short": "Your task force was annihilated. You escaped in a damaged ship.",
 		"start": "A badly damaged destroyer, a short-handed crew, an experienced captain and next to nothing else. The victors would like you silenced; independents treat you with respect."},
-	"privateer": {"label": "The Privateer", "navy": false, "short": "A letter of marque from the Iberian Free Republic against Directorate shipping.",
-		"start": "A fast Tirreno destroyer, the Republic's favour and better prize money against the Directorate. The Directorate treats you as a combatant; neutrals are wary."},
+	"privateer": {"label": "The Privateer", "navy": false, "short": "A letter of marque from the Tarsene Free Republic against Directorate shipping.",
+		"start": "A fast Corvo destroyer, the Republic's favour and better prize money against the Directorate. The Directorate treats you as a combatant; neutrals are wary."},
 	"defector": {"label": "The Defector", "navy": true, "short": "You came over to the enemy with a valuable ship and what you know.",
 		"start": "A cruiser from your old navy and intelligence worth research points. Your old flag hunts you; your new patrons are interested but don't fully trust you."},
 	"smuggler": {"label": "The Smuggler", "navy": false, "short": "Fast, discreet and lightly armed: restricted goods through blockades.",
@@ -45,7 +45,7 @@ const INFO := {
 static func build(key: String, navy := "concord") -> Dictionary:
 	var N: Dictionary = NAVY.get(navy, NAVY.concord); var en: String = N.enemy
 	var others := NAVIES.filter(func(f): return f != navy)
-	var st := {"key": key, "navy": navy, "fleet": [], "credits": 20000, "cargo": {"fuel": 70, "food": 40}, "rep": {}, "port": "Norfolk", "officer": 1, "crew": 1.0, "perks": {}}
+	var st := {"key": key, "navy": navy, "fleet": [], "credits": 20000, "cargo": {"fuel": 70, "food": 40}, "rep": {}, "port": "Calder Roads", "officer": 1, "crew": 1.0, "perks": {}}
 	match key:
 		"disgraced":
 			st.fleet = [[N.dd, null, {"hull": 0.7}]]; st.credits = 14000; st.officer = 3; st.port = N.second
@@ -53,12 +53,12 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			if en != "concord" and navy != "concord": st.rep["concord"] = 5
 			st.perks = {"restricted": [navy]}
 		"hijacker":
-			st.fleet = [["fr_liberty", null, {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Port Said"; st.crew = 0.85
+			st.fleet = [["fr_liberty", null, {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
 			st.cargo = {"fuel": 60, "food": 25, "munitions": 20}
 			st.rep = {"concord": -35, "directorate": -35, "pacific": -35, "combine": -45, "republic": -20, "enclave": -15, "freeport": 15}
 			st.perks = {"evade": 5, "hunted": [{"fac": "raiders", "name": "Bounty hunters", "days": 240, "max": 2, "every": 0.06, "budget": 30000}, {"fac": "combine", "name": "Combine reprisal squadron", "days": 150, "max": 1, "every": 0.03, "budget": 45000}]}
 		"merchant":
-			st.fleet = [["fr_victory", null, {}]]; st.credits = 45000; st.port = "Cape Town"
+			st.fleet = [["fr_victory", null, {}]]; st.credits = 45000; st.port = "Cape Ombra"
 			st.cargo = {"fuel": 120, "food": 60, "steel": 60, "electronics": 20}
 			st.rep = {"combine": 15, "freeport": 15}
 			st.perks = {"trade": 0.06}
@@ -68,16 +68,16 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.rep = {navy: 0, en: -40, "freeport": 10, "enclave": 10}
 			st.perks = {"hunted": [{"fac": en, "name": GameData.fac[en].short + " hunter group", "days": 180, "max": 1, "every": 0.025, "budget": 50000}]}
 		"privateer":
-			st.fleet = [["dd_soldati", null, {}]]; st.credits = 20000; st.officer = 2; st.port = "Cartagena"
+			st.fleet = [["dd_soldati", null, {}]]; st.credits = 20000; st.officer = 2; st.port = "Puerto Corvo"
 			st.rep = {"republic": 30, "directorate": -40, "concord": -5, "pacific": -5, "combine": -5}
 			st.perks = {"prize": {"directorate": 1.3}}
 		"defector":
 			var to: String = en
-			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 20000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Lisbon"
+			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 20000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Tarsa"
 			st.rep = {navy: -60, to: 5}; for o in GameData.fac: if not st.rep.has(o) and o != "raiders" and o != "freeport": st.rep[o] = -5
 			st.perks = {"rp": 40, "hunted": [{"fac": navy, "name": GameData.fac[navy].short + " intelligence squadron", "days": 300, "max": 2, "every": 0.04, "budget": 60000}]}
 		"smuggler":
-			st.fleet = [["dd_soldati", null, {"strip": ["T"]}]]; st.credits = 28000; st.officer = 2; st.port = "Port Royal"
+			st.fleet = [["dd_soldati", null, {"strip": ["T"]}]]; st.credits = 28000; st.officer = 2; st.port = "Port Saffron"
 			st.cargo = {"fuel": 90, "food": 20, "medicine": 15, "electronics": 10}
 			st.rep = {"freeport": 25, "concord": -10, "directorate": -10, "pacific": -5}
 			st.perks = {"trade": 0.03, "evade": 15}

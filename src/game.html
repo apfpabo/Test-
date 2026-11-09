@@ -117,11 +117,11 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 /* ================================================================ factions & palettes */
 const FAC = {
-  concord:     { name: 'Atlantic Concord',      short: 'Concord',       map: '#7fb0dc', desc: 'Legacy maritime empire: the Anglo-American naval compact that never stood down after the armistice.' },
-  directorate: { name: 'Eurasian Directorate',  short: 'Directorate',   map: '#d9614a', desc: 'Continental successor state still fighting the unfinished war from the Baltic, the Arctic and the Black Sea.' },
-  pacific:     { name: 'Pacific Federation',    short: 'Federation',    map: '#b59ce0', desc: 'Rising industrial power with a vast merchant marine and an ambitious young navy.' },
+  concord:     { name: 'Hesperian Concord',      short: 'Concord',       map: '#7fb0dc', desc: 'Legacy maritime empire: the Hallandian naval compact that never stood down after the armistice.' },
+  directorate: { name: 'Vargan Directorate',  short: 'Directorate',   map: '#d9614a', desc: 'Continental successor state still fighting the unfinished war from the Vargan sounds, the Rime and the Sable Sea.' },
+  pacific:     { name: 'Halcyon Federation',    short: 'Federation',    map: '#b59ce0', desc: 'Rising industrial power with a vast merchant marine and an ambitious young navy.' },
   combine:     { name: 'Meridian Combine',      short: 'Combine',       map: '#5fc4b8', desc: 'Corporate trading consortium whose private fleets guard the Indian Ocean arteries.' },
-  republic:    { name: 'Iberian Free Republic', short: 'Free Republic', map: '#e39a5a', desc: 'Revolutionary breakaway regime holding the Atlantic gate to the Mediterranean.' },
+  republic:    { name: 'Tarsene Free Republic', short: 'Free Republic', map: '#e39a5a', desc: 'Revolutionary breakaway regime holding the Tarsene Gate to the Cradle Sea.' },
   freeport:    { name: 'Freeport Syndicate',    short: 'Freeports',     map: '#8fc48a', desc: 'Alliance of smuggling dens and free harbours. No questions asked, and nothing comes cheap.' },
   enclave:     { name: 'Halvard Enclaves',      short: 'Enclaves',      map: '#e6e6df', desc: 'Neutral scientific enclaves at the ends of the earth, holding technology no navy can buy outright.' },
   raiders:     { name: 'Black Flag raiders',    short: 'Raiders',       map: '#d2a03c', desc: 'Pirates and deserters preying on everyone.' },
@@ -207,12 +207,12 @@ const CLASSES = {
 const HULL_ORDER = ['pt', 'corvette', 'dd', 'ss', 'freighter', 'cl', 'cve', 'ca', 'bb', 'ddg', 'ssn', 'cv', 'cg'];
 // Shipbuilders. Each has its own house style, and each flag buys from its own yards.
 const MAKERS = {
-  tidewater: { name: 'Tidewater Naval Shipbuilding', short: 'Tidewater', desc: 'Atlantic seaboard yards building big, fast, heavily gunned ships in long series.' },
-  clydemouth: { name: 'Clydemouth & Tyne', short: 'Clydemouth', desc: 'Old northern yards: well-armoured, seaworthy ships with conservative engineering.' },
-  ostsee: { name: 'Ostsee-Werke', short: 'Ostsee', desc: 'Baltic yards known for broad, stable hulls, high-pressure machinery and twin turrets.' },
-  neva: { name: 'Neva Admiralty Yards', short: 'Neva', desc: 'Directorate state yards that took over the Ostsee drawings after the armistice and built on them.' },
-  seto: { name: 'Seto Naval Arsenal', short: 'Seto', desc: 'Pacific yards favouring speed, very heavy guns and long-range torpedoes on light hulls.' },
-  tirreno: { name: 'Cantieri del Tirreno', short: 'Tirreno', desc: 'Mediterranean yards building elegant, very fast ships that trade armour for speed.' },
+  tidewater: { name: 'Tidewater Naval Shipbuilding', short: 'Tidewater', desc: 'Hesperian seaboard yards building big, fast, heavily gunned ships in long series.' },
+  clydemouth: { name: 'Calder & Wexmouth', short: 'Calder', desc: 'Old northern yards: well-armoured, seaworthy ships with conservative engineering.' },
+  ostsee: { name: 'Strelsk-Werke', short: 'Strelsk', desc: 'Vargan sound yards known for broad, stable hulls, high-pressure machinery and twin turrets.' },
+  neva: { name: 'Korvagrad Admiralty Yards', short: 'Korvagrad', desc: 'Directorate state yards that took over the Strelsk drawings after the armistice and built on them.' },
+  seto: { name: 'Amakura Naval Arsenal', short: 'Amakura', desc: 'Halcyon yards favouring speed, very heavy guns and long-range torpedoes on light hulls.' },
+  tirreno: { name: 'Cantieri del Corvo', short: 'Corvo', desc: 'Cradle Sea yards building elegant, very fast ships that trade armour for speed.' },
   marine: { name: 'Combine Marine', short: 'Combine Marine', desc: 'The Meridian Combine\'s merchant yards: freighters and cheap, robust escorts.' },
 };
 const FAC_MAKERS = {
@@ -1385,7 +1385,7 @@ function waterPoint(pad = 8, near = null, rad = 0) {
 function portSea(p) { return { x: p.sx, y: p.sy }; }
 
 const STARTS = {
-  commission: { label: 'Concord Commission', blurb: 'An old Destroyer and a Corvette under Atlantic Concord colours, based at Norfolk. The Admiralty has work for you. The Directorate will shoot on sight.', fleet: [['dd_kclass', 'Resolute'], ['co_flower', 'Petrel']], credits: 25000, cargo: { fuel: 80, food: 50 }, rep: { concord: 20, directorate: -40, pacific: -5 }, port: 'Norfolk' },
+  commission: { label: 'Concord Commission', blurb: 'An old Destroyer and a Corvette under Hesperian Concord colours, based at Norfolk. The Admiralty has work for you. The Directorate will shoot on sight.', fleet: [['dd_kclass', 'Resolute'], ['co_flower', 'Petrel']], credits: 25000, cargo: { fuel: 80, food: 50 }, rep: { concord: 20, directorate: -40, pacific: -5 }, port: 'Norfolk' },
   smuggler: { label: 'Freeport Runner', blurb: 'A worn Freighter and a Torpedo Boat out of Port Royal. Neutral with every flag, so every market is open to you, at least for now.', fleet: [['fr_liberty', 'Silver Tern'], ['pt_elco', 'Wasp']], credits: 30000, cargo: { fuel: 90, food: 20, medicine: 20 }, rep: { freeport: 25, concord: -5 }, port: 'Port Royal' },
   wolf: { label: 'Lone Wolf', blurb: 'One war-surplus Submarine and a hand-picked crew at Halifax. Strike unseen and slip away. The Concord pays well for Directorate tonnage.', fleet: [['ss_gato', 'Grey Shark']], credits: 22000, cargo: { fuel: 50, food: 20 }, rep: { concord: 10, directorate: -30 }, port: 'Halifax' },
 };

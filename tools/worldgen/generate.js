@@ -79,13 +79,21 @@ function generate(bp, edits = {}) {
     const i = k % CW, j = (k / CW) | 0; const v = 0.25 * (1 - q) - 0.06 + 0.12 * cylFbm(detailN, lonOf(i), latOf(j), 1 / 1.5, 3);
     if (v > field[k]) field[k] = v;
   });
+  // hand-placed islands, drawn at full resolution after the warp so they land exactly where the world file puts them
+  for (const s of edits.islands || []) rasterCapsules(s, CW, CH, CELL, 1.6, (k, q) => {
+    const i = k % CW, j = (k / CW) | 0; const v = smooth((1.6 - q) / 1.2) - 0.5 + 0.3 * cylFbm(detailN, lonOf(i), latOf(j), 1 / 1.2, 4);
+    if (v > field[k]) field[k] = v;
+  });
+  for (const p of edits.fill || []) rasterCapsules(p, CW, CH, CELL, 1.0, k => { field[k] = Math.max(field[k], 0.2); });
+  for (const p of edits.carve || []) rasterCapsules(p, CW, CH, CELL, 1.6, (k, q) => {   // hand-cut gulfs, with natural shores
+    const i = k % CW, j = (k / CW) | 0; const v = 0.5 - smooth((1.6 - q) / 1.2) - 0.3 * cylFbm(detailN, lonOf(i), latOf(j), 1 / 1.2, 4);
+    if (v < field[k]) field[k] = v;
+  });
   const channels = [...bp.channels, ...(edits.channels || [])];
   for (const c of channels) {
     const half = c.w / 2 * CELL;
     rasterCapsules({ pts: c.pts, r: half }, CW, CH, CELL, 1.0, (k, q) => { field[k] = Math.min(field[k], -0.2 - 0.3 * (1 - q)); });
   }
-  for (const p of edits.fill || []) rasterCapsules(p, CW, CH, CELL, 1.0, k => { field[k] = Math.max(field[k], 0.2); });
-  for (const p of edits.carve || []) rasterCapsules(p, CW, CH, CELL, 1.0, k => { field[k] = Math.min(field[k], -0.2); });
   // ---- keep the 180° meridian at sea so no coastline crosses the seam
   for (let j = 0; j < CH; j++) for (const i of [CW - 1, CW - 2, CW - 3, 0, 1, 2]) field[j * CW + i] = Math.min(field[j * CW + i], -0.1);
   const mask = new Uint8Array(CW * CH);

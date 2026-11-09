@@ -29,14 +29,14 @@ A larger option worth weighing: move the plan renderer itself into Godot (the ro
 
 ## 2. National turret styles
 
-Style follows the **shipbuilder** (`yard`), not the flag: Tidewater = American, Clydemouth = British, Ostsee = German, Neva = Soviet, Seto = Japanese, Tirreno = Italian, Combine Marine = generic merchant/escort fittings. Research each from top-down photographs and plans before drawing; the notes below are starting points to verify, not facts to copy:
+Style follows the **shipbuilder** (`yard`), not the flag: Tidewater = American, Calder = British, Strelsk = German, Korvagrad = Soviet, Amakura = Japanese, Corvo = Italian, Combine Marine = generic merchant/escort fittings. Research each from top-down photographs and plans before drawing; the notes below are starting points to verify, not facts to copy:
 
 - **American (Tidewater)**: e.g. Iowa, Baltimore, Cleveland, 5"/38 twins. Rounded or slab-sided houses with a flat, near-vertical face plate; rangefinder hoods at the rear sides; 5"/38 twin mounts are compact boxes with rounded rear.
-- **Japanese (Seto)**: e.g. Yamato, Takao, Kagero. Angular, faceted houses with sloped sides and face; Yamato's main turrets are very large, long-overhanging at the rear, with a wide rangefinder across the rear roof; destroyer and cruiser twin mounts have a distinctive shaped gunhouse.
-- **British (Clydemouth)**: e.g. King George V quadruple and twin 14", 4.5"/5.25" twins. Box-like houses with a sloped front, roof sighting hoods, rangefinder at the rear.
-- **German (Ostsee)**: e.g. Bismarck twin 15", Hipper twin 8". Flat-faced, angular houses with prominent rangefinder "ears" on the sides towards the rear.
-- **Italian (Tirreno)**: e.g. Littorio triple 15", Zara twin 8". Rounded, smooth-sided houses.
-- **Soviet (Neva)**: e.g. Sverdlov triple 6", Skory twin 130 mm. Follow the type's own layout.
+- **Japanese (Amakura)**: e.g. Yamato, Takao, Kagero. Angular, faceted houses with sloped sides and face; Yamato's main turrets are very large, long-overhanging at the rear, with a wide rangefinder across the rear roof; destroyer and cruiser twin mounts have a distinctive shaped gunhouse.
+- **British (Calder)**: e.g. King George V quadruple and twin 14", 4.5"/5.25" twins. Box-like houses with a sloped front, roof sighting hoods, rangefinder at the rear.
+- **German (Strelsk)**: e.g. Bismarck twin 15", Hipper twin 8". Flat-faced, angular houses with prominent rangefinder "ears" on the sides towards the rear.
+- **Italian (Corvo)**: e.g. Littorio triple 15", Zara twin 8". Rounded, smooth-sided houses.
+- **Soviet (Korvagrad)**: e.g. Sverdlov triple 6", Skory twin 130 mm. Follow the type's own layout.
 
 Implementation hint: give `drawMount` (or its Godot replacement) a style key from the ship's `yard`, and bake mounts per style as well as per paint scheme (the bake currently keys mounts by weapon and scheme only).
 

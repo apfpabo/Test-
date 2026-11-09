@@ -11,6 +11,8 @@ signal reached_port(p: Dictionary)
 signal reached_site(q: Dictionary)
 
 const SAVE_PATH := "user://iron_meridian_save.json"
+## Version 4: the fictional world map. Saves from the real-Earth map (3 and older) cannot be loaded.
+const SAVE_VERSION := 4
 var C: Dictionary = {}           # campaign tables from data/campaign.json
 var DEG = 20.0
 var LAT0 = 82.0
@@ -97,9 +99,12 @@ func year() -> int: return date_of(G.day).year
 func ice_edges(day: int) -> Vector2:
     var d = date_of(day); var m = (d.month - 1) + d.day / 31.0
     return Vector2(74 + 4 * sin(TAU * (m - 5.5) / 12), -60 + 4 * sin(TAU * (m - 5) / 12))
-## The Gulf Stream keeps the Norwegian and Barents seas open far north; the Bering and Okhotsk seas freeze further south.
+## Ocean currents bend the ice edge (campaign.json ICE_BIAS: [lon, shift in degrees, width]): a warm current keeps the
+## Vargan north-west coast open far north; the cold northern Halcyon freezes further south.
 func ice_bias(lon: float) -> float:
-    return 7 * exp(-pow((lon - 15) / 38.0, 2)) - 9 * exp(-pow((wdx(lon_x(160), lon_x(lon)) / DEG) / 25.0, 2))
+    var b := 0.0
+    for c in C.get("ICE_BIAS", []): b += float(c[1]) * exp(-pow((wdx(lon_x(c[0]), lon_x(lon)) / DEG) / float(c[2]), 2))
+    return b
 func ice_north_at(lon: float, e: Vector2) -> float: return e.x + ice_bias(lon)
 func in_ice(x: float, y: float) -> bool:
     var lat = y_lat(y); var e = ice_edges(G.day)
@@ -327,7 +332,7 @@ func new_game(start_key: String, navy := "concord") -> void:
     var rep = {}
     for f in GameData.fac: rep[f] = st.rep.get(f, 0)
     rep.raiders = -100
-    G = {"v": 3, "ports": ports, "pois": pois, "day": 1, "dayF": 0.0, "credits": st.credits, "rep": rep, "tech": [], "rp": 0, "fleet": [], "cargo": {}, "fleets": [], "nextId": 1, "kills": 0, "crew": 0, "officers": [], "story": 0, "mission": null, "log": [], "start": start_key, "movedToday": false,
+    G = {"v": SAVE_VERSION, "ports": ports, "pois": pois, "day": 1, "dayF": 0.0, "credits": st.credits, "rep": rep, "tech": [], "rp": 0, "fleet": [], "cargo": {}, "fleets": [], "nextId": 1, "kills": 0, "crew": 0, "officers": [], "story": 0, "mission": null, "log": [], "start": start_key, "movedToday": false,
         "origin": start_key, "navy": st.get("navy", ""), "perks": st.get("perks", {}).duplicate(true)}
     for f in st.fleet:
         var sh: Dictionary = new_ship(f[0], f[1], "player", [])
@@ -586,6 +591,7 @@ func update(dt: float) -> void:
             else: P.repathT = 0.0
     else: coast(P, dt)
     var ps = strength(G.fleet)
+    var pr := strike_reach(G.fleet)
     for f in G.fleets.duplicate():
         f.cool = maxf(0.0, f.cool - dt)
         var dP = mdist(f.x, f.y, P.x, P.y); var hos = hostile_fleet(f)
@@ -616,8 +622,27 @@ func update(dt: float) -> void:
                     if not set_course(f, w.x, w.y): f.route = null
         var fsp = fleet_map_speed(f.ships) * rate * (0.4 if in_ice(f.x, f.y) else 1.0)
         if f.get("route") != null and route_move(f, fsp, fleet_turn_rate(f.ships), dt): f.route = null
-        if dP < 16 and f.cool <= 0 and P.cool <= 0 and (hos or P.follow == f.id):
-            paused = true; encounter.emit(f); return
+        # contact: hostile forces engage at the longer of the two sides' reach; an intercept closes to gun range.
+        # A force that has been met stays quiet until the range opens past its reach again.
+        var reach := maxf(strike_reach(f.ships), pr) if hos else 0.0
+        if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
+        var close_in: bool = P.follow == f.id and dP < CONTACT
+        if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
+            f.met = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
+
+## How far a force can reach out and start a fight, in map units (1 unit = 0.05°, about 5.5 km). Guns need contact,
+## about 90 km, close enough to bring the lines together; anti-ship missiles about 120 km; a carrier's strike group
+## 250 km from an escort carrier and 350 km from a fleet carrier.
+const CONTACT := 16.0
+const KM_PER_UNIT := 5.55
+func strike_reach(ships: Array) -> float:
+    var r := CONTACT
+    for s in ships:
+        var h: Dictionary = hull(s)
+        if h.kind == "carrier": r = maxf(r, 350.0 / KM_PER_UNIT if h.klass == "cv" else 250.0 / KM_PER_UNIT)
+        for w in s.get("fit", []):
+            if w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm": r = maxf(r, 120.0 / KM_PER_UNIT)
+    return r
 
 func _fleet(id):
     for f in G.fleets: if f.id == id: return f
@@ -770,11 +795,16 @@ func _strip_routes(o: Dictionary) -> void:
         o.route = pts
 
 func has_save() -> bool: return FileAccess.file_exists(SAVE_PATH)
+## The saved game's version, or 0 if there is none or it cannot be read.
+func save_version() -> int:
+    if not has_save(): return 0
+    var d = JSON.parse_string(FileAccess.open(SAVE_PATH, FileAccess.READ).get_as_text())
+    return int(d.get("v", 0)) if d is Dictionary else 0
 
 func load_game() -> bool:
     if not has_save(): return false
     var d = JSON.parse_string(FileAccess.open(SAVE_PATH, FileAccess.READ).get_as_text())
-    if d == null: return false
+    if not (d is Dictionary) or int(d.get("v", 0)) < SAVE_VERSION: return false
     G = d
     for o in [G.player] + G.fleets: _restore_route(o)
     _ints(G)

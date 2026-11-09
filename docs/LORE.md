@@ -72,7 +72,7 @@ A recent graduate (or near-graduate) of a naval academy who was given a minor co
 
 ## In the game today
 
-Each origin is a start on the title screen (`godot/scripts/origins.gd`). The origins tied to a navy let the player pick which of the three great navies: the Atlantic Concord, the Eurasian Directorate or the Pacific Federation. That choice decides the ship, the home port, and who the enemy in the unfinished war is.
+Each origin is a start on the title screen (`godot/scripts/origins.gd`). The origins tied to a navy let the player pick which of the three great navies: the Hesperian Concord, the Vargan Directorate or the Halcyon Federation. That choice decides the ship, the home port, and who the enemy in the unfinished war is.
 
 - **The Disgraced Officer:**
   - Ship: a worn destroyer of the chosen navy (70% hull).
@@ -86,25 +86,25 @@ Each origin is a start on the title screen (`godot/scripts/origins.gd`). The ori
   - Money: 9,000.
   - Standing: the legitimate flags are hostile (Combine worst, since you took their freighter); the freeports are friendly (+15).
   - Hunted: bounty hunters for about eight months, and a Combine reprisal squadron for five.
-  - Start: Port Said.
+  - Start: Kesselport.
 - **The Merchant Captain:**
   - Ship: a Victory-type freighter.
   - Money: 45,000, with a mixed cargo.
   - Trade: 6% better buying and selling.
   - Standing: friendly with the Combine and the freeports, neutral with everyone else.
-  - Start: Cape Town.
+  - Start: Cape Ombra.
 - **The Survivor of the Lost Fleet:**
   - Ship: a destroyer of the chosen navy at 45% hull.
   - Crew: short-handed (70%).
   - Captain: level 3.
   - Money: 6,000, fuel and food low.
   - Standing: the old navy is neutral (0); the victors are hostile and send one hunter group for about six months; freeports and enclaves +10.
-  - Start: a neutral bolt-hole (Reykjavík, Longyearbyen or Hong Kong).
+  - Start: a neutral bolt-hole (Halvardsby, Isfjell or Sanpo).
 - **The Privateer:**
-  - Sponsor: a letter of marque from the Iberian Free Republic against the Eurasian Directorate (Republic +30, Directorate −40, the other powers wary at −5).
-  - Ship: a fast Tirreno destroyer.
+  - Sponsor: a letter of marque from the Tarsene Free Republic against the Vargan Directorate (Republic +30, Directorate −40, the other powers wary at −5).
+  - Ship: a fast Corvo destroyer.
   - Prize money: 30% more against the Directorate.
-  - Start: Cartagena.
+  - Start: Puerto Corvo.
 - **The Defector:**
   - Ship: a cruiser of the chosen navy.
   - Intelligence: 40 research points.
@@ -112,11 +112,11 @@ Each origin is a start on the title screen (`godot/scripts/origins.gd`). The ori
   - Hunted: up to two intelligence squadrons for about ten months.
   - Start: the new patrons' main port.
 - **The Smuggler:**
-  - Ship: a fast Tirreno destroyer stripped of her torpedoes.
+  - Ship: a fast Corvo destroyer stripped of her torpedoes.
   - Cargo: medicine and electronics in the hold.
   - Perks: 3% better trade and 15 points more chance to break off.
   - Standing: freeports +25; the navies see a nuisance (−5 to −10).
-  - Start: Port Royal.
+  - Start: Port Saffron.
 - **The Academy Cast-Off:**
   - Ship: a corvette or torpedo boat of the chosen navy.
   - Captain: a level 1 officer.

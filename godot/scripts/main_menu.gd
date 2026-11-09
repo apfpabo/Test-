@@ -9,7 +9,9 @@ func _ready() -> void:
     var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box)
     box.add_child(UI.label("Iron Meridian", UI.GOLD, 52))
     box.add_child(UI.label("1946. The Great War of the 1940s ended in an armistice nobody honours. Legacy empires, successor states, corporations and pirates contest the world's oceans, and sea control is the only currency that counts. You are a free captain with one tired ship. Trade, salvage, fight and research your way from late-war gunnery towards the missile age, and serve a flag or stay your own master.", UI.DIM, 15, true))
-    if Campaign.has_save():
+    if Campaign.has_save() and Campaign.save_version() < Campaign.SAVE_VERSION:
+        box.add_child(UI.label("The world has been redrawn: your saved campaign was played on the old chart of the real Earth and can't be continued. Start a new campaign below (it replaces the old save).", UI.GOLD, 14, true))
+    elif Campaign.has_save():
         box.add_child(UI.button("Continue campaign", func():
             if Campaign.load_game(): get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true))
     box.add_child(UI.label("WHO WERE YOU?", UI.DIM, 12))

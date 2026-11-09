@@ -90,6 +90,25 @@ func mount_code(sun_tex: Vector2, lvl: int, dead := false, alpha := 1.0) -> Colo
 func fx_tex(n: String) -> Texture2D:
 	return tex("res://assets/fx/%s.png" % n)
 
+## Soft light for the modern effects, drawn additively: a glow that falls off smoothly, and a thin bright ring for
+## shockwaves. Made once, in code.
+var _glow: Texture2D
+var _ring: Texture2D
+func glow_tex() -> Texture2D:
+	if _glow == null: _glow = _radial([0.0, 0.12, 0.35, 0.65, 1.0], [1.0, 0.75, 0.32, 0.08, 0.0])
+	return _glow
+func ring_tex() -> Texture2D:
+	if _ring == null: _ring = _radial([0.0, 0.62, 0.8, 0.88, 0.94, 1.0], [0.0, 0.0, 0.3, 1.0, 0.35, 0.0])
+	return _ring
+func _radial(offs: Array, alphas: Array) -> Texture2D:
+	var gr := Gradient.new(); gr.offsets = PackedFloat32Array(offs)
+	var cols := PackedColorArray()
+	for a in alphas: cols.append(Color(1, 1, 1, a))
+	gr.colors = cols
+	var t := GradientTexture2D.new(); t.gradient = gr; t.width = 128; t.height = 128
+	t.fill = GradientTexture2D.FILL_RADIAL; t.fill_from = Vector2(0.5, 0.5); t.fill_to = Vector2(1.0, 0.5)
+	return t
+
 func color(hex: String) -> Color:
 	return Color(hex)
 

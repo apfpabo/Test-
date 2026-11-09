@@ -14,7 +14,8 @@ const GUN_SIZES := ["S", "M", "L", "H"]
 const WIND := Vector2(7.0, 3.5)  # smoke drift, metres per visual second
 const SUN := Vector2(0.55, 0.85) # direction shadows fall on the chart
 
-enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL }
+enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL,
+    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN }   # the modern effects (Settings.fx_modern)
 
 class Mount:
     var slot: Dictionary
@@ -110,6 +111,8 @@ class Part:
     var wind = false
     var side = 0
     var done = false
+    var drag = 0.16       # fraction of speed kept per second
+    var spin = 0.0        # radians per second (smoke and fireballs turn as they roll)
 
 var AW = 26000.0
 var AH = 22000.0
@@ -119,6 +122,8 @@ var torps: Array = []
 var missiles: Array = []
 var air: Array = []
 var parts: Array[Part] = []
+var modern := true                 # the modern effects: layered explosions, light, spray (Settings.fx_modern); false = classic
+var flash := 0.0                   # a magazine going up lights the whole sky for a moment
 var tracers: Array = []
 var hit_marks: Array = []        # floating hit results for the HUD: {pos, text, col, t, ours}
 var islands: Array = []
@@ -451,17 +456,42 @@ func part(type: int, p: Vector2, mx: float, size: float, vel := Vector2.ZERO, wi
     var q = Part.new(); q.t = type; q.pos = p; q.mx = mx; q.size = size; q.vel = vel; q.wind = wind; q.life = life; q.v = randi() % 4
     parts.append(q); return q
 
+func rdir() -> Vector2: return Vector2.from_angle(randf() * TAU)
+
+## An explosion. Modern: a white-hot core, rolling fireballs, a shockwave ring, debris streaking out, embers drifting
+## downwind and a pool of light on the water and hulls around it. Classic: a soft flash and smoke.
 func fx_boom(p: Vector2, size: float, mx := 0.6) -> void:
     part(P.BOOM, p, mx, size)
+    if modern:
+        part(P.CORE, p, 0.12 + size / 900.0, size * 0.7)
+        for i in 3 + int(size > 30.0) * 2:
+            var fb = part(P.FIREBALL, p + rdir() * size * 0.25 * randf(), mx * (1.1 + randf() * 0.7), size * (0.45 + randf() * 0.35), rdir() * size * (0.3 + randf() * 0.6))
+            fb.a = randf() * TAU; fb.spin = (randf() - 0.5) * 2.0; fb.drag = 0.2
+        part(P.RING, p, 0.22 + size / 500.0, size * 1.7)
+        var nd := clampi(3 + int(size / 5.0), 3, 16)
+        for i in nd:
+            var d = part(P.DEBRIS, p, 0.35 + randf() * 0.9, (0.3 + randf() * 0.7) * (0.6 + size * 0.02), rdir() * (size * 2.0 + pow(randf(), 2.0) * size * 10.0 + 20.0)); d.drag = 0.25 + randf() * 0.2
+        for i in nd / 2:
+            var e = part(P.EMBER, p + rdir() * size * 0.3, 1.5 + randf() * 2.0, 0.6 + size * 0.035, rdir() * (8.0 + randf() * size * 1.5), true); e.drag = 0.35
+        part(P.GLOW, p, mx * 1.8 + 0.3, size * 4.0)
     for i in 2: part(P.SMOKE, p + Vector2(randf() - 0.5, randf() - 0.5) * size * 0.5, 5.0 + randf() * 3.0, size * 0.7, Vector2(randf() - 0.5, randf() - 0.5) * 6.0, true, -0.15)
 
+## A shell into the sea: a white burst, spray thrown out in streaks, a ring running out across the water, then foam.
 func fx_splash(p: Vector2, size: float) -> void:
     part(P.SPLASH, p, 1.8, size); part(P.FOAM, p, 10.0, size * 1.5)
+    if modern:
+        for i in 4 + int(size * 0.35):
+            var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.7 + randf() * 0.9, size * (0.22 + randf() * 0.2), rdir() * (size * 1.2 + randf() * size * 4.0)); q.drag = 0.18
+        part(P.WRING, p, 1.4 + size / 25.0, size * 2.4)
+        if size > 12.0: var f = part(P.FOAM, p, 16.0, size * 2.6); f.a = randf() * TAU; f.spin = (randf() - 0.5) * 0.1
 
 func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
     var S: float = {"S": 5.5, "M": 9.5, "L": 15.0, "H": 24.0}[size]
     var n: int = {"S": 3, "M": 4, "L": 7, "H": 11}[size] + barrels
     var f = part(P.FLASH, p, 0.26, S * (1 + barrels * 0.12)); f.a = ang
+    if modern:
+        part(P.GLOW, p + Vector2.from_angle(ang) * S, 0.35, S * 6.0)
+        var c = part(P.CORE, p + Vector2.from_angle(ang) * S * 0.4, 0.07, S * 0.9); c.a = ang
     var bl = part(P.BLAST, p, 0.9, S * 3.0); bl.a = ang
     if size == "H" or size == "L": part(P.FOAM, p + Vector2.from_angle(ang) * S * 0.6, 2.0, S * 1.1) # the blast flattens the sea ahead of the muzzle
     for i in ceili(n / 2.0):
@@ -808,6 +838,11 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
 func detonate(s: CShip) -> void:
     for i in 4: fx_boom(s.pos + Vector2((randf() - 0.5) * s.d.L * 0.5, 0).rotated(s.a), s.d.L * (0.4 + randf() * 0.3), 1.6)
     part(P.FLASH, s.pos, 0.5, s.d.L * 0.8); sound("blast", s.pos, 1.0); sound("hit_big", s.pos, 0.8)
+    if modern:
+        part(P.RING, s.pos, 0.6, s.d.L * 2.0); part(P.GLOW, s.pos, 2.5, s.d.L * 5.0); part(P.WRING, s.pos, 3.5, s.d.L * 2.6)
+        for i in 24:
+            var d = part(P.DEBRIS, s.pos + rdir() * s.d.L * 0.2, 0.8 + randf() * 1.8, 0.8 + randf() * 2.2, rdir() * (60.0 + pow(randf(), 2.0) * 340.0)); d.drag = 0.3 + randf() * 0.2
+        flash = 1.0
     say(("Her magazine explodes! The %s is gone." if s.side == 1 else "The %s's magazine explodes!") % s.rec.name, 3.5)
     s.mag_fire = 0.0; damage(s, s.hull + 1.0, "magazine")
 
@@ -1017,6 +1052,13 @@ func step(dtv: float) -> void:
             while s.trail.size() and vt - s.trail[0].t > 18.0: s.trail.pop_front()
         s.wake_t -= dtv
         if s.wake_t <= 0 and s.v > 1 and sm: s.wake_t = 0.4; part(P.SWAKE, world_pt(s, -s.d.L * 0.48, 0), 3.0, s.d.B * 0.5)
+        if modern and not s.sub and s.v > 2.0 and active(s):   # bow spray flung out at speed, the stern churning
+            var sk := clampf(s.v / (s.d.kn * KN), 0.0, 1.0)
+            if randf() < dtv * 14.0 * sk:
+                var sd := 1.0 if randf() < 0.5 else -1.0; var bx: float = s.d.L * 0.38
+                var q = part(P.SPRAY, world_pt(s, bx, sd * hull_half(s.d, bx)), 0.5 + randf() * 0.5, s.d.B * (0.04 + 0.04 * sk), Vector2.from_angle(s.a + sd * (1.3 + randf() * 0.4)) * (6.0 + s.v * (0.8 + randf()))); q.drag = 0.2
+            if randf() < dtv * 6.0 * sk:
+                var c = part(P.CHURN, world_pt(s, -s.d.L * 0.5, (randf() - 0.5) * s.d.B * 0.5), 2.5 + randf() * 2.0, s.d.B * (0.25 + randf() * 0.2), -Vector2.from_angle(s.a) * s.v * 0.3); c.a = randf() * TAU; c.spin = (randf() - 0.5) * 0.6
         if not s.sub and s.d.p.has("fun") and s.d.p.fun.size():
             s.smoke_t -= dtv
             if s.smoke_t <= 0:
@@ -1062,7 +1104,7 @@ func step(dtv: float) -> void:
             else: fx_boom(sh.pos, 7 * sz * (1.0 if res.kind == "pen" else 0.6), 0.6)
             var mine: bool = sh.side == 0 or hit.side == 0
             if mine: hit_marks.append({"pos": sh.pos, "text": res.text, "kind": res.kind, "t": 1.8, "ours": hit.side == 0})
-            for k2 in 3: part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * 60.0)
+            for k2 in (8 if modern else 3): part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * (160.0 if modern else 60.0))
             sound("hit", sh.pos, 0.14 * sz)
         elif land_at(sh.pos): part(P.DUST, sh.pos, 1.6, 9 * sz)
         else: fx_splash(sh.pos, 6 * sz); sound("splash", sh.pos, 0.05 * sz)
@@ -1157,10 +1199,12 @@ func fx(dtv: float) -> void:
         var q = parts[i]; q.life += dtv
         if q.wind and q.life > 0: q.pos += WIND * dtv
         if q.vel != Vector2.ZERO:
-            q.pos += q.vel * dtv; q.vel *= pow(0.16, dtv)
+            q.pos += q.vel * dtv; q.vel *= pow(q.drag, dtv)
+        if q.spin != 0.0: q.a += q.spin * dtv
         if q.life >= q.mx: parts.remove_at(i)
-    if parts.size() > 2400:
-        parts.reverse(); parts.resize(2400); parts.reverse()
+    flash = maxf(0.0, flash - dtv * 1.4)
+    if parts.size() > 3200:
+        parts.reverse(); parts.resize(3200); parts.reverse()
     for i in range(hit_marks.size() - 1, -1, -1):
         hit_marks[i].t -= dtv
         if hit_marks[i].t <= 0: hit_marks.remove_at(i)

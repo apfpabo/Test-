@@ -64,6 +64,14 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - The world follows the owner's lore: see [`LORE.md`](LORE.md) ("Changed to follow the lore").
   - The armistice (owner approved): warships engage you on sight only at standing -60, after an incident (you opened fire on that flag: three months), or as an origin's declared target. Ports close below -10. The standing list says which flags are at war with you, which ports are closed, and for how long an incident lasts.
   - Question answered: the lines that stop short of the range ring in battle are shells still in flight (the white dots at their heads); the ring is the guns' maximum range.
+- **Effects overhaul (done, 9 Nov 2026):** the owner found the effects reminiscent of old Flash games and asked for something livelier, like Starsector's. Modern effects (Settings, "Battle effects: Modern / Classic"; classic is the earlier look, kept as a fallback):
+  - Explosions in layers: a white-hot core, rolling fireballs cooling from yellow to red, a brief shockwave ring, debris streaking out, embers drifting downwind, and a pool of light on the sea and the hulls.
+  - Shell splashes: a burst with spray clouds thrown out, a ring across the water, lingering foam; heavy shells leave more.
+  - Smoke shaded by the sun and turning as it rises; fresh smoke over a fire glows warm.
+  - Ship fires flicker and light the deck and water around them; shells fly as glowing streaks; missiles show a flame and glow.
+  - Wakes: bow spray flung out at speed, a churning stern, and sun glints twinkling in the wake.
+  - A magazine explosion lights the whole sky for a moment.
+  - Backup: the commit before the overhaul is `3dbf780` (local tag `backup-before-fx`), and the owner has that build (IronMeridian_backup_before_fx.zip). `tests/shot_fx.tscn -- <dir> <modern|classic>` captures both styles for comparison.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

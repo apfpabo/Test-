@@ -23,7 +23,7 @@ var light_shader: Shader = preload("res://shaders/ship_light.gdshader")
 
 func _ready() -> void:
     var cfg: Dictionary = GameData.pending
-    sim = BattleSim.new()
+    sim = BattleSim.new(); sim.modern = Settings.fx_modern
     sim.on_boom = _boom
     sim.on_sound = func(kind: String, p: Vector2, vol: float): Sfx.event(kind, vol * _near(p)); if (kind == "gun_H" or kind == "blast") and vol >= 0.4: shake = maxf(shake, vol * _near(p) * _near(p) * 6.0)
     sim.on_pop = func(p: Vector2, vol: float, wid: String): Sfx.auto_fire(wid, vol * _near(p))
@@ -105,6 +105,7 @@ func combat_speed() -> float: return speeds[speed_i]
 
 # ------------------------------------------------------------------ frame
 func _process(delta: float) -> void:
+    sim.modern = Settings.fx_modern   # the effects style can change in the pause menu
     var dt = minf(delta, 0.05)
     sim.msg_t -= dt # messages fade on the real clock, whatever the battle speed
     sim.mouse_world = world.get_global_mouse_position()
@@ -333,8 +334,16 @@ class Fires extends Node2D:
         for f in s.fires:
             var fl = 0.7 + 0.3 * sin(tn * 23 + f.x * 3) * sin(tn * 9 + f.y)
             var r1 = maxf(f.r * 2.2, 2.0 / z); var r2 = maxf(f.r * 0.9, 1.0 / z)
+            if view.battle.sim.modern:   # a pool of firelight on the deck and the sea, and flames that lick and jump
+                var rg = maxf(f.r * 11.0, 8.0 / z)
+                draw_texture_rect(GameData.glow_tex(), Rect2(f.x - rg, f.y - rg, 2 * rg, 2 * rg), false, Color(1, 0.48, 0.16, 0.4 * fl))
+                for j in 3:
+                    var off = Vector2(sin(tn * (7.0 + j * 2.3) + f.x + j), cos(tn * (5.0 + j * 1.7) + f.y * 2.0 + j)) * f.r * 0.6
+                    var rt = r2 * (0.7 + 0.3 * sin(tn * (17.0 + j * 4.0) + j * 2.0))
+                    draw_texture_rect(puff, Rect2(f.x + off.x - rt, f.y + off.y - rt, 2 * rt, 2 * rt), false, Color(1, 0.62, 0.2, 0.7 * fl))
             draw_texture_rect(puff, Rect2(f.x - r1, f.y - r1, 2 * r1, 2 * r1), false, Color(1, 0.43, 0.12, 0.55 * fl))
             draw_texture_rect(puff, Rect2(f.x - r2, f.y - r2, 2 * r2, 2 * r2), false, Color(1, 0.78, 0.47, 0.8 * fl))
+            if view.battle.sim.modern: var rc = maxf(f.r * 0.4, 0.6 / z); draw_texture_rect(puff, Rect2(f.x - rc, f.y - rc, 2 * rc, 2 * rc), false, Color(1, 0.97, 0.85, 0.9 * fl))
 
 # ================================================================== world layers
 class Drawer extends Node2D:
@@ -374,6 +383,7 @@ class Drawer extends Node2D:
             for side in ["l", "r"]:
                 var sd = -1.0 if side == "l" else 1.0
                 _walk(pts, func(q): return q[side] + Vector2(-sin(q.a), cos(q.a)) * sd * (now - q.t) * q.v * BattleSim.BT * 0.354, func(age): return B * 0.1 + age * 0.9, 0.17 * strength, foam, now, min_step)
+            if sim.modern: _glints(pts, B, now, foam)
             if sim.active(s) and not sim.submerged(s):
                 var sk = clampf(s.v / (s.d.kn * BattleSim.KN), 0.0, 1.0); var x: float = s.d.L / 2
                 while x > s.d.L * 0.3:
@@ -382,6 +392,20 @@ class Drawer extends Node2D:
                         var r = maxf(B * (0.1 + 0.1 * sk), min_step * 0.6)
                         _puff(foam, q, r, Color(1, 1, 1, 0.4 * sk))
                     x -= maxf(B * 0.18, min_step * 0.5)
+
+    ## Sun glints twinkling in the churned water of a wake: points along the track that flash and fade.
+    func _glints(pts: Array, B: float, now: float, foam: Texture2D) -> void:
+        var z: float = battle.zoom(); var tn := Time.get_ticks_msec() / 1000.0
+        for i in mini(pts.size(), 60):
+            var q: Dictionary = pts[i]; var age: float = now - q.t
+            if age > 12.0: break
+            for j in 3:
+                var h := fposmod(sin(q.t * 91.7 + j * 13.1) * 43758.55, 1.0)
+                var tw := pow(maxf(0.0, sin(tn * (2.0 + h * 3.0) + h * 40.0)), 12.0) * (1.0 - age / 12.0)
+                if tw < 0.05: continue
+                var off := Vector2(-sin(q.a), cos(q.a)) * (h - 0.5) * B * (0.6 + age * 0.12)
+                var r := maxf(B * 0.05, 1.2 / z)
+                _puff(foam, q.p + off, r * (1.0 + tw), Color(1, 1, 1, 0.9 * tw))
 
     func _walk(pts: Array, get: Callable, rad: Callable, alp: float, foam: Texture2D, now: float, min_step: float) -> void:
         for i in pts.size() - 1:
@@ -406,7 +430,95 @@ class Drawer extends Node2D:
             draw_texture(tx, -tx.get_size() / 2, Color(1, 1, 1, 0.38 * (1.0 - k)))
         draw_set_transform(Vector2.ZERO)
 
+    ## A texture turned to an angle (smoke and fire roll as they rise).
+    func _rpuff(tex: Texture2D, p: Vector2, r: float, ang: float, c: Color) -> void:
+        if c.a <= 0.01 or r * battle.zoom() < 0.6: return
+        draw_set_transform(p, ang); draw_texture_rect(tex, Rect2(-r, -r, 2 * r, 2 * r), false, c); draw_set_transform(Vector2.ZERO)
+
+    ## A streak along a particle's motion: spray, sparks and debris read as fast things, not dots.
+    func _streak(q, k: float, col: Color, mn: float, glow: bool) -> void:
+        var v: Vector2 = q.vel; var sp := v.length()
+        var len := clampf(sp * 0.07, q.size * 1.5, q.size * 22.0); var dir := v / maxf(sp, 0.001)
+        draw_line(q.pos, q.pos - dir * len, col, maxf(q.size * 0.6, mn * 1.1))
+        if glow: _puff(GameData.glow_tex(), q.pos, maxf(q.size * 2.5, 2.0 * mn), Color(col, col.a * 0.6))
+
     func _parts(layer: int) -> void:
+        if battle.sim.modern: _parts_modern(layer)
+        else: _parts_classic(layer)
+
+    ## The modern effects. Water (layer 0) and smoke (layer 1) blend normally; layer 2 is additive light: fire, flashes,
+    ## shockwaves, sparks and the pools of light they throw on the sea and the hulls.
+    func _parts_modern(layer: int) -> void:
+        var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
+        var vr: Rect2 = battle.view_rect().grow(400)
+        var puff = GameData.fx_tex("puff"); var glow = GameData.glow_tex(); var ring = GameData.ring_tex()
+        var clouds = [GameData.fx_tex("cloud0"), GameData.fx_tex("cloud1"), GameData.fx_tex("cloud2"), GameData.fx_tex("cloud3")]
+        var tn = Time.get_ticks_msec() / 1000.0; var sun: Vector2 = -BattleSim.SUN.normalized()
+        if layer == 2 and sim.flash > 0.0: draw_rect(vr, Color(1, 0.78, 0.5, 0.12 * sim.flash * sim.flash))
+        for q in sim.parts:
+            if q.life < 0 or not vr.has_point(q.pos): continue
+            var k: float = q.life / q.mx; var cl: Texture2D = clouds[q.v]
+            if layer == 0:
+                match q.t:
+                    P.FOAM: if z >= 0.12: _rpuff(cl, q.pos, q.size * (1 + k), q.a, Color(0.88, 0.94, 0.94, 0.34 * (1 - k) * (0.85 + 0.15 * sin(tn * 1.7 + q.pos.x * 0.05))))
+                    P.CHURN: _rpuff(cl, q.pos, q.size * (1 + k * 1.6), q.a, Color(0.9, 0.95, 0.95, 0.22 * (1 - k) * minf(1.0, q.life * 3.0)))
+                    P.SPLASH, P.GEYSER:
+                        var r = maxf(q.size, 2 * mn)
+                        if k < 0.25: _puff(puff, q.pos, r * 0.6, Color(0.06, 0.16, 0.2, 0.4 * (1.0 - k * 4.0)))   # the hole punched in the sea
+                        _rpuff(cl, q.pos, r * (0.45 + 1.2 * sqrt(k)), q.v * 1.7, Color(0.97, 0.99, 0.99, 0.95 * (1 - k) * (1 - k)))
+                        _puff(puff, q.pos, r * (0.35 + 0.5 * k), Color(1, 1, 1, 0.9 * (1 - k) * (1 - k)))
+                    P.SPRAY:   # a cloud of droplets thrown out, drawn out along its flight
+                        var v: Vector2 = q.vel; var st := 1.0 + clampf(v.length() * 0.02, 0.0, 1.4)
+                        draw_set_transform(q.pos, v.angle(), Vector2(st, 1.0))
+                        var r := maxf(q.size * (0.8 + k * 0.9), mn); draw_texture_rect(cl, Rect2(-r, -r, 2 * r, 2 * r), false, Color(0.96, 0.99, 0.99, 0.8 * pow(1 - k, 1.5)))
+                        draw_set_transform(Vector2.ZERO)
+                    P.WRING: _puff(ring, q.pos, maxf(q.size * (0.12 + sqrt(k)), 2 * mn), Color(0.9, 0.96, 0.96, 0.32 * (1 - k) * (1 - k)))
+                    _: pass
+                if q.t in [P.OIL, P.SWAKE, P.TWAKE, P.BLAST, P.DC]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)
+            elif layer == 1:
+                match q.t:
+                    P.SMOKE, P.GUNSMOKE, P.FUNNEL:
+                        # shaded smoke: a body that rolls as it rises, lit on the sun's side; fresh smoke over a fire glows
+                        var base: Color; var hi: Color; var a: float; var grow: float
+                        if q.t == P.SMOKE: base = Color(0.2, 0.2, 0.21); hi = Color(0.5, 0.5, 0.5); a = 0.55 * (1 - k) * minf(1.0, q.life * 4); grow = 1 + k * 2.4
+                        elif q.t == P.GUNSMOKE: base = Color(0.24, 0.21, 0.17); hi = Color(0.55, 0.5, 0.42); a = 0.72 * minf(1.0, q.life * 6) * pow(1 - k, 1.3); grow = 1 + sqrt(k) * 3.4
+                        else: base = Color(0.3, 0.3, 0.32); hi = Color(0.62, 0.62, 0.64); a = 0.24 * (1 - k); grow = 1 + k * 2.2
+                        var warm := clampf(1.0 - q.life / 1.4, 0.0, 1.0) if q.t == P.SMOKE else 0.0
+                        base = base.lerp(Color(0.45, 0.24, 0.1), warm * 0.7); var r: float = q.size * grow
+                        var ang: float = q.a + q.v * 1.3 + q.life * (0.15 if q.v % 2 else -0.15)
+                        _rpuff(cl, q.pos, r, ang, Color(base, a))
+                        _rpuff(cl, q.pos + sun * r * 0.14, r * 0.72, ang + 0.8, Color(hi, a * 0.28))
+                    _: _part_classic(1, q, k, cl, puff, foam_tex(), mn, z, tn)
+            else:
+                match q.t:
+                    P.CORE:
+                        var r = maxf(q.size, 3 * mn)
+                        _puff(glow, q.pos, r * (0.6 + k * 0.9), Color(1, 0.95, 0.85, 0.8 * pow(1 - k, 1.5)))
+                        _puff(puff, q.pos, r * 0.45 * (1 - k), Color(1, 1, 1, 1 - k))
+                    P.FIREBALL:
+                        var c: Color
+                        if k < 0.12: c = Color(1, 0.9, 0.66).lerp(Color(1, 0.55, 0.18), k / 0.12)
+                        elif k < 0.5: c = Color(1, 0.55, 0.18).lerp(Color(0.7, 0.18, 0.05), (k - 0.12) / 0.38)
+                        else: c = Color(0.7, 0.18, 0.05).lerp(Color(0.15, 0.04, 0.02), (k - 0.5) / 0.5)
+                        _rpuff(cl, q.pos, maxf(q.size, 2 * mn) * (0.55 + 1.15 * sqrt(k)), q.a, Color(c, 0.6 * pow(1 - k, 1.2)))
+                    P.RING: _puff(ring, q.pos, maxf(q.size * (0.08 + 1.0 - pow(1 - k, 3)), 2 * mn), Color(1, 0.86, 0.62, 0.38 * (1 - k) * (1 - k)))
+                    P.DEBRIS: _streak(q, k, Color(1, 0.72 - k * 0.3, 0.32 - k * 0.2, 1 - k), mn, true)
+                    P.SPARK: _streak(q, k, Color(1, 0.8, 0.45, 1 - k), mn, false)
+                    P.EMBER: _puff(puff, q.pos, maxf(q.size, mn), Color(1, 0.5, 0.15, (1 - k) * (0.55 + 0.45 * sin(tn * 19 + q.pos.x * 0.3))))
+                    P.GLOW: _puff(glow, q.pos, q.size * (0.8 + 0.3 * k), Color(1, 0.56, 0.24, 0.24 * pow(1 - k, 1.6)))
+                    P.FIRE:
+                        var r = maxf(q.size, 1.5 * mn); var fl = 0.75 + 0.25 * sin(tn * 31 + q.pos.x)
+                        _puff(glow, q.pos, r * 3.0, Color(1, 0.5, 0.18, 0.18 * (1 - k) * fl))
+                        _part_classic(2, q, k, cl, puff, foam_tex(), mn, z, tn)
+                    _: _part_classic(2, q, k, cl, puff, foam_tex(), mn, z, tn)
+
+    func foam_tex() -> Texture2D: return GameData.fx_tex("foam")
+
+    ## The classic look for one particle (also used by the modern renderer for kinds it doesn't change).
+    func _part_classic(layer: int, q, k: float, cl: Texture2D, puff: Texture2D, foam: Texture2D, mn: float, z: float, tn: float) -> void:
+        _one(layer, q, k, cl, puff, mn, z, tn)
+
+    func _parts_classic(layer: int) -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
         var vr: Rect2 = battle.view_rect().grow(300)
         var puff = GameData.fx_tex("puff"); var foam = GameData.fx_tex("foam")
@@ -415,46 +527,50 @@ class Drawer extends Node2D:
         for q in sim.parts:
             if q.life < 0 or not vr.has_point(q.pos): continue
             var k = q.life / q.mx; var cl: Texture2D = clouds[q.v]
-            if layer == 0:
-                match q.t:
-                    P.FOAM: if z >= 0.12: _puff(cl, q.pos, q.size * (1 + k), Color(0.86, 0.93, 0.93, 0.3 * (1 - k)))
-                    P.OIL: _puff(cl, q.pos, q.size * (0.6 + k * 0.8), Color(0.05, 0.06, 0.07, 0.45 * (1 - k * k)))
-                    P.SWAKE: draw_arc(q.pos, q.size * (1 + k * 2), 0, TAU, 24, Color(0.88, 0.94, 0.94, 0.12 * (1 - k)), maxf(mn, 1.5))
-                    P.TWAKE: _puff(puff, q.pos, maxf(q.size * (1 + k * 3), 1.2 * mn), Color(0.92, 0.96, 0.96, 0.5 * (1 - k)))
-                    P.SPLASH, P.GEYSER:
-                        var r = maxf(q.size, 2 * mn)
-                        _puff(puff, q.pos, r * (0.5 + 0.9 * sqrt(k)), Color(0.97, 0.99, 0.99, 0.95 * (1 - k) * (1 - k)))
-                        draw_arc(q.pos, r * (0.4 + k * 1.6), 0, TAU, 32, Color(0.92, 0.97, 0.97, 0.6 * (1 - k)), maxf(mn, r * 0.08))
-                    P.BLAST: # the muzzle blast pressing on the sea: a half ring spreading out along the line of fire, not back across the ship
-                        draw_arc(q.pos, q.size * (0.3 + k), q.a - 1.25, q.a + 1.25, 24, Color(0.88, 0.93, 0.93, 0.45 * (1 - k)), maxf(mn, q.size * 0.1 * (1 - k)))
-                        _puff(puff, q.pos + Vector2.from_angle(q.a) * q.size * (0.2 + 0.4 * k), q.size * (0.25 + k * 0.6), Color(0.82, 0.89, 0.9, 0.25 * (1 - k)))
-                    P.DC: _puff(puff, q.pos, q.size * (0.5 + k * 1.2), Color(0.96, 0.98, 0.98, 0.9 * (1 - k)))
-            elif layer == 1:
-                match q.t:
-                    P.SMOKE: _puff(cl, q.pos, q.size * (1 + k * 2.2), Color(0.24, 0.24, 0.25, 0.5 * (1 - k) * minf(1.0, q.life * 4)))
-                    P.GUNSMOKE: _puff(cl, q.pos, q.size * (1 + sqrt(k) * 3.2), Color(0.13, 0.12, 0.11, 0.72 * minf(1.0, q.life * 6) * pow(1 - k, 1.3)))
-                    P.FUNNEL: _puff(cl, q.pos, q.size * (1 + k * 2), Color(0.32, 0.32, 0.34, 0.2 * (1 - k)))
-                    P.DUST: _puff(cl, q.pos, q.size * (1 + k), Color(0.72, 0.64, 0.49, 0.6 * (1 - k)))
-                    P.FLAK: _puff(cl, q.pos, maxf(q.size, 2 * mn) * (0.5 + k), Color(0.13, 0.13, 0.13, 0.75 * (1 - k)))
-                    P.MTRAIL: _puff(cl, q.pos, maxf(q.size, 1.2 * mn) * (1 + k * 2), Color(0.9, 0.9, 0.89, 0.5 * (1 - k)))
-            else:
-                match q.t:
-                    P.FLASH:
-                        var r = maxf(q.size, 5 * mn); var e = 1.0 - k * k
-                        draw_set_transform(q.pos, q.a)
-                        _puff(puff, Vector2(r * 0.4, 0), r * (1.1 + k * 0.8), Color(1, 0.67, 0.27, 0.9 * e))
-                        draw_set_transform(q.pos, q.a, Vector2(2.6, 1))
-                        _puff(puff, Vector2(r * 0.45 / 2.6, 0), r * (0.7 + k * 0.4) / 1.0, Color(1, 0.8, 0.47, e))
-                        draw_set_transform(q.pos, q.a)
-                        for sd in [-1.0, 1.0]: _puff(puff, Vector2(r * 0.15, sd * r * 0.75), r * 0.6, Color(1, 0.59, 0.24, 0.75 * e))
-                        _puff(puff, Vector2(r * 0.25, 0), r * 0.5 * (1 - k), Color(1, 0.99, 0.92, 1 - k))
-                        draw_set_transform(Vector2.ZERO)
-                    P.BOOM:
-                        var r = maxf(q.size, 4 * mn)
-                        _puff(puff, q.pos, r * (0.5 + k * 0.9), Color(1, 0.59, 0.2, 1 - k)); _puff(puff, q.pos, r * 0.45 * (1 - k), Color(1, 0.92, 0.75, 1 - k))
-                    P.FIRE: _puff(puff, q.pos, maxf(q.size, 1.5 * mn) * (1 - k * 0.4), Color(1, 0.47, 0.12, 0.9 * (1 - k) * (0.75 + 0.25 * sin(tn * 31 + q.pos.x))))
-                    P.SPARK: _puff(puff, q.pos, maxf(q.size, 0.8 * mn) * (1 - k * 0.5), Color(1, 0.75, 0.35, 1 - k))
-                    P.FALL: _puff(puff, q.pos + Vector2(0, k * 20), maxf(q.size, mn) * (1 - k * 0.5), Color(1, 0.55, 0.2, 1 - k))
+            _one(layer, q, k, cl, puff, mn, z, tn)
+
+    ## One particle in the classic look.
+    func _one(layer: int, q, k: float, cl: Texture2D, puff: Texture2D, mn: float, z: float, tn: float) -> void:
+        if layer == 0:
+            match q.t:
+                P.FOAM: if z >= 0.12: _puff(cl, q.pos, q.size * (1 + k), Color(0.86, 0.93, 0.93, 0.3 * (1 - k)))
+                P.OIL: _puff(cl, q.pos, q.size * (0.6 + k * 0.8), Color(0.05, 0.06, 0.07, 0.45 * (1 - k * k)))
+                P.SWAKE: draw_arc(q.pos, q.size * (1 + k * 2), 0, TAU, 24, Color(0.88, 0.94, 0.94, 0.12 * (1 - k)), maxf(mn, 1.5))
+                P.TWAKE: _puff(puff, q.pos, maxf(q.size * (1 + k * 3), 1.2 * mn), Color(0.92, 0.96, 0.96, 0.5 * (1 - k)))
+                P.SPLASH, P.GEYSER:
+                    var r = maxf(q.size, 2 * mn)
+                    _puff(puff, q.pos, r * (0.5 + 0.9 * sqrt(k)), Color(0.97, 0.99, 0.99, 0.95 * (1 - k) * (1 - k)))
+                    draw_arc(q.pos, r * (0.4 + k * 1.6), 0, TAU, 32, Color(0.92, 0.97, 0.97, 0.6 * (1 - k)), maxf(mn, r * 0.08))
+                P.BLAST: # the muzzle blast pressing on the sea: a half ring spreading out along the line of fire, not back across the ship
+                    draw_arc(q.pos, q.size * (0.3 + k), q.a - 1.25, q.a + 1.25, 24, Color(0.88, 0.93, 0.93, 0.45 * (1 - k)), maxf(mn, q.size * 0.1 * (1 - k)))
+                    _puff(puff, q.pos + Vector2.from_angle(q.a) * q.size * (0.2 + 0.4 * k), q.size * (0.25 + k * 0.6), Color(0.82, 0.89, 0.9, 0.25 * (1 - k)))
+                P.DC: _puff(puff, q.pos, q.size * (0.5 + k * 1.2), Color(0.96, 0.98, 0.98, 0.9 * (1 - k)))
+        elif layer == 1:
+            match q.t:
+                P.SMOKE: _puff(cl, q.pos, q.size * (1 + k * 2.2), Color(0.24, 0.24, 0.25, 0.5 * (1 - k) * minf(1.0, q.life * 4)))
+                P.GUNSMOKE: _puff(cl, q.pos, q.size * (1 + sqrt(k) * 3.2), Color(0.13, 0.12, 0.11, 0.72 * minf(1.0, q.life * 6) * pow(1 - k, 1.3)))
+                P.FUNNEL: _puff(cl, q.pos, q.size * (1 + k * 2), Color(0.32, 0.32, 0.34, 0.2 * (1 - k)))
+                P.DUST: _puff(cl, q.pos, q.size * (1 + k), Color(0.72, 0.64, 0.49, 0.6 * (1 - k)))
+                P.FLAK: _puff(cl, q.pos, maxf(q.size, 2 * mn) * (0.5 + k), Color(0.13, 0.13, 0.13, 0.75 * (1 - k)))
+                P.MTRAIL: _puff(cl, q.pos, maxf(q.size, 1.2 * mn) * (1 + k * 2), Color(0.9, 0.9, 0.89, 0.5 * (1 - k)))
+        else:
+            match q.t:
+                P.FLASH:
+                    var r = maxf(q.size, 5 * mn); var e = 1.0 - k * k
+                    draw_set_transform(q.pos, q.a)
+                    _puff(puff, Vector2(r * 0.4, 0), r * (1.1 + k * 0.8), Color(1, 0.67, 0.27, 0.9 * e))
+                    draw_set_transform(q.pos, q.a, Vector2(2.6, 1))
+                    _puff(puff, Vector2(r * 0.45 / 2.6, 0), r * (0.7 + k * 0.4) / 1.0, Color(1, 0.8, 0.47, e))
+                    draw_set_transform(q.pos, q.a)
+                    for sd in [-1.0, 1.0]: _puff(puff, Vector2(r * 0.15, sd * r * 0.75), r * 0.6, Color(1, 0.59, 0.24, 0.75 * e))
+                    _puff(puff, Vector2(r * 0.25, 0), r * 0.5 * (1 - k), Color(1, 0.99, 0.92, 1 - k))
+                    draw_set_transform(Vector2.ZERO)
+                P.BOOM:
+                    var r = maxf(q.size, 4 * mn)
+                    _puff(puff, q.pos, r * (0.5 + k * 0.9), Color(1, 0.59, 0.2, 1 - k)); _puff(puff, q.pos, r * 0.45 * (1 - k), Color(1, 0.92, 0.75, 1 - k))
+                P.FIRE: _puff(puff, q.pos, maxf(q.size, 1.5 * mn) * (1 - k * 0.4), Color(1, 0.47, 0.12, 0.9 * (1 - k) * (0.75 + 0.25 * sin(tn * 31 + q.pos.x))))
+                P.SPARK: _puff(puff, q.pos, maxf(q.size, 0.8 * mn) * (1 - k * 0.5), Color(1, 0.75, 0.35, 1 - k))
+                P.FALL: _puff(puff, q.pos + Vector2(0, k * 20), maxf(q.size, mn) * (1 - k * 0.5), Color(1, 0.55, 0.2, 1 - k))
 
     func _overlay() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
@@ -468,13 +584,23 @@ class Drawer extends Node2D:
             var k: float = sh.t / sh.T; var hgt = sin(PI * k) * minf(600.0, sh.s.distance_to(sh.e) * 0.08)
             var r = maxf(1.2 * mn, {"S": 1.6, "M": 2.0, "L": 2.6, "H": 3.4}[sh.size])
             draw_circle(sh.pos, r * 0.8, Color(0, 0, 0, 0.25))
-            draw_circle(sh.pos - Vector2(0, hgt), r, Color("#ffb38a") if sh.side else Color("#fff1c0"))
+            var hc: Color = Color("#ffb38a") if sh.side else Color("#fff1c0")
+            if sim.modern:   # a hot shell: a soft glow and a short streak along its flight
+                var head: Vector2 = sh.pos - Vector2(0, hgt); var dir: Vector2 = (sh.e - sh.s).normalized()
+                var back: Vector2 = head - dir * r * 9.0 + Vector2(0, (sin(PI * minf(1.0, (sh.t + 0.05) / sh.T)) - sin(PI * k)) * minf(600.0, sh.s.distance_to(sh.e) * 0.08))
+                draw_line(back, head, Color(hc, 0.35), r * 0.9); draw_line(back.lerp(head, 0.5), head, Color(hc, 0.6), r * 0.7)
+                _puff(GameData.glow_tex(), head, r * 4.5, Color(hc, 0.35))
+            draw_circle(sh.pos - Vector2(0, hgt), r, hc)
         for m in sim.missiles:
             if m.delay > 0: continue
             var ms = maxf(1.0, 1.5 * mn)
             draw_set_transform(m.pos, m.a, Vector2(ms, ms))
             draw_rect(Rect2(-5, -1.3, 10, 2.6), Color("#dfe4e2") if m.kind == "sam" else (Color("#ffb38a") if m.side else Color("#fff1c0")))
             draw_circle(Vector2(-6, 0), 2.2, Color(1, 0.78, 0.35, 0.9))
+            if sim.modern:   # the motor's flame and its glow
+                var fl := 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.06 + m.pos.x)
+                draw_texture_rect(GameData.glow_tex(), Rect2(-22, -9, 18, 18), false, Color(1, 0.6, 0.25, 0.55 * fl))
+                draw_texture_rect(GameData.fx_tex("puff"), Rect2(-14 - 4 * fl, -2.5, 10 * fl, 5), false, Color(1, 0.85, 0.5, 0.9))
         draw_set_transform(Vector2.ZERO)
         for q in sim.air:
             var col = Color("#e8a08a") if q.side else Color("#f3e2a8"); var ps = maxf(1.0, 1.6 * mn)

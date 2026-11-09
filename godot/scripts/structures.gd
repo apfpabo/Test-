@@ -491,8 +491,9 @@ func owner_name(s: Dictionary) -> String:
 ## A one-line summary of a structure's defences, for panels.
 func defence_text(s: Dictionary) -> String:
 	var d := defences(s); var parts := []
-	if float(d.flak) > 0.05: parts.append("flak %.1f" % float(d.flak))
-	if float(d.fighters) > 0.05: parts.append("%d fighters%s" % [int(round(float(d.fighters) * 6.0)), " (with air cover)" if float(d.fighters) > float(d.own_fighters) + 0.05 else ""])
-	if float(d.guns) > 0.05: parts.append("heavy guns %.1f" % float(d.guns))
+	var fl := float(d.flak)
+	if fl > 0.05: parts.append(("light flak" if fl < 1.5 else ("%d flak batteries" % int(round(fl)))) + (" (much of it knocked out)" if float(s.dmg) > 0.4 else ""))
+	if float(d.fighters) > 0.05: parts.append("about %d fighters%s" % [int(round(float(d.fighters) * 6.0)), " (with cover from nearby airfields)" if float(d.fighters) > float(d.own_fighters) + 0.05 else ""])
+	if float(d.guns) > 0.05: parts.append("%d heavy guns" % maxi(1, int(round(float(d.guns)))))
 	if float(d.radar) > 1.0: parts.append("radar warning")
 	return ", ".join(parts) if parts.size() else "none to speak of"

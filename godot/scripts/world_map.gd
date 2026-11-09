@@ -96,6 +96,10 @@ func _exit_tree() -> void: Sfx.engine(0.0); Sfx.ambience(0.0)
 func rx(x: float) -> float: return cam.x + Campaign.wdx(cam.x, x) # place a wrapped world x next to the camera
 func to_screen(p: Vector2) -> Vector2: return (Vector2(rx(p.x), p.y) - cam) * zoom + get_viewport_rect().size / 2
 func to_world(sp: Vector2) -> Vector2: return (sp - get_viewport_rect().size / 2) / zoom + cam
+## The bearing from a structure to the nearest sea (batteries and piers face it), worked out once.
+func face_of(s: Dictionary) -> float:
+    if not s.has("face"): var w := Campaign.nearest_water(s.x, s.y, 80); s.face = Campaign.mang(s.x, s.y, w.x, w.y)
+    return float(s.face)
 func boost() -> float: return pow(zoom, 0.75) if zoom > 1 else 1.0
 
 # ------------------------------------------------------------------ frame
@@ -217,6 +221,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var ready: bool = G.day >= p.next; var s = 6.0 / z; var col = Color(0.89, 0.7, 0.24, 1.0 if ready else 0.35)
             draw_polyline(PackedVector2Array([Vector2(x, p.y - s), Vector2(x + s, p.y), Vector2(x, p.y + s), Vector2(x - s, p.y), Vector2(x, p.y - s)]), col, 1.5 / z)
             if p.type == "wreck": draw_line(Vector2(x - s * 0.5, p.y), Vector2(x + s * 0.5, p.y), col, 1.5 / z)
+        _structures(hw, vs.y / 2 / z)
         for p in G.ports:
             var x: float = map.rx(p.x)
             if absf(x - map.cam.x) > hw + 80 or absf(p.y - map.cam.y) > vs.y / 2 / z + 80: continue
@@ -253,6 +258,29 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         draw_arc(Vector2(P.x, P.y), 17 * b / z, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
         if z >= 0.32: _reach_ring(Vector2(P.x, P.y), Campaign.strike_reach(G.fleet), Color(0.89, 0.7, 0.24, 0.4))
         if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h, "player")
+
+    ## Land structures: map symbols at normal zoom, drawn installations close in, and the reach of batteries that
+    ## would fire on you.
+    func _structures(hw: float, hh: float) -> void:
+        var z: float = map.zoom; var b: float = map.boost(); var close := z >= 3.0
+        for s in Structures.all():
+            var x: float = map.rx(s.x)
+            if absf(x - map.cam.x) > hw + 60 or absf(s.y - map.cam.y) > hh + 60: continue
+            var mine: bool = s.fac == "player"; var mil: bool = Structures.kind(s).military
+            if not mine and z < (0.3 if mil else 0.45): continue
+            var c := Vector2(x, s.y)
+            if s.kind == "battery" and s.fac != "" and not mine and not Structures.silenced(s) and Campaign.at_war(s.fac):
+                var rr := Structures.battery_units(); var n := 40
+                for i in n: if i % 2 == 0: draw_arc(c, rr, i * TAU / n, (i + 1) * TAU / n, 3, Color(0.85, 0.38, 0.29, 0.4), 1.2 / z)
+            if close:
+                InstallationArt.draw(self, s.kind, c, 18.0 * b / z, int(s.id), map.face_of(s), float(s.dmg), float(s.ruin), true, map.tnow)
+                var fc: Color = Color("#e3b23c") if mine else (Color(0.6, 0.6, 0.55) if s.fac == "" else Color(GameData.fac[s.fac].map))
+                var fp := c + Vector2(0, -18.0 * b / z * 0.95)   # a small flag on its staff
+                draw_line(fp, fp + Vector2(0, -9.0 / z), Color(0.85, 0.85, 0.8), 1.0 / z)
+                draw_colored_polygon(PackedVector2Array([fp + Vector2(0, -9.0 / z), fp + Vector2(7.0 / z, -7.0 / z), fp + Vector2(0, -5.0 / z)]), fc)
+            else:
+                var ring: Color = Color("#e3b23c") if mine else (Color(0.55, 0.55, 0.5) if s.fac == "" else Color(GameData.fac[s.fac].map))
+                InstallationArt.icon(self, s.kind, c, (6.5 if mil else 5.5) / z, ring, 1.5 / z, Structures.silenced(s) and not mine)
 
     func _dash(a: Vector2, b: Vector2, c: Color, w: float, d: float) -> void:
         var len = a.distance_to(b); var n = int(len / (d * 2)) + 1
@@ -378,6 +406,16 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             var sp: Vector2 = map.to_screen(Vector2(p.x, p.y))
             if sp.x < -100 or sp.x > vs.x + 100: continue
             _t(sp + Vector2(0, 20), p.name, Color(0.89, 0.7, 0.24, 0.9 if G.day >= p.next else 0.4), 11)
+        for s in Structures.all():   # structure names: yours always, others when zoomed in
+            var mine: bool = s.fac == "player"
+            if not (mine and z > 0.2) and z < 1.0: continue
+            var sp: Vector2 = map.to_screen(Vector2(s.x, s.y))
+            if sp.x < -150 or sp.x > vs.x + 150 or sp.y < -50 or sp.y > vs.y + 50: continue
+            var off: float = 18.0 * b * 0.95 + 6.0 if z >= 3.0 else 14.0
+            var col: Color = Color("#e3b23c") if mine else (Color(0.75, 0.75, 0.7, 0.85) if s.fac == "" else Color(GameData.fac[s.fac].map))
+            var st: String = " · silenced" if Structures.silenced(s) and not mine else ""
+            _t(sp + Vector2(0, off + 10), s.name, Color(0.92, 0.92, 0.88, 0.9), 11)
+            if z >= 1.6: _t(sp + Vector2(0, off + 23), Structures.owner_name(s) + st, col, 10)
         for p in G.ports:
             if not (z > 0.28 or p.capital): continue
             var sp: Vector2 = map.to_screen(Vector2(p.x, p.y))
@@ -461,6 +499,10 @@ func _update_orders(force := false) -> void:
         items.append({"t": "★ " + m.title, "tip": "%s\n%s\nOrders from the %s. Target near %s. Reward %s, %d RP, %s standing +%d." % [m.title, m.brief, Campaign.story_office(by), m.near, Campaign.fmt(m.reward.credits), m.reward.rp, GameData.fac[by].short, m.reward.rep], "fleet": int(G.mission.fleet), "col": UI.GOLD})
     for c in G.get("contracts", []):
         items.append({"t": "%s · %dd" % [c.title, maxi(0, int(c.deadline) - G.day)], "tip": Diplomacy.contract_info(c), "c": c, "col": UI.INK if int(c.deadline) - G.day > 7 else UI.RED})
+    for f in G.fleets:
+        if Structures._is_assault(f) and f.get("warned", false):
+            var st: Dictionary = Structures.all()[int(f.assault)]
+            items.append({"t": "⚑ %s → %s" % [f.name, st.name], "tip": "A %s is sailing to retake the %s with %d troopships. Sink them before they land, or trust the garrison of %d." % [f.name.to_lower(), st.name, f.ships.filter(func(x): return x.get("troops", false)).size(), int(st.garrison)], "fleet": int(f.id), "col": UI.RED})
     var sig := str(orders_open) + "|" + "|".join(items.map(func(i): return i.t))
     orders_box.visible = not items.is_empty()
     if sig == _orders_sig and not force: return
@@ -501,6 +543,11 @@ func _toast(text: String) -> void:
 func _update_dock() -> void:
     if panel_open: dock.visible = false; return
     var np = Campaign.nearest_port(28.0); var poi = null if np != null else Campaign.nearest_poi(22.0)
+    var base = null
+    if np == null and poi == null:
+        for s in Structures.held(): if s.kind == "navalbase" and Structures.off_coast(s): base = s
+    dock.set_meta("base", base.id if base != null else -1)
+    if base != null: dock.visible = true; dock.text = "Dock at " + base.name; dock.set_meta("port", -1); dock.set_meta("poi", -1); return
     dock.visible = np != null or poi != null
     if np != null: dock.text = "Dock at " + np.name; dock.set_meta("port", np.id); dock.set_meta("poi", -1)
     elif poi != null: dock.text = "Survey " + poi.name; dock.set_meta("poi", poi.id); dock.set_meta("port", -1)
@@ -508,6 +555,7 @@ func _update_dock() -> void:
 func _on_dock() -> void:
     if dock.get_meta("port", -1) >= 0: open_port(Campaign.G.ports[dock.get_meta("port")])
     elif dock.get_meta("poi", -1) >= 0: open_survey(Campaign.G.pois[dock.get_meta("poi")])
+    elif dock.get_meta("base", -1) >= 0: open_struct(Structures.all()[dock.get_meta("base")])
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
@@ -559,6 +607,9 @@ func _click(sp: Vector2) -> void:
         if near.call(q.x, q.y, 12):
             if Campaign.mdist(q.x, q.y, P.x, P.y) < 22: open_survey(q); return
             Campaign.set_course(P, q.x, q.y); return
+    if zoom >= 0.3:
+        var st = Structures.at_point(w.x, w.y, (22.0 * boost() / zoom) if zoom >= 3.0 else 9.0 / minf(zoom, 1.5))
+        if st != null and (st.fac == "player" or zoom >= (0.3 if Structures.kind(st).military else 0.45)): open_struct(st); return
     if Campaign.on_land(w.x, w.y): _toast("That is land. Pick a point on the water."); return
     if not Campaign.set_course(P, w.x, clampf(w.y, 4, Campaign.MH - 4)): P.tx = null; _toast("No sea route to that point.")
 
@@ -853,9 +904,10 @@ func _render_port() -> void:
     if p.capital and not Campaign.story_chain(p.fac).is_empty(): tabs.append(["admiralty", Campaign.story_office(p.fac)])
     if p.capital and p.fac == "concord": tabs.append(["research", "Research"])
     elif p.fac == "enclave": tabs.append(["research", "Research exchange"])
+    if not Structures.store_of(p).is_empty(): tabs.insert(1, ["warehouse", "Warehouse"])
     var limited: bool = Campaign.restricted(p.fac)
     if limited: # your old flag: the market and the dockyard's repair berth, nothing more, and at a price
-        tabs = tabs.filter(func(t): return t[0] == "market" or t[0] == "fleet" or t[0] == "contracts")
+        tabs = tabs.filter(func(t): return t[0] == "market" or t[0] == "fleet" or t[0] == "contracts" or t[0] == "warehouse")
         if not ["market", "fleet"].has(port_tab): port_tab = "market"
     open_panel(func(box):
         box.add_child(UI.title(p.name))
@@ -875,6 +927,9 @@ func _render_port() -> void:
             "contracts": _contracts(box, p)
             "commission": _commission(box, p)
             "research": _research(box)
+            "warehouse":
+                _p(box, "Goods from your holdings ashore, kept here for you. Load them into the hold, or sell them at this port's price.", UI.DIM, 14)
+                _store_rows(box, p, true, p.name, p)
         box.add_child(UI.button("Put to sea", func(): cur_port = {}; G.player.cool = maxf(G.player.cool, 2.5); Campaign.save(); close_panel(), true))
     , false, 960, "port:%s:%s:%d" % [p.name, port_tab, refit_idx])
 
@@ -882,12 +937,13 @@ func show_command() -> void:
     cur_port = {}
     open_panel(func(box):
         box.add_child(UI.title("Command"))
-        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["hold", "Hold"], ["codex", "Codex"]], cmd_tab, func(k): cmd_tab = k; show_command())
+        _tabs(box, [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["codex", "Codex"]], cmd_tab, func(k): cmd_tab = k; show_command())
         match cmd_tab:
             "fleet": _fleet_table(box, false)
             "officers": _officers(box, {})
             "research": _research(box)
             "missions": _missions(box, false)
+            "holdings": _holdings(box)
             "codex": Codex.build(box, codex_tab, func(k): codex_tab = k; show_command())
             "hold":
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
@@ -911,6 +967,10 @@ func _repairs(box: Control) -> void:
     box.add_child(UI.row([UI.button("Repair all · " + Campaign.fmt(total), func(): _repair_all(total), false, total == 0 or G.credits < total),
         UI.button("Hire %s crew · %s" % [Campaign.fmt(short), Campaign.fmt(short * 25)], func(): G.credits -= short * 25; G.crew += short; _render_port(), false, short == 0 or G.credits < short * 25),
         UI.button("Hire 50 spare · 1,250", func(): G.credits -= 1250; G.crew += 50; _render_port(), false, G.credits < 1250)]))
+    var rc := Structures.replace_cost()
+    if Structures.air_group() > 0 or rc > 0:
+        _p(box, "Air groups: %d aircraft aboard your carriers%s." % [Structures.air_group(), (", %d short" % (rc / Structures.plane_cost())) if rc > 0 else ", at full strength"], UI.DIM, 14)
+        box.add_child(UI.row([UI.button("Replace aircraft · " + Campaign.fmt(rc), func(): G.credits -= rc; Structures.replace_planes(); _render_port(), false, rc == 0 or G.credits < rc)]))
 
 func _captain_pick(s: Dictionary) -> OptionButton:
     var ob = OptionButton.new(); ob.add_item("(no captain)"); ob.set_item_metadata(0, "")
@@ -1310,3 +1370,178 @@ func _lead_pic(f: Dictionary) -> Control:
     var lead: Dictionary = f.ships[0]
     for s in f.ships: if GameData.hulls[s.type].L > GameData.hulls[lead.type].L: lead = s
     return _thumb(lead.type, GameData.ship_pal(lead.type, f.fac), minf(420.0, GameData.hulls[lead.type].L * 2.2 + 60), lead.fit)
+
+# ------------------------------------------------------------------ land structures
+## Your structures ashore: what each yields, who holds it, where its goods go, and the goods waiting for you.
+func _holdings(box: Control) -> void:
+    var G: Dictionary = Campaign.G; var hs: Array = Structures.held()
+    if hs.is_empty():
+        _p(box, "You hold nothing ashore. Strike a structure from the air until its defences are silenced, then demand its surrender with your fleet off the coast; or land a garrison on an unclaimed one. Each held structure pays monthly.", UI.DIM, 14)
+        return
+    var money := 0
+    for s in hs: money += int(Structures.yield_of(s).get("money", 0))
+    _p(box, "%d structures held by %d men (wages %s a day). Paid on the 30th: %s a month, and goods to the nearest open port or your naval base." % [hs.size(), Structures.garrison_total(), Campaign.fmt(Structures.garrison_total() * 0.15), Campaign.fmt(money)], UI.DIM, 14)
+    for s in hs:
+        var y := Structures.yield_of(s); var yl := []
+        for g in y: yl.append(Campaign.fmt(y[g]) if g == "money" else "%d %s" % [y[g], g])
+        var dp = Structures.depot_of(s)
+        var row := [UI.label(s.name, UI.GOLD, 14), UI.label("%s · garrison %d · %s%s" % [Structures.kind(s).name, int(s.garrison), ", ".join(yl) if yl.size() else "no income", (" → " + ("held there" if dp == s else Structures.depot_name(dp))) if not y.is_empty() and y.keys() != ["money"] else ""], UI.DIM, 13)]
+        row.append(UI.button("Details", func(): open_struct(s)))
+        box.add_child(UI.row(row))
+    var stores := []
+    for p in G.ports: if not Structures.store_of(p).is_empty(): stores.append("%s: %s" % [p.name, ", ".join(Structures.store_of(p).keys().map(func(k): return "%d %s" % [int(Structures.store_of(p)[k]), k]))])
+    for s in hs: if not Structures.store_of(s).is_empty(): stores.append("%s: %s" % [s.name, ", ".join(Structures.store_of(s).keys().map(func(k): return "%d %s" % [int(Structures.store_of(s)[k]), k]))])
+    if stores.size(): box.add_child(UI.label("GOODS WAITING", UI.DIM, 12)); for t in stores: _p(box, t, UI.INK, 13)
+
+## A structure's panel: what it is, who holds it, its defences and output, and what you can do about it from here.
+func open_struct(s: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var k: Dictionary = Structures.kind(s)
+    var dkm := int(Campaign.mdist(G.player.x, G.player.y, s.x, s.y) * Campaign.KM_PER_UNIT)
+    open_panel(func(box):
+        box.add_child(UI.title(s.name))
+        var fac_col: Color = UI.GOLD if s.fac == "player" else (UI.DIM if s.fac == "" else Color(GameData.fac[s.fac].map))
+        box.add_child(UI.label("%s · %s · %s · %d km inland · %d km from you" % [k.name, Structures.owner_name(s), String(s.land).trim_prefix("the ").capitalize() if s.land != "" else "", int(s.coastKm), dkm], fac_col, 14))
+        var pic := StructPic.new(); pic.s = s; pic.map = self; pic.clip_contents = true; pic.custom_minimum_size = Vector2(0, 230); box.add_child(pic)
+        _p(box, k.text, UI.INK, 14)
+        var y := Structures.yield_of(s); var yl := []
+        for g in y: yl.append(("%s a month" % Campaign.fmt(y[g])) if g == "money" else "%d %s a month" % [y[g], g])
+        if not yl.is_empty(): _p(box, "Output: " + ", ".join(yl) + (" (war damage: %d%% wrecked, mending slowly)" % int(float(s.ruin) * 100) if float(s.ruin) > 0.02 else ""), UI.INK, 14)
+        _p(box, "Defences: %s. %d%% out of action%s." % [Structures.defence_text(s), int(float(s.dmg) * 100), " (silenced)" if Structures.silenced(s) else ""], UI.DIM, 14)
+        var cov: Array = Structures.cover_fields(s)
+        if not cov.is_empty() and s.fac != "player": _p(box, "Fighter cover from: " + ", ".join(cov.map(func(a): return a.name)) + ". Silence those airfields first and the strike meets fewer fighters.", UI.DIM, 13)
+        if s.fac == "player": _held_struct(box, s)
+        else: _foreign_struct(box, s)
+        var acts := [UI.button("Set course for the coast", func(): _course_coast(s))]
+        acts.append(UI.button("Close", close_panel, true))
+        box.add_child(UI.row(acts))
+    , false, 820, "struct:%d" % int(s.id))
+
+func _course_coast(s: Dictionary) -> void:
+    var w := Structures.coast_point(s)
+    if Campaign.set_course(Campaign.G.player, w.x, w.y): free_cam = false; close_panel(); _toast("Course set for the coast off the " + s.name + ".")
+    else: _toast("No sea route to the coast off the " + s.name + ".")
+
+func _foreign_struct(box: Control, s: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    var ag := Structures.air_group()
+    if ag > 0: _p(box, "Your air groups: %d %s aircraft. Strike reach %d km." % [ag, "jet" if Structures.jets() else "piston", int(Campaign.strike_reach(G.fleet) * Campaign.KM_PER_UNIT)], UI.DIM, 13)
+    if s.fac != "":
+        var why := Structures.can_strike(s)
+        if Structures.breaks_armistice(s) and why == "":
+            _p(box, "Striking it breaks the armistice: %s standing -30, and %s warships will engage you on sight for three months." % [GameData.fac[s.fac].short, GameData.fac[s.fac].short], UI.RED, 13)
+        var sb := UI.button("Launch an air strike", func(): _launch_strike(s), true, why != "")
+        box.add_child(sb)
+        if why != "": _p(box, why, UI.DIM, 13)
+    var tw := Structures.can_take(s)
+    var lbl := ("Land a garrison (%d men)" % Structures.garrison_need(s)) if s.fac == "" else ("Demand its surrender (garrison %d men)" % Structures.garrison_need(s))
+    box.add_child(UI.button(lbl, func():
+        var t := Structures.take(s); _toast(t); open_struct(s), s.fac == "", tw != ""))
+    if tw != "": _p(box, tw, UI.DIM, 13)
+    else: _p(box, "Held structures pay monthly; their garrisons draw wages (%s a day for this one), and the old owner will try to retake it." % Campaign.fmt(Structures.garrison_need(s) * 0.15), UI.DIM, 13)
+
+func _held_struct(box: Control, s: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var dp = Structures.depot_of(s)
+    _p(box, "Garrison: %d men, held since %s.%s" % [int(s.garrison), Campaign.date_str(int(s.took)), (" The %s wants it back." % GameData.fac[s.from].name) if s.from != "" else ""], UI.GOLD, 14)
+    if not Structures.kind(s).yields.is_empty(): _p(box, "Money is paid to you on the 30th of each month; goods go to %s." % ("its own stores here" if dp == s else Structures.depot_name(dp)), UI.DIM, 13)
+    if Structures.radar_held(s): _p(box, "Under your radar's watch (%s): you will hear the moment an assault sails, and the garrison fights a quarter better." % Structures.radar_name(s), UI.DIM, 13)
+    for f in G.fleets: if Structures._is_assault(f) and int(f.assault) == int(s.id) and f.get("warned", false): _p(box, "Threat: a %s is bound here, %s." % [f.name.to_lower(), Diplomacy.where(f.x, f.y)], UI.RED, 14)
+    var near := Structures.off_coast(s)
+    if s.kind == "navalbase" and near: _base_services(box, s)
+    elif not Structures.store_of(s).is_empty(): _store_rows(box, s, near, s.name)
+    var acts := []
+    if Structures.can_hand_over(s): acts.append(UI.button("Hand it to the %s" % GameData.fac[G.commission.fac].short, func(): _toast(Structures.hand_over(s)); close_panel()))
+    acts.append(UI.button("Withdraw the garrison", func(): _toast(Structures.withdraw(s)); open_struct(s), false, not near))
+    box.add_child(UI.row(acts))
+    if not near: _p(box, "To take the garrison off, or load goods, bring the fleet off its coast.", UI.DIM, 12)
+
+## Goods waiting at a port warehouse, a naval base or a structure: load them, or sell them where a market exists.
+func _store_rows(box: Control, dp: Dictionary, can_load: bool, where: String, market = null) -> void:
+    var G: Dictionary = Campaign.G; var st: Dictionary = Structures.store_of(dp)
+    box.add_child(UI.label("GOODS HELD AT " + where.to_upper(), UI.DIM, 12))
+    if st.is_empty(): _p(box, "Nothing waiting.", UI.DIM, 13); return
+    for gid in st.keys():
+        var n := int(st[gid]); var free := Campaign.cargo_cap() - Campaign.cargo_used()
+        var items := [UI.label("%d %s" % [n, gid], UI.INK, 14)]
+        items.append(UI.button("Load %d" % mini(n, free), func():
+            var k := mini(n, Campaign.cargo_cap() - Campaign.cargo_used()); G.cargo[gid] = G.cargo.get(gid, 0) + k; st[gid] = n - k
+            if int(st[gid]) <= 0: st.erase(gid)
+            _rerender_store(dp), false, not can_load or free <= 0))
+        if market != null:
+            var pr: int = sell_price(market, gid)
+            items.append(UI.button("Sell here · %s" % Campaign.fmt(pr * n), func(): G.credits += pr * n; st.erase(gid); _rerender_store(dp)))
+        box.add_child(UI.row(items))
+
+func _rerender_store(dp: Dictionary) -> void:
+    if dp.has("kind") and dp.has("garrison"): open_struct(dp)
+    else: _render_port()
+
+## A naval base you hold: repairs, rearming, fuel, aircraft and its stores, at plain dockyard prices.
+func _base_services(box: Control, s: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    box.add_child(UI.label("YOUR NAVAL BASE", UI.DIM, 12))
+    var rep := 0; var arm := 0
+    for sh in G.fleet: rep += repair_cost(sh); arm += Campaign.rearm_cost(sh)
+    var fuel_need := maxi(0, int(ceil(Campaign.fuel_use() * 40 - G.cargo.fuel))); var fuel_cost := fuel_need * 9
+    var rc := Structures.replace_cost()
+    box.add_child(UI.row([UI.button("Repair all · " + Campaign.fmt(rep), func(): _base_do(s, "repair", rep), false, rep == 0 or G.credits < rep),
+        UI.button("Rearm all · " + Campaign.fmt(arm), func(): _base_do(s, "rearm", arm), false, arm == 0 or G.credits < arm),
+        UI.button("Refuel · " + Campaign.fmt(fuel_cost), func(): _base_do(s, "fuel", fuel_cost, fuel_need), false, fuel_need == 0 or G.credits < fuel_cost),
+        UI.button("Replace aircraft · " + Campaign.fmt(rc), func(): _base_do(s, "air", rc), false, rc == 0 or G.credits < rc)]))
+    _store_rows(box, s, true, s.name)
+
+func _base_do(s: Dictionary, what: String, cost: int, n := 0) -> void:
+    var G: Dictionary = Campaign.G; G.credits -= cost
+    match what:
+        "repair": for sh in G.fleet: sh.hullFrac = 1.0
+        "rearm": for sh in G.fleet: sh.ammo = 1.0
+        "fuel": G.cargo.fuel += n
+        "air": Structures.replace_planes()
+    open_struct(s)
+
+## The strike: a warning if it breaks the armistice, then the raid, then the report.
+func _launch_strike(s: Dictionary) -> void:
+    if Structures.breaks_armistice(s):
+        open_panel(func(box):
+            box.add_child(UI.title("Break the armistice?"))
+            _p(box, "The %s is a %s installation, and the %s is not at war with you. A strike on it is an act of war: %s standing -30%s, and their warships will engage you on sight for three months." % [s.name, GameData.fac[s.fac].short, GameData.fac[s.fac].name, GameData.fac[s.fac].short, (". It is also betrayal of the flag you serve" if Campaign.G.get("commission") != null and Campaign.G.commission.fac == s.fac else "")])
+            box.add_child(UI.row([UI.button("Launch the strike", func(): _fly_strike(s), true), UI.button("Stand down", func(): open_struct(s))]))
+        , true, 640)
+        return
+    _fly_strike(s)
+
+func _fly_strike(s: Dictionary) -> void:
+    var res := Structures.strike(s)
+    close_panel(); panel_open = true; _blocking = true; Campaign.paused = true
+    face_of(s)
+    var raid := AirRaid.new(); raid.res = res; raid.s = s; raid.set_anchors_preset(Control.PRESET_FULL_RECT)
+    raid.done.connect(func(): raid.queue_free(); _strike_report(s, res))
+    panel_layer.add_child(raid)
+
+func _strike_report(s: Dictionary, r: Dictionary) -> void:
+    open_panel(func(box):
+        box.add_child(UI.title("Strike on the " + s.name))
+        _p(box, "%d %s aircraft took off%s." % [int(r.planes), "jet" if r.jets else "piston-engined", (", %d of them flying escort" % int(r.escorts)) if int(r.escorts) > 0 else ""])
+        if int(r.fighters) > 0: _p(box, "About %d defending fighters met the strike. They shot down %d of ours; the escorts claimed %d." % [int(r.fighters), int(r.lost_fighters), int(r.downed)])
+        else: _p(box, "No fighters rose to meet it.", UI.DIM)
+        _p(box, "Flak over the target brought down %d. %d aircraft bombed." % [int(r.lost_flak), int(r.bombers)])
+        _p(box, "Its defences: %d%% out of action before, %d%% now.%s" % [int(r.before * 100), int(r.after * 100), " The defences are silenced: bring the fleet off its coast and demand its surrender." if r.silenced else " Strike again when the air groups have rearmed (half a day)."], UI.GOLD if r.silenced else UI.INK)
+        for n in r.get("notes", []): _p(box, n, UI.GOLD)
+        var lost := int(r.lost_fighters) + int(r.lost_flak)
+        if lost > 0: _p(box, "%d aircraft lost. %d left aboard your carriers; replace them in port (%s each)." % [lost, Structures.air_group(), Campaign.fmt(Structures.plane_cost())], UI.DIM, 14)
+        box.add_child(UI.row([UI.button("Back to the target", func(): open_struct(s), true), UI.button("Return to the chart", close_panel)]))
+    , true, 720)
+
+## A structure's picture for its panel: the ground, the sea on its seaward side, and the installation drawn large.
+class StructPic extends Control:
+    var s: Dictionary
+    var map
+    func _process(_d: float) -> void: if s.kind == "radar": queue_redraw()
+    func _draw() -> void:
+        var face: float = map.face_of(s); var c := size / 2
+        InstallationArt.landscape(self, Rect2(Vector2.ZERO, size), int(s.id), Campaign.y_lat(s.y), c, size.y * 0.5)
+        if Structures.kind(s).military and s.kind != "airfield" and s.kind != "radar":
+            var u := Vector2.from_angle(face); var far := c + u * size.y * 0.46 * (0.72 if s.kind == "navalbase" else 0.62)
+            var n := Vector2(-u.y, u.x) * 2000.0
+            draw_colored_polygon(PackedVector2Array([far + n, far - n, far - n + u * 2000.0, far + n + u * 2000.0]), Color("#24434c"))
+            draw_line(far + n, far - n, Color(0.6, 0.72, 0.75, 0.5), 3.0)
+        InstallationArt.draw(self, s.kind, c, size.y * 0.46, int(s.id), face, float(s.dmg), float(s.ruin), false, Time.get_ticks_msec() / 1000.0)

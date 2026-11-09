@@ -8,6 +8,8 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 - **Art reference: Rule the Waves 3.** Realistic top-down ship plans at true proportions, with one consistent paint and lighting scheme across hull, superstructure and turrets. No cartoon outlines or bright decorative colours. Wakes on both the map and in battle.
 - **Ship variety by era and manufacturer** (first pass done), as in Starsector. Several yards each field their own design per class, modelled on real ships (Iowa, Yamato, Bismarck, KGV, Fletcher and so on) under fictional names.
 - **No boarding.** Capturing ships that strike their colours is fine.
+- **Turrets and superstructures need another pass (9 Nov 2026):** adjacent turrets blend into each other; each nation's turrets should look like that nation's (Japanese turrets differed from American ones); superstructures should reach Rule the Waves 3's level of detail. Brief: [`NEXT_ART_PASS.md`](NEXT_ART_PASS.md).
+- **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 
 ## Current build vs. the creative direction
@@ -31,6 +33,8 @@ The owner chose to move from the browser to **Godot 4**. The port is complete: b
 Follow-ups: a display font and UI polish; desktop export presets; touch controls; moving the plan renderer itself into Godot so art no longer depends on the browser.
 
 ## Suggested order of work
+
+**Next up: art pass 2** (turret separation, national turret styles, Rule the Waves 3-level superstructures). See [`NEXT_ART_PASS.md`](NEXT_ART_PASS.md).
 
 0. **World map (done):** Alternate Earth oceans, ports, factions, surveys, ice, sea routes, map momentum and wakes.
 1. **Feel and art pass (done):** Rule the Waves 3-style deck plans at real scale, 7 yards and 50 era designs, combat rebuilt on real knots and turning circles. Follow-ups: playtest the ×2 default clock and the 1/5 range scale, add formation orders, and give the player helm orders by course as well as by rudder.

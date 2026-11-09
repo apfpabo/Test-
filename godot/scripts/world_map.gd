@@ -1437,7 +1437,10 @@ func _foreign_struct(box: Control, s: Dictionary) -> void:
     box.add_child(UI.button(lbl, func():
         var t := Structures.take(s); _toast(t); open_struct(s), s.fac == "", tw != ""))
     if tw != "": _p(box, tw, UI.DIM, 13)
-    else: _p(box, "Held structures pay monthly; their garrisons draw wages (%s a day for this one), and the old owner will try to retake it." % Campaign.fmt(Structures.garrison_need(s) * 0.15), UI.DIM, 13)
+    else:
+        _p(box, "Held structures pay monthly; their garrisons draw wages (%s a day for this one), and the old owner will try to retake it." % Campaign.fmt(Structures.garrison_need(s) * 0.15), UI.DIM, 13)
+        var short := Campaign.crew_need() - (int(Campaign.G.crew) - Structures.garrison_need(s))
+        if short > 0: _p(box, "Landing them leaves your ships %d men short: they will reload and steam slower until you hire more in port." % short, UI.GOLD, 13)
 
 func _held_struct(box: Control, s: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var dp = Structures.depot_of(s)

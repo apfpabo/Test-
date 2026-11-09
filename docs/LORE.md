@@ -151,11 +151,17 @@ The owner's world-building for the fictional map, kept word for word in [`lore/f
 - **March 1946:** raiders gather in the Saffron Sea, the approaches to the Tarsene Gate and the open Hesperian; Concord patrols put out from Gatehold, and Directorate patrols from Strelsk, three times as often as from other ports.
 - **Wars:** the fixed hostilities (Concord and Halcyon against the Directorate) match the two coalitions.
 
-### Where the lore and the game differ (for the owner)
+### Changed to follow the lore (9 Nov 2026, at the owner's request)
+
+- **The Tarsene Gate:** Tarsa, the Republic's capital, now holds the Gate's western (Cradle Sea) mouth; the Concord's Gatehold holds its eastern mouth, the eastern approaches to the Cradle Sea.
+- **Ombrian clients:** a Directorate client harbour, Sefira, on Ombria's Cradle Sea shore.
+- **Halvard Enclaves:** Grimvik moved from the far south to Skarn, so the Enclaves' stations sit in the Rime and the Skarn Passages; Sudrhavn stays as a southern station.
+- **Halcyon Federation:** a coaling station and listening post, Senkai Station, in the Stepping Stones.
+- The officer surname "Varga" became "Vardy", now that Varga is a continent.
+
+### Where the lore and the game still differ (for the owner)
 
 - **The armistice.** The lore makes 1946 a nervous peace ("one serious incident away from open war"); the game still has Concord and Halcyon ships fight the Directorate on sight. Turning that into an armistice with incidents belongs to diplomacy (step 3).
-- **The Tarsene Gate's sides.** The lore puts the Republic on the Gate's western side; on the map the Gate runs east–west, with Tarsa on its northern shore and the Concord's Gatehold on the southern.
-- **Ombrian clients.** The Directorate's Ombrian clients don't exist on the map yet: Ombria's ports belong to the Concord and the Combine. A candidate for the new factions.
 - **Halcyon in the Entente.** The lore calls the Federation wary of both sides and fond of profitable neutrality, but also a member of the Entente; the game keeps it at war with the Directorate.
 - **Privateer sponsor.** The lore offers a Tarsene or a Syndicate letter of marque; the game has only the Republic's.
 - **Survivor's lost fleet.** The lore names the Concord's Central Hesperian squadron and the Directorate's 4th Battle Division; the Halcyon navy has no named lost fleet.

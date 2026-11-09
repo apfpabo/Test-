@@ -123,14 +123,14 @@ func _process(delta: float) -> void:
     _update_top(); _update_dock()
     # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
     var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
-    Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 6.0, 0.05, 0.6) if under_way else 0.0)
+    Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 6.0, 0.03, 0.3) if under_way else 0.0)
     # the sea all round, and gulls when there is land near
     coast_t -= delta
     if coast_t <= 0.0:
         coast_t = 1.0; var n := 0
         for i in 12: if Campaign.on_land(G.player.x + cos(i * TAU / 12.0) * 4.0, G.player.y + sin(i * TAU / 12.0) * 4.0): n += 1
         coast = n / 12.0
-    Sfx.ambience(0.85, minf(1.0, coast * 2.5))
+    Sfx.ambience(0.4, minf(1.0, coast * 2.5))
 
 ## Wake trails, recorded only for fleets on or near the screen. Each point ages out after a few seconds; every ship in
 ## the column draws its own wake along the trail (see Marks._wake).
@@ -165,14 +165,32 @@ class SeaDrawer extends Node2D:   # open sea, graticule and pack ice
         for lat in range(80, -71, -10): draw_line(Vector2(cam.x - hw, Campaign.lat_y(lat)), Vector2(cam.x + hw, Campaign.lat_y(lat)), Color(0.5, 0.69, 0.86, 0.09), 1.0 / z)
         var eq = Campaign.lat_y(0); var x = cam.x - hw
         while x < cam.x + hw: draw_line(Vector2(x, eq), Vector2(x + 10 / z, eq), Color(0.89, 0.7, 0.24, 0.18), 1.0 / z); x += 20 / z
-        # seasonal pack ice
-        var ie = Campaign.ice_edges(Campaign.G.day); var north = PackedVector2Array([Vector2(cam.x - hw - 40, 0)])
-        var xx = cam.x - hw - 40
-        while xx <= cam.x + hw + 40: north.append(Vector2(xx, Campaign.lat_y(Campaign.ice_north_at(Campaign.x_lon(xx), ie)))); xx += 20
-        north.append(Vector2(cam.x + hw + 40, 0))
-        var ice = Color(0.86, 0.91, 0.93, 0.32)
-        draw_colored_polygon(north, ice)
-        draw_rect(Rect2(cam.x - hw - 40, Campaign.lat_y(ie.y), hw * 2 + 80, Campaign.MH - Campaign.lat_y(ie.y)), ice)
+        # seasonal pack ice: a broken edge that moves with the season, loose floes off it, white enough to read as ice
+        var ie = Campaign.ice_edges(Campaign.G.day)
+        var ice = Color(0.83, 0.88, 0.9, 0.42); var rim = Color(0.93, 0.96, 0.97, 0.75)
+        var jag := func(x: float) -> float: return sin(x * 0.131) * 2.2 + sin(x * 0.047 + 1.3) * 4.5 + sin(x * 0.29 + 0.7) * 1.1
+        var north = PackedVector2Array([Vector2(cam.x - hw - 40, -60)]); var south = PackedVector2Array([Vector2(cam.x - hw - 40, Campaign.MH + 60)])
+        var en = PackedVector2Array(); var es = PackedVector2Array()
+        var step: float = clampf(6.0 / z, 4.0, 20.0); var xx = cam.x - hw - 40
+        while xx <= cam.x + hw + 40 + step:
+            var yn: float = Campaign.lat_y(Campaign.ice_north_at(Campaign.x_lon(xx), ie)) + jag.call(xx)
+            var ys: float = Campaign.lat_y(ie.y) - jag.call(xx + 977.0)
+            north.append(Vector2(xx, yn)); en.append(Vector2(xx, yn)); south.append(Vector2(xx, ys)); es.append(Vector2(xx, ys)); xx += step
+        north.append(Vector2(xx, -60)); south.append(Vector2(xx, Campaign.MH + 60))
+        draw_colored_polygon(north, ice); draw_colored_polygon(south, ice)
+        draw_polyline(en, rim, 1.5 / z); draw_polyline(es, rim, 1.5 / z)
+        if z > 0.5:   # floes drifting off the edge
+            var gx0 = int(floor((cam.x - hw) / 6.0)); var gx1 = int(ceil((cam.x + hw) / 6.0))
+            for g in range(gx0, gx1 + 1):
+                for side in [1.0, -1.0]:
+                    var h1 = fposmod(sin(g * 12.9898 + side * 3.1) * 43758.5453, 1.0)
+                    if h1 < 0.45: continue
+                    var fx = g * 6.0 + h1 * 5.0
+                    var base_y: float = Campaign.lat_y(Campaign.ice_north_at(Campaign.x_lon(fx), ie)) + jag.call(fx) if side > 0 else Campaign.lat_y(ie.y) - jag.call(fx + 977.0)
+                    var fy = base_y + side * (1.5 + h1 * 9.0); var r = 0.5 + fposmod(h1 * 7.31, 1.0) * 1.6
+                    var pts = PackedVector2Array()
+                    for k in 6: var a = k * TAU / 6 + h1 * 4.0; pts.append(Vector2(fx, fy) + Vector2.from_angle(a) * r * (0.7 + 0.5 * fposmod(h1 * (k + 3) * 5.7, 1.0)))
+                    draw_colored_polygon(pts, Color(0.88, 0.92, 0.94, 0.55))
 
 class LandCopy extends Node2D:    # one copy of the world's land; three side by side make the chart wrap
     var map
@@ -339,6 +357,12 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             for th in Campaign.C.THEATERS:
                 var sp: Vector2 = map.to_screen(Vector2(Campaign.lon_x(th[1]), Campaign.lat_y(th[2])))
                 _t(sp, " ".join(th[0].split("")), Color(0.78, 0.88, 0.92, 0.24 if z < 0.35 else 0.16), 15 if z < 0.35 else 19, HORIZONTAL_ALIGNMENT_CENTER, 600)
+        if z > 0.25 and z < 4.0:   # name the pack ice where its edge crosses the middle of the screen
+            var ie2 = Campaign.ice_edges(G.day)
+            var yn: float = (Campaign.lat_y(Campaign.ice_north_at(Campaign.x_lon(map.cam.x), ie2)) - map.cam.y) * z + vs.y / 2
+            var ys: float = (Campaign.lat_y(ie2.y) - map.cam.y) * z + vs.y / 2
+            if yn > 60 and yn < vs.y: _t(Vector2(vs.x / 2, yn - 10), "PACK ICE · " + Campaign.MONTHS[Campaign.date_of(G.day).month - 1].to_upper() + " LIMIT", Color(0.9, 0.94, 0.96, 0.7), 11)
+            if ys > 60 and ys < vs.y: _t(Vector2(vs.x / 2, ys + 20), "PACK ICE · " + Campaign.MONTHS[Campaign.date_of(G.day).month - 1].to_upper() + " LIMIT", Color(0.9, 0.94, 0.96, 0.7), 11)
         if z > 0.45:   # the choke points by name
             for st in Campaign.C.get("STRAITS", []):
                 var sp: Vector2 = map.to_screen(Vector2(st.x, st.y))
@@ -388,7 +412,9 @@ func _build_top() -> void:
         var b = UI.button(pair[1], func(): _speed(v)); b.custom_minimum_size.x = 38; top.add_child(b); speed_btns.append([v, b])
     top.add_child(UI.button("Centre", func(): free_cam = false))
     top.add_child(UI.button("Command", func(): show_command()))
-    top.add_child(UI.button("Sound", func(): Sfx.muted = not Sfx.muted))
+    var snd := UI.button("Sound off" if Sfx.muted else "Sound on", func(): pass)
+    snd.pressed.connect(func(): Sfx.muted = not Sfx.muted; snd.text = "Sound off" if Sfx.muted else "Sound on")
+    top.add_child(snd)
 
 func _speed(v: int) -> void:
     if v == 0: Campaign.paused = not Campaign.paused
@@ -432,6 +458,7 @@ func _unhandled_input(e: InputEvent) -> void:
     if panel_open:
         if e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE and not _blocking: close_panel()
         return
+    if e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE: _pause_menu(); return
     if e is InputEventMouseButton:
         var mb = e as InputEventMouseButton
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed: _zoom_at(1.12, mb.position)
@@ -499,6 +526,25 @@ func open_panel(build: Callable, blocking := false, width := 760.0) -> VBoxConta
 func _fit_panel(scroll: ScrollContainer, box: Control) -> void:
     if not is_instance_valid(scroll): return
     scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y - 140)
+
+## Esc on the chart: the game stops while this is open. Like the battle's pause menu.
+func _pause_menu() -> void:
+    open_panel(func(box):
+        box.add_child(UI.title("Paused"))
+        _p(box, Campaign.date_str(Campaign.G.day) + " · Esc to resume", UI.DIM, 14)
+        box.add_child(UI.button("Resume", close_panel, true))
+        box.add_child(UI.button("Command", func(): show_command()))
+        box.add_child(UI.button("Codex", func(): cmd_tab = "codex"; show_command()))
+        box.add_child(UI.button("Settings", func(): _pause_settings()))
+        box.add_child(UI.button("Save & exit to title", func(): Campaign.save(); get_tree().change_scene_to_file("res://scenes/main_menu.tscn")))
+        box.add_child(UI.button("Save & quit to desktop", func(): Campaign.save(); get_tree().quit()))
+    , false, 420)
+
+func _pause_settings() -> void:
+    open_panel(func(box):
+        box.add_child(Settings.panel())
+        box.add_child(UI.button("Back", _pause_menu, true))
+    , false, 640)
 
 func close_panel() -> void:
     for c in panel_layer.get_children(): c.queue_free()
@@ -631,12 +677,18 @@ func _do_survey(q: Dictionary) -> void:
         else: box.add_child(UI.button("Return to the chart", close_panel, true))
     , out.ambush != null)
 
+## A ship's hull condition as a thin bar centred in its row, with a tooltip saying what it measures.
+func _hull_bar(f: float) -> Control:
+    var b := UI.bar(f); b.size_flags_vertical = Control.SIZE_SHRINK_CENTER; b.tooltip_text = "Hull condition: %d%% of full strength. Repair in port." % int(f * 100)
+    b.mouse_filter = Control.MOUSE_FILTER_PASS
+    return b
+
 func _fleet_table(box: Control, at_port: bool) -> void:
     var G: Dictionary = Campaign.G; var need = Campaign.crew_need(); var short = maxi(0, need - int(G.crew))
     _p(box, "The first ship listed is your flagship. Crew %s of %s needed%s. Wages %s a day." % [Campaign.fmt(G.crew), Campaign.fmt(need), ", so undermanned ships reload and steam slower" if short else "", Campaign.fmt(Campaign.wages())], UI.DIM, 14)
     for i in G.fleet.size():
         var s: Dictionary = G.fleet[i]; var h: Dictionary = GameData.hulls[s.type]; var o = Campaign.officer_of(s)
-        var items = [UI.label(("★ " if i == 0 else "") + s.name, UI.INK), UI.label("%s · %s class (%s)" % [h.name, h.dn, GameData.makers[h.yard].short], UI.DIM, 13), UI.bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
+        var items = [UI.label(("★ " if i == 0 else "") + s.name, UI.INK), UI.label("%s · %s class (%s)" % [h.name, h.dn, GameData.makers[h.yard].short], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
             _captain_pick(s)]
         if at_port:
             var rc = repair_cost(s)

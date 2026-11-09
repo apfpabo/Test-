@@ -33,6 +33,7 @@ var muted = false:
 		muted = v
 		if _engine: _engine.stream_paused = v
 		if _room: _room.stream_paused = v
+		AudioServer.set_bus_mute(0, v)   # everything, the sea and gulls included
 
 func _ready() -> void:
 	for c in _cut:

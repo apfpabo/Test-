@@ -507,30 +507,50 @@ func route_remaining(o: Dictionary) -> float:
     for i in range(o.ri + 1, r.size() - 1): d += r[i].distance_to(r[i + 1])
     return d
 
-## Advances along the route; true once the fleet has arrived. Speed builds and bleeds off gradually, ships slow for
-## bends, in confined waters and on the final approach, and the bow swings at the fleet's own turn rate.
+## Advances along the route; true once the fleet has arrived. The fleet moves the way its bow points and steers onto
+## the route through a turning circle (radius from the turn rate: the longer the ships, the wider), so it never slides
+## sideways. Speed builds and bleeds off gradually; ships ease off for bends, in confined waters, in a hard turn and on
+## the final approach.
 func route_move(o: Dictionary, max_sp: float, turn: float, dt: float) -> bool:
     var r = o.get("route")
     if r == null or o.ri >= r.size() - 1: coast(o, dt); return true
     if near_land_cell(o.x, o.y): max_sp *= 0.5
-    var cur = Vector2(o.rx, o.ry); var seg_h = (r[o.ri + 1] - cur).angle()
-    var bend = 0.0; var look = maxf(15.0, o.v * 2.5); var pp = cur; var ph = seg_h
+    var cur := Vector2(o.rx, o.ry); var R := 1.2 / turn          # turning radius in map units (about 15-45 km)
+    # pass waypoints already reached: the projection onto the current leg has run off its end
+    while o.ri < r.size() - 1:
+        var a: Vector2 = r[o.ri]; var b: Vector2 = r[o.ri + 1]; var ab := b - a; var L2 := ab.length_squared()
+        var t := clampf((cur - a).dot(ab) / maxf(L2, 0.0001), 0.0, 1.0)
+        if (t >= 0.999 or cur.distance_to(b) < 0.5) and o.ri < r.size() - 2: o.ri += 1
+        else: break
+    # aim at a point a little way along the route: further ahead the faster we go
+    var a0: Vector2 = r[o.ri]; var b0: Vector2 = r[o.ri + 1]; var ab0 := b0 - a0
+    var proj: Vector2 = a0 + ab0 * clampf((cur - a0).dot(ab0) / maxf(ab0.length_squared(), 0.0001), 0.0, 1.0)
+    var look := maxf(R * 1.5, 3.0); var aim := proj; var k: int = o.ri
+    while look > 0 and k < r.size() - 1:
+        var seg_end: Vector2 = r[k + 1]; var sl := aim.distance_to(seg_end)
+        if sl >= look: aim += (seg_end - aim) / maxf(sl, 0.0001) * look; look = 0
+        else: aim = seg_end; look -= sl; k += 1
+    var end: Vector2 = r[r.size() - 1]; var rem = route_remaining(o)
+    if rem < maxf(0.6, o.v * dt * 1.5) and o.ri >= r.size() - 2:   # arrived
+        o.rx = end.x; o.ry = end.y; o.x = wrap_x(end.x); o.y = end.y; o.route = null; return true
+    var want := (aim - cur).angle(); var err := ang_diff(want, o.h)
+    # speed: ease for bends ahead and on the final approach; a hard turn costs some way, as at sea, but not most of it
+    var bend = 0.0; var pp = cur; var ph = want; var la = maxf(15.0, o.v * 2.5)
     for i in range(o.ri + 1, r.size()):
-        if look <= 0: break
-        var h: float = (r[i] - pp).angle(); bend += absf(ang_diff(h, ph)); look -= pp.distance_to(r[i]); pp = r[i]; ph = h
-    var rem = route_remaining(o)
-    var target = max_sp * clampf(1 - bend / 1.6, 0.3, 1.0)
+        if la <= 0: break
+        var h: float = (r[i] - pp).angle(); bend += absf(ang_diff(h, ph)); la -= pp.distance_to(r[i]); pp = r[i]; ph = h
+    var target = max_sp * clampf(1 - bend / 2.4, 0.5, 1.0)
     if not o.get("noBrake", false): target = minf(target, sqrt(2 * max_sp * 0.5 * rem) + 0.4)
-    o.h += clampf(ang_diff(seg_h, o.h), -turn * dt, turn * dt)
-    target *= maxf(0.12, cos(clampf(ang_diff(seg_h, o.h), -PI / 2, PI / 2)))
+    target *= lerpf(1.0, 0.65, clampf(absf(err) / PI, 0.0, 1.0))
     o.v = o.v + clampf(target - o.v, -max_sp * 0.6 * dt, max_sp * 0.3 * dt)
-    var d = maxf(0.0, o.v * dt)
-    while d > 0 and o.ri < r.size() - 1:
-        var nxt: Vector2 = r[o.ri + 1]; var c2 = Vector2(o.rx, o.ry); var sl = c2.distance_to(nxt)
-        if sl <= d: o.rx = nxt.x; o.ry = nxt.y; o.ri += 1; d -= sl
-        else: var q = c2 + (nxt - c2) / sl * d; o.rx = q.x; o.ry = q.y; d = 0
-    o.x = wrap_x(o.rx); o.y = o.ry
-    if o.ri >= r.size() - 1: o.route = null; return true
+    # the bow swings at the rate the turning circle allows at this speed (slowly when barely under way)
+    var rate := maxf(o.v / R, turn * 0.5)
+    o.h = wrapf(o.h + clampf(err, -rate * dt, rate * dt), -PI, PI)
+    var step := Vector2.from_angle(o.h) * maxf(0.0, o.v * dt); var nxt := cur + step
+    if on_land(nxt.x, nxt.y):   # never run aground cutting a corner: fall back onto the route itself
+        var dirv := (aim - cur); nxt = cur + dirv.normalized() * minf(step.length(), dirv.length())
+        if on_land(nxt.x, nxt.y): nxt = cur
+    o.rx = nxt.x; o.ry = nxt.y; o.x = wrap_x(nxt.x); o.y = nxt.y
     return false
 
 func coast(o: Dictionary, dt: float) -> void: o.v = maxf(0.0, o.v - 8 * dt)
@@ -638,7 +658,7 @@ func update(dt: float) -> void:
         # A force that has been met stays quiet until the range opens past its reach again.
         var reach := maxf(strike_reach(f.ships), pr) if hos else 0.0
         if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
-        var close_in: bool = P.follow == f.id and dP < CONTACT
+        var close_in: bool = (P.follow == f.id or hos) and dP < CONTACT   # inside gun range there is always contact
         if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
             f.met = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
 

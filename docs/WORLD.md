@@ -16,7 +16,7 @@ Other deliberate choke points: the **Corvo Canal** across the isthmus joining Ha
 
 **Landmasses:** Varga (the great northern continent), Ombria (its southern lobe), Hallandia and Austrine (joined at the Corvo isthmus), Skarn, Coralind, the Austral Barrier, plus named island groups.
 
-**Factions and homes:** Hesperian Concord (Calder Roads, Hallandia), Vargan Directorate (Strelsk, Varga), Halcyon Federation (Amakura, the Amakura Isles), Meridian Combine (Kotaraya, at the Lantern Strait), Tarsene Free Republic (Tarsa, by the Tarsene Gate), Freeport Syndicate (Port Saffron, Saffron Isle), Halvard Enclaves (Halvardsby, in the Rime Isles).
+**Factions and homes:** Hesperian Concord (Calder Roads, Hallandia; Gatehold on the Tarsene Gate's eastern mouth), Vargan Directorate (Strelsk, Varga; Sefira, its Ombrian client harbour), Halcyon Federation (Amakura, the Amakura Isles; Senkai Station in the Stepping Stones), Meridian Combine (Kotaraya, at the Lantern Strait), Tarsene Free Republic (Tarsa, on the Gate's western mouth), Freeport Syndicate (Port Saffron, Saffron Isle), Halvard Enclaves (Halvardsby in the Rime Isles, Grimvik on Skarn). 34 ports in all. The owner's foundational lore ([`lore/foundational_lore.md`](lore/foundational_lore.md)) sets who holds what; [`LORE.md`](LORE.md) lists what was moved to follow it.
 
 ## How it is built
 

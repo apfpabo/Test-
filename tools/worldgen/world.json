@@ -140,7 +140,7 @@
     { "name": "Calder Roads", "fac": "concord", "capital": true, "at": [74.5, 38] },
     { "name": "Halbrook", "fac": "concord", "at": [59, 52] },
     { "name": "Wexmouth", "fac": "concord", "at": [14, 52] },
-    { "name": "Gatehold", "fac": "concord", "at": [7.5, 35.2], "garrison": 3 },
+    { "name": "Gatehold", "fac": "concord", "at": [9.0, 35.7], "garrison": 3, "note": "the Gate's eastern mouth: the Concord holds the eastern approaches to the Cradle Sea" },
     { "name": "St. Aldric", "fac": "concord", "at": [32, 34] },
     { "name": "Freeholm", "fac": "concord", "at": [11.5, 18] },
     { "name": "Anvil Harbour", "fac": "concord", "at": [157, 24] },
@@ -158,7 +158,7 @@
     { "name": "Bab Hakar", "fac": "combine", "at": [-46, 12] },
     { "name": "Cape Ombra", "fac": "combine", "at": [-27, -33] },
     { "name": "Sanpo", "fac": "combine", "at": [-120, 24] },
-    { "name": "Tarsa", "fac": "republic", "capital": true, "at": [11, 44] },
+    { "name": "Tarsa", "fac": "republic", "capital": true, "at": [3.4, 37.4], "note": "the western side of the Tarsene Gate (the owner's lore)" },
     { "name": "Puerto Corvo", "fac": "republic", "at": [-5, 42] },
     { "name": "Isla Parda", "fac": "republic", "at": [17.5, 27] },
     { "name": "Port Saffron", "fac": "freeport", "capital": true, "at": [58, 25], "rumour": "A hidden, heavily guarded facility beneath the freeport. Rumored to be rebuilding or modifying something that should not exist in 1946." },
@@ -167,8 +167,10 @@
     { "name": "Puerto Vela", "fac": "freeport", "at": [67, -33] },
     { "name": "Halvardsby", "fac": "enclave", "capital": true, "at": [14, 66.5] },
     { "name": "Isfjell", "fac": "enclave", "at": [7, 72.5] },
-    { "name": "Grimvik", "fac": "enclave", "at": [41.5, -52] },
-    { "name": "Sudrhavn", "fac": "enclave", "at": [1, -50.5] }
+    { "name": "Grimvik", "fac": "enclave", "at": [43, 65], "note": "a Halvard station in the Skarn Passages" },
+    { "name": "Sudrhavn", "fac": "enclave", "at": [1, -50.5] },
+    { "name": "Sefira", "fac": "directorate", "at": [-15, 31.5], "note": "the Directorate's Ombrian client harbour on the Cradle Sea (Continental Compact)" },
+    { "name": "Senkai Station", "fac": "pacific", "at": [165, 49.5], "note": "a Halcyon coaling station and listening post in the Stepping Stones" }
   ],
   "pois": [
     { "name": "The Skarn Strait Wreck Fields", "type": "wreck", "at": [50, 62], "text": "Dozens of ships from both coalitions lie in the cold northern passages. Some still contain sealed technical archives and prototype weapons. The Halvards restrict access; everyone else tries to sneak in." },

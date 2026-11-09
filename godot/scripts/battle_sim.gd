@@ -25,6 +25,7 @@ class Mount:
     var recoil = 0.0
     var rec := PackedFloat32Array()   # recoil of each barrel, 1 just fired
     var queue: Array = []             # barrels still to fire in the current salvo: {i, t, aim}
+    var half := 0                     # which half of the barrels fired first last time (alternating half-salvos)
     var ammo := -1                    # rounds (guns: shells for all barrels; AA: bursts; torpedoes and missiles: salvos) left
     var ammo_max := -1
     var tgt: CShip = null
@@ -474,12 +475,25 @@ func tracer(p: Vector2, q: Vector2) -> void:
     tracers.append({"a": p, "b": q + Vector2(randf() - 0.5, randf() - 0.5) * 20.0, "life": 0.12})
 
 # ------------------------------------------------------------------ weapons
-## A salvo: the barrels fire one after another a moment apart (heavier guns more slowly), each with its own flash,
-## report and recoil, rather than all at once.
-const RIPPLE := {"S": 0.4, "M": 0.6, "L": 0.9, "H": 1.2}   # battle seconds between barrels in a salvo
+## Salvo fire as the 1940s navies practised it under director control: the turrets fire together, rippling from
+## fore to aft a fraction of a second apart (firing key and delay coils), in alternating half-salvos: one gun of each
+## turret, then the others half a reload later, so the fall of each half-salvo can be spotted. Single guns fire whole.
+const COIL := 0.08                                          # battle seconds between barrels in a half-salvo
+const TURRET_STEP := {"S": 0.15, "M": 0.25, "L": 0.35, "H": 0.45}   # fore-to-aft ripple between turrets
 func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary) -> void:
-    var n := int(w.get("barrels", 1)); var start := randi() % n
-    for k in n: m.queue.append({"i": (start + k) % n, "t": k * RIPPLE[w.size], "aim": aim})
+    var n := int(w.get("barrels", 1))
+    var order := 0   # this turret's place, bow to stern, among the ship's guns of its calibre
+    for o in s.mounts:
+        if o == m: break
+        if o.w.kind == "gun" and o.w.size == w.size: order += 1
+    var t0: float = order * TURRET_STEP[w.size]
+    if n == 1: m.queue.append({"i": 0, "t": t0, "aim": aim})
+    else:
+        m.half = 1 - m.half
+        var first := []; var second := []
+        for i in n: (first if i % 2 == m.half else second).append(i)
+        for k in first.size(): m.queue.append({"i": first[k], "t": t0 + k * COIL, "aim": aim})
+        for k in second.size(): m.queue.append({"i": second[k], "t": t0 + float(w.rel) * 0.5 + k * COIL, "aim": aim})
     if m.queue.size() > n * 2: m.queue = m.queue.slice(m.queue.size() - n)
     _ripple(s, m, 0.0)
 

@@ -141,6 +141,7 @@ var autofire = false
 var want_torp = false
 var want_msl = false
 var player_rudder = 0.0
+var waypoints: Array = []   # Ctrl+Click: points the flagship steers through when you are not at the helm yourself
 var aim_mode = 0          # 0 none, 1 hold-fire at a point
 var mouse_world = Vector2.ZERO
 var mouse_down = false
@@ -1035,7 +1036,10 @@ func step(dtv: float) -> void:
         if s.escaped: continue
         s.reveal_t = maxf(0.0, s.reveal_t - dt); s.ram_t = maxf(0.0, s.ram_t - dt)
         # AI ships think four times a battle second and work their weapons ten times; your flagship every step
-        if s == flag: s.rudder = player_rudder
+        if s == flag:
+            if player_rudder != 0.0: waypoints.clear()   # taking the helm yourself cancels the waypoints
+            while not waypoints.is_empty() and s.pos.distance_to(waypoints[0]) < maxf(150.0, s.d.L * 1.2): waypoints.pop_front()
+            s.rudder = player_rudder if waypoints.is_empty() else helm(s, steer_avoid(s, (waypoints[0] - s.pos).angle()))
         else:
             s.ai_acc += dt
             if s.ai_acc >= 0.25: ai_ship(s, s.ai_acc); s.ai_acc = 0.0

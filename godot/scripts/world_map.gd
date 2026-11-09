@@ -241,6 +241,10 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var pts = PackedVector2Array([Vector2(P.x, P.y)])
             for i in range(P.ri + 1, r.size()): pts.append(r[i] + off)
             for i in pts.size() - 1: _dash(pts[i], pts[i + 1], Color(0.89, 0.91, 0.89, 0.6), 1.5 / z, 8 / z)
+            for wi in P.get("wps", []):   # waypoints still ahead (Ctrl+Click)
+                if int(wi) <= P.ri or int(wi) >= r.size(): continue
+                var q: Vector2 = r[int(wi)] + off
+                draw_circle(q, 5.5 / z, Color(0.05, 0.1, 0.12, 0.8)); draw_arc(q, 5.5 / z, 0, TAU, 20, Color(0.93, 0.94, 0.92, 0.9), 2.0 / z)
             draw_arc(pts[-1], 5 / z, 0, TAU, 16, Color(0.89, 0.91, 0.89, 0.6), 1.5 / z)
         # fleets (and their wakes), only those on screen
         var hh = vs.y / 2 / z
@@ -258,7 +262,9 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             if hos or f.get("mission", false) or P.follow == f.id: draw_arc(Vector2(x, f.y), 16 * b / z, 0, TAU, 32, Color(Color("#e3b23c") if P.follow == f.id else col, 0.7), 1.5 / z)
             _fleet(f.ships, f.fac, Vector2(x, f.y), f.h, f.id)
         if G.fleet.size() and z >= 0.32: _wakes_of("player", G.fleet, Vector2(P.x, P.y), P.h)
-        draw_arc(Vector2(P.x, P.y), 17 * b / z, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
+        var ring_r: float = 17 * b / z
+        if G.fleet.size(): ring_r = minf(ring_r, maxf(14.0 / z, _layout(G.fleet)[0][3] * 0.75))   # close in, the ring hugs the ship
+        draw_arc(Vector2(P.x, P.y), ring_r, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
         if z >= 0.32: _reach_ring(Vector2(P.x, P.y), Campaign.strike_reach(G.fleet), Color(0.89, 0.7, 0.24, 0.4))
         if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h, "player")
 
@@ -298,9 +304,15 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         var z: float = map.zoom; var b: float = map.boost()
         var sorted = ships.duplicate(); sorted.sort_custom(func(a, c): return GameData.hulls[a.type].L > GameData.hulls[c.type].L)
         var n = sorted.size() if z >= 2 else 1; var back = 0.0; var out = []
+        # Ships are drawn larger than life so they read on the chart. Close in, that would make a ship longer than
+        # the circle it turns in, and it would seem to spin on the spot: keep the leader within 1.8 turning radii.
+        var lead_L: float = GameData.hulls[sorted[0].type].L
+        var cap := 1.0; var R_turn := 1.2 / Campaign.fleet_turn_rate(ships)
+        var lead_len: float = (22 + lead_L * 0.07) * b / z
+        if lead_len > R_turn * 1.8: cap = R_turn * 1.8 / lead_len
         for k in n:
             var s: Dictionary = sorted[k]; var L: float = GameData.hulls[s.type].L
-            var sc = (22 + L * 0.07) * b / (L * z) * (0.9 if k else 1.0); var len = L * sc
+            var sc = (22 + L * 0.07) * b / (L * z) * (0.9 if k else 1.0) * cap; var len = L * sc
             if k: back += len * 1.35
             out.append([s, back, ((1 if k % 2 else -1) * len * 0.35) if k else 0.0, len, sc])
         return out
@@ -347,6 +359,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         if tr.size() < 2: return
         var z: float = map.zoom
         var track = _track(key, p, h)
+        var r_turn := 1.2 / Campaign.fleet_turn_rate(ships)   # the arms never spread wider than the turn, or they cross in a hard turn
         var dist := [0.0]; var age := [0.0]   # distance back along the track, and each point's age
         for i in range(1, track.size()):
             dist.append(dist[-1] + track[i - 1][0].distance_to(track[i][0])); age.append(tr[tr.size() - i].t)
@@ -365,7 +378,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var ca = PackedColorArray(); var cm = PackedColorArray()
             for q in pts:
                 var k: float = minf(1.0, maxf(q[2] / 4.0, q[3] / reach))
-                var d = Vector2.from_angle(q[1]); var nrm = Vector2(-d.y, d.x); var spread: float = len * (0.05 + 0.6 * k)
+                var d = Vector2.from_angle(q[1]); var nrm = Vector2(-d.y, d.x); var spread: float = minf(len * (0.05 + 0.6 * k), r_turn * 0.3)
                 arm_l.append(q[0] + nrm * spread); arm_r.append(q[0] - nrm * spread); mid.append(q[0])
                 ca.append(Color(0.9, 0.95, 0.95, 0.45 * (1.0 - k) * (1.0 - k))); cm.append(Color(0.85, 0.93, 0.93, 0.2 * (1.0 - k) * (1.0 - k)))
                 if k >= 1.0: break
@@ -438,7 +451,9 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             var sp: Vector2 = map.to_screen(Vector2(m[0], m[1]))
             if sp.x > -150 and sp.x < vs.x + 150 and z > 0.2: _t(sp + Vector2(0, -16 - 11.0), "Contract: " + m[2], Color("#e3b23c"), 12)
         var psp: Vector2 = map.to_screen(Vector2(P.x, P.y))
-        _t(psp + Vector2(0, 21 * b + 13), "Your task force · %d kn%s" % [int(round(P.v / 0.8)), " · escorting" if P.get("escort") != null else ""], Color("#e3b23c"), 12)
+        var lab_off: float = 21 * b
+        if G.fleet.size(): lab_off = minf(lab_off, maxf(14.0, map.marks._layout(G.fleet)[0][3] * z * 0.75) + 4.0)
+        _t(psp + Vector2(0, lab_off + 13), "Your task force · %d kn%s" % [int(round(P.v / 0.8)), " · escorting" if P.get("escort") != null else ""], Color("#e3b23c"), 12)
         if P.get("tx") != null and P.get("route") != null:
             var end: Vector2 = P.route[-1] + Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
             var days: float = Campaign.route_remaining(P) / maxf(0.5, Campaign.fleet_map_speed(G.fleet)) * 0.1
@@ -452,7 +467,7 @@ func _build_top() -> void:
     var sb = StyleBoxFlat.new(); sb.bg_color = Color(0.04, 0.09, 0.11, 0.85); sb.content_margin_left = 14; sb.content_margin_right = 14; sb.content_margin_top = 6; sb.content_margin_bottom = 6
     bg.add_theme_stylebox_override("panel", sb); ui.add_child(bg)
     top = HBoxContainer.new(); top.add_theme_constant_override("separation", 18); bg.add_child(top)
-    for k in ["DATE", "FUNDS", "FUEL", "CREW", "HOLD", "RESEARCH"]:
+    for k in ["DATE", "FUNDS", "FUEL", "CREW", "HOLD", "RESEARCH", "SERVING"]:
         var box = HBoxContainer.new(); box.add_theme_constant_override("separation", 6)
         box.add_child(UI.label(k, UI.DIM, 11)); var v = UI.label("", UI.INK, 14); box.add_child(v); stats[k] = v; top.add_child(box)
     var spacer = Control.new(); spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL; top.add_child(spacer)
@@ -474,6 +489,15 @@ func _update_top() -> void:
     stats.DATE.text = Campaign.date_str(G.day); stats.FUNDS.text = Campaign.fmt(G.credits)
     var fu = Campaign.fuel_use(); stats.FUEL.text = "%d (%s)" % [int(G.cargo.fuel), ("%dd" % int(G.cargo.fuel / fu)) if fu > 0 else "∞"]
     stats.FUEL.add_theme_color_override("font_color", UI.RED if fu > 0 and G.cargo.fuel / fu < 5 else UI.INK)
+    var cm = G.get("commission")
+    if cm != null:
+        stats.SERVING.text = "%s · %s" % [GameData.fac[cm.fac].short, Diplomacy.commission_title(cm.fac)]
+        stats.SERVING.add_theme_color_override("font_color", Color(GameData.fac[cm.fac].map))
+        stats.SERVING.tooltip_text = "You serve the %s (%s) since %s. Its wars are yours%s; sinking its enemies earns double standing. Resign at its capital." % [GameData.fac[cm.fac].name, Diplomacy.commission_title(cm.fac), Campaign.date_str(int(cm.since)), (", and you are a combatant to the " + GameData.fac[cm.marque].name) if str(cm.get("marque", "")) != "" else ""]
+    else:
+        stats.SERVING.text = "Independent"; stats.SERVING.add_theme_color_override("font_color", UI.DIM)
+        stats.SERVING.tooltip_text = "You fly no flag but your own. Powers offer commissions and letters of marque at their capitals once your standing reaches 20."
+    stats.SERVING.mouse_filter = Control.MOUSE_FILTER_PASS
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()]; stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
@@ -598,6 +622,14 @@ func _zoom_at(f: float, sp: Vector2) -> void:
 func _click(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
     var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / minf(zoom, 1.5)
+    if Input.is_key_pressed(KEY_CTRL) and P.get("route") != null and P.get("follow") == null and P.get("escort") == null:   # another waypoint
+        var tp = null
+        for p in G.ports: if near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10): tp = p
+        var at: Vector2 = Vector2(tp.sx, tp.sy) if tp != null else Vector2(w.x, clampf(w.y, 4, Campaign.MH - 4))
+        if tp == null and Campaign.on_land(at.x, at.y): _toast("That is land. Pick a point on the water."); return
+        if Campaign.add_waypoint(P, at.x, at.y): P.destPort = tp.id if tp != null else null; Campaign.paused = false
+        else: _toast("No sea route to that point.")
+        return
     P.destPort = null; P.follow = null; P.escort = null; Campaign.paused = false
     for f in G.fleets:
         if near.call(f.x, f.y, 16 * boost()): P.follow = f.id; P.repathT = 0.0; f.cool = 0.0; _toast("Intercept course locked on the " + f.name.to_lower() + ". You will close and make contact."); return

@@ -371,7 +371,7 @@ func new_game(start_key: String, navy := "concord") -> void:
     G.player = {"x": p0.sx, "y": p0.sy, "h": mang(p0.x, p0.y, p0.sx, p0.sy), "v": 0.0, "tx": null, "ty": null, "cool": 3.0, "destPort": null, "follow": null}
     for i in 40: maintain_fleets(true)
     show_origin = Origins.INFO.has(start_key)
-    toast.emit(date_str(1) + ". You put to sea from " + p0.name + ". Click the chart to set a course; scroll to zoom out to the whole world.")
+    toast.emit(date_str(1) + ". You put to sea from " + p0.name + ". Click the chart to set a course (Ctrl+Click adds waypoints, right-click a fleet for orders); scroll to zoom out to the whole world.")
     toast.emit("Wreck fields and abandoned bases (◇ on the chart) can be surveyed for salvage and research.")
     save()
 
@@ -518,7 +518,21 @@ func build_route(o: Dictionary, pts: Array) -> Array:
 func set_course(o: Dictionary, x: float, y: float) -> bool:
     var pts: Array = [Vector2(wrap_x(x), y)] if sight_line(o.x, o.y, x, y) else find_path(Vector2(o.x, o.y), Vector2(x, y))
     if pts.is_empty(): return false
-    o.tx = wrap_x(x); o.ty = y; o.route = build_route(o, pts); o.ri = 0; o.rx = o.x; o.ry = o.y
+    o.tx = wrap_x(x); o.ty = y; o.route = build_route(o, pts); o.ri = 0; o.rx = o.x; o.ry = o.y; o.wps = []
+    return true
+
+## Ctrl+Click on the chart: a further leg from the end of the course already set, through the sea lanes. The
+## waypoint is remembered as a route index (o.wps), so the chart can mark it until the fleet has passed it.
+func add_waypoint(o: Dictionary, x: float, y: float) -> bool:
+    var r = o.get("route")
+    if r == null or o.ri >= r.size() - 1: return set_course(o, x, y)
+    var end: Vector2 = r[r.size() - 1]
+    var pts: Array = [Vector2(wrap_x(x), y)] if sight_line(end.x, end.y, x, y) else find_path(Vector2(wrap_x(end.x), end.y), Vector2(x, y))
+    if pts.is_empty(): return false
+    var ext: Array = build_route({"x": end.x, "y": end.y}, pts)
+    if not o.has("wps") or o.wps == null: o.wps = []
+    o.wps.append(r.size() - 1)
+    r.append_array(ext.slice(1)); o.tx = wrap_x(x); o.ty = y
     return true
 
 func route_remaining(o: Dictionary) -> float:
@@ -931,6 +945,7 @@ func _ints(g: Dictionary) -> void:
     if g.player.get("destPort") != null: g.player.destPort = int(g.player.destPort)
     if g.player.get("follow") != null: g.player.follow = int(g.player.follow)
     if g.player.get("escort") != null: g.player.escort = int(g.player.escort)
+    if g.player.get("wps") != null: g.player.wps = g.player.wps.map(func(i): return int(i))
     for f in g.fleets:
         f.id = int(f.id)
         if f.has("dest"): f.dest = int(f.dest)

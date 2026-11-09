@@ -153,6 +153,13 @@ func _unhandled_input(e: InputEvent) -> void:
                 camera.zoom = Vector2(z, z); camera.force_update_scroll()
                 if cam_free: camera.position += before - world.get_global_mouse_position()
             return
+        if mb.pressed and mb.ctrl_pressed and mb.button_index == MOUSE_BUTTON_LEFT and sim.flag != null:   # a waypoint for the flagship
+            sim.waypoints.append(world.get_global_mouse_position().clamp(Vector2(200, 200), Vector2(sim.AW - 200, sim.AH - 200)))
+            if sim.waypoints.size() == 1: sim.say("Helm: steering for the waypoint. A/D takes the helm back.", 1.6)
+            return
+        if mb.pressed and mb.ctrl_pressed and mb.button_index == MOUSE_BUTTON_RIGHT:
+            if not sim.waypoints.is_empty(): sim.waypoints.clear(); sim.say("Waypoints cleared.", 1.2)
+            return
         if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
             if mb.pressed: drag = {"at": mb.position, "cam": camera.position, "moved": false, "btn": mb.button_index}
             else:
@@ -218,7 +225,7 @@ func _key(k: int) -> void:
         KEY_TAB:
             var mine: Array = []
             for x in sim.ships: if x.side == 0 and sim.engageable(x): mine.append(x)
-            if mine.size() > 1: sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
+            if mine.size() > 1: sim.waypoints.clear(); sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
         KEY_M: Sfx.muted = not Sfx.muted
 
 # ================================================================== ship view
@@ -354,7 +361,7 @@ class Drawer extends Node2D:
     func _draw() -> void:
         match kind:
             "islands": _islands()
-            "below": _wakes(); _parts(0)
+            "below": _wakes(); _parts(0); _torpedoes()
             "shadows": _shadows()
             "above": _parts(1)
             "light": _parts(2)
@@ -538,7 +545,7 @@ class Drawer extends Node2D:
                 P.FOAM: if z >= 0.12: _puff(cl, q.pos, q.size * (1 + k), Color(0.86, 0.93, 0.93, 0.3 * (1 - k)))
                 P.OIL: _puff(cl, q.pos, q.size * (0.6 + k * 0.8), Color(0.05, 0.06, 0.07, 0.45 * (1 - k * k)))
                 P.SWAKE: draw_arc(q.pos, q.size * (1 + k * 2), 0, TAU, 24, Color(0.88, 0.94, 0.94, 0.12 * (1 - k)), maxf(mn, 1.5))
-                P.TWAKE: _puff(puff, q.pos, maxf(q.size * (1 + k * 3), 1.2 * mn), Color(0.92, 0.96, 0.96, 0.5 * (1 - k)))
+                P.TWAKE: _puff(puff, q.pos, maxf(q.size * (1 + k * 2), 0.9 * mn), Color(0.85, 0.93, 0.93, 0.28 * (1 - k) * minf(1.0, q.life * 2.0)))
                 P.SPLASH, P.GEYSER:
                     var r = maxf(q.size, 2 * mn)
                     _puff(puff, q.pos, r * (0.5 + 0.9 * sqrt(k)), Color(0.97, 0.99, 0.99, 0.95 * (1 - k) * (1 - k)))
@@ -574,14 +581,29 @@ class Drawer extends Node2D:
                 P.SPARK: _puff(puff, q.pos, maxf(q.size, 0.8 * mn) * (1 - k * 0.5), Color(1, 0.75, 0.35, 1 - k))
                 P.FALL: _puff(puff, q.pos + Vector2(0, k * 20), maxf(q.size, mn) * (1 - k * 0.5), Color(1, 0.55, 0.2, 1 - k))
 
-    func _overlay() -> void:
-        var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
-        # torpedo tracks, shells, missiles, aircraft and tracers
+    ## Torpedoes run a few metres down: a dark shape seen through the water, a paler body that comes and goes with
+    ## the swell (warm-tinted for the enemy's, so they can still be picked out), under the ships, not over them.
+    func _torpedoes() -> void:
+        var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z; var tn = Time.get_ticks_msec() / 1000.0
         for tp in sim.torps:
             var vis: bool = tp.side == 0 or tp.arm < -20 or (sim.flag != null and tp.pos.distance_to(sim.flag.pos) < 2500)
             if not vis: continue
-            var tl = maxf(8.0, 10.0 * mn)
-            draw_line(tp.pos, tp.pos - Vector2.from_angle(tp.a) * tl, Color(1, 0.67, 0.59, 0.9) if tp.side else Color(0.94, 0.98, 0.98, 0.9), maxf(2 * mn, 0.6))
+            var d := Vector2.from_angle(tp.a); var tl := maxf(7.0, 9.0 * mn); var w := maxf(0.8, 1.6 * mn)
+            var shim := 0.75 + 0.25 * sin(tn * 3.0 + tp.pos.x * 0.05)
+            draw_line(tp.pos + d * tl * 0.1, tp.pos - d * tl * 1.1, Color(0.02, 0.08, 0.1, 0.45), w * 2.2)   # the shadow in the water
+            var core: Color = Color(0.85, 0.62, 0.52) if tp.side else Color(0.62, 0.8, 0.8)
+            draw_line(tp.pos, tp.pos - d * tl, Color(core, 0.38 * shim), w)
+
+    func _overlay() -> void:
+        var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
+        if sim.flag != null and not sim.waypoints.is_empty():   # the flagship's waypoints (Ctrl+Click)
+            var prev: Vector2 = sim.flag.pos
+            for wp in sim.waypoints:
+                draw_line(prev, wp, Color(0.93, 0.94, 0.92, 0.55), 1.5 * mn); prev = wp
+            for i in sim.waypoints.size():
+                var wp: Vector2 = sim.waypoints[i]
+                draw_circle(wp, 7.0 * mn, Color(0.05, 0.1, 0.12, 0.8)); draw_arc(wp, 7.0 * mn, 0, TAU, 20, Color(0.93, 0.94, 0.92, 0.95), 2.0 * mn)
+        # torpedo tracks, shells, missiles, aircraft and tracers
         for sh in sim.shells:
             var k: float = sh.t / sh.T; var hgt = sin(PI * k) * minf(600.0, sh.s.distance_to(sh.e) * 0.08)
             var r = maxf(1.2 * mn, {"S": 1.6, "M": 2.0, "L": 2.6, "H": 3.4}[sh.size])

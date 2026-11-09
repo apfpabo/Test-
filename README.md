@@ -4,7 +4,7 @@
 
 A naval fleet-command game in the spirit of Starsector, set on a fictional sea from 1942 into the missile age. It runs in the browser as one file with no dependencies.
 
-**Play:** open `index.html` in a browser.
+**Play:** the campaign runs in the browser: open `index.html`. The game is moving to Godot 4, battle first; see [The Godot build](#the-godot-build).
 
 ## The campaign
 
@@ -16,7 +16,7 @@ A naval fleet-command game in the spirit of Starsector, set on a fictional sea f
 - **Story.** Five Concord Admiralty missions out of Norfolk, plus bounties on raider captains.
 - **Technology eras.** Spend research points (RP) to move from late-war gunnery (Era I) through jets and guided missiles (Era II) to CIWS and area air defence (Era III). The Halvard Enclaves sell research data.
 - **Economy.** Six trade goods with local surpluses and shortages that vary by faction. Fuel is burned while underway, crew eat food and draw wages, and undermanned ships fight worse.
-- **Ships and shipbuilders.** 13 ship classes in 52 designs from seven fictional yards (Tidewater, Clydemouth & Tyne, Ostsee-Werke, Neva Admiralty, Seto Arsenal, Cantieri del Tirreno, Combine Marine). Each design is modelled on a real ship, such as the Iowa, Yamato, Bismarck, King George V, Littorio, Fletcher, Kagero, Liberty ship or Forrestal, under a fictional class name. Each has its real length, beam, displacement, speed, belt armour and turning circle. Every flag buys from its own yards, newer designs unlock as your research reaches each era, and enemy squadrons mix older designs with their newest ones. Fleets hold up to 10 ships.
+- **Ships and shipbuilders.** 13 ship classes in 50 designs from seven fictional yards (Tidewater, Clydemouth & Tyne, Ostsee-Werke, Neva Admiralty, Seto Arsenal, Cantieri del Tirreno, Combine Marine). Each design is modelled on a real ship, such as the Iowa, Yamato, Bismarck, King George V, Littorio, Fletcher, Kagero, Liberty ship or Forrestal, under a fictional class name. Each has its real length, beam, displacement, speed, belt armour and turning circle. Every flag buys from its own yards, newer designs unlock as your research reaches each era, and enemy squadrons mix older designs with their newest ones. Fleets hold up to 10 ships.
 - **Refits, officers and prizes.** Choose the weapon in each mount. Officers level up and specialise. Enemies battered below 12% hull strike their colours, and you can take them as prizes.
 
 ## Chart controls
@@ -59,3 +59,12 @@ Ships are drawn as top-down deck plans at true proportions, in the spirit of Rul
 The game lives in `src/game.html`, an HTML fragment. `./build.sh` wraps it into the standalone `index.html`.
 
 The coastline data is embedded in `src/game.html` as `<script id="land-data">`. It is Natural Earth 1:50m land (public domain) from the `world-atlas@2` npm package, simplified to 0.05°, delta-encoded, with rings that cross the 180° meridian unwrapped. Narrow straits and canals that the data cannot resolve are carved open by hand in `CHANNELS`, and unnavigable waters are filled in via `LAND_PATCHES`.
+
+## The Godot build
+
+The game is being ported to Godot 4, starting with battles. `godot/` is a Godot 4.3 project:
+
+- **Open it** in Godot 4.3 or later (Project Manager → Import → `godot/project.godot`) and press Play. It opens a battle setup screen with eight preset engagements (destroyer action, cruiser action, battle line, Yamato sorties, convoy raid, carrier strike, missile age and more), or build both squadrons from the 50 designs yourself. Battle controls are the same as in the browser build.
+- **What's new over the browser battles:** a GPU water shader with swell, light and glints; ship lighting in a shader; real per-ship scene nodes; native UI; desktop export.
+- **Art pipeline:** ship plans, mounts and effect textures are still drawn by the browser renderer and baked to images by `node tools/bake_assets.js`, which also exports the design and weapon data as JSON. Hand-made art can replace the baked images later without code changes.
+- **Checks:** `godot --headless --path godot res://tests/run_presets.tscn` plays every preset battle to a result.

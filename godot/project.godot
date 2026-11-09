@@ -1,0 +1,23 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="Iron Meridian"
+config/description="Naval fleet command in an alternate 1946."
+run/main_scene="res://scenes/skirmish.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[autoload]
+GameData="*res://scripts/game_data.gd"
+Sfx="*res://scripts/sfx.gd"
+
+[display]
+window/size/viewport_width=1400
+window/size/viewport_height=860
+window/stretch/aspect="expand"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=3
+environment/defaults/default_clear_color=Color(0.03, 0.08, 0.1, 1)

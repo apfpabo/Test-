@@ -2,7 +2,7 @@ extends Control
 ## Battle setup: pick a preset engagement or build both squadrons from the design registers.
 ## Quick battles outside the campaign.
 
-const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "missiles", "jets", "nuclear"], 3: ["radar", "sonar", "homing", "missiles", "jets", "nuclear", "ciws", "aegis"]}
+const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"], 3: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"]}
 const PRESETS := [
     {"name": "Destroyer action", "desc": "Three Tidewater destroyers against three Strelsk destroyers. Fast, close, torpedoes in the water.", "player": ["dd_fletcher", "dd_fletcher", "dd_gearing"], "enemy": ["dd_narvik", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
     {"name": "Cruiser action", "desc": "A Baltimore-type and a Cleveland-type with a destroyer screen against two Hipper-types.", "player": ["ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"], "enemy": ["ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},

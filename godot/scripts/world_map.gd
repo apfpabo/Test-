@@ -1530,8 +1530,16 @@ func _research(box: Control) -> void:
     var eras := []
     for f in Campaign.RESEARCH_PACE: if GameData.fac.has(f): eras.append("%s %s" % [GameData.fac[f].short, ["I", "II", "III"][Campaign.fac_era(f) - 1]])
     _p(box, "Each power runs its own Quiet Race; their fleets carry what their own research has reached. Eras now: " + " · ".join(eras) + ".", UI.DIM, 13)
+    var pe := Campaign.player_era(); var shown_era := 0
     for t in Campaign.C.TECH:
-        var done: bool = G.tech.has(t.id); var ok: bool = t.req.all(func(r): return G.tech.has(r))
+        if int(t.era) != shown_era:   # each era: a header, and how far you are from opening the next
+            shown_era = int(t.era)
+            box.add_child(UI.label(String(Campaign.C.ERA_NAME[str(shown_era)]).to_upper() + ("" if pe >= shown_era else "  ·  NOT YET OPEN"), UI.DIM, 12))
+            if shown_era < 3:
+                var have := Campaign.era_count(G.tech, shown_era)
+                var nxt: String = String(Campaign.C.ERA_NAME[str(shown_era + 1)]).split(" · ")[0]
+                _p(box, ("%s is open." % nxt) if have >= Campaign.ERA_GATE and pe >= shown_era else ("%s opens when you have researched %d of these %s technologies: %d of %d so far." % [nxt, Campaign.ERA_GATE, String(Campaign.C.ERA_NAME[str(shown_era)]).split(" · ")[0], mini(have, Campaign.ERA_GATE), Campaign.ERA_GATE]), UI.GOLD if have < Campaign.ERA_GATE and pe == shown_era else UI.DIM, 13)
+        var done: bool = G.tech.has(t.id); var ok: bool = t.req.all(func(r): return G.tech.has(r)) and int(t.era) <= pe
         var col = VBoxContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         col.add_child(UI.label("%s · era %d" % [t.name, t.era], UI.GREEN if done else (UI.INK if ok else UI.DIM)))
         col.add_child(UI.label(t.desc, UI.DIM, 13, true))
@@ -1539,6 +1547,7 @@ func _research(box: Control) -> void:
         if done: act = UI.label("Researched", UI.GREEN, 13)
         elif ok: act = UI.button("Research · %d RP" % t.cost, func():
             G.rp -= t.cost; G.tech.append(t.id); _toast("Research complete: %s." % t.name); Campaign.log_ev("Researched " + t.name); _rerender(), false, G.rp < t.cost)
+        elif int(t.era) > pe: act = UI.label("Opens with %s" % String(Campaign.C.ERA_NAME[str(int(t.era))]).split(" · ")[0], UI.DIM, 13)
         else: act = UI.label("Requires " + ", ".join(t.req.map(func(r): return Campaign.C.TECH.filter(func(x): return x.id == r)[0].name)), UI.DIM, 13)
         box.add_child(UI.row([col, act]))
 

@@ -196,11 +196,17 @@ func port_route(from_id: int, to_id: int) -> Array:
 
 # ------------------------------------------------------------------ ships and fleets
 func hull(rec: Dictionary) -> Dictionary: return GameData.hulls[rec.type]
+## The era a set of technologies has reached: Era II opens with ERA_GATE (3) Era I technologies, Era III with
+## ERA_GATE Era II technologies on top. (Technologies of an era can only be researched once it is open.)
+const ERA_GATE := 3
+func era_count(tech: Array, era: int) -> int:
+    var n := 0
+    for x in C.TECH: if int(x.era) == era and tech.has(x.id): n += 1
+    return n
 func era_of(tech: Array) -> int:
-    var e = 1
-    for t in tech:
-        for x in C.TECH: if x.id == t: e = maxi(e, int(x.era))
-    return e
+    if era_count(tech, 1) < ERA_GATE: return 1
+    if era_count(tech, 2) < ERA_GATE: return 2
+    return 3
 func has_tech(t: String) -> bool: return G.tech.has(t)
 func player_era() -> int: return era_of(G.tech)
 ## Each power runs its own Quiet Race. Its research points grow every day at its own pace (faster at war); its era,
@@ -230,10 +236,11 @@ func _research_day() -> void:
         var now := fac_era(f)
         if now > before and GameData.fac.has(f):
             toast.emit("Intelligence: %s yards are fielding %s." % [GameData.fac[f].short, C.ERA_NAME[str(now)].split("· ")[1].to_lower()])
+## What a power fielding this era has researched (enough to open it, as for you).
 func enemy_tech(era: int) -> Array:
     var t = []
-    if era >= 2: t.append_array(["radar", "homing", "missiles", "jets", "nuclear"])
-    if era >= 3: t.append_array(["ciws", "aegis"])
+    if era >= 2: t.append_array(["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"])
+    if era >= 3: t.append_array(["helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"])
     return t
 func tech_ok(t, tech: Array) -> bool: return t == null or t == "" or tech.has(t)
 func design_ok(id: String, tech: Array) -> bool:
@@ -305,6 +312,7 @@ func wages() -> float:
     var t: float = G.crew * 0.15
     for o in G.officers: t += 40 * o.lvl
     t += Structures.garrison_total() * 0.15   # the men holding your structures ashore
+    t += Structures.troops() * Structures.TROOP_WAGE   # soldiers embarked in troopships
     return t
 var show_origin := false   # the chart opens with the origin's story once, at the start of a campaign
 
@@ -685,7 +693,7 @@ func new_day(moved: bool) -> void:
             for s in G.fleet: s.hullFrac = maxf(0.05, s.hullFrac - 0.015)
             if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
         else: G.iceWarned = false
-    G.cargo.food -= G.crew * 0.004
+    G.cargo.food -= (G.crew + Structures.troops()) * 0.004
     if G.cargo.food < 0:
         G.cargo.food = 0; var lost = int(ceil(G.crew * 0.03)); G.crew -= lost
         if lost: toast.emit("No food aboard. %d sailors deserted." % lost)

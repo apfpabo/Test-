@@ -335,8 +335,57 @@ func off_coast(s: Dictionary) -> bool:
 ## Men needed to hold it.
 func garrison_need(s: Dictionary) -> int: return int(kind(s).garrison)
 
-## What goes ashore to hold a structure. Today: men from your crews. When troop transports exist, they land here.
-func landing_force() -> int: return int(g().crew)
+## What goes ashore to hold a structure: soldiers from your troopships first, then men from your crews.
+func landing_force() -> int: return int(g().crew) + troops()
+
+# ------------------------------------------------------------------ troopships and invasions
+## Soldiers embarked in your troopships, and how many they can carry.
+func troops() -> int: return int(g().get("troops", 0))
+func troop_capacity() -> int:
+	var n := 0
+	for r in g().fleet: n += int(Campaign.hull(r).get("troops", 0))
+	return n
+const TROOP_COST := 40      # to embark a soldier in port
+const TROOP_WAGE := 0.2     # a day
+
+## Defenders a structure puts up against a landing: five men to every post of its garrison, thinned by every strike
+## and bombardment, stiffened by radar warning and fighter cover.
+func defenders(s: Dictionary) -> float:
+	var d := defences(s)
+	var base: float = float(kind(s).garrison) * 5.0 * (_doc(s.fac, "guns") * 0.3 + 0.7) if s.fac != "" else float(kind(s).garrison)
+	return base * (1.0 - 0.75 * float(s.dmg)) * float(d.radar) + float(d.fighters) * 40.0
+
+func can_invade(s: Dictionary) -> String:
+	if s.fac == "player": return "It is yours."
+	if troops() <= 0: return "You have no troops embarked. Troopships embark soldiers in port (Repairs & crew)."
+	if not off_coast(s): return "Your fleet must lie off the coast nearest it (%d km inland)." % int(s.coastKm)
+	return ""
+
+## A landing: your soldiers against the defenders, fought out at once. Win, and the survivors hold it (those not needed
+## for the garrison re-embark); lose, and the survivors are taken off again. Returns the story of it.
+func invade(s: Dictionary) -> Dictionary:
+	var G := g(); var old: String = s.fac; var men := troops(); var D := defenders(s)
+	if breaks_armistice(s):
+		G.rep[s.fac] = G.rep.get(s.fac, 0) - 30; Campaign.incident(s.fac); Diplomacy.on_open_fire(s.fac)
+	var A: float = men * (1.25 if Campaign.has_tech("amphib") else 1.0)
+	var odds := clampf(A / maxf(1.0, A + D) * 1.3 - 0.15, 0.05, 0.95)
+	var won := randf() < odds
+	var lost := int(round(men * clampf(D / maxf(1.0, A + D) * randf_range(0.5, 1.1) * (0.7 if won else 1.4), 0.03, 0.95)))
+	var left := maxi(0, men - lost); G.troops = left
+	var res := {"name": s.name, "men": men, "lost": lost, "won": won, "odds": odds, "defenders": int(round(D))}
+	if won and left > 0:
+		var need := garrison_need(s); var hold := mini(left, maxi(need, left))
+		G.troops = left - mini(left, need); s.garrison = mini(left, need)
+		if int(s.garrison) < need: s.garrison = int(s.garrison)   # a thin garrison holds it as best it can
+		s.from = old; s.fac = "player"; s.took = G.day; s.dmg = maxf(float(s.dmg), 0.5)
+		if old != "": G.rep[old] = G.rep.get(old, 0) - 10; Diplomacy.thanks(old, 1)
+		Campaign.log_ev("Stormed the " + s.name)
+	else:
+		res.won = false
+		s.dmg = minf(1.0, float(s.dmg) + 0.1)   # the attack costs them too
+		Campaign.log_ev("Landing at the %s beaten off" % s.name)
+	Campaign.save()
+	return res
 
 ## Why it can't be taken now, or "".
 func can_take(s: Dictionary) -> String:
@@ -349,7 +398,7 @@ func can_take(s: Dictionary) -> String:
 ## The garrison surrenders (or an unclaimed site is occupied): your men land and hold it.
 func take(s: Dictionary) -> String:
 	var G := g(); var old: String = s.fac; var need := garrison_need(s)
-	G.crew -= need; s.garrison = need; s.from = old; s.fac = "player"; s.took = G.day
+	var from_troops := mini(troops(), need); G.troops = troops() - from_troops; G.crew -= need - from_troops; s.garrison = need; s.from = old; s.fac = "player"; s.took = G.day
 	s.dmg = maxf(float(s.dmg), 0.5)   # what is left of the defences is yours to repair
 	var t: String
 	if old == "":

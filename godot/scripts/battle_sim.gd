@@ -99,6 +99,7 @@ class CShip:
     var flooded: Array = [] # magazines flooded by damage control (their x along the hull)
     var dc_left = 0        # depth-charge patterns left
     var up: Dictionary = {} # fitted system upgrades, 0-2 each: eng, hull, mag, fc, radar, sonar (see UPGRADES)
+    var shell_mode = "auto"   # the flagship's choice of shell: auto, ap, he or inc (AI ships always auto)
     var fuel_k = 1.0       # 0.25 when the bunkers are dry: steerage way on emergency reserves
 
 class Part:
@@ -572,7 +573,9 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
     # penetration in mm of armour, from the shell's weight, falling off with range; fall: how steeply it comes down
     var pen: float = float(w.dmg) * 1.9 * (1.0 - 0.45 * clampf(dd / rng, 0.0, 1.0))
-    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s})
+    var kind := shell_for(s, aim, pen)
+    pen *= SHELLS[kind].pen
+    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind})
     if m.rec.size() != n: m.rec.resize(n)
     m.rec[i] = 1.0; m.recoil = 1.0
     fx_muzzle(p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl), ang, w.size, 1)
@@ -767,6 +770,29 @@ func drop_dcs(s: CShip) -> bool:
     if s.side == 0 and s == flag: say("Depth charges away · %d patterns left." % s.dc_left, 1.5)
     return true
 
+## Shell types. AP: full penetration, may pass through a light ship. HE: bursts on contact: little penetration, but
+## more blast against unarmoured ships and upper works, never over-penetrates, and starts fires. Incendiary: little
+## penetration or blast, but fires above all. (One magazine per mount: the shells are drawn from the same stock.)
+const SHELLS := {
+    "ap": {"name": "AP", "pen": 1.0, "nopen": 1.0, "hit": 1.0, "fire": 1.0},
+    "he": {"name": "HE", "pen": 0.35, "nopen": 3.0, "hit": 0.9, "fire": 2.0},
+    "inc": {"name": "Incendiary", "pen": 0.25, "nopen": 1.6, "hit": 0.65, "fire": 4.0}}
+const SHELL_MODES := ["auto", "ap", "he", "inc"]
+
+## The shell a gun loads: the ship's choice, or (auto, and always for the AI) by the target where it aims: AP if the
+## shell can beat its belt at this range, HE against light ships or armour it can't beat, incendiary for merchants.
+func shell_for(s: CShip, aim: Vector2, pen: float) -> String:
+    if s.shell_mode != "auto": return s.shell_mode
+    var tg: CShip = null; var bd := 600.0
+    for o in ships:
+        if o.side == s.side or not active(o): continue
+        var d := o.pos.distance_to(aim)
+        if d < bd: bd = d; tg = o
+    if tg == null: return "he"
+    if tg.d.kind == "merchant": return "inc"
+    if tg.d.armor >= 40 and pen > tg.armor * 1.15: return "ap"
+    return "he"
+
 ## What a shell does when it strikes. Its penetration (mm, from its weight and the range it was fired at) meets the
 ## armour it hits: the belt, made thicker by the angle the shell strikes at, or the thinner deck if it comes down
 ## steeply from long range. A very oblique hit can ricochet; a shell that beats the armour penetrates (full damage,
@@ -781,12 +807,15 @@ func shell_result(tg: CShip, sh: Dictionary) -> Dictionary:
     if not deck and obl > 1.12 and randf() < (obl - 1.0) / 0.5: return {"kind": "rico", "k": 0.03, "text": "Ricochet"}
     var eff: float = armour / maxf(cos(obl), 0.25)
     var pen: float = sh.get("pen", sh.dmg * 1.9)
-    if pen < eff:
-        return {"kind": "nopen", "k": 0.1 + 0.15 * pen / eff, "text": "No penetration" + (" (deck)" if deck else "")}
-    if pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14) and randf() < 0.55:
-        return {"kind": "over", "k": 0.35, "text": "Overpenetration"}
+    var am: Dictionary = SHELLS[sh.get("ammo", "ap")]; var tag: String = am.name + " · "
+    if pen < eff:   # HE and incendiary burst on the plate: more blast and fire than an AP shell that fails
+        var kb: float = (0.1 + 0.15 * pen / eff) * float(am.nopen)
+        if tg.d.armor < 25: kb = maxf(kb, 0.55 * float(am.hit))   # an unarmoured ship: the burst does real harm
+        return {"kind": "nopen", "k": minf(kb, 0.8), "text": tag + ("Burst on the armour" if sh.get("ammo", "ap") != "ap" else "No penetration") + (" (deck)" if deck else ""), "fire": am.fire}
+    if sh.get("ammo", "ap") == "ap" and pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14) and randf() < 0.55:
+        return {"kind": "over", "k": 0.35, "text": tag + "Overpenetration", "fire": am.fire}
     tg.armor = maxf(tg.d.armor * 0.4, tg.armor - sh.dmg * 0.1)       # the plate is weakened where it was holed
-    return {"kind": "pen", "k": 1.0, "text": "Deck penetration" if deck else "Penetration"}
+    return {"kind": "pen", "k": float(am.hit), "text": tag + ("Deck penetration" if deck else "Penetration"), "fire": am.fire}
 
 # ------------------------------------------------------------------ damage
 func damage(s: CShip, dmg: float, type: String) -> void:
@@ -892,13 +921,13 @@ func systems_tick(s: CShip, dt: float) -> void:
     if s.fc < 0.85: s.fc = minf(0.85, s.fc + dt * 0.002 * dc)
 
 ## A hit leaves a scorch (and a hole for shells) in ship space; heavier hits may start a fire or knock out a mount.
-func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool) -> void:
+func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool, fire_k := 1.0) -> void:
     if not s.alive: return
     var l = (wp - s.pos).rotated(-s.a)
     var x = clampf(l.x, -s.d.L * 0.46, s.d.L * 0.46); var hh = hull_half(s.d, x) * 0.85; var y = clampf(l.y, -hh, hh)
     s.marks.append({"x": x, "y": y, "r": (1.5 + sz * 2.2) * (0.7 + randf() * 0.6), "v": randi() % 4, "hole": hole})
     if s.marks.size() > 50: s.marks.pop_front()
-    if randf() < 0.12 * sz: s.fires.append({"x": x, "y": y, "t": 60.0 + randf() * 180.0, "r": 0.8 + sz * 0.9, "st": 0.0})
+    if randf() < 0.12 * sz * fire_k: s.fires.append({"x": x, "y": y, "t": 60.0 + randf() * 180.0, "r": 0.8 + sz * 0.9, "st": 0.0})
     for m in s.mounts:
         if m.dead or m.w.kind == "sam" or m.w.kind == "ssm": continue
         if Vector2(m.slot.x - x, m.slot.y - y).length() < m.w.get("tw", 2.5) * 0.9 + 1 and randf() < 0.1 * sz:
@@ -1129,7 +1158,7 @@ func step(dtv: float) -> void:
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
         if hit != null:
             var res := shell_result(hit, sh); _log("shell " + res.kind)
-            mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico")
+            mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico", float(res.get("fire", 1.0)))
             if res.kind == "pen": hit_systems(hit, sh.pos, sh.dmg, "shell")
             damage(hit, sh.dmg * res.k, "resolved")
             if res.kind == "rico": part(P.SPARK, sh.pos, 0.5, 2 + sz, Vector2.from_angle((sh.e - sh.s).angle() + (randf() - 0.5) * 1.2) * 120.0)

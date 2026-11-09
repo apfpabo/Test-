@@ -100,7 +100,7 @@ func _draw() -> void:
         _text(Vector2(16, 28 + i * 18), ("▸ " if on else "   ") + orders[i][0] + " " + orders[i][1], GOLD if on else Color(INK, 0.55))
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
-    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
     var ry = 128.0
     for side in [0, 1]:
         _text(Vector2(16, ry), "Enemy" if side else "Task force", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
@@ -122,6 +122,7 @@ func _draw() -> void:
         _text(Vector2(x + 10, y + 26), f.rec.name.to_upper(), GOLD, 20)
         var hdg = int(round(fposmod(rad_to_deg(f.a + PI / 2), 360))); var rud = int(round(f.rud * 35))
         var line = f.d.dn + " class · " + ["All stop", "Slow ahead", "Half ahead", "Full ahead", "Flank speed"][f.throttle] + " · %d kn · course %03d° · rudder " % [int(round(f.v / BattleSim.KN)), hdg] + (("%d° " % absi(rud)) + ("port" if rud < 0 else "stbd") if rud else "amidships")
+        line += " · shells " + ("auto" if f.shell_mode == "auto" else BattleSim.SHELLS[f.shell_mode].name) + " (V)"
         if f.sub: line += " · SUBMERGED" if sim.submerged(f) else (" · diving" if f.want_dive else " · surfaced")
         _text(Vector2(x + 10, y + 46), line, DIM, 12)
         _text(Vector2(x + 10, y + 64), "Hull", DIM, 12); _bar(Vector2(x + 60, y + 56), 350, 7, f.hull / f.max_hull, GREEN)

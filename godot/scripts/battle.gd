@@ -207,6 +207,10 @@ func _key(k: int) -> void:
                     if not sim.launch_strike(s, tg): sim.say("No squadrons ready.", 1.2)
         KEY_C:
             if s and s.sub: s.want_dive = not s.want_dive; sim.say("Dive, dive, dive!" if s.want_dive else "Surfacing.", 1.2)
+        KEY_V:
+            if s:
+                s.shell_mode = BattleSim.SHELL_MODES[(BattleSim.SHELL_MODES.find(s.shell_mode) + 1) % BattleSim.SHELL_MODES.size()]
+                sim.say("Load " + {"auto": "by target (auto: AP against armour, HE against light ships, incendiary against merchants)", "ap": "armour-piercing", "he": "high explosive", "inc": "incendiary"}[s.shell_mode] + ".", 2.0)
         KEY_X:
             sim.autofire = not sim.autofire
             sim.say("Main-gun autofire " + ("on" if sim.autofire else "off") + (". Lock a target first." if sim.autofire and sim.lock == null else ""), 1.5)

@@ -808,8 +808,11 @@ var _panel_scroll: ScrollContainer
 func open_panel(build: Callable, blocking := false, width := 760.0, key := "") -> VBoxContainer:
     var keep := 0
     if key != "" and key == _panel_key and is_instance_valid(_panel_scroll): keep = _panel_scroll.scroll_vertical
+    # a fresh panel fades and settles in; a new page in an open panel fades in; a redraw of the same page doesn't
+    var fresh: bool = not panel_open
+    var new_page: bool = key == "" or key != _panel_key
     _panel_key = key
-    close_panel(); panel_open = true; _blocking = blocking; Campaign.paused = true
+    _clear_panel(); panel_open = true; _blocking = blocking; Campaign.paused = true
     var shade = ColorRect.new(); shade.color = Color(0.016, 0.047, 0.063, 0.6); shade.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.add_child(shade); shade.mouse_filter = Control.MOUSE_FILTER_STOP
     var center = CenterContainer.new(); center.set_anchors_preset(Control.PRESET_FULL_RECT); shade.add_child(center)
     var pc = PanelContainer.new(); pc.custom_minimum_size = Vector2(width, 0); center.add_child(pc)
@@ -817,6 +820,16 @@ func open_panel(build: Callable, blocking := false, width := 760.0, key := "") -
     var box = VBoxContainer.new(); box.size_flags_horizontal = Control.SIZE_EXPAND_FILL; box.add_theme_constant_override("separation", 8); scroll.add_child(box)
     cur_panel = shade; _panel_scroll = scroll
     build.call(box)
+    if fresh:
+        shade.modulate.a = 0.0; pc.modulate.a = 0.0; pc.scale = Vector2(0.97, 0.97)
+        pc.resized.connect(func(): pc.pivot_offset = pc.size / 2, CONNECT_ONE_SHOT)
+        var tw := create_tween().set_parallel(true)
+        tw.tween_property(shade, "modulate:a", 1.0, 0.16)
+        tw.tween_property(pc, "modulate:a", 1.0, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+        tw.tween_property(pc, "scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+    elif new_page:
+        box.modulate.a = 0.0
+        create_tween().tween_property(box, "modulate:a", 1.0, 0.18).set_ease(Tween.EASE_OUT)
     _fit_panel.call_deferred(scroll, box, keep)
     return box
 
@@ -851,6 +864,15 @@ func _pause_settings() -> void:
     , false, 640)
 
 func close_panel() -> void:
+    # the panel fades away; it takes no more clicks while it does
+    for c in panel_layer.get_children():
+        if c.has_meta("closing"): continue
+        c.set_meta("closing", true); c.propagate_call("set_mouse_filter", [Control.MOUSE_FILTER_IGNORE])
+        var tw := create_tween(); tw.tween_property(c, "modulate:a", 0.0, 0.14).set_ease(Tween.EASE_IN); tw.tween_callback(c.queue_free)
+    panel_open = false; _blocking = false; Campaign.paused = false
+
+## Clears the panel at once (when another replaces it).
+func _clear_panel() -> void:
     for c in panel_layer.get_children(): c.queue_free()
     panel_open = false; _blocking = false; Campaign.paused = false
 
@@ -1169,7 +1191,7 @@ func _render_port() -> void:
 func show_command() -> void:
     cur_port = {}
     open_panel(func(box):
-        box.add_child(UI.title("Command · " + str(CMD_TABS.filter(func(t): return t[0] == cmd_tab)[0][1])))
+        box.add_child(UI.title(str(CMD_TABS.filter(func(t): return t[0] == cmd_tab)[0][1])))
         match cmd_tab:
             "fleet": _fleet_table(box, false)
             "officers": _officers(box, {})
@@ -1180,7 +1202,7 @@ func show_command() -> void:
             "hold":
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
                 _p(box, "%d / %d used. %d enemy ships sunk or taken." % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.G.kills], UI.DIM, 14)
-        box.add_child(UI.row([UI.button("Close", close_panel, true), UI.button("Save & exit to title", func(): Campaign.save(); get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))]))
+        box.add_child(UI.row([UI.button("Close", close_panel, true)]))   # save and exit live in the pause menu (Esc)
     , false, 960, "cmd:" + cmd_tab)
 
 func _repairs(box: Control) -> void:

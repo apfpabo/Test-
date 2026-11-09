@@ -1151,6 +1151,54 @@ function supAft(g, d, P, st, x, len, w, tiers) {
   if (st === 'uk' && big) for (const sy of [-1, 1]) director(g, P, x0 + len * 0.18, sy * hw * 0.62, 2.1, H(tiers - 1) + 1.4, 'uk');
   if (st === 'us' && big) for (const sy of [-1, 1]) tub(g, P, x0 + len * 0.15, sy * hw * 0.6, 1.4, H(tiers - 1) + 0.6);
 }
+// The waist of a big ship, between the bridge and the after control: an upper deckhouse on the long one, casings round
+// the funnels with searchlight platforms, a row of AA tubs along each edge, skylights and ventilator trunks down the
+// middle, boats in crutches with their crane, lockers and ready-use ammunition boxes. Laid out by rule from the design,
+// so every ship gets its own arrangement; everything is drawn into the height map too.
+function houseDetail(g, d, P, hx, hlen, hw2) {
+  const S = P.sup, r = rng(seedOf(d.id) + 77), x0 = hx - hlen / 2, x1 = hx + hlen / 2, hw = hw2 / 2, h0 = DECK_H * 0.8, h1 = h0 + DECK_H * 0.8;
+  const blocks = (d.p.sup || []).map(([x, l]) => [x - l / 2 - 0.5, x + l / 2 + 0.5]), funs = (d.p.fun || []).filter(([fx]) => fx > x0 && fx < x1);
+  const free = (x, pad = 0) => !blocks.some(([a, b]) => x > a - pad && x < b + pad), nearFun = (x, pad) => funs.some(([fx, rx]) => Math.abs(x - fx) < rx + pad);
+  const nearSlot = (x, y, pad) => d.slots.some(sl => Math.hypot(sl.x - x, sl.y - y) < pad) || (d.p.tubs || []).some(([tx, ty]) => Math.hypot(tx - x, ty - y) < pad) || (d.p.cat || []).some(([cx]) => Math.abs(cx - x) < 6);
+  // free spans of the waist, between the blocks
+  const spans = []; let a = null;
+  for (let x = x0 + 1.5; x <= x1 - 1.5; x += 0.5) { if (free(x)) { if (a === null) a = x; } else if (a !== null) { spans.push([a, x - 0.5]); a = null; } }
+  if (a !== null) spans.push([a, x1 - 1.5]);
+  for (const [sa, sb] of spans) {
+    if (sb - sa < 6) continue;
+    // the upper deckhouse, with a walkway left along each side
+    level(g, P, sa + 0.6, sb - 0.6, hw * 0.6, h1, { front: 'round', rear: 'round' });
+    // boats in crutches along its sides where no funnel stands, the outboard ones on the lower house
+    for (let x = sa + 5; x < sb - 5; x += 9.5) { if (nearFun(x, 4.5)) continue;
+      for (const sy of [-1, 1]) { const bl = 7.5, bw = 2.1, by = sy * hw * 0.36;
+        g.beginPath(); g.ellipse(x, by, bl / 2, bw / 2, 0, 0, TAU); pfill(g, shade(S, 0.2), h1 + 1.5);
+        g.beginPath(); g.ellipse(x, by, bl * 0.4, bw * 0.3, 0, 0, TAU); pfill(g, shade(S, -0.18), h1 + 1.0);
+        if (!HM.on) { g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.08; g.beginPath(); for (const k of [-0.25, 0, 0.25]) { g.moveTo(x + bl * k, by - bw * 0.3); g.lineTo(x + bl * k, by + bw * 0.3); } g.stroke(); } } }
+    // skylights and ventilator trunks down the centre line
+    for (let x = sa + 3.2; x < sb - 3; x += 4.6) { if (nearFun(x, 2.2)) continue; const k = r();
+      if (k < 0.5) { rrect(g, x - 1.3, -0.9, 2.6, 1.8, 0.2); pfill(g, shade(S, -0.1), h1 + 0.7);
+        if (!HM.on) { g.fillStyle = 'rgba(18,24,28,.75)'; for (const yy of [-0.62, 0.1]) for (const xx of [-1, -0.2, 0.6]) g.fillRect(x + xx, yy, 0.55, 0.5); } }
+      else if (k < 0.8) { for (const sy of [-1, 1]) { g.beginPath(); g.arc(x, sy * 1.1, 0.62, 0, TAU); pfill(g, shade(S, 0.06), h1 + 1.8); if (!HM.on) { g.beginPath(); g.arc(x + 0.2, sy * 1.1, 0.36, 0, TAU); g.fillStyle = '#1e2224'; g.fill(); } } }
+      else { rrect(g, x - 0.9, -1.4, 1.8, 2.8, 0.3); pfill(g, shade(S, -0.22), h1 + 1.1); if (!HM.on) { g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 0.07; g.strokeRect(x - 0.6, -1.1, 1.2, 2.2); } } }
+  }
+  // casings round the funnels: a raised platform with searchlights at its corners
+  funs.forEach(([fx, rx, ry, fy = 0]) => {
+    level(g, P, fx - rx * 1.55, fx + rx * 1.55, Math.min(hw * 0.86, ry * 1.6), h1 + DECK_H * 0.7, { front: 'round', rear: 'round', y: fy });
+    for (const sy of [-1, 1]) for (const sx of [-1, 1]) searchlight(g, P, fx + sx * rx * 1.15, fy + sy * Math.min(hw * 0.66, ry * 1.25), h1 + DECK_H * 0.7 + 0.5); });
+  // AA tubs along both edges of the long deckhouse, ready-use lockers between them, and the boat crane
+  let n = 0;
+  for (let x = x0 + 5; x < x1 - 3; x += 6.5) for (const sy of [-1, 1]) { const ty = sy * hw * 0.8;
+    if (!free(x, 1.2) || nearSlot(x, ty, 4.2)) continue;
+    if ((n++ + (sy > 0 ? 1 : 0)) % 3 === 2) { // a ready-use locker pair instead of a gun
+      for (const k of [-0.9, 0.9]) { rrect(g, x + k - 0.6, ty - 0.45, 1.2, 0.9, 0.12); pfill(g, shade(S, -0.16), h0 + 0.8); } continue; }
+    tub(g, P, x, ty, 1.3, h0 + 1.0);
+    if (!HM.on) { g.strokeStyle = 'rgba(18,20,22,.8)'; g.lineWidth = 0.14; g.beginPath(); g.moveTo(x, ty); g.lineTo(x + 0.4, ty + sy * 1.5); g.stroke(); } }
+  const sp = spans.filter(([sa, sb]) => sb - sa > 14)[0];
+  if (sp && !(d.p.crane || []).length) { const cx = sp[0] + 2.2; g.beginPath(); g.arc(cx, 0, 1.1, 0, TAU); pfill(g, shade(S, -0.22), h1 + 3); g.strokeStyle = HM.on ? hgrey(h1 + 5) : 'rgba(14,18,20,.85)'; g.lineWidth = 0.38; g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx + 9, 2.4); g.stroke(); }
+  // life rafts canted against the house sides and a catwalk rail down each walkway
+  if (!HM.on) { g.save(); g.setLineDash([0.1, 0.8]); g.strokeStyle = 'rgba(225,225,215,.3)'; g.lineWidth = 0.09;
+    for (const [sa, sb] of spans) for (const sy of [-1, 1]) { g.beginPath(); g.moveTo(sa + 1, sy * hw * 0.64); g.lineTo(sb - 1, sy * hw * 0.64); g.stroke(); } g.restore(); }
+}
 function drawPlanTop(g, d, P) {
   const p = d.p || {}, L = d.L, B = d.B, h = L / 2, b = B / 2, ink = 'rgba(14,18,20,.85)', st = supSchool(d), S = P.sup;
   // boats in their crutches, cranes and catapults
@@ -1168,7 +1216,7 @@ function drawPlanTop(g, d, P) {
     g.restore();
   }
   // the long deckhouse (01 level) that the bridge, funnels and after control stand on
-  for (const [x, len, w] of p.house || []) level(g, P, x - len / 2, x + len / 2, w / 2, DECK_H * 0.8, { front: 'taper', rear: 'round' });
+  for (const [x, len, w] of p.house || []) { level(g, P, x - len / 2, x + len / 2, w / 2, DECK_H * 0.8, { front: 'taper', rear: 'round' }); houseDetail(g, d, P, x, len, w); }
   for (const [x, y, r, hh] of p.tubs || []) tub(g, P, x, y, r, hh || 1.4);
   // superstructure blocks
   (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {

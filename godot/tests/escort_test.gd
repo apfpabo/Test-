@@ -6,7 +6,8 @@ func _ready() -> void:
 	Campaign.new_game("merchant")
 	var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var cv = null
 	for f in G.fleets: if f.kind == "convoy" and not Campaign.hostile_fleet(f): cv = f; break
-	P.x = cv.x + 30.0; P.y = cv.y; P.escort = int(cv.id); P.repathT = 0.0
+	var w := Campaign.nearest_water(cv.x + 30.0, cv.y, 80)   # 30 units off, but afloat: the convoy may lie close under a coast
+	P.x = w.x; P.y = w.y; P.escort = int(cv.id); P.repathT = 0.0
 	var met := []; Campaign.encounter.connect(func(f): met.append(f.id); Campaign.paused = false; f.cool = 30.0; P.cool = 30.0)
 	var worst := 0.0; var gone := false
 	for i in 30 * 10 * 4:

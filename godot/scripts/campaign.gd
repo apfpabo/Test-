@@ -134,6 +134,8 @@ func _load_nav() -> void:
         nav_bucket[c].append(i)
     for i in range(0, edges.size(), 2): nav.connect_points(edges[i], edges[i + 1])
     nav_routes = JSON.parse_string(FileAccess.open("res://data/nav_routes.json", FileAccess.READ).get_as_text()).routes
+    if n == 0 or edges.is_empty(): push_error("Sea-lane data is missing (data/nav_*.bin): routes will fail. Check the export include filter.")
+    else: print("Sea lanes: %d points, %d links" % [n, edges.size() / 2])
 
 func _nodes_near(p: Vector2, r: float) -> Array:
     var out = []; var c = Vector2i(int(wrap_x(p.x) / 20.0), int(p.y / 20.0)); var k = int(ceil(r / 20.0)); var gw = int(MW / 20.0)

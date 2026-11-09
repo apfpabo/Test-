@@ -32,6 +32,7 @@ class Mount:
     var rest_t = 0.0
     var rest_o: CShip = null
     var lvl = 0        # 0 on the deck; 1 and up for superfiring mounts whose barrels pass over the one ahead
+    var clear := PackedByteArray()   # 1 per 2-degree bearing bin (ship frame) where the barrels clear the ship's own structure
 
 class CShip:
     var rec: Dictionary
@@ -214,7 +215,80 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     for m in s.mounts: if m.w.kind == "gun": best = maxi(best, GUN_SIZES.find(m.w.size))
     s.main_sz = GUN_SIZES[maxi(best, 0)]
     superfiring(s)
+    for m in s.mounts: if m.w.kind == "gun": m.clear = clear_bearings(s, m)
     return s
+
+const BINS := 180
+static func bin_of(a: float) -> int: return int(floor((wrapf(a, -PI, PI) + PI) / TAU * BINS)) % BINS
+static func bin_angle(i: int) -> float: return -PI + (i + 0.5) * TAU / BINS
+
+## Bearings at which a gun can point without its barrels running into its own ship: the superstructure, funnels,
+## a carrier's flight deck and island, or another turret standing as high or higher. A raised turret may pass over a
+## lower one; nothing passes through the bridge. The design's own firing arcs still apply on top of this.
+func clear_bearings(s: CShip, m: Mount) -> PackedByteArray:
+    var d := s.d; var p: Dictionary = d.p; var w := m.w
+    var mp := Vector2(m.slot.x, m.slot.y)
+    var reach: float = w.tl * 0.42 + w.bl; var pad: float = w.get("bw", 0.4) * 1.2 + 0.3
+    var rects := []   # Rect2 obstacles in ship space
+    for b in p.get("sup", []):
+        # each deck of a block, shrinking as the plan draws it; a mount standing on a deck clears only that deck
+        var tiers: int = int(b[3]) if b.size() > 3 else 1
+        for tt in tiers:
+            var ll: float = b[1] * (1 - tt * 0.17); var ww: float = b[2] * (1 - tt * 0.14); var xx: float = b[0] + b[1] * 0.06 * tt
+            var r := Rect2(xx - ll / 2.0, -ww / 2.0, ll, ww)
+            if not r.grow(0.5).has_point(mp): rects.append(r.grow(pad))
+    if p.has("fd"):
+        var fd: Dictionary = p.fd; var fl: float = d.L * fd.len; var fx: float = fd.get("x", 0.0)
+        var r := Rect2(fx - fl / 2, -fd.w / 2.0, fl, fd.w)
+        if not r.has_point(mp): rects.append(r.grow(pad))
+        var isl: Array = fd.isl; var iy: float = fd.w / 2.0 - isl[2] / 2.0 + 1.2
+        rects.append(Rect2(isl[0] - isl[1] / 2.0, iy - isl[2] / 2.0, isl[1], isl[2]).grow(pad))
+    var funnels := []
+    for fu in p.get("fun", []): funnels.append([Vector2(fu[0], fu[3] if fu.size() > 3 else 0.0), fu[1] + pad, fu[2] + pad])
+    var houses := []  # other turrets as high or higher than this one
+    for o in s.mounts:
+        if o == m or o.w.kind != "gun" or o.lvl < m.lvl: continue
+        houses.append([Vector2(o.slot.x, o.slot.y), o.w.tw * 0.5 + pad])
+    var out := PackedByteArray(); out.resize(BINS)
+    for i in BINS:
+        var a := bin_angle(i); var dir := Vector2.from_angle(a); var ok := true
+        # inside the design's arcs at all?
+        var in_arc := false
+        for arc in m.slot.arcs: if absf(ang_diff(a, arc[0])) <= arc[1]: in_arc = true
+        if not in_arc: out[i] = 0; continue
+        var t: float = w.tl * 0.3
+        while t <= reach and ok:
+            var q := mp + dir * t
+            for r in rects: if r.has_point(q): ok = false
+            for fu in funnels:
+                var dq: Vector2 = q - fu[0]
+                if pow(dq.x / fu[1], 2) + pow(dq.y / fu[2], 2) < 1.0: ok = false
+            for h in houses: if q.distance_to(h[0]) < h[1]: ok = false
+            t += 0.8
+        out[i] = 1 if ok else 0
+    # never leave a mount with nowhere to rest: its stowed bearing always counts as clear
+    out[bin_of(m.slot.arcs[0][0])] = 1
+    return out
+
+## Whether a mount can bear on a local bearing: x is 1 if it can, y is the nearest bearing it can reach.
+func mount_arc(m: Mount, local: float) -> Vector2:
+    if m.clear.is_empty(): return arc_check(m.slot, local)
+    var b := bin_of(local)
+    if m.clear[b]: return Vector2(1.0, local)
+    for k in range(1, BINS / 2 + 1):
+        if m.clear[(b + k) % BINS]: return Vector2(0.0, bin_angle((b + k) % BINS))
+        if m.clear[(b - k + BINS) % BINS]: return Vector2(0.0, bin_angle((b - k + BINS) % BINS))
+    return Vector2(0.0, m.slot.arcs[0][0])
+
+## Trains a turret towards a bearing, going the long way round when the short way would sweep through its own ship.
+func train(m: Mount, target: float, step: float) -> void:
+    var d := ang_diff(target, m.ta)
+    if not m.clear.is_empty() and absf(d) > 0.03:
+        var n := int(ceil(absf(d) / (TAU / BINS))); var blocked := false
+        for k in range(1, n + 1):
+            if not m.clear[bin_of(m.ta + d * k / n)]: blocked = true; break
+        if blocked: d = d - signf(d) * TAU
+    m.ta = wrapf(m.ta + clampf(d, -step, step), -PI, PI)
 
 ## Works out which mounts stand higher from the layout: a gun mount nearer amidships, on the same line as one further
 ## out and close enough that its barrels reach over it, is superfiring. Chains (A, B, C) give rising levels.
@@ -431,10 +505,11 @@ func update_weapons(s: CShip, dt: float) -> void:
                     if m.tgt_t <= 0 or m.tgt == null or not engageable(m.tgt) or not visible_to(m.tgt, s.side):
                         m.tgt_t = 3.0; m.tgt = null
                         var pri: CShip = null
-                        if s.target != null and engageable(s.target) and visible_to(s.target, s.side) and p.distance_to(s.target.pos) < rng and arc_check(m.slot, ang_diff((s.target.pos - p).angle(), s.a)).x > 0: pri = s.target
+                        if s.target != null and engageable(s.target) and visible_to(s.target, s.side) and p.distance_to(s.target.pos) < rng and mount_arc(m, ang_diff((s.target.pos - p).angle(), s.a)).x > 0: pri = s.target
                         var heavy: bool = w.size == "L" or w.size == "H"
                         var slot = m.slot; var sa = s.a
-                        var f = func(o: CShip) -> bool: return arc_check(slot, ang_diff((o.pos - p).angle(), sa)).x > 0 and not submerged(o)
+                        var mm := m
+                        var f = func(o: CShip) -> bool: return mount_arc(mm, ang_diff((o.pos - p).angle(), sa)).x > 0 and not submerged(o)
                         var bt = best_target(p, s.side, rng, f, heavy)
                         m.tgt = pri if (pri != null and not heavy) else (bt if bt != null else pri)
                         m.air = {}
@@ -448,12 +523,12 @@ func update_weapons(s: CShip, dt: float) -> void:
                     if m.rest_t <= 0:
                         m.rest_t = 2.0; m.rest_o = nearest_enemy(p, s.side, rng * 2.5, func(x: CShip) -> bool: return not submerged(x))
                     var o: CShip = m.rest_o if (m.rest_o != null and engageable(m.rest_o)) else null
-                    var rest: float = arc_check(m.slot, ang_diff((o.pos - p).angle(), s.a)).y if o != null else m.slot.arcs[0][0]
-                    m.ta += clampf(ang_diff(rest, m.ta), -TRAV[w.size] * dt, TRAV[w.size] * dt)
+                    var rest: float = mount_arc(m, ang_diff((o.pos - p).angle(), s.a)).y if o != null else m.slot.arcs[0][0]
+                    train(m, rest, TRAV[w.size] * dt)
                     continue
                 var want = ang_diff((aim - p).angle(), s.a)
-                var ac = arc_check(m.slot, want)
-                m.ta += clampf(ang_diff(ac.y, m.ta), -TRAV[w.size] * dt, TRAV[w.size] * dt)
+                var ac = mount_arc(m, want)
+                train(m, ac.y, TRAV[w.size] * dt)
                 var aligned: bool = absf(ang_diff(want, m.ta)) < 0.04 and ac.x > 0
                 var in_range = p.distance_to(aim) < rng
                 var trigger = (mouse_down or (autofire and aim_lock)) if manual else true

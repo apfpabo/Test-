@@ -111,7 +111,7 @@ func _draw() -> void:
             _text(Vector2(16, ry), ("★ " if s == sim.flag else "") + s.rec.name + " · " + s.d.name + (" · sunk" if not s.alive else (" · withdrew" if s.escaped else (" · struck" if s.struck else ""))), col)
             if sim.active(s): _bar(Vector2(240, ry - 9), 60, 5, s.hull / s.max_hull, RED if side else GREEN)
             ry += 16
-            if ry > H - 300: break
+            if ry > H - 410: break
         ry += 8
     # flagship panel
     var f = sim.flag
@@ -169,6 +169,7 @@ func _draw() -> void:
             for q in f.squads: st += ("▲" + str(q.n) if q.state == "ready" else ("→" if q.state == "out" else ("…" if q.state == "rearm" else "✕"))) + " "
             _text(Vector2(x + w - 10 - 200, y + 26), "Air: " + st, Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
         _schematic(f, Rect2(x, y - 140, w, 120))
+        if f.mounts.any(func(m): return m.w.kind == "gun" and m.w.size != "A"): _shell_panel(f, Rect2(x, y - 140 - 98, w, 90))
     # hit results: what each shell did, rising from where it struck and fading (hits on your own ships in red)
     for hm in sim.hit_marks:
         var a: float = clampf(hm.t / 0.6, 0.0, 1.0); var sp: Vector2 = to_screen(hm.pos) + Vector2(0, -26 - (1.8 - hm.t) * 18.0)
@@ -249,6 +250,55 @@ func show_results() -> void:
 ## only damage shows (parts going red as they are hurt, black when destroyed, fires flickering orange, magazines
 ## flashing while they burn and blue once flooded), and below it a row of badges with a value each: crew, fires,
 ## machinery, ammunition, steering and fire control. A badge turns red when its system is in trouble.
+## The shell the main battery is loading: a drawing of it with its head in the colour of its kind (armour-piercing,
+## high explosive or incendiary), what it does, the rounds left, and the choices (V cycles them).
+const SHELL_INFO := {
+    "ap": ["ARMOUR-PIERCING", "Defeats the armour it can beat and bursts inside the ship. Passes clean through light ships.", Color(0.16, 0.2, 0.26), Color(0.62, 0.66, 0.7)],
+    "he": ["HIGH EXPLOSIVE", "Bursts on contact: wrecks light ships and upperworks and starts fires. Only splinters against armour.", Color(0.86, 0.72, 0.2), Color(0.5, 0.52, 0.42)],
+    "inc": ["INCENDIARY", "Sets a ship alight: four times the fires, little else. For merchants and wooden decks.", Color(0.78, 0.22, 0.16), Color(0.55, 0.5, 0.46)]}
+func _shell(c: Vector2, hgt: float, kind: String, dim := false) -> void:
+    var info: Array = SHELL_INFO[kind]; var w := hgt * 0.3; var a := 0.4 if dim else 1.0
+    var body_top := c.y - hgt * 0.12; var base := c.y + hgt * 0.5
+    # the cartridge band and body
+    draw_rect(Rect2(c.x - w / 2, body_top, w, base - body_top), Color(info[3], a))
+    draw_rect(Rect2(c.x - w / 2, body_top, w * 0.28, base - body_top), Color(1, 1, 1, 0.12 * a))                       # a highlight down one side
+    draw_rect(Rect2(c.x - w / 2, base - hgt * 0.1, w, hgt * 0.035), Color(0.72, 0.5, 0.24, a))                         # copper driving band
+    draw_rect(Rect2(c.x - w / 2, base - hgt * 0.035, w, hgt * 0.035), Color(0.1, 0.11, 0.12, a))
+    # the head: an ogive in the colour of its kind
+    var pts := PackedVector2Array([Vector2(c.x - w / 2, body_top)])
+    for i in 9:
+        var t := i / 8.0; pts.append(Vector2(c.x - w / 2 * (1.0 - t) * (1.0 - t * 0.25) - (0.0 if i < 8 else 0.0), body_top - hgt * 0.38 * sin(t * PI / 2)))
+    for i in range(8, -1, -1):
+        var t := i / 8.0; pts.append(Vector2(c.x + w / 2 * (1.0 - t) * (1.0 - t * 0.25), body_top - hgt * 0.38 * sin(t * PI / 2)))
+    draw_colored_polygon(pts, Color(info[2], a))
+    if kind == "ap": draw_rect(Rect2(c.x - w * 0.5, body_top - hgt * 0.06, w, hgt * 0.06), Color(0.3, 0.36, 0.44, a))   # the armour-piercing cap's shoulder
+    if kind == "he": draw_circle(Vector2(c.x, body_top - hgt * 0.36), w * 0.13, Color(0.75, 0.75, 0.7, a))             # nose fuze
+    if kind == "inc": draw_rect(Rect2(c.x - w / 2, body_top + hgt * 0.06, w, hgt * 0.05), Color(0.95, 0.85, 0.3, a))   # yellow band
+func _shell_panel(f, r: Rect2) -> void:
+    draw_rect(r, PANEL); draw_rect(r, Color(GOLD, 0.35), false, 1)
+    var mode: String = f.shell_mode; var cur: String = mode if mode != "auto" else (f.last_shell if f.last_shell != "" else "ap")
+    var info: Array = SHELL_INFO[cur]
+    _shell(Vector2(r.position.x + 30, r.position.y + r.size.y * 0.56), 66.0, cur)
+    var tx := r.position.x + 62
+    _text(Vector2(tx, r.position.y + 15), "MAIN BATTERY · SHELL LOADED" + ("  (chosen by target)" if mode == "auto" else "  (your order)"), DIM, 11)
+    _text(Vector2(tx, r.position.y + 36), info[0], GOLD, 19)
+    draw_multiline_string(font, Vector2(tx, r.position.y + 52), info[1], HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 150, 11, 2, Color(0.84, 0.86, 0.85))
+    # rounds left in the main battery
+    var left := 0; var cap := 0
+    for m in f.mounts: if m.w.kind == "gun" and m.w.size == f.main_sz and m.ammo_max > 0: left += maxi(0, m.ammo); cap += m.ammo_max
+    if cap > 0:
+        var frac := float(left) / cap; var col: Color = RED if left == 0 else (GOLD if frac < 0.2 else GREEN)
+        _text(Vector2(tx, r.position.y + r.size.y - 9), "%s of %s rounds" % [Campaign.fmt(left), Campaign.fmt(cap)], col, 12)
+        _bar(Vector2(tx + 130, r.position.y + r.size.y - 16), 110, 5, frac, col)
+    # the choices
+    var cx := r.position.x + r.size.x - 78; var cy := r.position.y + 12
+    for i in BattleSim.SHELL_MODES.size():
+        var k: String = BattleSim.SHELL_MODES[i]; var on: bool = k == mode; var yy := cy + i * 17.0
+        draw_rect(Rect2(cx, yy - 10, 68, 15), Color(GOLD, 0.16) if on else Color(1, 1, 1, 0.03)); if on: draw_rect(Rect2(cx, yy - 10, 68, 15), Color(GOLD, 0.7), false, 1)
+        if k != "auto": _shell(Vector2(cx + 9, yy - 2.5), 13.0, k, not on)
+        _text(Vector2(cx + (18 if k != "auto" else 6), yy + 2), {"auto": "AUTO", "ap": "AP", "he": "HE", "inc": "INCEND."}[k], GOLD if on else DIM, 11)
+    _text(Vector2(cx, r.position.y + r.size.y - 5), "V to change", Color(DIM, 0.8), 10)
+
 func _schematic(f, r: Rect2) -> void:
     draw_rect(r, PANEL); draw_rect(r, Color(GOLD, 0.35), false, 1)
     var d: Dictionary = f.d; var info: Dictionary = GameData.sprites.ships[f.rec.type]

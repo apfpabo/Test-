@@ -473,6 +473,7 @@ class Drawer extends Node2D:
             dir = dir.normalized(); var nor := Vector2(-dir.y, dir.x)
             var w: float = half.call(age); var a: float = alpha.call(age)
             if i == 0: a = 0.0   # the ribbon grows out of the hull
+            a *= clampf(float(n - 1 - i) / 7.0, 0.0, 1.0)   # and thins away at its far end, where the track begins
             var u: float = pts[i].t * 9.0 / tile   # by the time each point was laid, so the foam stays put on the sea
             for k in 4:
                 var f: float = [-1.0, -0.42, 0.42, 1.0][k]
@@ -668,11 +669,33 @@ class Drawer extends Node2D:
         for tp in sim.torps:
             var vis: bool = tp.side == 0 or tp.arm < -20 or (sim.flag != null and tp.pos.distance_to(sim.flag.pos) < 2500)
             if not vis: continue
-            var d := Vector2.from_angle(tp.a); var tl := maxf(7.0, 9.0 * mn); var w := maxf(0.8, 1.6 * mn)
+            var d := Vector2.from_angle(tp.a); var nr := Vector2(-d.y, d.x); var tl := maxf(7.0, 9.0 * mn); var w := maxf(0.8, 1.6 * mn)
             var shim := 0.75 + 0.25 * sin(tn * 3.0 + tp.pos.x * 0.05)
-            draw_line(tp.pos + d * tl * 0.1, tp.pos - d * tl * 1.1, Color(0.02, 0.08, 0.1, 0.45), w * 2.2)   # the shadow in the water
             var core: Color = Color(0.85, 0.62, 0.52) if tp.side else Color(0.62, 0.8, 0.8)
-            draw_line(tp.pos, tp.pos - d * tl, Color(core, 0.38 * shim), w)
+            if not sim.modern:
+                draw_line(tp.pos + d * tl * 0.1, tp.pos - d * tl * 1.1, Color(0.02, 0.08, 0.1, 0.45), w * 2.2)   # the shadow in the water
+                draw_line(tp.pos, tp.pos - d * tl, Color(core, 0.38 * shim), w); continue
+            # A torpedo running a few metres down. The light bends through the swell above it, so the body wavers and
+            # breaks into pieces; its shadow lies deeper, away from the sun; a pale sheen follows it on the surface; and
+            # the exhaust comes up astern as a thread of bubbles that widens and fades.
+            var glow: Texture2D = GameData.glow_tex(); var foam: Texture2D = GameData.fx_tex("foam")
+            var sun: Vector2 = -BattleSim.SUN.normalized(); var ph: float = tp.pos.x * 0.031 + tp.pos.y * 0.017
+            var wob := func(k: float) -> Vector2: return nr * sin(tn * 4.2 + ph + k * 2.3) * w * 0.7
+            for i in 14:   # the bubble track: it starts a little astern (the bubbles take time to rise) and spreads
+                var k := (i + fposmod(tn * 2.0 + ph, 1.0)) / 14.0; var back := tl * (1.6 + k * 9.0)
+                var bp: Vector2 = tp.pos - d * back + nr * sin(k * 19.0 + ph * 7.0) * w * (0.6 + 2.2 * k)
+                _puff(foam, bp, maxf(w * (0.9 + 2.4 * k), 1.2 * mn), Color(0.88, 0.96, 0.96, 0.4 * (1.0 - k) * (1.0 - k)))
+            _puff(glow, tp.pos - d * tl * 0.5 - sun * w * 3.0, tl * 0.95, Color(0.0, 0.03, 0.05, 0.42))                  # the shadow, deeper and down-sun
+            draw_set_transform(tp.pos - d * tl * 0.5, tp.a, Vector2(1.0, 0.34)); draw_texture_rect(glow, Rect2(-tl * 1.2, -tl * 1.2, tl * 2.4, tl * 2.4), false, Color(0.45, 0.78, 0.8, 0.13 * shim)); draw_set_transform(Vector2.ZERO)   # the sheen of the water over it
+            var segs := 6   # the body, in short lengths that shift with the swell (refraction)
+            for i in segs:
+                var k0 := float(i) / segs; var k1 := float(i + 1) / segs
+                var a0: Vector2 = tp.pos - d * tl * k0 + wob.call(k0); var a1: Vector2 = tp.pos - d * tl * k1 + wob.call(k1)
+                var al := (0.55 if i % 2 == 0 else 0.4) * shim * (1.0 - 0.5 * k0)
+                draw_line(a0, a1, Color(core.darkened(0.25), al), w * (1.25 - 0.5 * k0))
+            draw_circle(tp.pos + wob.call(0.0), w * 0.62, Color(core.lightened(0.2), 0.55 * shim))                            # the warhead, the brightest part
+            var gl := pow(maxf(0.0, sin(tn * 2.6 + ph * 3.0)), 10.0)                                                        # now and then a ripple above it catches the sun
+            if gl > 0.05: _puff(foam, tp.pos - d * tl * 0.4 + nr * w, maxf(w * 1.4, 1.5 * mn) * (1.0 + gl), Color(1, 1, 1, 0.55 * gl))
 
     func _overlay() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z

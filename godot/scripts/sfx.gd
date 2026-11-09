@@ -200,6 +200,9 @@ func _play(stream: AudioStream, vol: float, rate: float) -> void:
 ## Engine level 0..1 (0 silences it). Called every frame by the battle.
 ## Ship sounds, level 0..1: the sea along the hull and the engine room under it, rising with speed. They fade in
 ## and out rather than starting or stopping dead. Called every frame by the battle and the chart.
+## Engines and the sea play at this share of their level: the output level went up by half for the guns' sake, and
+## the owner wanted engines and sea a tenth quieter than they were (1.5 x 0.6 = 0.9).
+const BED := 0.6
 var _eng_level := 0.0
 func engine(level: float) -> void: _eng_level = clampf(level, 0.0, 1.0)
 
@@ -216,11 +219,11 @@ func _fade(pl: AudioStreamPlayer, lin: float, rate: float, dt: float, pitch := 1
 	if lin <= 0.001 and pl.volume_db <= -55.0: pl.stop()
 
 func _process(dt: float) -> void:
-	var e := _eng_level
+	var e := _eng_level * BED
 	_fade(_engine, e * 0.7, 18.0, dt, 0.85 + 0.25 * e)
 	_fade(_room, e * 0.35, 18.0, dt, 0.9 + 0.2 * e)
-	_fade(_bed, _amb * 0.55, 12.0, dt)
-	_fade(_bed2, _amb * 0.3, 12.0, dt)
+	_fade(_bed, _amb * 0.55 * BED, 12.0, dt)
+	_fade(_bed2, _amb * 0.3 * BED, 12.0, dt)
 	if _amb > 0.05 and not _gulls.is_empty() and not muted:
 		_gull_t -= dt * (0.2 + _coast * 1.6)
 		if _gull_t <= 0.0:

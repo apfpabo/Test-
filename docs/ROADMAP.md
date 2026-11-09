@@ -133,6 +133,14 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - Bloom: bright light (flashes, fires, tracers, sun on spray) bleeds into what is around it (`shaders/bloom.gdshader`, modern effects only).
   - Wakes in battle are ribbons of churned water, mottled and feathered at the edges, with the bow waves opening astern, instead of chains of dots.
   - Big explosions have a streak of glare, a black heart of oily smoke lit red from inside, burning fragments that trail smoke, and late secondary bursts.
+- **Your own flag, first part (done, 9 Nov 2026; step 5 of the owner's plan):** found a flag once you hold a naval base or three structures, storm ports with troops, hold them with a garrison, collect harbour dues, use their yards, and fight off the old owner's relief forces ([`OWN_FLAG.md`](OWN_FLAG.md)).
+- **Playtest feedback, round 11 (done, 9 Nov 2026):**
+  - Plans: angled flight decks have one landing area with solid edges, a dashed centre line and arrester wires, and aircraft parked clear of it (the earlier lines crossed each other); the side funnels of the Amakura carriers are small trunks turned down and aft; boats are never stowed where a turret trains.
+  - Chart: every ship of a fleet lays a wake, not only the leader (the track was kept for four seconds, too short for the ships astern). The shallow-water band along the coast is drawn as one translucent layer, so it no longer shows doubled patches at every bend.
+  - Battle: wakes thin away at their far end instead of stopping square. Torpedoes read as running under water: a wavering body, a deeper shadow down-sun, a sheen above, a bubble track astern, now and then a glint.
+  - A shell panel above the flagship's status panel: a drawing of the shell with its head in the colour of its kind, what it does, rounds left in the main battery and the choices (V).
+  - Ports where your old service limits you show every tab, with the closed ones greyed out and the reason on hover; the notice is reworded; contracts you cannot sign are greyed out.
+  - Sound: the output level is up by half (guns and explosions), engines and sea are a tenth quieter than before.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 
@@ -147,7 +155,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
 | Logistics | Fuel (bunkers of forty days plus oilers' tanks), food, crew, wages, repairs, rearming in port; rearming and patching at sea from an ammunition ship and a repair ship | Crew fatigue and readiness, supply lines, a supply-based fleet limit |
 | Factions and diplomacy | **Done (second pass, 9 Nov 2026):** nine powers (the Ombrian Protectorate and Outer Isles League added); relations that drift and react to lore events; the Oceanic Entente and Continental Compact coalitions, with allies joining wars; wars that wear down into armistices; ports changing hands in sieges; fleets of warring powers, patrols and raiders fighting at sea; contracts (deliveries, raider hunts, surveys, war patrols, escorts, smuggling); commissions and letters of marque with betrayal; story chains from seven powers. See [`DIPLOMACY.md`](DIPLOMACY.md) | Owner lore for the two new flags; peace treaties; claiming ports yourself (step 5) |
 | Land structures | **Done (9 Nov 2026):** 384 structures (economic works, airfields, coastal batteries, radar, naval bases), carrier strikes with a watchable raid, capture by surrender, monthly income, wars and assault forces over them. See [`LAND_STRUCTURES.md`](LAND_STRUCTURES.md) | Defend contracts, investing in what you hold, land-based air raids on your fleet |
-| Found your own flag | Groundwork: structures you hold (garrison, upkeep, income, depot, naval bases to dock at, enemies who want them back) | A flag of your own as a power, claim ports, run them, attract officers and ships |
+| Found your own flag | **First part done:** found a flag, storm and hold ports, dues, yards, relief forces ([`OWN_FLAG.md`](OWN_FLAG.md)), on top of the structures you hold | Your flag as a power in diplomacy, patrols and convoys of your own, building in ports, officers and ships drawn to you |
 | Campaign | Story chains from seven powers (the Concord's five, three each from six others); bounties; contracts at every port with a tracker and gold markers on the chart | Dynamic convoys, seasonal weather, more hand-crafted points of interest |
 | Map movement | **Done:** momentum along planned routes, limited turn rate, pilotage speed in confined waters, wakes | — |
 
@@ -166,7 +174,7 @@ Follow-ups: a display font and UI polish; touch controls; moving the plan render
 2. **Missions and diplomacy (done):** port contract boards (six kinds), a mission tracker, nine powers with relations, coalitions, wars, armistices and sieges, commissions and letters of marque, NPC fleets fighting each other, story chains from seven powers ([`DIPLOMACY.md`](DIPLOMACY.md)).
 3. **Logistics depth:** ammunition and magazines (done), auxiliaries (done), then crew fatigue and readiness, supply.
 4. **World depth:** weather, more points of interest, regional technology disparity.
-5. **Endgame:** found your own flag and claim ports (next; structures you hold are the groundwork, see [`LAND_STRUCTURES.md`](LAND_STRUCTURES.md)). Add the Modern era.
+5. **Endgame:** found your own flag and claim ports (first part done, see [`OWN_FLAG.md`](OWN_FLAG.md); next: your flag as a power in diplomacy, your own patrols and convoys, building in ports). Add the Modern era.
 6. **Land structures (done, step 4 of the owner's plan).** Troop transports, naval bombardment and Syndicate carriers are done. Follow-ups: defend contracts, investing in held structures.
 
 Restore points: before land structures, commit `8a2e75e`.

@@ -12,7 +12,7 @@ var fx_modern := true             # battle effects: modern (layered explosions, 
 const MINIMAP_W := [190.0, 280.0, 400.0]
 ## Everything plays through this fixed output level: the owner found the game far too loud, so 100% on the sliders
 ## is now what 10% used to be. Settings saved before the change are carried over at the same loudness.
-const OUTPUT := 0.1
+const OUTPUT := 0.15   # raised by half at the owner's request (guns and explosions were too quiet); Sfx.BED keeps engines and sea down
 
 func _ready() -> void:
 	UI.setup(get_tree().root)   # Barlow and the shared theme for every screen

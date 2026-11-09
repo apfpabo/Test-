@@ -373,7 +373,7 @@ func dead_in_water() -> bool: return G.player.get("towed") == null and (int(G.cr
 func wages() -> float:
     var t: float = G.crew * 0.15
     for o in G.officers: t += 40 * o.lvl
-    t += Structures.garrison_total() * 0.15   # the men holding your structures ashore
+    t += (Structures.garrison_total() + Flag.garrison_total()) * 0.15   # the men holding your structures and ports ashore
     t += Structures.troops() * Structures.TROOP_WAGE   # soldiers embarked in troopships
     return t
 var show_origin := false   # the chart opens with the origin's story once, at the start of a campaign
@@ -479,6 +479,7 @@ func new_game(start_key: String, navy := "concord", test := false) -> void:
     for h in G.perks.get("hunted", []): h.until = int(h.days)
     Diplomacy.ensure(st)
     Structures.ensure()
+    Flag.apply()
     if test:
         G.test = true; _test_topup()
         for t in C.TECH: if not G.tech.has(t.id): G.tech.append(t.id)
@@ -579,7 +580,7 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
 func maintain_fleets(initial: bool) -> void:
     var count = func(k: String, fac := "") -> int: return G.fleets.filter(func(f): return f.kind == k and (fac == "" or f.fac == fac)).size()
     for fac in GameData.fac:
-        if fac == "raiders": continue
+        if fac == "raiders" or fac == "player": continue   # your own flag sends out no patrols or convoys of its own yet
         var np = ports_of(fac).size()
         if np == 0: continue
         var want_patrol = 1 if fac == "enclave" else int(ceil(np * 0.7)) + (mini(3, int(G.day / 60)) if fac == "directorate" else 0)
@@ -767,6 +768,7 @@ func new_day(moved: bool) -> void:
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()
+    Flag.new_day()
     _replenish()
     if G.get("test", false): _test_topup()
     if G.day % 3 == 0: save()   # autosave every few days at sea
@@ -848,14 +850,16 @@ func update(dt: float) -> void:
                     if not set_course(f, P.x, P.y): f.answering = false
                 rate = 1.0
             elif f.get("route") == null:
-                if Structures._is_assault(f):   # an assault force bound for your structure: land, or get back on course
+                if Flag.is_relief(f):   # a relief force bound for a port of yours
+                    if mdist(f.x, f.y, f.tgt.x, f.tgt.y) < 10.0 or not set_course(f, f.tgt.x, f.tgt.y): Flag.relief_lands(f); continue
+                elif Structures._is_assault(f):   # an assault force bound for your structure: land, or get back on course
                     var tg: Dictionary = f.get("tgt", {"x": f.x, "y": f.y})
                     if mdist(f.x, f.y, tg.x, tg.y) < 8.0: Structures.assault_lands(f); continue
                     if not set_course(f, tg.x, tg.y): Structures.assault_lands(f); continue
                 elif f.has("dest") and f.get("started", false):
                     if int(f.get("escort", 0)) > 0: Diplomacy.on_convoy_arrived(f)
                     G.fleets.erase(f); continue
-                if Structures._is_assault(f): pass
+                if Structures._is_assault(f) or Flag.is_relief(f): pass
                 elif f.has("dest"):
                     f.started = true; var d: Dictionary = G.ports[f.dest]
                     f.route = build_route(f, port_route(f.from, f.dest)); f.ri = 0; f.rx = f.x; f.ry = f.y; f.tx = d.sx; f.ty = d.sy
@@ -1138,6 +1142,7 @@ func load_game() -> bool:
     G = d
     Diplomacy.ensure()
     Structures.ensure()
+    Flag.apply()
     for o in [G.player] + G.fleets: _restore_route(o)
     _ints(G)
     paused = false
@@ -1164,7 +1169,9 @@ func _ints(g: Dictionary) -> void:
     for p in g.ports: p.id = int(p.id)
     for s in g.get("structs", []):
         s.id = int(s.id); s.port = int(s.port); s.garrison = int(s.garrison); s.took = int(s.took); s.coastKm = int(s.coastKm)
-    for f in g.fleets: if f.has("assault"): f.assault = int(f.assault)
+    for f in g.fleets:
+        if f.has("assault"): f.assault = int(f.assault)
+        if f.has("portAssault"): f.portAssault = int(f.portAssault)
     if g.mission != null: g.mission.idx = int(g.mission.idx); g.mission.fleet = int(g.mission.fleet)
     for o in g.officers:
         o.lvl = int(o.lvl); o.pts = int(o.pts)

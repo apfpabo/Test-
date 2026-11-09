@@ -100,6 +100,7 @@ class CShip:
     var dc_left = 0        # depth-charge patterns left
     var up: Dictionary = {} # fitted system upgrades, 0-2 each: eng, hull, mag, fc, radar, sonar (see UPGRADES)
     var shell_mode = "auto"   # the flagship's choice of shell: auto, ap, he or inc (AI ships always auto)
+    var last_shell = ""       # the shell her guns last loaded (shown on the shell panel when the choice is auto)
     var fuel_k = 1.0       # 0.25 when the bunkers are dry: steerage way on emergency reserves
 
 class Part:
@@ -591,6 +592,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     # penetration in mm of armour, from the shell's weight, falling off with range; fall: how steeply it comes down
     var pen: float = float(w.dmg) * 1.9 * (1.0 - 0.45 * clampf(dd / rng, 0.0, 1.0))
     var kind := shell_for(s, aim, pen)
+    s.last_shell = kind
     pen *= SHELLS[kind].pen
     shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind})
     if m.rec.size() != n: m.rec.resize(n)

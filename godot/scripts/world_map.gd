@@ -46,12 +46,16 @@ func _ready() -> void:
                 poly.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS; poly.material = land_mat
             else: poly.color = Color("#c9bb93")
             copy.add_child(poly)
-        # shallow-water glow along the coasts, with rounded joins so sharp headlands don't throw spikes
-        for pl in coast_lines:
-            for g in [[14.0, 0.09], [5.0, 0.14]]:
-                var ln = Line2D.new(); ln.points = pl; ln.width = g[0]; ln.default_color = Color(0.5, 0.69, 0.75, g[1])
+    # shallow-water glow along the coasts. Each band is drawn solid into a group of its own and the group is made
+    # translucent as a whole: translucent lines drawn one by one overlap themselves at every bend and headland, and
+    # the doubled patches showed as breaks along the shore.
+    for g in [[14.0, 0.09], [5.0, 0.14]]:
+        var grp := CanvasGroup.new(); grp.self_modulate = Color(1, 1, 1, g[1]); grp.fit_margin = 20.0; grp.clear_margin = 20.0; world.add_child(grp)
+        for k in [-1, 0, 1]:
+            for pl in coast_lines:
+                var ln = Line2D.new(); ln.points = pl; ln.width = g[0]; ln.default_color = Color(0.5, 0.69, 0.75)
                 ln.joint_mode = Line2D.LINE_JOINT_ROUND; ln.begin_cap_mode = Line2D.LINE_CAP_ROUND; ln.end_cap_mode = Line2D.LINE_CAP_ROUND
-                ln.show_behind_parent = true; copy.add_child(ln)
+                ln.position.x = k * Campaign.MW; grp.add_child(ln)
     marks = Marks.new(); marks.map = self; world.add_child(marks)
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
     ui = Control.new(); ui.set_anchors_preset(Control.PRESET_FULL_RECT); ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.theme = UI.theme(); cl.add_child(ui)
@@ -170,7 +174,7 @@ func _wakes(dt: float) -> void:
         if not seen.has(key): trails.erase(key); continue
         var tr: Array = trails[key]
         for q in tr: q.t += dt
-        while not tr.is_empty() and tr[0].t > 4.0: tr.pop_front()
+        while not tr.is_empty() and (tr[0].t > 30.0 or tr.size() > 500): tr.pop_front()   # kept long enough for the last ship of a column to have a track (and a wake) of her own
 
 # ------------------------------------------------------------------ drawing
 class SeaDrawer extends Node2D:   # open sea, graticule and pack ice
@@ -378,8 +382,9 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         var dist := [0.0]; var age := [0.0]   # distance back along the track, and each point's age
         for i in range(1, track.size()):
             dist.append(dist[-1] + track[i - 1][0].distance_to(track[i][0])); age.append(tr[tr.size() - i].t)
+        var fresh := clampf(1.0 - float(tr[-1].t) / 3.0, 0.0, 1.0)   # a fleet that has stopped lays no wake
         for e in _layout(ships):
-            var len: float = e[3]; var start: float = e[1] + len * 0.48; var reach: float = len * 3.0
+            var len: float = e[3]; var start: float = e[1] + len * 0.48; var reach: float = len * 3.0; var astern: bool = e[1] > 0.0
             # sample the track evenly from the stern back, so the arms open smoothly
             var pts = []
             var j := 0
@@ -392,7 +397,8 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var arm_l = PackedVector2Array(); var arm_r = PackedVector2Array(); var mid = PackedVector2Array()
             var ca = PackedColorArray(); var cm = PackedColorArray()
             for q in pts:
-                var k: float = minf(1.0, maxf(q[2] / 4.0, q[3] / reach))
+                # the leader's wake fades with its age; a ship astern steams over older track, so hers fades with distance only
+                var k: float = minf(1.0, maxf(1.0 - fresh, q[3] / reach)) if astern else minf(1.0, maxf(q[2] / 4.0, q[3] / reach))
                 var d = Vector2.from_angle(q[1]); var nrm = Vector2(-d.y, d.x); var spread: float = minf(len * (0.05 + 0.6 * k), r_turn * 0.3)
                 arm_l.append(q[0] + nrm * spread); arm_r.append(q[0] - nrm * spread); mid.append(q[0])
                 ca.append(Color(0.9, 0.95, 0.95, 0.45 * (1.0 - k) * (1.0 - k))); cm.append(Color(0.85, 0.93, 0.93, 0.2 * (1.0 - k) * (1.0 - k)))
@@ -519,6 +525,9 @@ func _update_top() -> void:
         stats.SERVING.text = GameData.fac[cm.fac].short + (" · marque" if str(cm.get("marque", "")) != "" else "")
         stats.SERVING.add_theme_color_override("font_color", Color(GameData.fac[cm.fac].map))
         stats.SERVING.tooltip_text = "You serve the %s (%s) since %s. Its wars are yours%s; sinking its enemies earns double standing. Resign at its capital." % [GameData.fac[cm.fac].name, Diplomacy.commission_title(cm.fac), Campaign.date_str(int(cm.since)), (", and you are a combatant to the " + GameData.fac[cm.marque].name) if str(cm.get("marque", "")) != "" else ""]
+    elif Flag.founded():
+        stats.SERVING.text = str(G.flag.short); stats.SERVING.add_theme_color_override("font_color", UI.GOLD)
+        stats.SERVING.tooltip_text = "Your own flag: %s, founded %s. %d ports fly it, held by %s men." % [G.flag.name, Campaign.date_str(int(G.flag.day)), Flag.ports().size(), Campaign.fmt(Flag.garrison_total())]
     else:
         stats.SERVING.text = "Independent"; stats.SERVING.add_theme_color_override("font_color", UI.DIM)
         stats.SERVING.tooltip_text = "You fly no flag but your own. Powers offer commissions and letters of marque at their capitals once your standing reaches 20."
@@ -556,6 +565,10 @@ func _update_orders(force := false) -> void:
         if Structures._is_assault(f) and f.get("warned", false):
             var st: Dictionary = Structures.all()[int(f.assault)]
             items.append({"t": "⚑ %s → %s" % [f.name, st.name], "tip": "A %s is sailing to retake the %s with %d troopships. Sink them before they land, or trust the garrison of %d." % [f.name.to_lower(), st.name, f.ships.filter(func(x): return x.get("troops", false)).size(), int(st.garrison)], "fleet": int(f.id), "col": UI.RED})
+    for f in G.fleets:
+        if Flag.is_relief(f):
+            var tp: Dictionary = G.ports[int(f.portAssault)]
+            items.append({"t": "⚑ %s → %s" % [f.name, tp.name], "tip": "A %s is sailing to retake %s. Sink its troopships before they land, or trust the garrison of %d." % [f.name.to_lower(), tp.name, int(tp.get("men", 0))], "col": UI.RED})
     var sig := str(orders_open) + "|" + "|".join(items.map(func(i): return i.t))
     orders_box.visible = not items.is_empty()
     if sig == _orders_sig and not force: return
@@ -1098,11 +1111,53 @@ func open_port(p: Dictionary) -> void:
             _p(box, "Chance of being caught: %d%%. Caught, the cargo is seized, %s standing falls by 12, and their warships will hunt you for three months." % [int(Diplomacy.smuggle_risk(p) * 100), GameData.fac[p.fac].short], UI.DIM, 14)
             box.add_child(UI.row([UI.button("Run the cargo ashore", func(): var t: String = Diplomacy.run_contraband(sm, p); close_panel(); _toast(t), true), UI.button("Turn away", close_panel)])))
         return
+    if Campaign.hostile(p.fac) and Flag.founded() and Structures.troops() > 0: _storm_panel(p, true); return
     if Campaign.hostile(p.fac):
         open_panel(func(box): box.add_child(UI.title(p.name)); _p(box, "Shore batteries track your ships as you close the harbour. %s ports are closed to you while your standing with them is this low. Raise your standing, or dock somewhere friendlier." % GameData.fac[p.fac].name); box.add_child(UI.button("Stand off", close_panel, true)))
         return
     Diplomacy.on_dock(p)
     cur_port = p; port_tab = "market"; _render_port(); Campaign.save()
+
+## Storming a port with your troops: the defenders, the odds, what it means, and the order.
+func _storm_panel(p: Dictionary, closed: bool) -> void:
+    open_panel(func(box):
+        box.add_child(UI.title("Storm " + p.name))
+        if closed: _p(box, "The harbour is closed to you and its batteries track your ships. Your transports stand by to put the troops ashore.")
+        else: _p(box, "You lie in the roads as a guest. Your transports could put the troops ashore before the garrison stands to.")
+        var bats := 0
+        for s in Structures.all(): if int(s.port) == int(p.id) and s.fac == p.fac and (s.kind == "battery" or s.kind == "navalbase") and not Structures.silenced(s): bats += 1
+        _p(box, "Your troops: %s. Defenders: about %s%s. The staff put the chances at %d in 100." % [Campaign.fmt(Structures.troops()), Campaign.fmt(int(Flag.port_defenders(p))), (", with %d batteries and bases of the port still standing (silence them first and their crews stay out of the fight)" % bats) if bats > 0 else "", int(round(Flag.assault_odds(p) * 100))], UI.INK, 14)
+        _p(box, "This is war with the %s: standing -40, their warships engage you on sight, and they will send a relief force to take it back. Won, the port flies your flag: its market and yard serve you, it pays dues every month (about %s), and everything of its that stands round it comes with it. It will want a garrison of %s." % [GameData.fac[p.fac].name, Campaign.fmt(int(Flag.TAX * Flag.weight(p))), Campaign.fmt(Flag.hold_need(p))], UI.RED, 13)
+        var why := Flag.can_assault(p)
+        if why != "": _p(box, why, UI.DIM, 13)
+        box.add_child(UI.row([UI.button("Storm the harbour (%s men)" % Campaign.fmt(Structures.troops()), func(): _storm_report(p, Flag.assault(p)), true, why != ""), UI.button("Stand off", close_panel)]))
+    , true, 760)
+
+func _storm_report(p: Dictionary, r: Dictionary) -> void:
+    open_panel(func(box):
+        box.add_child(UI.title(("%s is yours" if r.won else "Repulsed at %s") % p.name))
+        _p(box, "%s soldiers went ashore against about %s defenders; the staff had put the chances at %d in 100." % [Campaign.fmt(int(r.men)), Campaign.fmt(int(r.defenders)), int(round(float(r.odds) * 100))])
+        if r.won:
+            _p(box, "%s of your men fell. %s hold the port as its garrison and %s are back aboard. %s flies over the harbour." % [Campaign.fmt(int(r.lost)), Campaign.fmt(int(p.men)), Campaign.fmt(Structures.troops()), Flag.flag_name()], UI.GOLD)
+            if not r.took.is_empty(): _p(box, "With the port come: " + ", ".join(r.took) + ".", UI.INK, 14)
+            _p(box, "The %s will send a relief force. Keep the garrison up to strength (Governor tab) and meet their transports at sea." % GameData.fac[r.from].name, UI.DIM, 14)
+            box.add_child(UI.row([UI.button("Enter the port", func(): open_port(p), true), UI.button("Return to the chart", close_panel)]))
+        else:
+            _p(box, "The landing was thrown back. %s of your men were lost; %s were taken off." % [Campaign.fmt(int(r.lost)), Campaign.fmt(Structures.troops())], UI.RED)
+            box.add_child(UI.row([UI.button("Return to the chart", close_panel, true)]))
+    , true, 720)
+
+## The Governor's office of a port that flies your flag.
+func _governor(box: Control, p: Dictionary) -> void:
+    var G: Dictionary = Campaign.G; var need := Flag.hold_need(p); var men := int(p.get("men", 0)); var from: String = p.get("from", "")
+    _p(box, "%s flies your flag since %s%s." % [p.name, Campaign.date_str(int(p.get("took", G.day))), (", taken from the %s, who want it back" % GameData.fac[from].name) if from != "" else ""], UI.GOLD, 14)
+    _p(box, "Garrison %s of %s wanted (wages %s a day). Harbour dues and customs: %s a month, paid on the 30th%s." % [Campaign.fmt(men), Campaign.fmt(need), Campaign.fmt(men * 0.15), Campaign.fmt(Flag.tax(p)), "" if men >= need else "; an under-strength garrison collects less and holds worse"], UI.INK, 14)
+    for f in G.fleets: if Flag.is_relief(f) and int(f.portAssault) == int(p.id): _p(box, "Threat: a %s is bound here, %s." % [f.name.to_lower(), Diplomacy.where(f.x, f.y)], UI.RED, 14)
+    box.add_child(UI.row([UI.button("Land 100 from the transports", func(): Flag.reinforce(p, 100); _render_port(), false, Structures.troops() <= 0),
+        UI.button("Land all (%s)" % Campaign.fmt(Structures.troops()), func(): Flag.reinforce(p, Structures.troops()); _render_port(), false, Structures.troops() <= 0),
+        UI.button("Take 100 off", func(): Flag.take_off(p, 100); _render_port(), false, men <= 0 or Structures.troop_capacity() <= Structures.troops())]))
+    _p(box, "Soldiers are raised here like anywhere (Repairs & crew) and landed from your transports. The yard still builds its old owner's designs, and anything you have captured and measured.", UI.DIM, 13)
+    box.add_child(UI.button("Give the port up", func(): var t := Flag.abandon(p); cur_port = {}; close_panel(); _toast(t)))
 
 func _rerender() -> void:
     if not cur_port.is_empty(): _render_port()
@@ -1164,17 +1219,21 @@ func _render_port() -> void:
     if p.capital and p.fac == "concord": tabs.append(["research", "Research"])
     elif p.fac == "enclave": tabs.append(["research", "Research exchange"])
     if not Structures.store_of(p).is_empty(): tabs.insert(1, ["warehouse", "Warehouse"])
+    if p.fac == "player":
+        tabs = tabs.filter(func(t): return t[0] != "contracts"); tabs.append(["governor", "Governor"])
+        if port_tab == "contracts": port_tab = "market"
+    elif port_tab == "governor": port_tab = "market"
     var limited: bool = Campaign.restricted(p.fac)
     if limited: # your old flag: the market and the dockyard's repair berth, nothing more, and at a price
-        tabs = tabs.filter(func(t): return t[0] == "market" or t[0] == "fleet" or t[0] == "contracts" or t[0] == "warehouse")
-        if not ["market", "fleet"].has(port_tab): port_tab = "market"
+        for t in tabs: if not ["market", "fleet", "contracts", "warehouse"].has(t[0]): t.append("Closed to you at %s ports: your old service has not forgiven you." % GameData.fac[p.fac].short)
+        if not ["market", "fleet", "contracts", "warehouse"].has(port_tab): port_tab = "market"
     open_panel(func(box):
         box.add_child(UI.title(p.name))
         _p(box, "%s%s · %d, day %d · Funds %s" % [GameData.fac[p.fac].name, " · capital" if p.capital else "", Campaign.year(), G.day, Campaign.fmt(G.credits)], UI.DIM, 14)
         var att: String = Codex.profile(p.fac).get("Attitude toward independents", "")
         if att != "": box.add_child(Codex.rich("*" + att + "*", UI.DIM, 13))
         if p.get("rumour", "") != "": box.add_child(Codex.rich("Rumour has it: " + p.rumour, UI.GOLD, 13))
-        if limited: _p(box, "Your old service remembers you. The harbourmaster will sell you stores and berth you for repairs, at a price, but the shipyard, the officers' mess and the Admiralty are closed to you.", UI.GOLD, 14)
+        if limited: _p(box, "You left the %s under a cloud, and its ports have not forgotten. You may buy and sell at the market and have your ships repaired and rearmed, at a higher price. The shipyard, refits, the officers' mess and the Admiralty stay closed to you (greyed out below)." % GameData.fac[p.fac].name, UI.GOLD, 14)
         _tabs(box, tabs, port_tab, func(k): port_tab = k; _render_port())
         match port_tab:
             "market": _market(box, p)
@@ -1186,6 +1245,7 @@ func _render_port() -> void:
             "contracts": _contracts(box, p)
             "commission": _commission(box, p)
             "research": _research(box)
+            "governor": _governor(box, p)
             "warehouse":
                 _p(box, "Goods from your holdings ashore, kept here for you. Load them into the hold, or sell them at this port's price.", UI.DIM, 14)
                 _store_rows(box, p, true, p.name, p)
@@ -1233,6 +1293,8 @@ func _repairs(box: Control) -> void:
         box.add_child(UI.row([UI.button("Embark 100 · " + Campaign.fmt(mini(100, room) * Structures.TROOP_COST), func(): Structures.embark(100); _render_port(), false, room <= 0 or G.credits < Structures.TROOP_COST),
             UI.button("Fill the berths (%s) · %s" % [Campaign.fmt(room), Campaign.fmt(room * Structures.TROOP_COST)], func(): Structures.embark(room); _render_port(), false, room <= 0 or G.credits < Structures.TROOP_COST),
             UI.button("Put them ashore", func(): _toast("%d soldiers paid off." % Structures.disembark()); _render_port(), false, men <= 0)]))
+        if Flag.founded() and not cur_port.is_empty() and cur_port.fac != "player" and men > 0:
+            box.add_child(UI.button("Storm this port for %s…" % Flag.flag_name(), func(): var tp: Dictionary = cur_port; cur_port = {}; _storm_panel(tp, false)))
     var ae: Array = Campaign.aux("ammo"); var ar: Array = Campaign.aux("repair")
     if not ae.is_empty() or not ar.is_empty():
         box.add_child(UI.label("REPLENISHMENT AT SEA", UI.DIM, 12))
@@ -1276,13 +1338,15 @@ func yard_of(p: Dictionary) -> Array:
         for id in GameData.hulls: if Campaign.design_ok(id, Campaign.G.tech): all.append(id)
         all.sort_custom(func(a, b): return GameData.hull_order.find(GameData.hulls[a].klass) * 10000 + GameData.hulls[a].year < GameData.hull_order.find(GameData.hulls[b].klass) * 10000 + GameData.hulls[b].year)
         return all
-    var makers: Array = GameData.fac_makers.get(p.fac, []) if GameData.fac_makers.get(p.fac) != null else []
+    var yf: String = p.get("from", Campaign.C.ports[int(p.id)].fac) if p.fac == "player" else p.fac   # your port: the old owner's yard and drawings
+    var makers: Array = GameData.fac_makers.get(yf, []) if GameData.fac_makers.get(yf) != null else []
     var out = []
-    for c in Campaign.C.YARDS[p.fac]:
+    if p.fac == "player": for id in Campaign.G.get("studied", []): out.append(id)
+    for c in Campaign.C.YARDS[yf]:
         if (c == "bb" or c == "cv") and not p.capital: continue
         for id in Campaign.C.DESIGNS_OF.get(c, []):
-            if makers.has(GameData.hulls[id].yard) and Campaign.design_ok(id, Campaign.G.tech): out.append(id)
-    if p.fac == "freeport":   # the Syndicate's improvised carriers: escort carriers bought second-hand from any yard and refitted
+            if makers.has(GameData.hulls[id].yard) and Campaign.design_ok(id, Campaign.G.tech) and not out.has(id): out.append(id)
+    if yf == "freeport":   # the Syndicate's improvised carriers: escort carriers bought second-hand from any yard and refitted
         for id in Campaign.C.DESIGNS_OF.get("cve", []): if Campaign.design_ok(id, Campaign.G.tech) and not out.has(id): out.append(id)
     out.sort_custom(func(a, b): return GameData.hull_order.find(GameData.hulls[a].klass) * 10000 + GameData.hulls[a].year < GameData.hull_order.find(GameData.hulls[b].klass) * 10000 + GameData.hulls[b].year)
     return out
@@ -1295,7 +1359,7 @@ func _aux_text(h: Dictionary) -> String:
     if h.get("repair", false): t += " · patches hulls at sea with steel from the holds"
     if h.get("nuc", false) or (h.kind == "sub" and float(h.fuel) <= 0.0): t += " · nuclear: burns no fuel oil"
     return t
-func ship_price(p: Dictionary, t: String) -> int: return int(round(GameData.hulls[t].price * (1.1 if p.fac == "freeport" else 1.0) * (0.9 if Campaign.G.rep.get(p.fac, 0) > 30 else 1.0)))
+func ship_price(p: Dictionary, t: String) -> int: return int(round(GameData.hulls[t].price * (1.1 if p.fac == "freeport" else 1.0) * (0.9 if Campaign.G.rep.get(p.fac, 0) > 30 else 1.0) * (0.85 if p.fac == "player" else 1.0)))
 
 func _thumb(id: String, pal: String, w: float, fit = null) -> Control:
     var t = ShipThumb.new(); t.id = id; t.pal = pal; t.fit = fit; var info: Dictionary = GameData.sprites.ships[id]
@@ -1593,8 +1657,8 @@ func _contracts(box: Control, p: Dictionary) -> void:
     var list: Array = Diplomacy.offers(p)
     if list.is_empty(): _p(box, "Nothing posted today. The board is renewed every couple of weeks.", UI.DIM, 14)
     for c in list:
-        box.add_child(UI.label(c.title, UI.GOLD, 16)); _p(box, c.text, UI.INK, 14)
         var why: String = Diplomacy.can_accept(c)
+        box.add_child(UI.label(c.title, UI.GOLD if why == "" else Color(UI.DIM, 0.6), 16)); _p(box, c.text, UI.INK if why == "" else Color(UI.DIM, 0.6), 14)   # work you can't take is greyed out
         box.add_child(UI.row([UI.label("Pays %s · %s standing +%d · %d days" % [Campaign.fmt(int(c.reward)), GameData.fac[c.fac].short, int(c.rep), int(c.days)], UI.DIM, 13),
             UI.button("Sign", func(): Diplomacy.accept(c); _toast("Signed: " + c.title + ". Marked in gold on the chart."); _rerender(), true, why != "")]))
         if why != "": _p(box, why, UI.DIM, 12)
@@ -1660,7 +1724,7 @@ func _missions(box: Control, at_admiralty: bool, by := "") -> void:
     elif G.mission == null:
         var waiting := []
         for f in GameData.fac:
-            if f != "raiders" and Campaign.story_idx(f) < Campaign.story_chain(f).size() and G.rep.get(f, 0) >= 0 and not Campaign.at_war(f):
+            if f != "raiders" and f != "player" and Campaign.story_idx(f) < Campaign.story_chain(f).size() and G.rep.get(f, 0) >= 0 and not Campaign.at_war(f):
                 for p in G.ports: if p.fac == f and p.capital: waiting.append("the %s in %s" % [Campaign.story_office(f), p.name])
         if not waiting.is_empty(): _p(box, "Orders are waiting from " + ", ".join(waiting) + ".", UI.DIM, 14)
     if not at_admiralty:
@@ -1669,7 +1733,7 @@ func _missions(box: Control, at_admiralty: bool, by := "") -> void:
     box.add_child(UI.label("STANDING", UI.DIM, 12))
     _p(box, "The armistice of November 1945 holds, just. A flag's warships engage you on sight only if your standing with it falls to %d, or for three months after you open fire on its ships. Its ports close below -10." % Campaign.WAR_STANDING, UI.DIM, 13)
     for f in GameData.fac:
-        if f == "raiders": continue
+        if f == "raiders" or f == "player": continue
         var r: int = G.rep.get(f, 0)
         var nl := UI.label(GameData.fac[f].name); nl.tooltip_text = GameData.fac[f].get("desc", ""); nl.mouse_filter = Control.MOUSE_FILTER_PASS
         var stt: String = ("at war · engages on sight" + (" (incident, %d days)" % Campaign.incident_days(f) if Campaign.incident_days(f) > 0 else "")) if Campaign.at_war(f) else ("ports closed" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"))
@@ -1690,6 +1754,7 @@ func _lead_pic(f: Dictionary) -> Control:
 ## Your structures ashore: what each yields, who holds it, where its goods go, and the goods waiting for you.
 func _holdings(box: Control) -> void:
     var G: Dictionary = Campaign.G; var hs: Array = Structures.held()
+    _flag_section(box)
     if hs.is_empty():
         _p(box, "You hold nothing ashore. Strike a structure from the air until its defences are silenced, then demand its surrender with your fleet off the coast; or land a garrison on an unclaimed one. Each held structure pays monthly.", UI.DIM, 14)
         return
@@ -1707,6 +1772,29 @@ func _holdings(box: Control) -> void:
     for p in G.ports: if not Structures.store_of(p).is_empty(): stores.append("%s: %s" % [p.name, ", ".join(Structures.store_of(p).keys().map(func(k): return "%d %s" % [int(Structures.store_of(p)[k]), k]))])
     for s in hs: if not Structures.store_of(s).is_empty(): stores.append("%s: %s" % [s.name, ", ".join(Structures.store_of(s).keys().map(func(k): return "%d %s" % [int(Structures.store_of(s)[k]), k]))])
     if stores.size(): box.add_child(UI.label("GOODS WAITING", UI.DIM, 12)); for t in stores: _p(box, t, UI.INK, 13)
+
+## Your own flag: found it, and the ports that fly it.
+var _flag_name := ""
+func _flag_section(box: Control) -> void:
+    var G: Dictionary = Campaign.G
+    box.add_child(UI.label("YOUR FLAG", UI.DIM, 12))
+    if not Flag.founded():
+        var why := Flag.can_found()
+        _p(box, "A captain with ground under him can raise a flag of his own. A flag can hold ports: storm one with troops and its market, yard and harbour dues are yours, for as long as you can keep it. Founding costs %s and ends any commission you hold." % Campaign.fmt(Flag.FOUND_COST), UI.INK, 14)
+        if _flag_name == "": _flag_name = Flag.NAMES[randi() % Flag.NAMES.size()]
+        var ed := LineEdit.new(); ed.text = _flag_name; ed.max_length = 32; ed.custom_minimum_size.x = 320; ed.placeholder_text = "Name of your flag"
+        ed.text_changed.connect(func(t): _flag_name = t)
+        box.add_child(UI.row([ed, UI.button("Another name", func(): _flag_name = Flag.NAMES[(Flag.NAMES.find(_flag_name) + 1) % Flag.NAMES.size()]; _rerender()),
+            UI.button("Found it · " + Campaign.fmt(Flag.FOUND_COST), func(): _toast(Flag.found(_flag_name)); _rerender(), true, why != "")]))
+        if why != "": _p(box, why, UI.DIM, 13)
+        return
+    var ps: Array = Flag.ports(); var dues := 0
+    for p in ps: dues += Flag.tax(p)
+    _p(box, "%s, founded %s. %d ports fly it, held by %s men; dues %s a month." % [G.flag.name, Campaign.date_str(int(G.flag.day)), ps.size(), Campaign.fmt(Flag.garrison_total()), Campaign.fmt(dues)], UI.GOLD, 14)
+    if ps.is_empty(): _p(box, "No port flies it yet. Embark troops, lie off a harbour and storm it: closed harbours offer it as you close them, open ones under Repairs & crew.", UI.DIM, 13)
+    for p in ps:
+        box.add_child(UI.row([UI.label(p.name, UI.GOLD, 14), UI.label("garrison %s of %s · dues %s%s" % [Campaign.fmt(int(p.get("men", 0))), Campaign.fmt(Flag.hold_need(p)), Campaign.fmt(Flag.tax(p)), (" · taken from the " + GameData.fac[p.from].short) if p.get("from", "") != "" else ""], UI.DIM, 13),
+            UI.button("Plot a course", func(): if Campaign.set_course(G.player, p.sx, p.sy): free_cam = false; close_panel())]))
 
 ## A structure's panel: what it is, who holds it, its defences and output, and what you can do about it from here.
 func open_struct(s: Dictionary) -> void:

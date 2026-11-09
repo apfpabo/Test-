@@ -151,7 +151,11 @@ static func tabs(items: Array, cur: String, cb: Callable) -> Control:
 	var r := HBoxContainer.new(); r.add_theme_constant_override("separation", 2); wrap.add_child(r)
 	for it in items:
 		var key: String = it[0]
-		r.add_child(tab(it[1], func(): cb.call(key), key == cur))
+		var b := tab(it[1], func(): cb.call(key), key == cur)
+		if it.size() > 2:   # a third entry: why this tab is closed. It is shown greyed out, with the reason on hover.
+			b.disabled = true; b.tooltip_text = str(it[2]); b.mouse_default_cursor_shape = Control.CURSOR_ARROW; b.mouse_filter = Control.MOUSE_FILTER_STOP
+			b.add_theme_color_override("font_disabled_color", Color(DIM, 0.35))
+		r.add_child(b)
 	return wrap
 
 static func row(children: Array) -> HBoxContainer:

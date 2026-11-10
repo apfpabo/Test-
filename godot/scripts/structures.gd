@@ -172,6 +172,7 @@ func strike_wait() -> float:
 func can_strike(s: Dictionary) -> String:
 	var G := g(); var P: Dictionary = G.player
 	if s.fac == "player": return "It is yours."
+	if s.get("nuked", false): return "There is nothing left of it."
 	if s.fac == "": return "Nobody holds it. Land a garrison to claim it."
 	var car: Array = G.fleet.filter(func(r): return Campaign.hull(r).kind == "carrier")
 	if car.is_empty(): return "You need a carrier to strike from the air."
@@ -257,6 +258,7 @@ func _ship_weight(rec: Dictionary, km: float) -> float:
 func can_bombard(s: Dictionary) -> String:
 	var G := g(); var P: Dictionary = G.player
 	if s.fac == "player": return "It is yours."
+	if s.get("nuked", false): return "There is nothing left of it."
 	if s.fac == "": return "Nobody holds it. Land a garrison to claim it."
 	var km := Campaign.mdist(P.x, P.y, s.x, s.y) * Campaign.KM_PER_UNIT
 	var best := 0.0; var any := false
@@ -422,8 +424,97 @@ func trim_troops() -> int:
 	if over > 0: g().troops = troop_capacity()
 	return maxi(0, over)
 
+# ------------------------------------------------------------------ nuclear weapons
+## The treaties of 1945 kept nuclear weapons out of the world. With the Nuclear warheads research your missile
+## submarines (nuclear boats with missile tubes) can carry them: one warhead to a missile tube, fitted at a port or
+## naval base of your own or at an Enclave port. A warhead fired from the chart at a structure within reach destroys
+## it for good: nothing can be built or held there again. Its owner is at war with you from that hour, at the lowest
+## standing there is, and will not make peace; every other power turns on you; and a power of the missile age answers
+## in kind against something you hold. The powers themselves never fire first.
+const NUKE_COST := 120000
+const NUKE_REACH_KM := 600.0
+func nuke_boats() -> Array: return g().fleet.filter(func(r): return Campaign.hull(r).klass == "ssn" and r.fit.any(func(w): return w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm"))
+func nuke_capacity() -> int:
+	var n := 0
+	for r in nuke_boats(): for w in r.fit: if w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm": n += 1
+	return n
+func nukes() -> int: return mini(int(g().get("nukes", 0)), nuke_capacity())
+func can_arm(at_fac: String) -> String:
+	var G := g()
+	if not Campaign.has_tech("nukes"): return "Needs the Nuclear warheads research."
+	if at_fac != "player" and at_fac != "enclave": return "Warheads are fitted only at a port or naval base of your own, or by the Enclaves."
+	if nuke_capacity() <= 0: return "You have no missile submarine: a nuclear boat with missile tubes carries them."
+	if nukes() >= nuke_capacity(): return "Every missile tube that can take a warhead has one (%d)." % nuke_capacity()
+	if int(G.credits) < NUKE_COST: return "A warhead costs %s." % Campaign.fmt(NUKE_COST)
+	return ""
+func arm() -> void:
+	var G := g(); G.credits -= NUKE_COST; G.nukes = nukes() + 1
+func can_nuke(s: Dictionary) -> String:
+	var G := g(); var P: Dictionary = G.player
+	if s.get("nuked", false): return "There is nothing left of it."
+	if s.fac == "player": return "It is yours."
+	if nukes() <= 0: return "You carry no warheads."
+	var d := Campaign.mdist(P.x, P.y, s.x, s.y) * Campaign.KM_PER_UNIT
+	if d > NUKE_REACH_KM: return "Out of reach: %d km away, and the missiles reach %d km." % [int(d), int(NUKE_REACH_KM)]
+	return ""
+## Fires one. Returns what followed, for the report.
+func nuke(s: Dictionary) -> Dictionary:
+	var G := g(); var old: String = s.fac; G.nukes = nukes() - 1
+	var res := {"name": s.name, "fac": old, "notes": [], "first": not G.get("nukeUsed", false)}
+	s.nuked = true; s.fac = ""; s.dmg = 1.0; s.ruin = 1.0; s.garrison = 0; s.from = ""; s.erase("store")
+	G.nukeUsed = true; G.nukeCount = int(G.get("nukeCount", 0)) + 1
+	if old != "":
+		G.rep[old] = -100; Campaign.incident(old); Diplomacy.on_open_fire(old)
+		if not G.has("nukedFacs"): G.nukedFacs = []
+		if not G.nukedFacs.has(old): G.nukedFacs.append(old)
+		res.notes.append("The %s is at war with you from this hour, and will not treat with you again." % GameData.fac[old].name)
+		if Campaign.fac_era(old) >= 3 or Diplomacy.POWERS.any(func(o): return o != old and Diplomacy.coalition_of(o) != "" and Diplomacy.coalition_of(o) == Diplomacy.coalition_of(old) and Campaign.fac_era(o) >= 3):
+			if not G.has("nukeDebt"): G.nukeDebt = []
+			G.nukeDebt.append({"fac": old, "day": int(G.day) + randi_range(20, 70)})
+			res.notes.append("They have, or their allies have, weapons of the same kind. Expect an answer.")
+	var turned := []
+	for o in Diplomacy.POWERS:
+		if o == old: continue
+		var ally: bool = old != "" and (Diplomacy.coalition_of(o) != "" and Diplomacy.coalition_of(o) == Diplomacy.coalition_of(old) or Diplomacy.rel(o, old) >= 40.0)
+		var enemy: bool = old != "" and Diplomacy.at_war(o, old)
+		var hit: int = 60 if ally else (15 if enemy else 30)
+		G.rep[o] = maxi(-100, int(G.rep.get(o, 0)) - hit)
+		if ally: turned.append(GameData.fac[o].short)
+	if G.has("flag"):   # no treaty or recognition survives it
+		for k in ["treaty", "recog"]: if G.flag.has(k): G.flag[k] = {}
+	if G.get("commission") != null: res.notes.append("Your commission is revoked."); G.commission = null
+	res.notes.append("Every power has marked it: standing -60 with %s, -30 with the rest (-15 with the victim's enemies). Treaties and recognition of your flag are void." % (", ".join(turned) if not turned.is_empty() else "the victim's allies"))
+	Diplomacy.news("THE BOMB. A nuclear weapon has destroyed the %s%s. The treaties of 1945 are ash. Every chancellery in the world knows whose missile it was." % [s.name, (", a %s possession" % GameData.fac[old].short) if old != "" else ""], true)
+	Campaign.log_ev("Destroyed the %s with a nuclear weapon" % s.name); Campaign.save()
+	return res
+## A power that was struck answers in kind, once for each strike: it destroys the most valuable thing you hold.
+func _nuke_answers() -> void:
+	var G := g()
+	for d in G.get("nukeDebt", []).duplicate():
+		if int(G.day) < int(d.day): continue
+		G.nukeDebt.erase(d)
+		var mine: Array = held().filter(func(s): return not s.get("nuked", false))
+		var ports: Array = Flag.ports()
+		if not mine.is_empty():
+			mine.sort_custom(func(a, b): return int(yield_of(a).get("money", 0)) + (5000 if a.kind == "navalbase" else 0) > int(yield_of(b).get("money", 0)) + (5000 if b.kind == "navalbase" else 0))
+			var t: Dictionary = mine[0]
+			t.nuked = true; t.fac = ""; t.dmg = 1.0; t.ruin = 1.0; var lost := int(t.garrison); t.garrison = 0; t.from = ""; t.erase("store")
+			Diplomacy.news("RETALIATION. A %s missile destroys your %s. Its garrison of %d is gone, and nothing will stand there again." % [GameData.fac[d.fac].short, t.name, lost], true)
+			Campaign.log_ev("Lost the %s to a nuclear weapon" % t.name)
+		elif not ports.is_empty():
+			var p: Dictionary = ports[0]; var men := int(p.get("men", 0)); p.men = int(men * 0.2); p.works = {}; p.volunteers = []
+			Flag.disband_guard(p)
+			Diplomacy.news("RETALIATION. A %s missile bursts over the harbour of %s. Four in five of the garrison are dead, the works are rubble and the guard squadron is gone." % [GameData.fac[d.fac].short, p.name], true)
+			Campaign.log_ev("%s struck by a nuclear weapon" % p.name)
+		else:
+			var sh: Dictionary = G.fleet[randi() % G.fleet.size()]
+			for x in G.fleet: x.hullFrac = maxf(0.05, float(x.hullFrac) - randf_range(0.2, 0.5))
+			var dead := int(float(G.crew) * 0.3); G.crew -= dead
+			Diplomacy.news("RETALIATION. A %s missile bursts over your squadron at sea. Every ship is damaged and %d of your men are dead." % [GameData.fac[d.fac].short, dead], true)
+
 ## Why it can't be taken now, or "".
 func can_take(s: Dictionary) -> String:
+	if s.get("nuked", false): return "A poisoned ruin. Nothing can be held here again."
 	if s.fac == "player": return "It is yours."
 	if not off_coast(s): return "Your fleet must lie off the coast nearest it (%d km inland)." % int(s.coastKm)
 	if s.fac != "" and not silenced(s): return "The garrison will not surrender while its defences stand (%d%% out of action; it surrenders at %d%%)." % [int(float(s.dmg) * 100), int(float(D.silenced) * 100)]
@@ -488,6 +579,7 @@ func depot_of(s: Dictionary):
 
 ## A month's output of a structure, after war damage.
 func yield_of(s: Dictionary) -> Dictionary:
+	if s.get("nuked", false): return {}
 	var out := {}; var f: float = (1.0 - float(s.ruin)) * (1.0 - 0.5 * float(s.dmg))
 	for k in kind(s).yields: out[k] = int(round(float(kind(s).yields[k]) * f))
 	return out
@@ -520,7 +612,9 @@ func store_of(dp: Dictionary) -> Dictionary: return dp.get("store", {})
 # ------------------------------------------------------------------ the passing of days
 func new_day() -> void:
 	var G := g(); ensure()
+	_nuke_answers()
 	for s in all():
+		if s.get("nuked", false): continue   # nothing mends there
 		if s.fac != "player" or int(s.garrison) > 0:   # repairs: owners mend their defences; ruins come back slowly
 			s.dmg = maxf(0.0, float(s.dmg) - float(D.repair_per_day))
 		s.ruin = maxf(0.0, float(s.ruin) - float(D.ruin_per_day))

@@ -337,7 +337,8 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
                 draw_colored_polygon(PackedVector2Array([fp + Vector2(0, -9.0 / z), fp + Vector2(7.0 / z, -7.0 / z), fp + Vector2(0, -5.0 / z)]), fc)
             else:
                 var ring: Color = Color("#e3b23c") if mine else (Color(0.55, 0.55, 0.5) if s.fac == "" else Color(GameData.fac[s.fac].map))
-                InstallationArt.icon(self, s.kind, c, (6.5 if mil else 5.5) / z, ring, 1.5 / z, Structures.silenced(s) and not mine)
+                if s.get("nuked", false): draw_circle(c, 6.0 / z, Color(0.05, 0.05, 0.04, 0.85)); draw_arc(c, 6.0 / z, 0, TAU, 20, Color(0.75, 0.3, 0.2), 1.5 / z); draw_line(c - Vector2(3, 3) / z, c + Vector2(3, 3) / z, Color(0.75, 0.3, 0.2), 1.5 / z); draw_line(c - Vector2(3, -3) / z, c + Vector2(3, -3) / z, Color(0.75, 0.3, 0.2), 1.5 / z)
+                else: InstallationArt.icon(self, s.kind, c, (6.5 if mil else 5.5) / z, ring, 1.5 / z, Structures.silenced(s) and not mine)
 
     func _dash(a: Vector2, b: Vector2, c: Color, w: float, d: float) -> void:
         var len = a.distance_to(b); var n = int(len / (d * 2)) + 1
@@ -1367,6 +1368,12 @@ func _repairs(box: Control) -> void:
             UI.button("Put them ashore", func(): _toast("%d soldiers paid off." % Structures.disembark()); _render_port(), false, men <= 0)]))
         if Flag.founded() and not cur_port.is_empty() and cur_port.fac != "player" and men > 0:
             box.add_child(UI.button("Storm this port for %s…" % Flag.flag_name(), func(): var tp: Dictionary = cur_port; cur_port = {}; _storm_panel(tp, false)))
+    if Campaign.has_tech("nukes") and not cur_port.is_empty():
+        box.add_child(UI.label("NUCLEAR WARHEADS", UI.DIM, 12))
+        var wa := Structures.can_arm(cur_port.fac)
+        _p(box, "Aboard: %d of %d (one to each missile tube of your nuclear submarines). Fitted only here in a port of your own, or by the Enclaves. Fired from the chart at a structure within %d km; read the consequences on its panel first." % [Structures.nukes(), Structures.nuke_capacity(), int(Structures.NUKE_REACH_KM)], UI.DIM, 14)
+        box.add_child(UI.button("Fit a warhead · " + Campaign.fmt(Structures.NUKE_COST), func(): Structures.arm(); _render_port(), false, wa != ""))
+        if wa != "": _p(box, wa, UI.DIM, 13)
     var ae: Array = Campaign.aux("ammo"); var ar: Array = Campaign.aux("repair")
     if not ae.is_empty() or not ar.is_empty():
         box.add_child(UI.label("REPLENISHMENT AT SEA", UI.DIM, 12))
@@ -1908,7 +1915,8 @@ func open_struct(s: Dictionary) -> void:
         _p(box, "Defences: %s. %d%% out of action%s." % [Structures.defence_text(s), int(float(s.dmg) * 100), " (silenced)" if Structures.silenced(s) else ""], UI.DIM, 14)
         var cov: Array = Structures.cover_fields(s)
         if not cov.is_empty() and s.fac != "player": _p(box, "Fighter cover from: " + ", ".join(cov.map(func(a): return a.name)) + ". Silence those airfields first and the strike meets fewer fighters.", UI.DIM, 13)
-        if s.fac == "player": _held_struct(box, s)
+        if s.get("nuked", false): _p(box, "Destroyed by a nuclear weapon. The ground is poisoned: nothing can be built, held or landed here again.", UI.RED, 14)
+        elif s.fac == "player": _held_struct(box, s)
         else: _foreign_struct(box, s)
         var acts := [UI.button("Set course for the coast", func(): _course_coast(s))]
         acts.append(UI.button("Close", close_panel, true))
@@ -1943,6 +1951,12 @@ func _foreign_struct(box: Control, s: Dictionary) -> void:
         if s.fac != "" and Structures.breaks_armistice(s) and wi == "": _p(box, "Landing breaks the armistice with the %s." % GameData.fac[s.fac].short, UI.RED, 13)
         box.add_child(UI.button("Land the troops (%s men)" % Campaign.fmt(Structures.troops()), func(): _invade_report(s, Structures.invade(s)), true, wi != ""))
         if wi != "": _p(box, wi, UI.DIM, 13)
+    if Structures.nuke_capacity() > 0 and Campaign.has_tech("nukes"):
+        var wn := Structures.can_nuke(s)
+        box.add_child(UI.label("NUCLEAR WEAPONS", UI.DIM, 12))
+        _p(box, "Warheads aboard: %d of %d. One destroys this place for good. %s" % [Structures.nukes(), Structures.nuke_capacity(), ("The %s would be at war with you at once, at the lowest standing there is, and would never make peace; its allies would follow; every other power would turn against you; and a power of the missile age answers in kind." % GameData.fac[s.fac].name) if s.fac != "" else "Nobody holds it, but every power would know, and turn against you."], UI.RED, 13)
+        box.add_child(UI.button("Fire a nuclear missile…", func(): _nuke_confirm(s), false, wn != ""))
+        if wn != "": _p(box, wn, UI.DIM, 13)
     var tw := Structures.can_take(s)
     var lbl := ("Land a garrison (%d men)" % Structures.garrison_need(s)) if s.fac == "" else ("Demand its surrender (garrison %d men)" % Structures.garrison_need(s))
     box.add_child(UI.button(lbl, func():
@@ -1952,6 +1966,27 @@ func _foreign_struct(box: Control, s: Dictionary) -> void:
         _p(box, "Held structures pay monthly; their garrisons draw wages (%s a day for this one), and the old owner will try to retake it." % Campaign.fmt(Structures.garrison_need(s) * 0.15), UI.DIM, 13)
         var short := Campaign.crew_need() - (int(Campaign.G.crew) - Structures.garrison_need(s))
         if short > 0: _p(box, "Landing them leaves your ships %d men short: they will reload and steam slower until you hire more in port." % short, UI.GOLD, 13)
+
+## The last question before a nuclear strike, then the strike and its report.
+func _nuke_confirm(s: Dictionary) -> void:
+    open_panel(func(box):
+        box.add_child(UI.title("Nuclear release"))
+        _p(box, "Target: the %s%s. %d km from your squadron." % [s.name, (", held by the " + GameData.fac[s.fac].name) if s.fac != "" else ", unclaimed", int(Campaign.mdist(Campaign.G.player.x, Campaign.G.player.y, s.x, s.y) * Campaign.KM_PER_UNIT)])
+        _p(box, "No such weapon has been used since the treaties of 1945%s. It cannot be undone: the place is destroyed for good, its owner becomes your enemy for good, and the world will not look at your flag the same way again." % ("" if not Campaign.G.get("nukeUsed", false) else ", except by you"), UI.RED, 14)
+        box.add_child(UI.row([UI.button("Stand down", func(): open_struct(s), true), UI.button("Fire", func(): _nuke_fire(s))]))
+    , true, 680)
+func _nuke_fire(s: Dictionary) -> void:
+    var r := Structures.nuke(s)
+    var fl := ColorRect.new(); fl.color = Color(1, 0.97, 0.9, 1.0); fl.set_anchors_preset(Control.PRESET_FULL_RECT); fl.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(fl)   # the flash
+    var tw := create_tween(); tw.tween_property(fl, "color:a", 0.0, 2.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD); tw.tween_callback(fl.queue_free)
+    Sfx.event("blast", 1.0, 0.5)
+    open_panel(func(box):
+        box.add_child(UI.title("The " + r.name + " is gone"))
+        _p(box, "The missile ran true. Where the %s stood there is a crater and a column of smoke forty thousand feet high." % r.name)
+        for n in r.notes: _p(box, n, UI.RED, 14)
+        _p(box, "Warheads left aboard: %d." % Structures.nukes(), UI.DIM, 13)
+        box.add_child(UI.row([UI.button("Return to the chart", close_panel, true)]))
+    , true, 700)
 
 ## The story of a landing.
 func _invade_report(s: Dictionary, r: Dictionary) -> void:
@@ -2015,6 +2050,9 @@ func _base_services(box: Control, s: Dictionary) -> void:
         UI.button("Rearm all · " + Campaign.fmt(arm), func(): _base_do(s, "rearm", arm), false, arm == 0 or G.credits < arm),
         UI.button("Refuel · " + Campaign.fmt(fuel_cost), func(): _base_do(s, "fuel", fuel_cost, fuel_need), false, fuel_need == 0 or G.credits < fuel_cost),
         UI.button("Replace aircraft · " + Campaign.fmt(rc), func(): _base_do(s, "air", rc), false, rc == 0 or G.credits < rc)]))
+    if Campaign.has_tech("nukes"):
+        var wa := Structures.can_arm("player")
+        box.add_child(UI.row([UI.label("Nuclear warheads aboard: %d of %d" % [Structures.nukes(), Structures.nuke_capacity()], UI.INK, 14), UI.button("Fit a warhead · " + Campaign.fmt(Structures.NUKE_COST), func(): Structures.arm(); open_struct(s), false, wa != "")]))
     var known: Array = G.get("studied", [])
     if not known.is_empty():
         box.add_child(UI.label("SLIPWAY · DESIGNS COPIED FROM YOUR PRIZES", UI.DIM, 12))

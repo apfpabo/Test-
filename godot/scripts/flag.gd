@@ -268,6 +268,7 @@ func peace_cost(fac: String) -> int: return PEACE_COST + CEDE_COST * held_from(f
 func can_peace(fac: String) -> String:
 	var G := g()
 	if not Campaign.at_war(fac): return "You are not at war with them."
+	if g().get("nukedFacs", []).has(fac): return "They will never treat with you: you used the bomb on them."
 	if (Campaign.perk("outlaw", []) as Array).has(fac): return "They will not treat with you: your quarrel with them is older than your flag."
 	if int(G.credits) < peace_cost(fac): return "Their terms: %s." % Campaign.fmt(peace_cost(fac))
 	return ""

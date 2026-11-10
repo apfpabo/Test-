@@ -78,6 +78,9 @@ class CShip:
     var want_dive = false
     var reveal_t = 0.0
     var lit_t = 99.0       # seconds since her own guns last fired: gun flashes give a ship away in the dark
+    var radar_only := false   # an enemy held by your radar alone, beyond the eye's reach (see BattleSim._radar_plot)
+    var paint_t := 99.0       # battle seconds since a radar sweep last painted her
+    var paint_pos := Vector2.ZERO
     var torp_run_t = 0.0
     var ai_acc = 0.0
     var wpn_acc = 0.0
@@ -186,8 +189,13 @@ func pop(p: Vector2, vol: float, wid := "") -> void:
 ## Light AA or point-defence burst: a tracer, a small flash at the mount and its report.
 func aa_shot(s: CShip, m: Mount, p: Vector2, q: Vector2) -> void:
     if m.w.kind == "aa": use_round(m)
-    tracer(p, q)
+    tracer(p, q, m.wid, s.side)
     var f = part(P.FLASH, p, 0.12, 3.0 if m.wid != "aa20" else 2.0); f.a = (q - p).angle()
+    if modern:   # each burst lights the mount and throws a little smoke and a spent-case spark or two
+        var dir := (q - p).normalized()
+        part(P.GLOW, p, 0.1, 14.0 if m.wid != "aa20" else 9.0)
+        if randf() < 0.4: part(P.GUNSMOKE, p + dir * 2.0, 1.6 + randf(), 2.0 + randf() * 1.5, dir * (6.0 + randf() * 6.0), true)
+        if randf() < 0.5: part(P.SPARK, p, 0.25 + randf() * 0.2, 0.5, dir.rotated(randf_range(1.2, 2.0) * (1.0 if randf() < 0.5 else -1.0)) * (20.0 + randf() * 30.0))
     pop(p, 0.22 if m.wid == "aa20" else (0.4 if m.wid == "ciws" else 0.32), m.wid)
 
 # ------------------------------------------------------------------ setup
@@ -408,17 +416,51 @@ func submerged(s: CShip) -> bool: return s.sub and s.dive > 0.6
 
 func detected_by(sb: CShip, side: int) -> bool:
     if not submerged(sb) or sb.reveal_t > 0: return true
-    var sonar_r = 1500.0 * ((1.6 if sonar_tech else 1.0) * (1.4 if helo_tech else 1.0) if side == 0 else (1.6 if enemy_era >= 2 else 1.0) * (1.4 if enemy_era >= 3 else 1.0))
     for o in ships:
         if o.side != side or not active(o): continue
         var dd = o.pos.distance_to(sb.pos)
-        if dd < 500.0 or (o.d.get("sonar", false) and dd < sonar_r * (1.0 + 0.3 * upg(o, "sonar"))) or (o.sub and dd < sonar_r * 1.4): return true  # a boat's passive sonar hears another
+        if dd < 500.0 or dd < sonar_range(o): return true  # a surface ship's sonar, or a boat's hydrophones hearing another
     return false
 
 ## Whether a side can see a ship. Submarines as before (sonar). In bad visibility or at night a surface ship is seen
 ## only within sight of some ship of that side: the eye's reach in this weather, or the radar's for a ship that has
 ## one. A ship that has just fired, or is burning, shows at twice the distance: she lights herself up.
-func has_radar(s: CShip) -> bool: return s.tech.has("radar") or upg(s, "radar") > 0
+## Radar (docs/SENSORS.md). A surface ship of a side that has researched it carries a search set; submarines carry
+## none (they listen: sonar). Sets of the first two eras turn a beam round the horizon, about six turns a minute, and
+## see a contact once each turn; phased arrays (the Aegis research) look every way at once.
+const RADAR_PERIOD := 10.0   # battle seconds for one turn of a rotating aerial
+func has_radar(s: CShip) -> bool: return not s.sub and (s.tech.has("radar") or upg(s, "radar") > 0)
+func phased(s: CShip) -> bool: return s.tech.has("aegis")
+func radar_angle() -> float: return fposmod(t / RADAR_PERIOD, 1.0) * TAU
+## How far a ship's sonar hears a submerged boat (a surface ship's active set, or a boat's own hydrophones); 0 if none.
+func sonar_range(o: CShip) -> float:
+    var base: float = 1500.0 * ((1.6 if sonar_tech else 1.0) * (1.4 if helo_tech else 1.0) if o.side == 0 else (1.6 if enemy_era >= 2 else 1.0) * (1.4 if enemy_era >= 3 else 1.0))
+    if o.sub: return base * 1.4
+    return base * (1.0 + 0.3 * upg(o, "sonar")) if o.d.get("sonar", false) else 0.0
+## Whether the lookouts of a side have a surface ship in sight by eye alone (no radar): within sight in this weather
+## and light of one of its ships; twice as far if she has just fired or is burning.
+func eye_sees(s: CShip, side: int) -> bool:
+    if not limited(): return true
+    var r: float = float(wx.vis) * (2.0 if (s.lit_t < 6.0 or not s.fires.is_empty() or s.mag_fire > 0) else 1.0)
+    for o in ships: if o.side == side and active(o) and o.pos.distance_squared_to(s.pos) < r * r: return true
+    return false
+## Your radar plot, each step: an enemy beyond the eye's reach but inside a radar's is a contact on the plot, not a
+## ship in sight. A rotating set paints her as its beam passes her bearing and the echo fades until the next turn; a
+## phased array holds her all the time. (Gunnery uses the plot either way: `visible_to` is unchanged.)
+func _radar_plot(dt: float) -> void:
+    var a1 := radar_angle(); var a0 := a1 - dt / RADAR_PERIOD * TAU
+    for e in ships:
+        if e.side != 1 or not active(e): continue
+        e.paint_t += dt
+        if not limited() or eye_sees(e, 0) or (e.sub and submerged(e)): e.radar_only = false; continue
+        e.radar_only = true
+        for o in ships:
+            if o.side != 0 or not active(o) or not has_radar(o) or submerged(o): continue
+            var r := sight(o)
+            if o.pos.distance_squared_to(e.pos) > r * r: continue
+            # the beam turned from a0 to a1 this step: did it cross her bearing?
+            if phased(o) or fposmod((e.pos - o.pos).angle() - a0, TAU) <= a1 - a0 + 0.0001: e.paint_t = 0.0; e.paint_pos = e.pos; break
+
 func sight(o: CShip) -> float:
     var v: float = float(wx.vis)
     if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 if o.tech.has("datalink") else 1.0))
@@ -580,8 +622,11 @@ func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
         var a = ang + (randf() - 0.5) * 0.7
         part(P.GUNSMOKE, p + Vector2.from_angle(ang) * S * 0.5, 7.0 + randf() * 5.0, S * (0.5 + randf() * 0.4), Vector2.from_angle(a) * (0.2 + randf()) * S * 6.0, true, -i * 0.02)
 
-func tracer(p: Vector2, q: Vector2) -> void:
-    tracers.append({"a": p, "b": q + Vector2(randf() - 0.5, randf() - 0.5) * 20.0, "life": 0.12})
+## A burst of tracer from a light gun: `w` is the weapon (20 mm, 40 mm, CIWS: each has its own look), `life` runs
+## down from `L` as the rounds fly out along it.
+func tracer(p: Vector2, q: Vector2, w := "", side := 0) -> void:
+    var L: float = 0.26 if modern else 0.12
+    tracers.append({"a": p, "b": q + Vector2(randf() - 0.5, randf() - 0.5) * 20.0, "life": L, "L": L, "w": w, "side": side, "ph": randf()})
 
 # ------------------------------------------------------------------ weapons
 ## Salvo fire as the 1940s navies practised it under director control: the turrets fire together, rippling from
@@ -1140,6 +1185,7 @@ func step(dtv: float) -> void:
     t += dt; vt += dtv
     small_craft = [false, false]
     for s in ships: if active(s) and (s.d.kind == "pt" or s.d.kind == "sub"): small_craft[s.side] = true
+    _radar_plot(dt)
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue

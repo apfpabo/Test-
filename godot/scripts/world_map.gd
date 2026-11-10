@@ -57,11 +57,13 @@ func _ready() -> void:
                 ln.joint_mode = Line2D.LINE_JOINT_ROUND; ln.begin_cap_mode = Line2D.LINE_CAP_ROUND; ln.end_cap_mode = Line2D.LINE_CAP_ROUND
                 ln.position.x = k * Campaign.MW; grp.add_child(ln)
     # weather and the night side of the world, over land and sea and under the fleets and ports
-    wx_img = Image.create(180, 80, false, Image.FORMAT_RGB8); wx_tex = ImageTexture.create_from_image(Image.create(720, 320, false, Image.FORMAT_RGB8))
+    # half-float, so the field has no steps in it; the shader interpolates it with a smooth (bicubic) filter. It used
+    # to be an 8-bit texture stretched fourfold, which showed as flat squares when the chart was zoomed in.
+    wx_img = Image.create(180, 80, false, Image.FORMAT_RGH); wx_tex = ImageTexture.create_from_image(wx_img)
     wx_mat = ShaderMaterial.new(); wx_mat.shader = preload("res://shaders/chart_weather.gdshader"); wx_mat.set_shader_parameter("wx", wx_tex)
     for k in [-1, 0, 1]:
         var wp := Polygon2D.new(); wp.polygon = PackedVector2Array([Vector2(0, 0), Vector2(Campaign.MW, 0), Vector2(Campaign.MW, Campaign.MH), Vector2(0, Campaign.MH)])
-        wp.uv = PackedVector2Array([Vector2(0, 0), Vector2(720, 0), Vector2(720, 320), Vector2(0, 320)]); wp.texture = wx_tex; wp.material = wx_mat; wp.position.x = k * Campaign.MW; world.add_child(wp)
+        wp.uv = PackedVector2Array([Vector2(0, 0), Vector2(180, 0), Vector2(180, 80), Vector2(0, 80)]); wp.texture = wx_tex; wp.material = wx_mat; wp.position.x = k * Campaign.MW; world.add_child(wp)
     _weather_grid()
     marks = Marks.new(); marks.map = self; world.add_child(marks)
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
@@ -93,7 +95,7 @@ func _weather_grid() -> void:
         for i in 180:
             var x := (i + 0.5) * 40.0; var y := (j + 0.5) * 40.0
             wx_img.set_pixel(i, j, Color(Weather.storm(x, y, t), Weather.fog_v(x, y, t), 0.0))
-    var big: Image = wx_img.duplicate(); big.resize(720, 320, Image.INTERPOLATE_CUBIC); wx_tex.update(big)   # smoothed here, so the chart shows no grid
+    wx_tex.update(wx_img)   # smoothed in the shader
 func _weather_frame() -> void:
     _weather_grid()
     var t := Weather.now()
@@ -144,6 +146,12 @@ func face_of(s: Dictionary) -> float:
 func boost() -> float: return pow(zoom, 0.75) if zoom > 1 else 1.0
 
 # ------------------------------------------------------------------ frame
+var _hud_t := 0.0
+func _input(e: InputEvent) -> void:
+    if (e is InputEventMouseButton or e is InputEventKey) and not e.is_echo(): _hud_t = minf(_hud_t, 0.03)   # show the result of a click on the next frame but one
+## A colour override, set only when it changes (setting it restyles the control and re-sorts its container).
+func _tc(c: Control, k: String, col: Color) -> void:
+    if not c.has_theme_color_override(k) or c.get_theme_color(k) != col: c.add_theme_color_override(k, col)
 func _process(delta: float) -> void:
     var dt = minf(delta, 0.05); tnow += dt
     var G: Dictionary = Campaign.G
@@ -168,11 +176,17 @@ func _process(delta: float) -> void:
     marks.queue_redraw(); overlay.queue_redraw(); world.get_child(0).queue_redraw()
     _orders_t -= delta
     if _orders_t <= 0.0: _orders_t = 0.5; _update_orders()
-    _update_top(); _update_dock(); _update_telegraph()
-    for k in cmd_btns:   # the tab of the Command page that is open, underlined in gold
-        var on: bool = panel_open and _panel_key == "cmd:" + k
-        cmd_btns[k].get_theme_stylebox("normal").border_color = UI.GOLD if on else Color(0, 0, 0, 0)
-        cmd_btns[k].add_theme_color_override("font_color", UI.GOLD if on else UI.DIM)
+    # the top bar, the dock button, the telegraph and the tabs: five times a second and at once after any click or
+    # key, not every frame (each restyled some forty controls and rebuilt their tooltips sixty times a second)
+    _hud_t -= delta
+    if _hud_t <= 0.0:
+        _hud_t = 0.2
+        _update_top(); _update_dock(); _update_telegraph()
+        for k in cmd_btns:   # the tab of the Command page that is open, underlined in gold
+            var on: bool = panel_open and _panel_key == "cmd:" + k
+            var sb = cmd_btns[k].get_theme_stylebox("normal"); var bc: Color = UI.GOLD if on else Color(0, 0, 0, 0)
+            if sb.border_color != bc: sb.border_color = bc
+            _tc(cmd_btns[k], "font_color", UI.GOLD if on else UI.DIM)
     # your ships under way: engines and the sea along the hull, louder as the chart closes in on them
     var under_way: bool = not Campaign.paused and not panel_open and G.player.v > 0.8
     Sfx.engine(clampf(G.player.v / 16.0, 0.2, 1.0) * clampf((zoom - 0.5) / 6.0, 0.03, 0.3) if under_way else 0.0)
@@ -256,6 +270,29 @@ class LandCopy extends Node2D:    # one copy of the world's land; three side by 
 class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
     var map
     ## A dashed ring at a force's strike reach, drawn only for missile ships and carriers (guns need contact).
+    ## Sensors on the chart (R, docs/SENSORS.md): how far you see other fleets (green, with the radar's turning beam
+    ## once you have radar), and how far off a hostile force notices you and gives chase: with lookouts alone (red,
+    ## dashed) and with radar (red, dotted). Both shrink in weather and darkness; the second with running dark too.
+    func _sensors(c: Vector2) -> void:
+        var z: float = map.zoom; var green := Color(0.45, 0.95, 0.55); var red := Color(0.85, 0.38, 0.29)
+        var sr := Campaign.sight_radius(); var f0 := Campaign.found_radius(false); var f1 := Campaign.found_radius(true)
+        draw_arc(c, sr, 0, TAU, 96, Color(green, 0.35), 1.2 / z)
+        if Campaign.has_tech("radar"):
+            var ang := fposmod(map.tnow / 5.0, 1.0) * TAU; var n := 14; var pts := PackedVector2Array([c]); var cols := PackedColorArray([Color(green, 0.0)])
+            for i in n + 1:
+                var k := float(i) / n
+                pts.append(c + Vector2.from_angle(ang - 0.7 * (1.0 - k)) * sr); cols.append(Color(green, 0.1 * k * k))
+            draw_polygon(pts, cols); draw_line(c, c + Vector2.from_angle(ang) * sr, Color(green, 0.35), 1.0 / z)
+        for i in 60: if i % 2 == 0: draw_arc(c, f0, i * TAU / 60, (i + 1) * TAU / 60, 3, Color(red, 0.45), 1.2 / z)
+        if f1 > f0 + 1.0: for i in 180: if i % 3 == 0: draw_arc(c, f1, i * TAU / 180, (i + 0.6) * TAU / 180, 2, Color(red, 0.4), 1.2 / z)
+        var fnt: Font = ThemeDB.fallback_font
+        for row in [[sr, "YOU SEE FLEETS WITHIN %d KM%s" % [int(sr * Campaign.KM_PER_UNIT), " · RADAR" if Campaign.has_tech("radar") else ""], green, -1.0],
+                [f0, ("A HOSTILE FORCE FINDS YOU WITHIN %d KM" if f1 <= f0 + 1.0 else "LOOKOUTS FIND YOU WITHIN %d KM") % int(f0 * Campaign.KM_PER_UNIT), red, 1.0], [f1, "RADAR FINDS YOU WITHIN %d KM" % int(f1 * Campaign.KM_PER_UNIT), red, 2.0]]:
+            if row[3] == 2.0 and f1 <= f0 + 1.0: continue
+            var w := fnt.get_string_size(row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+            draw_set_transform(c + Vector2(0, float(row[0]) * signf(row[3]) + (14.0 if row[3] > 0.0 else -6.0) / z), 0.0, Vector2.ONE / z)
+            draw_string(fnt, Vector2(-w / 2.0, 0), row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(row[2], 0.75))
+        draw_set_transform(Vector2.ZERO)
     func _reach_ring(c: Vector2, r: float, col: Color) -> void:
         if r <= Campaign.CONTACT + 0.5: return
         var z: float = map.zoom; var n := 48
@@ -320,6 +357,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         if G.fleet.size(): ring_r = minf(ring_r, maxf(14.0 / z, _layout(G.fleet)[0][3] * 0.75))   # close in, the ring hugs the ship
         draw_arc(Vector2(P.x, P.y), ring_r, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
         if z >= 0.32: _reach_ring(Vector2(P.x, P.y), Campaign.strike_reach(G.fleet, Weather.air_ok(Campaign.weather_here(), Campaign.has_tech("jets"))) * Campaign.ck_you(Campaign.weather_here()), Color(0.89, 0.7, 0.24, 0.4))
+        if Settings.sensors and z >= 0.12 and G.fleet.size(): _sensors(Vector2(P.x, P.y))
         if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h, "player")
 
     ## Land structures: map symbols at normal zoom, drawn installations close in, and the reach of batteries that
@@ -560,24 +598,24 @@ func _update_top() -> void:
     elif Campaign.reserve() > 0: stats.FUEL.text = "Reserve %dd" % int(ceil(Campaign.reserve() / (fu / 3.0)))
     else: stats.FUEL.text = "Under tow" if G.player.get("towed") != null else "DEAD IN WATER"
     if int(G.crew) <= 0 and G.player.get("towed") == null: stats.FUEL.text = "NO CREW · ADRIFT"
-    stats.FUEL.add_theme_color_override("font_color", UI.RED if fu > 0 and G.cargo.fuel / fu < 5 else UI.INK)
+    _tc(stats.FUEL, "font_color", UI.RED if fu > 0 and G.cargo.fuel / fu < 5 else UI.INK)
     stats.FUEL.get_parent().tooltip_text = "Fuel oil in the bunkers, and days of steaming left. Behind it, a reserve of %d tons (%d days at a crawl) that fills again whenever the bunkers have fuel." % [int(Campaign.reserve()), int(Campaign.reserve() / maxf(0.1, fu / 3.0))]
     stats.FUEL.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     var cm = G.get("commission")
     if cm != null:
         stats.SERVING.text = GameData.fac[cm.fac].short + (" · marque" if str(cm.get("marque", "")) != "" else "")
-        stats.SERVING.add_theme_color_override("font_color", Color(GameData.fac[cm.fac].map))
+        _tc(stats.SERVING, "font_color", Color(GameData.fac[cm.fac].map))
         stats.SERVING.tooltip_text = "You serve the %s (%s) since %s. Its wars are yours%s; sinking its enemies earns double standing. Resign at its capital." % [GameData.fac[cm.fac].name, Diplomacy.commission_title(cm.fac), Campaign.date_str(int(cm.since)), (", and you are a combatant to the " + GameData.fac[cm.marque].name) if str(cm.get("marque", "")) != "" else ""]
     elif Flag.founded():
-        stats.SERVING.text = str(G.flag.short); stats.SERVING.add_theme_color_override("font_color", UI.GOLD)
+        stats.SERVING.text = str(G.flag.short); _tc(stats.SERVING, "font_color", UI.GOLD)
         stats.SERVING.tooltip_text = "Your own flag: %s, founded %s. %d ports fly it, held by %s men." % [G.flag.name, Campaign.date_str(int(G.flag.day)), Flag.ports().size(), Campaign.fmt(Flag.garrison_total())]
     else:
-        stats.SERVING.text = "Independent"; stats.SERVING.add_theme_color_override("font_color", UI.DIM)
+        stats.SERVING.text = "Independent"; _tc(stats.SERVING, "font_color", UI.DIM)
         stats.SERVING.tooltip_text = "You fly no flag but your own. Powers offer commissions and letters of marque at their capitals once your standing reaches 20."
     stats.SERVING.mouse_filter = Control.MOUSE_FILTER_PASS; stats.SERVING.get_parent().tooltip_text = stats.SERVING.tooltip_text
     var wx: Dictionary = Campaign.weather_here()
     stats.WEATHER.text = "%s · %02dh" % [wx.text, int(wx.hour)]
-    stats.WEATHER.add_theme_color_override("font_color", UI.RED if int(wx.sea) >= 3 else (UI.GOLD if int(wx.sea) == 2 or wx.fog or wx.night else UI.INK))
+    _tc(stats.WEATHER, "font_color", UI.RED if int(wx.sea) >= 3 else (UI.GOLD if int(wx.sea) == 2 or wx.fog or wx.night else UI.INK))
     var wl := []
     if int(wx.sea) >= 2: wl.append("speed %d%%, fuel burn +%d%%" % [int(Weather.speed_mult(wx, G.fleet) * 100), int((Weather.fuel_mult(wx) - 1.0) * 100)])
     if int(wx.sea) >= 3: wl.append("ships under 2,500 tons take damage each day under way")
@@ -589,14 +627,14 @@ func _update_top() -> void:
     var eat := Campaign.food_use()
     stats.HOLD.get_parent().tooltip_text = "Cargo aboard against the room in your holds (fuel is in the bunkers and does not count).\nFood: %d tons, eaten at %.1f a day by %s men: %s." % [int(G.cargo.food), eat, Campaign.fmt(int(G.crew) + Structures.troops()), ("%d days left" % int(G.cargo.food / eat)) if eat > 0.0 else "nobody to feed"]
     stats.HOLD.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
-    stats.HOLD.add_theme_color_override("font_color", UI.RED if eat > 0.0 and G.cargo.food / eat < 5.0 else UI.INK)
+    _tc(stats.HOLD, "font_color", UI.RED if eat > 0.0 and G.cargo.food / eat < 5.0 else UI.INK)
     stats.CREW.get_parent().tooltip_text = "Crew aboard against the crew your ships need. Readiness of your most worn ship: %d%%." % int(Campaign.fleet_readiness() * 100)
     stats.CREW.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()] + ((" · %s troops" % Campaign.fmt(Structures.troops())) if Structures.troops() > 0 else ""); stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
-        pair[1].add_theme_color_override("font_color", UI.GOLD if on else UI.DIM)
-        pair[1].add_theme_color_override("font_hover_color", UI.GOLD if on else UI.INK)
+        _tc(pair[1], "font_color", UI.GOLD if on else UI.DIM)
+        _tc(pair[1], "font_hover_color", UI.GOLD if on else UI.INK)
 
 # ------------------------------------------------------------------ the orders box (top right)
 ## Your story orders and contracts at a glance: hover one for its full brief, click it to plot a course to its target.
@@ -635,13 +673,13 @@ func _update_orders(force := false) -> void:
     _orders_sig = sig
     for ch in orders_list.get_children(): ch.queue_free()
     var head := Button.new(); head.flat = true; head.alignment = HORIZONTAL_ALIGNMENT_LEFT
-    head.text = ("▾ " if orders_open else "▸ ") + "ORDERS & CONTRACTS (%d)" % items.size(); head.add_theme_font_size_override("font_size", 14); head.add_theme_color_override("font_color", Color(UI.GOLD, 0.85))
+    head.text = ("▾ " if orders_open else "▸ ") + "ORDERS & CONTRACTS (%d)" % items.size(); head.add_theme_font_size_override("font_size", 14); _tc(head, "font_color", Color(UI.GOLD, 0.85))
     head.add_theme_font_override("font", UI.font("cond"))
     head.pressed.connect(func(): orders_open = not orders_open; _update_orders(true)); orders_list.add_child(head)
     if not orders_open: return
     for it in items:
         var b := Button.new(); b.flat = true; b.alignment = HORIZONTAL_ALIGNMENT_LEFT; b.text = it.t; b.tooltip_text = it.tip + "\n\nClick to set a course to the target."
-        b.clip_text = true; b.custom_minimum_size.x = 296; b.add_theme_font_size_override("font_size", 13); b.add_theme_color_override("font_color", it.col)
+        b.clip_text = true; b.custom_minimum_size.x = 296; b.add_theme_font_size_override("font_size", 13); _tc(b, "font_color", it.col)
         b.pressed.connect(func(): _course_to_order(it))
         orders_list.add_child(b)
 
@@ -701,8 +739,8 @@ func _build_telegraph() -> void:
     pc.set_anchor_and_offset(SIDE_RIGHT, 1, -14); pc.set_anchor_and_offset(SIDE_LEFT, 1, -360); pc.set_anchor_and_offset(SIDE_BOTTOM, 1, -30); pc.set_anchor_and_offset(SIDE_TOP, 1, -98)
     var col := VBoxContainer.new(); col.add_theme_constant_override("separation", 4); pc.add_child(col)
     var head := HBoxContainer.new(); col.add_child(head)
-    var t := Label.new(); t.text = "ENGINES"; t.add_theme_font_override("font", UI.font("cond")); t.add_theme_font_size_override("font_size", 14); t.add_theme_color_override("font_color", Color(UI.GOLD, 0.85)); head.add_child(t)
-    tele_info = Label.new(); tele_info.add_theme_font_size_override("font_size", 12); tele_info.add_theme_color_override("font_color", UI.DIM); tele_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    var t := Label.new(); t.text = "ENGINES"; t.add_theme_font_override("font", UI.font("cond")); t.add_theme_font_size_override("font_size", 14); _tc(t, "font_color", Color(UI.GOLD, 0.85)); head.add_child(t)
+    tele_info = Label.new(); tele_info.add_theme_font_size_override("font_size", 12); _tc(tele_info, "font_color", UI.DIM); tele_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     tele_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; head.add_child(tele_info)
     var seg := HBoxContainer.new(); seg.add_theme_constant_override("separation", 0); col.add_child(seg)
     for k in Campaign.SPEED_ORDER:
@@ -723,13 +761,13 @@ func _set_speed(k: String) -> void:
 func _update_telegraph() -> void:
     var cur := Campaign.speed_order()
     for k in tele_btns:
-        tele_btns[k].add_theme_color_override("font_color", UI.GOLD if k == cur else UI.DIM)
-        tele_btns[k].add_theme_color_override("font_hover_color", UI.GOLD if k == cur else UI.INK)
+        _tc(tele_btns[k], "font_color", UI.GOLD if k == cur else UI.DIM)
+        _tc(tele_btns[k], "font_hover_color", UI.GOLD if k == cur else UI.INK)
     var fb := Campaign.fuel_burn()
     tele_info.text = "%d kn · %.1f t fuel a day" % [int(round(Campaign.player_speed() / 0.8)), fb] if fb > 0 else "%d kn" % int(round(Campaign.player_speed() / 0.8))
     var sig := int(round(Campaign.signature() * 100))
     dark_btn.text = ("Running dark ✓" if Campaign.dark() else "Run dark") + " · found at %d%% of the usual distance%s" % [sig, " (wireless heard)" if Campaign.heard() else ""]
-    dark_btn.add_theme_color_override("font_color", UI.GOLD if Campaign.dark() else UI.DIM)
+    _tc(dark_btn, "font_color", UI.GOLD if Campaign.dark() else UI.DIM)
     dark_btn.tooltip_text = "How easily you are found. Speed makes smoke and wake: Slow 70%, Half 85%, Cruise 100%, Full 115%, Flank 130%.\nRunning dark (lights out, wireless silent, no smoke) cuts it to 60% by night and 85% by day, holds the engines to Half or below, and you cannot call fleets by wireless.\nA wireless call gives your position away for a day (150%).\nThe weather and the enemy's radar still count: see the WEATHER chip."
 
 var distress_btn: Button
@@ -737,7 +775,7 @@ func _update_dock() -> void:
     if distress_btn == null:
         distress_btn = UI.button("Send a distress call", func(): _toast(Campaign.distress()), true); distress_btn.focus_mode = Control.FOCUS_NONE; ui.add_child(distress_btn); ui.move_child(distress_btn, dock.get_index())
         distress_btn.set_anchor_and_offset(SIDE_LEFT, 0.5, -130); distress_btn.set_anchor_and_offset(SIDE_RIGHT, 0.5, 130); distress_btn.set_anchor_and_offset(SIDE_TOP, 1.0, -112); distress_btn.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -74)
-        distress_btn.add_theme_color_override("font_color", Color(0.1, 0.05, 0.04)); var rs := StyleBoxFlat.new(); rs.bg_color = UI.RED; rs.set_corner_radius_all(2); rs.content_margin_left = 12; rs.content_margin_right = 12
+        _tc(distress_btn, "font_color", Color(0.1, 0.05, 0.04)); var rs := StyleBoxFlat.new(); rs.bg_color = UI.RED; rs.set_corner_radius_all(2); rs.content_margin_left = 12; rs.content_margin_right = 12
         for k in ["normal", "hover", "pressed", "focus"]: distress_btn.add_theme_stylebox_override(k, rs)
         distress_btn.tooltip_text = "The nearest warship that is not your enemy comes to you and offers a tow to the nearest open port. The fee grows with the distance and falls with your standing with her flag: half at standing 60, double at -60."
     var G0: Dictionary = Campaign.G
@@ -784,6 +822,7 @@ func _unhandled_input(e: InputEvent) -> void:
     elif e is InputEventKey and e.pressed and not e.echo:
         match e.keycode:
             KEY_SPACE: Campaign.paused = not Campaign.paused; _user_pause = Campaign.paused
+            KEY_R: Settings.sensors = not Settings.sensors; Settings.save(); _toast("Sensor ranges " + ("shown: how far you see, and how far off you are found." if Settings.sensors else "hidden.") + " (R)")
             KEY_Q, KEY_E:   # the telegraph: Q slower, E faster
                 var i: int = Campaign.SPEED_ORDER.find(Campaign.speed_order()) + (1 if e.keycode == KEY_E else -1)
                 _set_speed(Campaign.SPEED_ORDER[clampi(i, 0, Campaign.SPEED_ORDER.size() - 1)])

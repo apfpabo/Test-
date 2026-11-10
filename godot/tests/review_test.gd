@@ -51,6 +51,7 @@ func _battle() -> void:
 	for c in [sim.ships[0], sim.ships[1]]:
 		n0 += sim.planes_left(c)
 		for sq in c.squads: sq.state = "out"; sim.air.append({"sq": sq, "n": int(sq.n), "side": 0})
+	_radar()
 	ok(sim.planes_left(sim.ships[0]) + sim.planes_left(sim.ships[1]) == n0, "aircraft in the air are counted once each (%d aboard, %d counted)" % [n0, sim.planes_left(sim.ships[0]) + sim.planes_left(sim.ships[1])])
 	sections += 1
 
@@ -242,6 +243,26 @@ func _chart() -> void:
 	sim.finished = true
 	var res: Dictionary = Campaign.apply_battle(sim)
 	ok(int(G.cargo.steel) == 0 and int(G.cargo.food) == 0, "a convoy that escapes untouched yields no cargo (%s)" % res.goods)
+	# a ship that struck her colours is no prize if you then break off
+	G.fleet = [Campaign.new_ship("dd", "Runner", "player", [])]
+	foe = _fleet("patrol", "directorate", P.x + 5.0, P.y, ["ca", "dd"])
+	GameData.pending = Campaign.battle_setup(foe)
+	sim = BattleSim.new(); sim.setup(GameData.pending.player_recs, GameData.pending.enemy_recs, [], [], 0); sim.flag = null
+	for x in sim.ships:
+		if x.side == 1 and x.rec == foe.ships[1]: x.struck = true
+		if x.side == 0: x.escaped = true
+	sim.finished = true
+	res = Campaign.apply_battle(sim)
+	ok(res.prizes.is_empty() and foe.ships.size() == 2 and not res.victory, "no prize from a battle you broke off (%d prizes, %d ships left to them)" % [res.prizes.size(), foe.ships.size()])
+	# a campaign opens in daylight wherever it starts
+	var dark_starts := []
+	for o in Origins.LIST:
+		for nv in (Origins.NAVIES if Origins.INFO[o].navy else ["concord"]):
+			Campaign.new_game(o, nv)
+			var wx: Dictionary = Weather.at(Campaign.G.player.x, Campaign.G.player.y)
+			if absf(float(wx.hour) - 8.0) > 0.01: dark_starts.append("%s/%s %.1fh" % [o, nv, float(wx.hour)])
+	ok(dark_starts.is_empty(), "every origin puts to sea at eight in the morning, local time %s" % str(dark_starts))
+	Campaign.new_game("commission"); G = Campaign.G; P = G.player
 	# the cap of ten counts every ship you own
 	G.fleet = []; for i in 6: G.fleet.append(Campaign.new_ship("dd", "D%d" % i, "player", []))
 	Campaign.detach(G.fleet.slice(0, 3)); G.fleet.append_array([Campaign.new_ship("dd", "X", "player", []), Campaign.new_ship("dd", "Y", "player", []), Campaign.new_ship("dd", "Z", "player", []), Campaign.new_ship("dd", "W", "player", [])])
@@ -291,3 +312,24 @@ func _sounds() -> void:
 	ok(refused == 0, "a full squadron of carriers and oilers is never refused a course about the Strelsk Sounds (%d of %d refused%s)" % [refused, tried, (", e.g. " + worst) if worst != "" else ""])
 	ok(aground == 0 and legs > 60, "and never fetches up on the land (%d times in %d legs)" % [aground, legs])
 	sections += 1
+
+## Radar and sonar (docs/SENSORS.md): submarines carry no radar; a rotating set paints a contact beyond the eye's
+## reach once each turn of its aerial and the echo fades between; a phased array holds it all the time.
+func _radar() -> void:
+	var night := Weather.battle({"sea": 0, "fog": false, "night": true, "moon": 0.0})
+	for phased in [false, true]:
+		var sim := BattleSim.new(); sim.wx = night
+		var tech: Array = ["radar", "aegis"] if phased else ["radar"]
+		sim.setup([Campaign.new_ship("ca", null, "player", tech), Campaign.new_ship("ss", null, "player", tech)], [Campaign.new_ship("dd_narvik", null, "directorate", [])], tech, [], 0); sim.flag = null
+		var me = sim.ships[0]; var boat = sim.ships[1]; var foe = sim.ships[2]
+		if not phased: ok(sim.has_radar(me) and not sim.has_radar(boat) and sim.sonar_range(boat) > 0.0 and sim.sonar_range(me) == 0.0, "a cruiser has radar and no sonar; a submarine has sonar and no radar")
+		me.pos = Vector2(8000, 8000); boat.pos = Vector2(8000, 8300); foe.pos = Vector2(8000 + 7000, 8000)   # 7 km: beyond the eye by night, inside the radar
+		ok(not sim.eye_sees(foe, 0) and sim.visible_to(foe, 0), "at 7 km on a dark night she is held by radar, not by eye")
+		var worst := 0.0; var paints := 0; var prev := 99.0
+		for i in 1500:   # a minute of battle: six turns of the aerial
+			for x in sim.ships: x.pos = Vector2(8000, 8000) if x == me else (Vector2(8000, 8300) if x == boat else Vector2(15000, 8000)); x.v = 0.0
+			sim._radar_plot(0.04); sim.t += 0.04
+			if foe.paint_t < prev: paints += 1
+			prev = foe.paint_t; if i > 300: worst = maxf(worst, foe.paint_t)
+		if phased: ok(foe.radar_only and worst < 0.1, "a phased array holds the contact all the time (longest gap %.2f s)" % worst)
+		else: ok(foe.radar_only and paints >= 5 and paints <= 7 and worst > 8.0 and worst <= 10.1, "a rotating set paints her once a turn: %d times in a minute, the echo up to %.1f s old" % [paints, worst])

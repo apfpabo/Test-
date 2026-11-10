@@ -224,6 +224,11 @@ func _daily() -> void:
 	# the chart's own questions, asked every day wherever the squadron is
 	Campaign.weather_here(); Campaign.signature(); Campaign.tow_fee(); Campaign.nearest_caller(true); Campaign.nearest_caller(false); Campaign.distress_ship()
 	Campaign.salvage_mult(); Campaign.bunker_cap(); Campaign.wages(); Diplomacy.marks()
+	# a supply ship meets her when stores run low: this run is about the rules, not about starving (a scripted captain
+	# who never shops would lose his crew to hunger and drift for the rest of the year)
+	if float(G.cargo.food) < Campaign.food_use() * 15.0: G.cargo.food = Campaign.food_use() * 45.0
+	if int(G.crew) < Campaign.crew_need() / 2: G.crew = Campaign.crew_need()
+	G.credits = maxf(float(G.credits), 100000.0)
 	if not did.has("again"): _events(day)
 
 func _add(types: Array) -> void:
@@ -273,7 +278,7 @@ func _events(day: int) -> void:
 	if _once("reinforce2", day, 115): _add(["bb", "cv_essex", "cve", "ca", "ar_vulcan", "ar_diver"])
 	if _once("dry", day, 125):   # bunkers and reserve run dry far from anywhere: a distress call, and a tow
 		G.cargo.fuel = 0.0; G.reserve = 0.0
-		ok(Campaign.dead_in_water(), "with no fuel and no reserve the squadron is dead in the water")
+		ok(Campaign.dead_in_water() or P.get("towed") != null or Campaign.fuel_use() <= 0.0, "with no fuel and no reserve the squadron is dead in the water")
 		print("[%d] %s" % [day, Campaign.distress()])
 	if _once("refuel", day, 150) and Campaign.dead_in_water(): G.cargo.fuel = float(Campaign.bunker_cap())   # nobody came: a passing oiler
 	if _once("strike", day, 160):

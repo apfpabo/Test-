@@ -515,6 +515,9 @@ func new_game(start_key: String, navy := "concord", test := false) -> void:
     var p0: Dictionary = {}
     for p in G.ports: if p.name == st.port: p0 = p
     G.player = {"x": p0.sx, "y": p0.sy, "h": mang(p0.x, p0.y, p0.sx, p0.sy), "v": 0.0, "tx": null, "ty": null, "cool": 3.0, "destPort": null, "follow": null}
+    # the clock starts at eight in the morning where you lie, not at midnight by the chart's meridian (the first
+    # actions of a campaign used to be night actions, fought without radar)
+    G.dayF = fposmod((8.0 - x_lon(p0.sx) / 15.0) / 24.0, 1.0)
     for i in 40: maintain_fleets(true)
     show_origin = Origins.INFO.has(start_key)
     toast.emit(date_str(1) + ". You put to sea from " + p0.name + ". Click the chart to set a course (Ctrl+Click adds waypoints, right-click a fleet for orders); scroll to zoom out to the whole world.")
@@ -691,8 +694,14 @@ func add_waypoint(o: Dictionary, x: float, y: float) -> bool:
 
 func route_remaining(o: Dictionary) -> float:
     var r: Array = o.route; var d = Vector2(o.rx, o.ry).distance_to(r[o.ri + 1])
-    for i in range(o.ri + 1, r.size() - 1): d += r[i].distance_to(r[i + 1])
-    return d
+    # the length of the legs beyond the next waypoint changes only when a waypoint is passed or the route is replaced:
+    # it is kept (a route across an ocean has hundreds of points, and this is asked for every fleet on every tick)
+    var last: Vector2 = r[r.size() - 1]
+    if o.get("remI", -1) != o.ri or o.get("remN", -1) != r.size() or o.get("remX") != last.x or o.get("remY") != last.y:
+        var tail := 0.0
+        for i in range(o.ri + 1, r.size() - 1): tail += r[i].distance_to(r[i + 1])
+        o.remI = o.ri; o.remN = r.size(); o.remX = last.x; o.remY = last.y; o.remT = tail
+    return d + float(o.remT)
 
 ## Advances along the route; true once the fleet has arrived. The fleet moves the way its bow points and steers onto
 ## the route through a turning circle (radius from the turn rate: the longer the ships, the wider), so it never slides
@@ -884,10 +893,8 @@ func update(dt: float) -> void:
         var dP = mdist(f.x, f.y, P.x, P.y)
         if not war.has(f.fac): war[f.fac] = at_war(f.fac)
         var hos: bool = war[f.fac] or f.get("hunter", false) or f.get("mission", false) or f.kind == "assault"   # as hostile_fleet()
-        var merchant = true
-        for s in f.ships: if hull(s).kind != "merchant": merchant = false
         var rate = 0.6
-        if hos and f.cool <= 0 and P.cool <= 0 and dP < 160.0 * ck_them(f, wx) and not merchant:   # a hunter that cannot see you does not chase
+        if hos and f.cool <= 0 and P.cool <= 0 and dP < 160.0 * ck_them(f, wx) and not f.ships.all(func(s): return hull(s).kind == "merchant"):   # a hunter that cannot see you does not chase
             var chase: bool = strength(f.ships) > ps * 0.5 or f.get("mission", false)
             f.chaseT = f.get("chaseT", 0.0) - dt; rate = 1.0 if chase else 0.95
             if f.chaseT <= 0 or f.get("route") == null:
@@ -932,11 +939,14 @@ func update(dt: float) -> void:
                 else:
                     var w = water_point(6, Vector2(f.home.x, f.home.y), 120.0 if (f.get("mission", false) or f.kind == "bounty") else 320.0)
                     if not set_course(f, w.x, w.y): f.route = null
-        var fsp = fleet_map_speed(f.ships) * rate * (0.4 if in_ice(f.x, f.y) else 1.0) * Weather.speed_mult(wx if dP < 400.0 else Weather.CLEAR, f.ships)   # the same sea slows those near you
+        # a fleet's own speed and turning circle change only with its ships and their damage: looked at again a few times a second
+        _spd_n += 1
+        if not f.has("msp") or (_spd_n + int(f.id)) % 24 == 0: f.msp = fleet_map_speed(f.ships); f.mtr = fleet_turn_rate(f.ships)
+        var fsp = float(f.msp) * rate * (0.4 if in_ice(f.x, f.y) else 1.0) * Weather.speed_mult(wx if dP < 400.0 else Weather.CLEAR, f.ships)   # the same sea slows those near you
         if int(f.get("escort", 0)) > 0 and dP > 45.0: fsp = 0.0   # an escorted convoy waits for its escort
         if f.get("route") != null:
             var was := Vector2(f.x, f.y)
-            if route_move(f, fsp, fleet_turn_rate(f.ships), dt): f.route = null
+            if route_move(f, fsp, float(f.mtr), dt): f.route = null
             # wedged against a headland in narrow waters: after a few seconds, plan again from here
             elif fsp > 0.0 and was.distance_to(Vector2(f.x, f.y)) < 0.001:
                 f.stuckT = f.get("stuckT", 0.0) + dt
@@ -1020,6 +1030,7 @@ func days_to_rest() -> int: return int(ceil((1.0 - fleet_readiness()) / 0.112))
 const SIGHT := 100.0
 const GHOST_DAYS := 5
 var _sight_t := 0.0
+var _spd_n := 0
 func friendly_fac(fac: String) -> bool:
     if fac == "player": return true
     var cm = G.get("commission")
@@ -1027,9 +1038,16 @@ func friendly_fac(fac: String) -> bool:
     return fac == cm.fac or (Diplomacy.coalition_of(fac) != "" and Diplomacy.coalition_of(fac) == Diplomacy.coalition_of(cm.fac))
 func always_seen(f: Dictionary) -> bool:
     return friendly_fac(f.fac) or int(f.get("escort", 0)) > 0 or f.get("answering", false) or f.get("warned", false) or G.player.get("escort") == f.id
+## How far your squadron sees other fleets on the chart, in map units: lookouts and radar about 550 km on a clear
+## day, a carrier's search aircraft three times as far as her strike reaches, all cut by weather and darkness.
+func sight_radius() -> float:
+    var wx: Dictionary = weather_here()
+    return maxf(SIGHT, strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ck_you(wx)
+## How far off a hostile force notices you and gives chase (map units): with lookouts alone, or with radar.
+func found_radius(radar: bool) -> float: return 160.0 * Weather.contact_mult(weather_here(), radar) * signature()
 func _sighting() -> void:
     var P: Dictionary = G.player; var wx: Dictionary = weather_here(); var ky := ck_you(wx)
-    var eyes := [[P.x, P.y, maxf(SIGHT, strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ky]]   # a carrier's search aircraft look three times as far as her strike reaches
+    var eyes := [[P.x, P.y, sight_radius()]]
     for f in G.fleets: if friendly_fac(f.fac) and not f.ships.is_empty(): eyes.append([f.x, f.y, SIGHT * 0.8])
     for p in G.ports: if p.fac == "player": eyes.append([p.sx, p.sy, 90.0])
     for s in Structures.held(): eyes.append([s.x, s.y, {"radar": 220.0, "airfield": 250.0, "navalbase": 120.0, "battery": 60.0}.get(s.kind, 40.0)])
@@ -1284,10 +1302,11 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     if drowned > 0: r.notes.append("%d soldiers were lost with their transport." % drowned)
     for o in G.officers: if not all_ships().any(func(s): return s.id == o.ship): o.ship = null
     var had: int = f.ships.size() if f != null else 0
-    if f != null: f.ships = f.ships.filter(func(s): return not r.sunk.has(s) and not r.prizes.has(s))
     var enemy_left = false
     for s in sim.ships: if s.side == 1 and sim.engageable(s): enemy_left = true
     r.victory = not enemy_left and G.fleet.size() > 0; r.retreated = not r.victory and G.fleet.size() > 0
+    if not r.victory: r.prizes = []   # a ship that struck is yours only if you hold the field: break off, and she rejoins her squadron
+    if f != null: f.ships = f.ships.filter(func(s): return not r.sunk.has(s) and not r.prizes.has(s))
     G.kills += r.sunk.size()
     var beaten: Array = r.sunk + r.prizes; var beaten_value = 0.0
     for s in beaten: beaten_value += ship_value(s)
@@ -1377,6 +1396,7 @@ func save() -> void:
     var fa = FileAccess.open(SAVE_PATH, FileAccess.WRITE); fa.store_string(JSON.stringify(g))
 
 func _strip_routes(o: Dictionary) -> void:
+    for k in ["remI", "remN", "remX", "remY", "remT", "msp", "mtr"]: o.erase(k)   # worked out again as needed
     if o.get("route") != null:
         var pts = []
         for q in o.route: pts.append([q.x, q.y])

@@ -103,7 +103,7 @@ func _veil_spots() -> void:
         if not sim.active(s) or arr.size() >= 24: continue
         var r := 0.0
         if s.side == 0: r = maxf(float(sim.wx.vis), 1200.0) if sim.limited() else 1e6
-        elif sim.visible_to(s, 0): r = 420.0
+        elif sim.visible_to(s, 0) and not s.radar_only: r = 420.0
         else: continue
         var sp: Vector2 = ct * s.pos
         arr.append(Vector4(sp.x, sp.y, r * z, 0.0))
@@ -192,6 +192,13 @@ func _process(delta: float) -> void:
     for v in views: v.refresh()
     for n in layers: if layers[n] is Drawer: layers[n].queue_redraw()
     hud.queue_redraw()
+
+## A small label drawn in the battle's world by one of its layers, kept the same size on screen at any zoom.
+func hud_text(ci: CanvasItem, at: Vector2, text: String, col: Color, mn: float) -> void:
+    var fnt: Font = ThemeDB.fallback_font; var w := fnt.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+    ci.draw_set_transform(at, 0.0, Vector2(mn, mn))
+    ci.draw_string(fnt, Vector2(-w / 2.0, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, col)
+    ci.draw_set_transform(Vector2.ZERO)
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
@@ -291,6 +298,7 @@ func _key(k: int) -> void:
             for x in sim.ships: if x.side == 0 and sim.engageable(x): mine.append(x)
             if mine.size() > 1: sim.waypoints.clear(); sim.flag.shell_mode = "auto"; sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
         KEY_M: Sfx.muted = not Sfx.muted
+        KEY_R: Settings.sensors = not Settings.sensors; Settings.save(); sim.say("Sensor ranges and radar sweep " + ("shown." if Settings.sensors else "hidden."), 1.5)
 
 # ================================================================== ship view
 class ShipView extends Node2D:
@@ -338,6 +346,8 @@ class ShipView extends Node2D:
         elif sm > 0: alpha = 1.0 - 0.65 * sm
         visible = alpha > 0.02 and not s.escaped and (s.side == 0 or not s.sub or s.dive < 0.3 or battle.sim.detected_by(s, 0) or not s.alive)
         if visible and s.side == 1 and s.alive and battle.sim.limited() and not battle.sim.visible_to(s, 0): visible = false   # lost in the dark or the murk
+        # held by radar alone: an echo on the plot, bright as the beam passes her and fading until it comes round again
+        if s.side == 1 and s.alive and s.radar_only: alpha *= clampf(1.0 - s.paint_t / BattleSim.RADAR_PERIOD, 0.0, 1.0)
         position = s.pos; rotation = s.a + k * 0.25; scale = Vector2.ONE * (1.0 - 0.2 * k); modulate.a = alpha
         var sun_local = BattleSim.SUN.rotated(-s.a)
         var soot = clampf((1.0 - s.hull / s.max_hull - 0.25) * 1.4, 0.0, 1.0)
@@ -469,7 +479,7 @@ class Drawer extends Node2D:
         for s in sim.ships:
             if s.trail.size() < 2: continue
             if s.sub and s.side == 1 and not sim.detected_by(s, 0): continue
-            if s.side == 1 and sim.limited() and not sim.visible_to(s, 0): continue
+            if s.side == 1 and sim.limited() and (s.radar_only or not sim.visible_to(s, 0)): continue   # radar shows a ship, not her wake
             var pts: Array = []
             if sim.active(s): pts.append(sim.trail_point(s))
             for i in range(s.trail.size() - 1, -1, -1): pts.append(s.trail[i])
@@ -556,7 +566,7 @@ class Drawer extends Node2D:
         var sim: BattleSim = battle.sim
         for s in sim.ships:
             if s.escaped or (s.sub and s.dive > 0.05) or (not s.alive and s.sink > 4): continue
-            if s.side == 1 and not sim.visible_to(s, 0): continue   # a ship out of sight casts no shadow you can see
+            if s.side == 1 and (s.radar_only or not sim.visible_to(s, 0)): continue   # a ship out of sight casts no shadow you can see
             var info: Dictionary = GameData.sprites.ships[s.rec.type]; var tx = GameData.ship_tex(s.rec.type, s.pal, "hull_shadow")
             var fb: float = 0.6 if s.d.kind == "sub" else (10.0 if s.d.kind == "carrier" else clampf(s.d.B * 0.25, 1.2, 8.0))
             var k = minf(1.0, s.sink / 4.0) if not s.alive else 0.0
@@ -823,6 +833,65 @@ class Drawer extends Node2D:
             var gl := pow(maxf(0.0, sin(tn * 2.6 + ph * 3.0)), 10.0)                                                        # now and then a ripple above it catches the sun
             if gl > 0.05: _puff(foam, tp.pos - d * tl * 0.4 + nr * w, maxf(w * 1.4, 1.5 * mn) * (1.0 + gl), Color(1, 1, 1, 0.55 * gl))
 
+    ## Sensors (R, docs/SENSORS.md): for each of your ships the reach of her lookouts in this weather (pale), of her
+    ## radar (green, with the turning beam of a rotating set; a phased array has none) and of her sonar (blue). Radar
+    ## contacts beyond the eye's reach are marked where the beam last painted them, whether or not the rings are shown.
+    func _sensors(sim: BattleSim, mn: float) -> void:
+        var green := Color(0.45, 0.95, 0.55); var blue := Color(0.45, 0.75, 1.0); var pale := Color(0.93, 0.94, 0.92)
+        for e in sim.ships:
+            if e.side != 1 or not sim.active(e) or not e.radar_only or not sim.visible_to(e, 0): continue
+            var k: float = clampf(1.0 - e.paint_t / BattleSim.RADAR_PERIOD, 0.0, 1.0)
+            var p: Vector2 = e.paint_pos; var r: float = 7.0 * mn
+            draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r), p + Vector2(r, 0), p + Vector2(0, r), p + Vector2(-r, 0)]), Color(green, 0.25 + 0.6 * k))
+            draw_arc(p, r * (1.6 + 1.2 * (1.0 - k)), 0, TAU, 20, Color(green, 0.5 * k), 1.2 * mn)
+        if not Settings.sensors: return
+        var ang := sim.radar_angle(); var labelled := false
+        for o in sim.ships:
+            if o.side != 0 or not sim.active(o): continue
+            var mine: bool = o == sim.flag
+            if sim.limited(): draw_arc(o.pos, float(sim.wx.vis), 0, TAU, 96, Color(pale, 0.22 if mine else 0.1), mn)
+            if sim.has_radar(o) and not sim.submerged(o):
+                var rr := sim.sight(o) if sim.limited() else float(sim.wx.radar)
+                draw_arc(o.pos, rr, 0, TAU, 128, Color(green, 0.4 if mine else 0.16), (1.5 if mine else 1.0) * mn)
+                if not sim.phased(o):   # the beam, with its afterglow trailing behind it
+                    var n := 14; var span := 0.7; var pts := PackedVector2Array([o.pos]); var cols := PackedColorArray([Color(green, 0.0)])
+                    for i in n + 1:
+                        var a := ang - span * (1.0 - float(i) / n); var kk := float(i) / n
+                        pts.append(o.pos + Vector2.from_angle(a) * rr); cols.append(Color(green, (0.26 if mine else 0.08) * kk * kk))
+                    draw_polygon(pts, cols)
+                    draw_line(o.pos, o.pos + Vector2.from_angle(ang) * rr, Color(green, 0.55 if mine else 0.22), 1.2 * mn)
+                if mine:
+                    battle.hud_text(self, o.pos + Vector2(0, -rr - 8.0 * mn), "RADAR %.1f km%s" % [rr / 1000.0, " · phased array" if sim.phased(o) else ""], Color(green, 0.8), mn)
+            var sr := sim.sonar_range(o)
+            if sr > 0.0:
+                draw_arc(o.pos, sr, 0, TAU, 64, Color(blue, 0.45 if mine else 0.2), mn)
+                if mine: battle.hud_text(self, o.pos + Vector2(0, sr + 16.0 * mn), "SONAR %.1f km" % (sr / 1000.0), Color(blue, 0.85), mn)
+            if mine and sim.limited(): battle.hud_text(self, o.pos + Vector2(0, -float(sim.wx.vis) - 8.0 * mn), "LOOKOUTS %.1f km" % (float(sim.wx.vis) / 1000.0), Color(pale, 0.6), mn)
+
+    ## Tracer from the light guns (modern effects): each burst is a handful of rounds flying out along the line, a
+    ## white-hot point with a short coloured streak and a glow. The 20 mm throws a quick close string of small red
+    ## rounds, the 40 mm slower, heavier amber ones in fours, and a CIWS a near-solid thread of them.
+    func _tracers(sim: BattleSim, mn: float) -> void:
+        var glow: Texture2D = GameData.glow_tex(); var z: float = battle.zoom()
+        for tr in sim.tracers:
+            var a: Vector2 = tr.a; var b: Vector2 = tr.b; var d: Vector2 = b - a; var D: float = d.length()
+            if D < 1.0: continue
+            var dir: Vector2 = d / D; var nrm: Vector2 = dir.orthogonal()
+            var w: String = tr.get("w", ""); var k: float = 1.0 - float(tr.life) / float(tr.get("L", 0.12))   # 0 at the muzzle, 1 at the target
+            var n := 4; var gap := 0.11; var sz := 1.0; var col := Color(1.0, 0.36, 0.22); var streak := 0.05
+            if w == "aa40": n = 4; gap = 0.16; sz = 1.7; col = Color(1.0, 0.72, 0.3); streak = 0.07
+            elif w == "ciws": n = 9; gap = 0.055; sz = 0.9; col = Color(1.0, 0.86, 0.6); streak = 0.05
+            elif w != "aa20" and w != "": n = 3; gap = 0.18; sz = 1.4; col = Color(1.0, 0.7, 0.35)
+            if int(tr.get("side", 0)) == 1: col = col.lerp(Color(0.75, 1.0, 0.55), 0.35)   # theirs burn a greener tracer, as many navies' did
+            var wd: float = maxf(sz * 1.1, 1.6 * mn); var core: Color = col.lerp(Color(1.0, 0.97, 0.9), 0.55)
+            draw_line(a, a + d * minf(1.0, k * 1.3), Color(col, 0.07 * (1.0 - k)), wd * 1.6)   # the faint smoke of the burst along its path
+            for j in n:
+                var t: float = k * 1.35 - j * gap + float(tr.get("ph", 0.0)) * gap * 0.5
+                if t < 0.0 or t > 1.0: continue
+                var head: Vector2 = a + d * t; var tail: Vector2 = head - dir * minf(D * streak, D * t)
+                draw_polygon(PackedVector2Array([tail, head + nrm * wd * 0.5, head + dir * wd * 0.6, head - nrm * wd * 0.5]), PackedColorArray([Color(col, 0.0), Color(core, 0.95), Color(core, 0.95), Color(core, 0.95)]))
+                if z > 0.1: _puff(glow, head, wd * 4.5, Color(col, 0.6)); _puff(glow, head, wd * 1.6, Color(1.0, 0.97, 0.9, 0.8))
+
     func _overlay() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
         if sim.flag != null and not sim.waypoints.is_empty():   # the flagship's waypoints (Ctrl+Click)
@@ -832,18 +901,38 @@ class Drawer extends Node2D:
             for i in sim.waypoints.size():
                 var wp: Vector2 = sim.waypoints[i]
                 draw_circle(wp, 7.0 * mn, Color(0.05, 0.1, 0.12, 0.8)); draw_arc(wp, 7.0 * mn, 0, TAU, 20, Color(0.93, 0.94, 0.92, 0.95), 2.0 * mn)
+        _sensors(sim, mn)
         # torpedo tracks, shells, missiles, aircraft and tracers
+        var z0s: float = battle.zoom()
         for sh in sim.shells:
             var k: float = sh.t / sh.T; var hgt = sin(PI * k) * minf(600.0, sh.s.distance_to(sh.e) * 0.08)
             var r = maxf(1.2 * mn, {"S": 1.6, "M": 2.0, "L": 2.6, "H": 3.4}[sh.size])
             draw_circle(sh.pos, r * 0.8, Color(0, 0, 0, 0.25))
             var hc: Color = Color("#ffb38a") if sh.side else Color("#fff1c0")
-            if sim.modern:   # a hot shell: a soft glow and a short streak along its flight
+            if sim.modern:
+                # a hot shell with its tracer burning in the base: a white-hot head, a streak that tapers and cools to
+                # red behind it along the curve of its flight, a glow that flickers as the shell spins, and close in
+                # the shell itself
                 var head: Vector2 = sh.pos - Vector2(0, hgt); var dir: Vector2 = (sh.e - sh.s).normalized()
-                var back: Vector2 = head - dir * r * 9.0 + Vector2(0, (sin(PI * minf(1.0, (sh.t + 0.05) / sh.T)) - sin(PI * k)) * minf(600.0, sh.s.distance_to(sh.e) * 0.08))
-                draw_line(back, head, Color(hc, 0.35), r * 0.9); draw_line(back.lerp(head, 0.5), head, Color(hc, 0.6), r * 0.7)
-                _puff(GameData.glow_tex(), head, r * 4.5, Color(hc, 0.35))
-            draw_circle(sh.pos - Vector2(0, hgt), r, hc)
+                var big: float = {"S": 0.0, "M": 0.35, "L": 0.7, "H": 1.0}[sh.size]
+                var tail_len: float = r * (10.0 + 10.0 * big)
+                var back: Vector2 = head - dir * tail_len + Vector2(0, (sin(PI * minf(1.0, (sh.t + 0.05) / sh.T)) - sin(PI * k)) * minf(600.0, sh.s.distance_to(sh.e) * 0.08))
+                var axis: Vector2 = (head - back).normalized(); var nrm: Vector2 = axis.orthogonal(); var mid: Vector2 = back.lerp(head, 0.55)
+                var hot := Color(1.0, 0.97, 0.86); var cool := Color(1.0, 0.45, 0.2) if sh.side else Color(1.0, 0.62, 0.25)
+                # outer glow of the streak, then its core
+                draw_polygon(PackedVector2Array([back, mid + nrm * r * 1.5, head + nrm * r * 1.1, head - nrm * r * 1.1, mid - nrm * r * 1.5]),
+                    PackedColorArray([Color(cool, 0.0), Color(cool, 0.12), Color(hc, 0.3), Color(hc, 0.3), Color(cool, 0.12)]))
+                draw_polygon(PackedVector2Array([back, mid + nrm * r * 0.55, head + nrm * r * 0.6, head - nrm * r * 0.6, mid - nrm * r * 0.55]),
+                    PackedColorArray([Color(cool, 0.0), Color(hc, 0.55), Color(hot, 0.95), Color(hot, 0.95), Color(hc, 0.55)]))
+                var fl: float = 0.8 + 0.2 * sin(sim.vt * 47.0 + sh.s.x * 0.37)   # the tracer flickers as the shell spins
+                _puff(GameData.glow_tex(), head, r * (4.5 + 2.5 * big) * fl, Color(hc, 0.32 + 0.12 * big))
+                _puff(GameData.glow_tex(), head, r * 1.8, Color(hot, 0.7))
+                if z0s > 0.7:   # close in: the shell, base towards us, nose down her line of flight
+                    var bl: float = {"S": 0.6, "M": 0.9, "L": 1.3, "H": 1.9}[sh.size]; var bw: float = bl * 0.3
+                    draw_colored_polygon(PackedVector2Array([head + axis * bl, head + axis * bl * 0.35 + nrm * bw, head - axis * bl * 0.6 + nrm * bw, head - axis * bl * 0.6 - nrm * bw, head + axis * bl * 0.35 - nrm * bw]), Color(0.16, 0.15, 0.14, 0.95))
+                    draw_circle(head - axis * bl * 0.6, bw * 0.8, hot)
+                else: draw_circle(head, r * 0.75, hot)
+            else: draw_circle(sh.pos - Vector2(0, hgt), r, hc)
         var z0: float = battle.zoom(); var sun_s: Vector2 = BattleSim.SUN.normalized()
         for m in sim.missiles:
             if m.delay > 0: continue
@@ -872,7 +961,9 @@ class Drawer extends Node2D:
                     var pp: Vector2 = q.pos + Vector2(-row * 26.0 * sc, sd * row * 22.0 * sc + wob).rotated(q.a)
                     _aircraft(pp, q.a + sin(Time.get_ticks_msec() * 0.0009 + k) * 0.03, sc, q.jet, q.side, q.type == "tb", sun_s)
         draw_set_transform(Vector2.ZERO)
-        for tr in sim.tracers: draw_line(tr.a, tr.b, Color(1, 0.86, 0.55, tr.life * 6), mn)
+        if not sim.modern:
+            for tr in sim.tracers: draw_line(tr.a, tr.b, Color(1, 0.86, 0.55, tr.life * 6), mn)
+        else: _tracers(sim, mn)
         # flagship: station ring, gun range, predicted track and where each main turret is laid
         var s = sim.flag
         if s != null and s.alive:

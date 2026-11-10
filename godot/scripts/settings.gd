@@ -9,6 +9,7 @@ var effects := 1.0
 var ambience := 0.8
 var minimap := 1                  # 0 small, 1 medium, 2 large
 var fx_modern := true             # battle effects: modern (layered explosions, light, spray) or classic
+var sensors := true               # show sensor ranges and the radar sweep (R on the chart and in battle)
 const MINIMAP_W := [190.0, 280.0, 400.0]
 ## Everything plays through this fixed output level: the owner found the game far too loud, so 100% on the sliders
 ## is now what 10% used to be. Settings saved before the change are carried over at the same loudness.
@@ -24,7 +25,7 @@ func _ready() -> void:
 	if cf.load(PATH) == OK:
 		master = cf.get_value("sound", "master", master); effects = cf.get_value("sound", "effects", effects)
 		ambience = cf.get_value("sound", "ambience", ambience); minimap = cf.get_value("battle", "minimap", minimap)
-		fx_modern = cf.get_value("battle", "fx_modern", fx_modern)
+		fx_modern = cf.get_value("battle", "fx_modern", fx_modern); sensors = cf.get_value("battle", "sensors", sensors)
 		if int(cf.get_value("sound", "scale", 1)) < 2:   # saved on the old, ten-times-louder scale: keep the same loudness
 			effects = minf(1.0, effects * 10.0); ambience = minf(1.0, ambience * 10.0)
 			save()
@@ -38,6 +39,7 @@ func apply() -> void:
 func save() -> void:
 	var cf := ConfigFile.new()
 	cf.set_value("sound", "scale", 2); cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern)
+	cf.set_value("battle", "sensors", sensors)
 	cf.save(PATH)
 
 func minimap_width() -> float: return MINIMAP_W[clampi(minimap, 0, 2)]
@@ -61,4 +63,8 @@ func panel() -> Control:
 	var fo := OptionButton.new(); for n in ["Modern", "Classic"]: fo.add_item(n)
 	fo.selected = 0 if fx_modern else 1; fo.item_selected.connect(func(i): fx_modern = i == 0; save())
 	box.add_child(UI.row([fl, fo, UI.label("Classic is the earlier, simpler look.", UI.DIM, 12)]))
+	var sl2 := UI.label("Sensor ranges", UI.INK, 14); sl2.custom_minimum_size.x = 220
+	var so := OptionButton.new(); for n in ["Shown", "Hidden"]: so.add_item(n)
+	so.selected = 0 if sensors else 1; so.item_selected.connect(func(i): sensors = i == 0; save())
+	box.add_child(UI.row([sl2, so, UI.label("Lookout, radar and sonar reach and the radar sweep (R).", UI.DIM, 12)]))
 	return box

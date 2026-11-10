@@ -1122,16 +1122,34 @@ func _hull_bar(f: float) -> Control:
 func _fleet_table(box: Control, at_port: bool) -> void:
     var G: Dictionary = Campaign.G; var need = Campaign.crew_need(); var short = maxi(0, need - int(G.crew))
     _p(box, "The first ship listed is your flagship. Crew %s of %s needed%s. Wages %s a day." % [Campaign.fmt(G.crew), Campaign.fmt(need), ", so undermanned ships reload and steam slower" if short else "", Campaign.fmt(Campaign.wages())], UI.DIM, 14)
+    if at_port: _p(box, "Sell a ship here for what the yard will give, or scuttle her anywhere: her crew stays with you. You cannot part with your last ship.", UI.DIM, 13)
+    else: _p(box, "A ship can be sold in any port (Repairs & crew), or scuttled here and now: her crew stays with you. You cannot part with your last ship.", UI.DIM, 13)
     for i in G.fleet.size():
         var s: Dictionary = G.fleet[i]; var h: Dictionary = GameData.hulls[s.type]; var o = Campaign.officer_of(s)
-        var items = [UI.label(("★ " if i == 0 else "") + s.name, UI.INK), UI.label("%s · %s class (%s)" % [h.name, h.dn, GameData.makers[h.yard].short], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
-            _captain_pick(s)]
+        # two lines to a ship, so the buttons are never pushed off the panel by a long name
+        var nm := UI.label(("★ " if i == 0 else "") + s.name, UI.GOLD if i == 0 else UI.INK); nm.custom_minimum_size.x = 190
+        box.add_child(UI.row([nm, UI.label("%s · %s class (%s)" % [h.name, h.dn, GameData.makers[h.yard].short], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13)]))
+        var items = [_captain_pick(s)]
         if at_port:
             var rc = repair_cost(s)
-            items.append(UI.button("Repair " + Campaign.fmt(rc), func(): G.credits -= rc; s.hullFrac = 1.0; _rerender(), false, rc == 0 or G.credits < rc))
-            items.append(UI.button("Sell " + Campaign.fmt(sell_value(s)), func(): _sell_ship(s), false, G.fleet.size() < 2))
-        if i: items.append(UI.button("Flagship", func(): G.fleet.erase(s); G.fleet.push_front(s); _rerender()))
+            items.append(UI.button("Repair · " + Campaign.fmt(rc), func(): G.credits -= rc; s.hullFrac = 1.0; _rerender(), false, rc == 0 or G.credits < rc))
+            items.append(UI.button("Sell · " + Campaign.fmt(sell_value(s)), func(): _sell_ship(s), false, G.fleet.size() < 2))
+        if _scuttle_id == str(s.id):
+            items.append(UI.button("Confirm: scuttle the " + s.name, func(): _scuttle_id = ""; _scuttle(s), true))
+            items.append(UI.button("Keep her", func(): _scuttle_id = ""; _rerender()))
+        else: items.append(UI.button("Scuttle", func(): _scuttle_id = str(s.id); _rerender(), false, G.fleet.size() < 2))
+        if i: items.append(UI.button("Make flagship", func(): G.fleet.erase(s); G.fleet.push_front(s); _rerender()))
         box.add_child(UI.row(items))
+
+var _scuttle_id := ""
+## Open the sea cocks: the ship is gone, with nothing for her but her crew, who stay with you.
+func _scuttle(s: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    G.fleet.erase(s)
+    for o in G.officers: if o.ship == s.id: o.ship = null
+    var left := Structures.trim_troops()
+    _toast("The %s is scuttled. Her crew is taken off%s." % [s.name, (", but %d soldiers had no berth left and were paid off" % left) if left > 0 else ""])
+    Campaign.log_ev("Scuttled the " + s.name); _rerender()
 
 # ------------------------------------------------------------------ ports (market and repairs for now)
 var cur_port: Dictionary = {}

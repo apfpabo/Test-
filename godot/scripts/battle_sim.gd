@@ -1283,7 +1283,12 @@ func step(dtv: float) -> void:
                 mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")
                 fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); sound("hit_big", m.pos, 0.55); missiles.remove_at(i); continue
         m.pos += Vector2.from_angle(m.a) * m.v * dt
-        if randf() < dtv * 30: part(P.MTRAIL, m.pos, 1.0 if m.kind == "sam" else 2.0, 4.0)
+        if modern:   # smoke laid every few metres of flight, so the trail is one unbroken line however fast she flies
+            var step_m: float = m.v * dt; var n_p := clampi(int(ceil(step_m / 3.5)), 1, 12); var back_v: Vector2 = Vector2.from_angle(m.a)
+            for k in n_p:
+                var tp = part(P.MTRAIL, m.pos - back_v * (6.0 + step_m * k / n_p) + Vector2(randf() - 0.5, randf() - 0.5) * 2.0, (1.1 if m.kind == "sam" else 2.0) + randf() * 0.5, 3.6 + randf() * 1.5, Vector2.ZERO, true)
+                tp.a = randf() * TAU
+        elif randf() < dtv * 30: part(P.MTRAIL, m.pos, 1.0 if m.kind == "sam" else 2.0, 4.0)
         if m.age < 1.6: # the booster burning: flame at the tail, darker smoke mixed into the trail
             part(P.FIRE, m.pos - Vector2.from_angle(m.a) * 2.0, 0.12, 2.5 if m.kind == "ssm" else 1.6)
             if randf() < dtv * 10: part(P.SMOKE, m.pos - Vector2.from_angle(m.a) * 4.0, 2.5, 3.0, Vector2.ZERO, true)

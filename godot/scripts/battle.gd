@@ -578,6 +578,65 @@ class Drawer extends Node2D:
             var deep: bool = q.t == P.DC; var R: float = maxf(q.size * (1.5 if deep else 1.0), 2.0 * mn)
             draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, 1.0))
 
+    ## An aircraft in plan, in metres (nose along +x): a shadow on the sea first, then the machine in its service
+    ## paint with the light on one wing, its canopy, markings, and the propeller's disc or the jet's exhaust.
+    func _aircraft(p: Vector2, a: float, sc: float, jet: bool, side: int, torp: bool, sun: Vector2) -> void:
+        var top: Color = Color(0.32, 0.36, 0.33) if side else Color(0.27, 0.36, 0.43)      # theirs olive grey, yours sea blue
+        if jet: top = Color(0.5, 0.52, 0.5) if side else Color(0.56, 0.6, 0.62)
+        var mark: Color = Color(0.78, 0.3, 0.24) if side else Color(0.93, 0.85, 0.55)
+        var shapes: Array
+        if jet:
+            shapes = [PackedVector2Array([Vector2(6.4, 0), Vector2(4.6, -0.75), Vector2(-5.2, -0.8), Vector2(-6.0, -0.45), Vector2(-6.0, 0.45), Vector2(-5.2, 0.8), Vector2(4.6, 0.75)]),   # fuselage
+                PackedVector2Array([Vector2(1.6, -0.7), Vector2(-3.4, -5.3), Vector2(-4.6, -5.3), Vector2(-2.2, -0.7)]), PackedVector2Array([Vector2(1.6, 0.7), Vector2(-2.2, 0.7), Vector2(-4.6, 5.3), Vector2(-3.4, 5.3)]),   # swept wings
+                PackedVector2Array([Vector2(-4.2, -0.6), Vector2(-6.2, -2.4), Vector2(-6.8, -2.4), Vector2(-5.8, -0.6)]), PackedVector2Array([Vector2(-4.2, 0.6), Vector2(-5.8, 0.6), Vector2(-6.8, 2.4), Vector2(-6.2, 2.4)])]   # tailplane
+        else:
+            shapes = [PackedVector2Array([Vector2(4.6, 0), Vector2(4.2, -0.72), Vector2(1.5, -0.8), Vector2(-4.6, -0.3), Vector2(-5.2, 0), Vector2(-4.6, 0.3), Vector2(1.5, 0.8), Vector2(4.2, 0.72)]),   # fuselage
+                PackedVector2Array([Vector2(2.2, -0.7), Vector2(1.5, -6.3), Vector2(0.2, -6.5), Vector2(-0.6, -6.1), Vector2(-0.9, -0.7)]), PackedVector2Array([Vector2(2.2, 0.7), Vector2(-0.9, 0.7), Vector2(-0.6, 6.1), Vector2(0.2, 6.5), Vector2(1.5, 6.3)]),   # wings
+                PackedVector2Array([Vector2(-3.7, -0.3), Vector2(-4.1, -2.3), Vector2(-4.9, -2.3), Vector2(-5.0, -0.2)]), PackedVector2Array([Vector2(-3.7, 0.3), Vector2(-5.0, 0.2), Vector2(-4.9, 2.3), Vector2(-4.1, 2.3)])]   # tailplane
+        var alt: float = 28.0 if torp else 60.0
+        draw_set_transform(p + sun * alt * 0.5, a, Vector2(sc, sc))
+        for sh in shapes: draw_colored_polygon(sh, Color(0.0, 0.03, 0.05, 0.28))
+        draw_set_transform(p, a, Vector2(sc, sc))
+        var rs: Vector2 = sun.rotated(-a)                       # the sun's direction in the aircraft's own axes
+        for i in shapes.size():
+            var c: Color = top
+            if i == 1 or i == 3: c = top.lightened(0.12) if rs.y > 0.0 else top.darkened(0.14)   # one wing takes the light, the other loses it
+            if i == 2 or i == 4: c = top.lightened(0.12) if rs.y < 0.0 else top.darkened(0.14)
+            draw_colored_polygon(shapes[i], c)
+        draw_line(Vector2(3.6 if not jet else 5.0, 0), Vector2(-4.4, 0), top.lightened(0.14), 0.35)                    # the spine catching the light
+        draw_colored_polygon(PackedVector2Array([Vector2(2.2, -0.42), Vector2(0.2, -0.5), Vector2(-0.6, -0.3), Vector2(-0.6, 0.3), Vector2(0.2, 0.5), Vector2(2.2, 0.42)]) if not jet else PackedVector2Array([Vector2(4.0, -0.4), Vector2(2.0, -0.5), Vector2(1.2, 0), Vector2(2.0, 0.5), Vector2(4.0, 0.4)]), Color(0.1, 0.14, 0.17))   # canopy
+        draw_line(Vector2(1.6, -0.2), Vector2(0.4, -0.2), Color(0.75, 0.85, 0.9, 0.6), 0.14)                               # a glint on the glass
+        var wy: float = 3.9 if jet else 4.6; var wx: float = -2.6 if jet else 0.5
+        for sy in [-1.0, 1.0]: draw_circle(Vector2(wx, sy * wy), 0.62, mark); draw_circle(Vector2(wx, sy * wy), 0.26, top.darkened(0.3))   # wing markings
+        if jet:
+            draw_circle(Vector2(-6.3, 0), 0.5, Color(1, 0.7, 0.35, 0.9)); draw_texture_rect(GameData.glow_tex(), Rect2(-10.5, -2.0, 5.0, 4.0), false, Color(1, 0.6, 0.3, 0.45))
+        else:
+            draw_circle(Vector2(4.2, 0), 0.7, top.darkened(0.25)); draw_arc(Vector2(4.75, 0), 1.75, 0, TAU, 16, Color(0.8, 0.82, 0.8, 0.16), 0.9)   # cowling and the propeller's disc
+            if torp: draw_line(Vector2(2.4, 0), Vector2(-2.6, 0), Color(0.62, 0.64, 0.62), 0.42)                         # the torpedo slung beneath
+
+    ## A missile in plan (nose along +x): its shadow, the body with wings and fins, and the motor's flame.
+    func _missile(m, sc: float, sun: Vector2) -> void:
+        var sam: bool = m.kind == "sam"; var L: float = 5.6 if sam else 7.2; var body: Color = Color(0.86, 0.88, 0.87) if sam else (Color(0.78, 0.76, 0.72) if m.side else Color(0.8, 0.82, 0.84))
+        var alt: float = 70.0 if sam else 12.0
+        var shape := PackedVector2Array([Vector2(L / 2, 0), Vector2(L / 2 - 1.3, -0.36), Vector2(-L / 2, -0.36), Vector2(-L / 2, 0.36), Vector2(L / 2 - 1.3, 0.36)])
+        var wings := [PackedVector2Array([Vector2(0.6, -0.3), Vector2(-0.8, -1.5), Vector2(-1.6, -1.5), Vector2(-1.2, -0.3)]), PackedVector2Array([Vector2(0.6, 0.3), Vector2(-1.2, 0.3), Vector2(-1.6, 1.5), Vector2(-0.8, 1.5)]),
+            PackedVector2Array([Vector2(-L / 2 + 1.0, -0.3), Vector2(-L / 2 + 0.1, -1.05), Vector2(-L / 2, -1.05), Vector2(-L / 2, -0.3)]), PackedVector2Array([Vector2(-L / 2 + 1.0, 0.3), Vector2(-L / 2, 0.3), Vector2(-L / 2, 1.05), Vector2(-L / 2 + 0.1, 1.05)])]
+        draw_set_transform(m.pos + sun * alt * 0.5, m.a, Vector2(sc, sc))
+        draw_colored_polygon(shape, Color(0, 0.03, 0.05, 0.3)); for w in wings: draw_colored_polygon(w, Color(0, 0.03, 0.05, 0.3))
+        draw_set_transform(m.pos, m.a, Vector2(sc, sc))
+        var fl: float = 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.06 + m.pos.x)
+        # the flame: a white-hot core in a long orange tongue, and its glow on the smoke behind
+        draw_texture_rect(GameData.glow_tex(), Rect2(-L / 2 - 9.0, -4.5, 11.0, 9.0), false, Color(1, 0.55, 0.2, 0.5 * fl))
+        draw_colored_polygon(PackedVector2Array([Vector2(-L / 2, -0.42), Vector2(-L / 2 - 4.6 * fl, 0), Vector2(-L / 2, 0.42)]), Color(1, 0.62, 0.22, 0.9))
+        draw_colored_polygon(PackedVector2Array([Vector2(-L / 2, -0.24), Vector2(-L / 2 - 2.2 * fl, 0), Vector2(-L / 2, 0.24)]), Color(1, 0.96, 0.8, 0.95))
+        var rs: Vector2 = sun.rotated(-m.a)
+        for i in wings.size(): draw_colored_polygon(wings[i], body.darkened(0.3 if (rs.y > 0.0) == (i % 2 == 1) else 0.12))
+        draw_colored_polygon(shape, body)
+        draw_line(Vector2(L / 2 - 1.4, -0.12 * signf(rs.y)), Vector2(-L / 2, -0.12 * signf(rs.y)), body.lightened(0.35), 0.16)       # the lit flank
+        draw_line(Vector2(L / 2 - 1.4, 0.24 * signf(rs.y)), Vector2(-L / 2, 0.24 * signf(rs.y)), body.darkened(0.35), 0.14)         # the shaded one
+        draw_colored_polygon(PackedVector2Array([Vector2(L / 2, 0), Vector2(L / 2 - 1.3, -0.36), Vector2(L / 2 - 1.3, 0.36)]), Color(0.75, 0.3, 0.2) if m.side else Color(0.9, 0.82, 0.45))   # the nose in its side's colour
+        draw_line(Vector2(0.2, -0.36), Vector2(0.2, 0.36), Color(0.15, 0.16, 0.17), 0.14)                                           # a joint band
+
     func _parts(layer: int) -> void:
         if battle.sim.modern: _parts_modern(layer)
         else: _parts_classic(layer)
@@ -619,6 +678,11 @@ class Drawer extends Node2D:
                         var ang: float = q.a + q.v * 1.3 + q.life * (0.15 if q.v % 2 else -0.15)
                         _rpuff(cl, q.pos, r, ang, Color(base, a))
                         _rpuff(cl, q.pos + sun * r * 0.14, r * 0.72, ang + 0.8, Color(hi, a * 0.28))
+                    P.MTRAIL:   # a missile's smoke trail: white, lit on the sun's side, curling as it spreads
+                        var r: float = maxf(q.size, 1.2 * mn) * (0.7 + k * 2.6); var a: float = 0.6 * pow(1 - k, 1.2) * minf(1.0, q.life * 10.0)
+                        var ang: float = q.v * 1.3 + q.life * (0.5 if q.v % 2 else -0.5)
+                        _rpuff(cl, q.pos, r, ang, Color(0.86, 0.87, 0.86, a)); _rpuff(cl, q.pos + sun * r * 0.14, r * 0.7, ang + 0.9, Color(1, 1, 1, a * 0.35))
+                        _rpuff(cl, q.pos - sun * r * 0.16, r * 0.75, ang - 0.7, Color(0.45, 0.47, 0.5, a * 0.3))
                     P.SOOT:   # the black heart of a big explosion: oily smoke boiling up through the fire, lit red from inside at first
                         var r: float = q.size * (0.7 + 2.6 * sqrt(k)); var a := 0.82 * minf(1.0, q.life * 5.0) * pow(1 - k, 0.9)
                         var hot := clampf(1.0 - q.life / 0.9, 0.0, 1.0)
@@ -771,25 +835,33 @@ class Drawer extends Node2D:
                 draw_line(back, head, Color(hc, 0.35), r * 0.9); draw_line(back.lerp(head, 0.5), head, Color(hc, 0.6), r * 0.7)
                 _puff(GameData.glow_tex(), head, r * 4.5, Color(hc, 0.35))
             draw_circle(sh.pos - Vector2(0, hgt), r, hc)
+        var z0: float = battle.zoom(); var sun_s: Vector2 = BattleSim.SUN.normalized()
         for m in sim.missiles:
             if m.delay > 0: continue
-            var ms = maxf(1.0, 1.5 * mn)
-            draw_set_transform(m.pos, m.a, Vector2(ms, ms))
-            draw_rect(Rect2(-5, -1.3, 10, 2.6), Color("#dfe4e2") if m.kind == "sam" else (Color("#ffb38a") if m.side else Color("#fff1c0")))
-            draw_circle(Vector2(-6, 0), 2.2, Color(1, 0.78, 0.35, 0.9))
-            if sim.modern:   # the motor's flame and its glow
-                var fl := 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.06 + m.pos.x)
-                draw_texture_rect(GameData.glow_tex(), Rect2(-22, -9, 18, 18), false, Color(1, 0.6, 0.25, 0.55 * fl))
-                draw_texture_rect(GameData.fx_tex("puff"), Rect2(-14 - 4 * fl, -2.5, 10 * fl, 5), false, Color(1, 0.85, 0.5, 0.9))
+            if z0 < 0.3 or not sim.modern:   # far out, or the classic style: a mark that reads at any size
+                var ms = maxf(1.0, 1.5 * mn)
+                draw_set_transform(m.pos, m.a, Vector2(ms, ms))
+                draw_rect(Rect2(-5, -1.3, 10, 2.6), Color("#dfe4e2") if m.kind == "sam" else (Color("#ffb38a") if m.side else Color("#fff1c0")))
+                draw_circle(Vector2(-6, 0), 2.2, Color(1, 0.78, 0.35, 0.9))
+                if sim.modern: draw_texture_rect(GameData.glow_tex(), Rect2(-22, -9, 18, 18), false, Color(1, 0.6, 0.25, 0.5))
+                continue
+            _missile(m, maxf(1.0, 1.1 * mn), sun_s)
         draw_set_transform(Vector2.ZERO)
         for q in sim.air:
+            var far: bool = z0 < 0.3 or not sim.modern
             var col = Color("#e8a08a") if q.side else Color("#f3e2a8"); var ps = maxf(1.0, 1.6 * mn)
             for k in int(q.n):
                 var row = ceili(k / 2.0); var sd = 1.0 if k % 2 else -1.0
-                var p: Vector2 = q.pos + Vector2(-row * 14 * ps, sd * row * 12 * ps).rotated(q.a)
-                draw_set_transform(p, q.a, Vector2(ps, ps))
-                if q.jet: draw_colored_polygon(PackedVector2Array([Vector2(7, 0), Vector2(-5, -6), Vector2(-3, 0), Vector2(-5, 6)]), col)
-                else: draw_rect(Rect2(-5, -1, 11, 2), col); draw_rect(Rect2(0, -7, 2.5, 14), col); draw_rect(Rect2(-5, -3, 1.5, 6), col)
+                if far:
+                    var p: Vector2 = q.pos + Vector2(-row * 14 * ps, sd * row * 12 * ps).rotated(q.a)
+                    draw_set_transform(p, q.a, Vector2(ps, ps))
+                    if q.jet: draw_colored_polygon(PackedVector2Array([Vector2(7, 0), Vector2(-5, -6), Vector2(-3, 0), Vector2(-5, 6)]), col)
+                    else: draw_rect(Rect2(-5, -1, 11, 2), col); draw_rect(Rect2(0, -7, 2.5, 14), col); draw_rect(Rect2(-5, -3, 1.5, 6), col)
+                else:   # close in: the aircraft themselves, in loose formation, with their shadows on the sea
+                    var sc: float = maxf(1.0, 0.8 * mn)
+                    var wob: float = sin(Time.get_ticks_msec() * 0.0013 + k * 1.7) * 3.0
+                    var pp: Vector2 = q.pos + Vector2(-row * 26.0 * sc, sd * row * 22.0 * sc + wob).rotated(q.a)
+                    _aircraft(pp, q.a + sin(Time.get_ticks_msec() * 0.0009 + k) * 0.03, sc, q.jet, q.side, q.type == "tb", sun_s)
         draw_set_transform(Vector2.ZERO)
         for tr in sim.tracers: draw_line(tr.a, tr.b, Color(1, 0.86, 0.55, tr.life * 6), mn)
         # flagship: station ring, gun range, predicted track and where each main turret is laid

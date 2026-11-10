@@ -198,7 +198,7 @@ func _wakes(dt: float) -> void:
     rec.call("player", G.player)
     var half: Vector2 = vs / 2 / zoom + Vector2(60, 60)
     for f in G.fleets:
-        if absf(Campaign.wdx(cam.x, f.x)) < half.x and absf(f.y - cam.y) < half.y: rec.call(f.id, f)
+        if f.get("vis", true) and absf(Campaign.wdx(cam.x, f.x)) < half.x and absf(f.y - cam.y) < half.y: rec.call(f.id, f)
     for key in trails.keys():
         if not seen.has(key): trails.erase(key); continue
         var tr: Array = trails[key]
@@ -295,6 +295,14 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         # fleets (and their wakes), only those on screen
         var hh = vs.y / 2 / z
         for f in G.fleets:
+            if not f.get("vis", true):   # out of sight: for a few days, a grey mark where she was last seen
+                if Campaign.ghost(f):
+                    var gx: float = map.rx(f.seenX); var gp := Vector2(gx, f.seenY)
+                    if absf(gx - map.cam.x) < hw + 60 and absf(f.seenY - map.cam.y) < hh + 60:
+                        var ga: float = 0.55 * (1.0 - float(int(G.day) - int(f.seenDay)) / (Campaign.GHOST_DAYS + 1.0)); var gh: float = f.get("seenH", 0.0)
+                        draw_colored_polygon(PackedVector2Array([gp + Vector2.from_angle(gh) * 7 / z, gp + Vector2.from_angle(gh + 2.5) * 4 / z, gp + Vector2.from_angle(gh - 2.5) * 4 / z]), Color(0.62, 0.66, 0.68, ga))
+                        for i in 12: if i % 2 == 0: draw_arc(gp, 11.0 / z, i * TAU / 12, (i + 1) * TAU / 12, 3, Color(0.62, 0.66, 0.68, ga), 1.0 / z)
+                continue
             var x: float = map.rx(f.x)
             if absf(x - map.cam.x) > hw + 60 or absf(f.y - map.cam.y) > hh + 60: continue
             if z >= 0.32: _wakes_of(f.id, f.ships, Vector2(x, f.y), f.h)
@@ -491,6 +499,11 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             _t(sp - Vector2(0, s + 5), p.name, Color("#eef0ec"), 15 if p.capital else 13)
             if z > 0.45: _t(sp + Vector2(0, s + 15), GameData.fac[p.fac].short + (" · capital" if p.capital else "") + (" · closed to you" if closed else ""), Color("#d9614a") if closed else Color(GameData.fac[p.fac].map), 11)
         for f in G.fleets:
+            if not f.get("vis", true):
+                if Campaign.ghost(f) and z >= 0.32:
+                    var gsp: Vector2 = map.to_screen(Vector2(f.seenX, f.seenY)); var ago: int = int(G.day) - int(f.seenDay)
+                    if gsp.x > -150 and gsp.x < vs.x + 150: _t(gsp + Vector2(0, 26), "%s · last seen %s" % [f.name, "today" if ago <= 0 else ("yesterday" if ago == 1 else "%d days ago" % ago)], Color(0.62, 0.66, 0.68, 0.75), 11)
+                continue
             var hos = Campaign.hostile_fleet(f)
             if not (z >= 0.6 or hos or f.get("mission", false) or f.kind == "bounty"): continue
             var sp: Vector2 = map.to_screen(Vector2(f.x, f.y))
@@ -778,7 +791,7 @@ func _click(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
     var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / zoom   # r in screen pixels
     if P.get("towed") != null: _toast("You are under tow. Right-click to cast off the tow."); return
-    if Campaign.dead_in_water(): _toast("Your squadron is dead in the water: no fuel, no reserve. Right-click a friendly fleet to call it by wireless.")
+    if Campaign.dead_in_water(): _toast("Your squadron is dead in the water: no fuel, no reserve. Right-click the sea to call a warship or a convoy by wireless.")
     if Input.is_key_pressed(KEY_CTRL) and P.get("route") != null and P.get("follow") == null and P.get("escort") == null:   # another waypoint
         var tp = null
         for p in G.ports: if near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10): tp = p
@@ -828,7 +841,11 @@ func _context(sp: Vector2) -> void:
             var dP: float = Campaign.mdist(hit.x, hit.y, P.x, P.y)
             if dP < Campaign.CONTACT * 1.5: _menu.add_item("Hail her now (signals)", 5)
             else: _menu.add_item("Call her by wireless (%d km)" % int(dP * Campaign.KM_PER_UNIT), 4); _menu.set_item_disabled(_menu.get_item_index(4), dP > Campaign.WIRELESS)
-    elif not busy: return
+    else:   # open sea: a call on the wireless to whoever is nearest, seen or not
+        _menu.add_separator("Wireless")
+        var ws = Campaign.nearest_caller(false); var ms = Campaign.nearest_caller(true)
+        _menu.add_item("Call the nearest friendly warship" + ((" (%d km)" % int(Campaign.mdist(ws.x, ws.y, P.x, P.y) * Campaign.KM_PER_UNIT)) if ws != null else " (none in range)"), 7); _menu.set_item_disabled(_menu.get_item_index(7), ws == null or Campaign.dark())
+        _menu.add_item("Call the nearest merchant convoy" + ((" (%d km)" % int(Campaign.mdist(ms.x, ms.y, P.x, P.y) * Campaign.KM_PER_UNIT)) if ms != null else " (none in range)"), 8); _menu.set_item_disabled(_menu.get_item_index(8), ms == null or Campaign.dark())
     if P.get("towed") != null: _menu.add_item("Cast off the tow", 6)
     _menu.add_item("Cancel orders (heave to)", 3)
     _menu.set_item_disabled(_menu.get_item_index(3), not busy)
@@ -852,6 +869,9 @@ func _context_pick(id: int) -> void:
             _toast("Orders cancelled. The squadron heaves to.")
         4: if f != null: _toast(Campaign.call_fleet(f))
         5: if f != null: _hail(f)
+        7, 8:
+            var c = Campaign.nearest_caller(id == 8)
+            if c != null: _toast(Campaign.call_fleet(c))
         6:
             var tf = Campaign._fleet(P.towed); P.towed = null; P.route = null; P.tx = null; P.destPort = null
             if tf != null: tf.cool = 20.0
@@ -861,6 +881,7 @@ func _context_pick(id: int) -> void:
 func fleet_at(w: Vector2):
     var best = null; var bd := INF
     for f in Campaign.G.fleets:
+        if not f.get("vis", true): continue   # you cannot point at what you cannot see
         var d := Campaign.mdist(f.x, f.y, Campaign.wrap_x(w.x), w.y)
         var r: float = maxf(16.0 / zoom, marks._layout(f.ships)[0][3] * 0.55 if zoom >= 0.32 else 0.0)
         if d < r and d < bd: bd = d; best = f

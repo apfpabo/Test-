@@ -157,27 +157,43 @@ func _nodes_near(p: Vector2, r: float) -> Array:
     return out
 
 ## Ties a temporary point into the lane network through the nearest lane points it can see.
-func _tie(id: int, p: Vector2) -> bool:
+## A line over water with no sea room asked either side (the last resort for a ship close under the land).
+func bare_line(ax: float, ay: float, bx: float, by: float) -> bool:
+    var dx := wdx(ax, bx); var dy := by - ay; var steps := int(ceil(sqrt(dx * dx + dy * dy) / (MASK_RES * 0.4)))
+    for i in range(1, steps): if on_land(ax + dx * i / steps, ay + dy * i / steps): return false
+    return true
+func _tie(id: int, p: Vector2, bare := false) -> bool:
+    if nav.has_point(id): nav.remove_point(id)
     nav.add_point(id, Vector2(wrap_x(p.x), p.y)); var n = 0
     for r in [30.0, 60.0, 120.0]:
         for e in _nodes_near(p, r):
             if n >= 5: break
             var q = nav.get_point_position(e[1])
-            if sight_line(p.x, p.y, q.x, q.y): nav.connect_points(id, e[1]); n += 1
+            if (bare_line(p.x, p.y, q.x, q.y) if bare else sight_line(p.x, p.y, q.x, q.y)): nav.connect_points(id, e[1]); n += 1
         if n > 0: return true
     return false
 
 ## A sea route from a to b as waypoints, pulled tight so it keeps only the turns needed to stay at sea.
 func find_path(a: Vector2, b: Vector2) -> Array:
     var sa = 900000; var sb = 900001
-    var ok = _tie(sa, a) and _tie(sb, b)
+    # A big squadron swings wide and can fetch up hard against a coast, where no lane point is in clear sight (the
+    # sight line wants sea room either side). Then stand off to the nearest open water first and route from there.
+    var a0 := a; var lead := false
+    if not _tie(sa, a):
+        nav.remove_point(sa); var w := nearest_water(a.x, a.y, 60)
+        if not _tie(sa, w) and not _tie(sa, w, true):
+            if not _tie(sa, a, true): nav.remove_point(sa); return []
+        else: a = w; lead = true
+    var ok = _tie(sb, b) or _tie(sb, b, true)
     var ids = nav.get_id_path(sa, sb) if ok else PackedInt64Array()
     var pts = []
     for id in ids: pts.append(nav.get_point_position(id))
-    nav.remove_point(sa); if nav.has_point(sb): nav.remove_point(sb)
+    if nav.has_point(sa): nav.remove_point(sa)
+    if nav.has_point(sb): nav.remove_point(sb)
     if pts.size() < 2: return []
     pts[pts.size() - 1] = Vector2(wrap_x(b.x), b.y)
     var out = []; var cur: Vector2 = a; var k = 0
+    if lead: out.append(Vector2(wrap_x(a.x), a.y))   # first leg: clear of the land
     while k < pts.size() - 1:
         var far = k + 1
         for j in range(mini(pts.size() - 1, k + 300), k + 1, -1):
@@ -748,7 +764,7 @@ func new_day(moved: bool) -> void:
             G.reserve = maxf(0.0, float(G.reserve) - burn / 3.0)
             if G.reserve <= 0.0 and not G.get("deadWarned", false):
                 G.deadWarned = true
-                toast.emit("The reserve is gone. Your squadron is dead in the water. Right-click a friendly fleet and call it by wireless: a warship can tow you to port, a merchant convoy can sell you fuel.")
+                toast.emit("The reserve is gone. Your squadron is dead in the water. Right-click the sea and call by wireless: a warship can tow you to port, a merchant convoy can sell you fuel.")
         if G.cargo.fuel < 0:
             G.cargo.fuel = 0
             if not G.get("noFuelWarned", false): toast.emit("Bunkers are dry. The fleet crawls on its reserve, about %d days of it. Buy fuel oil at a port, or from a merchant convoy." % int(ceil(reserve() / maxf(0.1, fuel_use() / 3.0)))); G.noFuelWarned = true
@@ -801,10 +817,12 @@ func update(dt: float) -> void:
     G.dayF += dt * 0.1
     if G.dayF >= 1:
         G.dayF -= 1; new_day(G.movedToday); G.movedToday = false
+    _sight_t -= dt
+    if _sight_t <= 0.0: _sight_t = 0.4; _sighting()
     P.noBrake = P.follow != null
     if P.follow != null:
         var f = _fleet(P.follow); P.repathT = P.get("repathT", 0.0) - dt
-        if f == null: P.follow = null; toast.emit("Contact lost.")
+        if f == null or not f.get("vis", true): P.follow = null; toast.emit("Contact lost.")
         elif P.repathT <= 0:
             var d = mdist(P.x, P.y, f.x, f.y); P.repathT = 2.0 if d > 300 else 0.6
             var lead = minf(d / maxf(0.5, fleet_map_speed(G.fleet)), 12.0)
@@ -922,7 +940,7 @@ func update(dt: float) -> void:
         if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
         var close_in: bool = ((P.follow == f.id or f.get("answering", false)) and dP < CONTACT * maxf(ky, 0.35)) or (hos and dP < CONTACT * maxf(kt, ky))   # inside gun range, whoever sees the other brings on the action
         if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
-            f.met = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
+            f.met = true; f.vis = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
 
 # ------------------------------------------------------------------ divisions, reserve and readiness
 ## Every ship you own: the squadron you sail with and, when a fast division is detached, the main body left astern.
@@ -978,6 +996,39 @@ func rest_in_port(days: int) -> void:
         for s in all_ships(): s.rdy = minf(1.0, readiness(s) + 0.1)
     G.docked = false; G.erase("day_rest"); save()
 func days_to_rest() -> int: return int(ceil((1.0 - fleet_readiness()) / 0.112))
+
+# ------------------------------------------------------------------ what you can see of the world's fleets
+## You see a fleet on the chart only while somebody of yours has it in sight: your squadron (lookouts and radar about
+## 550 km, search aircraft from a carrier to their reach, all cut by weather and darkness), your main body and guard
+## squadrons, the fleets of the flag you serve and its coalition, and the ports and structures you hold (radar
+## stations and airfields farthest). Your own and allied fleets, a convoy you escort, a fleet answering your call and
+## an assault your radar has reported are always shown. A fleet that passes out of sight is kept for five days as a
+## grey mark where it was last seen.
+const SIGHT := 100.0
+const GHOST_DAYS := 5
+var _sight_t := 0.0
+func friendly_fac(fac: String) -> bool:
+    if fac == "player": return true
+    var cm = G.get("commission")
+    if cm == null: return false
+    return fac == cm.fac or (Diplomacy.coalition_of(fac) != "" and Diplomacy.coalition_of(fac) == Diplomacy.coalition_of(cm.fac))
+func always_seen(f: Dictionary) -> bool:
+    return friendly_fac(f.fac) or int(f.get("escort", 0)) > 0 or f.get("answering", false) or f.get("warned", false) or G.player.get("escort") == f.id
+func _sighting() -> void:
+    var P: Dictionary = G.player; var wx: Dictionary = weather_here(); var ky := ck_you(wx)
+    var eyes := [[P.x, P.y, maxf(SIGHT, strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ky]]   # a carrier's search aircraft look three times as far as her strike reaches
+    for f in G.fleets: if friendly_fac(f.fac) and not f.ships.is_empty(): eyes.append([f.x, f.y, SIGHT * 0.8])
+    for p in G.ports: if p.fac == "player": eyes.append([p.sx, p.sy, 90.0])
+    for s in Structures.held(): eyes.append([s.x, s.y, {"radar": 220.0, "airfield": 250.0, "navalbase": 120.0, "battery": 60.0}.get(s.kind, 40.0)])
+    for f in G.fleets:
+        var seen := always_seen(f)
+        if not seen:
+            for e in eyes:
+                if absf(f.y - e[1]) < e[2] and mdist(f.x, f.y, e[0], e[1]) < e[2]: seen = true; break
+        if seen: f.vis = true; f.seenX = f.x; f.seenY = f.y; f.seenDay = G.day; f.seenH = f.h
+        else: f.vis = false
+## Whether to draw a grey last-known mark for a fleet out of sight.
+func ghost(f: Dictionary) -> bool: return not f.get("vis", true) and f.has("seenDay") and int(G.day) - int(f.seenDay) <= GHOST_DAYS
 
 # ------------------------------------------------------------------ salvage
 ## After a victory your boats work the wrecks. From every sunk ship: steel from her plating, munitions and fuel oil
@@ -1052,6 +1103,16 @@ func strike_reach(ships: Array, air := true) -> float:
 
 ## A wireless call to a fleet that does not fire on you: it comes to you if its flag thinks well enough of you.
 ## Within signalling distance it answers at once. Returns what happens, for a toast.
+## The nearest fleet that would answer a wireless call (a warship of a flag that thinks well enough of you, or a
+## merchant convoy), in sight or not: you call into the ether and whoever hears, answers.
+func nearest_caller(merchant: bool):
+    var best = null; var bd: float = WIRELESS
+    for f in G.fleets:
+        if f.fac == "player" or hostile_fleet(f) or f.kind == "raiders" or f.kind == "bounty" or f.kind == "assault" or f.ships.is_empty(): continue
+        if (f.kind == "convoy") != merchant or G.rep.get(f.fac, 0) < -10: continue
+        var d := mdist(f.x, f.y, G.player.x, G.player.y)
+        if d < bd: bd = d; best = f
+    return best
 const WIRELESS := 900.0   # map units, about 5,000 km: the long-range sets of 1946
 func call_fleet(f: Dictionary) -> String:
     var d := mdist(f.x, f.y, G.player.x, G.player.y)

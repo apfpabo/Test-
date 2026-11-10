@@ -273,8 +273,8 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.up = rec.get("up", {}) if side == 0 else {}
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
-    if side == 0:   # what you have loaded her with tells at sea (other navies' ships sail as designed)
-        var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
+    # what she is loaded with tells at sea, whoever's she is (owner's decision: other navies are held to the same rules)
+    var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
     for i in d.slots.size():
         var wid: String = rec.fit[i]
         if wid == "" or not GameData.weapons.has(wid): continue

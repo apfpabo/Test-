@@ -681,6 +681,11 @@ func _weights() -> void:
 	var sim := BattleSim.new(); sim.wx = Weather.CLEAR
 	sim.setup([rec], [Campaign.new_ship("dd_narvik", null, "directorate", [])], [], [], 0)
 	ok(sim.ships[0].ld_speed < 1.0 and sim.ships[0].ld_spread > 1.0 and is_equal_approx(sim.ships[1].ld_speed, 1.0), "an overloaded ship of yours is slower and shoots wider in battle (speed x%.2f, spread x%.2f)" % [sim.ships[0].ld_speed, sim.ships[0].ld_spread])
+	# other navies are held to the same rules: one of theirs stripped of her torpedoes is lighter and faster
+	var theirs: Dictionary = Campaign.new_ship("dd_narvik", null, "directorate", []); var dn: Dictionary = GameData.hulls["dd_narvik"]
+	for i in dn.slots.size(): if dn.slots[i].s == "T": theirs.fit[i] = ""
+	var sim2 := BattleSim.new(); sim2.wx = Weather.CLEAR; sim2.setup([Campaign.new_ship("dd_fletcher", null, "player", [])], [theirs], [], [], 0)
+	ok(sim2.ships[1].ld_speed > 1.0, "the weight rules bind other navies' ships too (theirs, lightened: speed x%.3f)" % sim2.ships[1].ld_speed)
 	var map = load("res://scenes/world_map.tscn").instantiate(); add_child(map)
 	var plan: Array = rec.fit.duplicate(); var ti := -1
 	for i in d.slots.size(): if d.slots[i].s == "T" and ti < 0: ti = i

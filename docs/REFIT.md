@@ -39,6 +39,6 @@ Weapons cost what they did and sell back for half; on top the yard charges 12 fo
 
 - Refits are still done at once: no time in the yard.
 - Armour is one figure, not set by belt, deck and turrets; there is no choice of machinery for a design speed, and no trim fore and aft.
-- Other navies' ships sail as designed and are not reckoned.
+- Other navies' ships are held to the same rules (owner's decision), but they sail in their designers' standard fits, which are all within weight, so today it changes nothing for them. It will once they carry variant fits or system upgrades.
 - The chart speed of a squadron ignores loading; it tells in battle only.
 - No new construction to your own design.

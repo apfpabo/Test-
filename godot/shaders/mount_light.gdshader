@@ -16,7 +16,8 @@ uniform float sun_k = 1.0; // shadow length per metre of height
 uniform float lean = 0.0;
 uniform vec2 sun_ship = vec2(0.0, 1.0);
 varying vec4 vc;
-float h_at(sampler2D tx, vec2 uv) { if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 0.0; vec4 q = texture(tx, uv); return q.g * q.a * h_max; }
+// (a macro, not a function: a function cannot read TEXTURE)
+#define H_AT(q) (texture(TEXTURE, (q)).g * texture(TEXTURE, (q)).a * h_max * float((q).x >= 0.0 && (q).y >= 0.0 && (q).x <= 1.0 && (q).y <= 1.0))
 
 void vertex() { vc = COLOR; }
 
@@ -29,12 +30,12 @@ void fragment() {
 		vec2 dir = vec2(sin(ta), cos(ta)) * sign(lean);                        // the ship's low side, in the mount's frame
 		vec2 per_m = dir * TEXTURE_PIXEL_SIZE * px_per_m;                      // UV per metre that way
 		float al = abs(lean), far = al * 12.0, stp = far / 20.0, tt = 0.0; bool hit = false;
-		for (int i = 0; i < 20; i++) { float x = far - float(i) * stp; if (h_at(TEXTURE, UV - per_m * x) * al >= x) { tt = x; hit = true; break; } }
+		for (int i = 0; i < 20; i++) { float x = far - float(i) * stp; if (H_AT(UV - per_m * x) * al >= x) { tt = x; hit = true; break; } }
 		if (hit && tt > 0.0) {
 			float lo = tt, hi = tt + stp;
-			for (int j = 0; j < 6; j++) { float mid = 0.5 * (lo + hi); if (h_at(TEXTURE, UV - per_m * mid) * al >= mid) lo = mid; else hi = mid; }
+			for (int j = 0; j < 6; j++) { float mid = 0.5 * (lo + hi); if (H_AT(UV - per_m * mid) * al >= mid) lo = mid; else hi = mid; }
 			tt = lo; uv0 = UV - per_m * tt;
-			wall = smoothstep(0.2, 0.6, h_at(TEXTURE, uv0) * al - tt);
+			wall = smoothstep(0.2, 0.6, H_AT(uv0) * al - tt);
 			if (wall > 0.0 && texture(TEXTURE, uv0).a < 0.5) uv0 -= per_m * 0.3;
 			wlit = clamp(sign(lean) * normalize(sun_ship + vec2(0.0001)).y * 0.5 + 0.5, 0.0, 1.0);
 		}

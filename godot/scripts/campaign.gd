@@ -487,6 +487,62 @@ func fleet_turn_rate(ships: Array) -> float:
     for s in ships: L = maxf(L, hull(s).L)
     return clampf(0.55 - L / 800.0, 0.15, 0.45)
 
+# ------------------------------------------------------------------ supply: how big a fleet you can keep at sea
+## The fleet is limited by what can supply it, not by a count of ten (owner's order of work, step 2; docs/SUPPLY.md).
+## Every ship weighs on the supply train by her size (`supply_weight`); what the train can carry (`supply_cap`) comes
+## from the flagship's own staff, the auxiliaries in company, a navy you serve and the harbours you hold. Over the
+## limit the fleet still sails, but tenders must be hired by the day and the crews cannot be kept fresh; half as much
+## again over it, no yard will hand you another ship. Twenty ships is the most one flag officer can handle at all,
+## and ten the most that fight in one action (the rest stand off, as ships in reserve do).
+const SUPPLY_W := {"pt": 1, "corvette": 1, "dd": 2, "ss": 2, "freighter": 1, "ap": 2, "ao": 1, "ae": 1, "ar": 1, "cl": 3, "ddg": 3, "ssn": 3, "cve": 4, "ca": 4, "cg": 5, "bb": 6, "cv": 7}
+const SUPPLY_TRAIN := {"ao": 5, "ae": 4, "ar": 4, "freighter": 2}   # what an auxiliary in company adds
+const SUPPLY_BASE := 16
+const SUPPLY_MAX := 60
+const SUPPLY_HIRE := 120          # a day, for each point over the limit: tenders hired to make up the difference
+const SHIPS_MAX := 20
+const BATTLE_MAX := 10
+func supply_weight(s: Dictionary) -> int: return int(SUPPLY_W.get(hull(s).klass, 2))
+func supply_need() -> int:
+    var n := 0
+    for s in all_ships(): n += supply_weight(s)
+    return n
+## Where the limit comes from: [what, points], the first being the flagship's own staff.
+func supply_parts() -> Array:
+    var out := [["Your flagship's staff and stores", SUPPLY_BASE]]
+    var train := {}
+    for s in all_ships():
+        var k: String = hull(s).klass
+        if SUPPLY_TRAIN.has(k): train[k] = int(train.get(k, 0)) + int(SUPPLY_TRAIN[k])
+    for k in train: out.append([{"ao": "Oilers in company", "ae": "Ammunition ships", "ar": "Repair ships", "freighter": "Freighters carrying stores"}[k], int(train[k])])
+    if G.get("commission") != null: out.append(["The dockyards of the %s" % GameData.fac[G.commission.fac].short, 8])
+    var np: int = Flag.ports().size()
+    if np > 0: out.append(["%d port%s under your flag" % [np, "" if np == 1 else "s"], np * 5])
+    var nb := 0
+    for s in Structures.held(): if s.kind == "navalbase" and not Structures.silenced(s): nb += 1
+    if nb > 0: out.append(["%d naval base%s" % [nb, "" if nb == 1 else "s"], nb * 6])
+    return out
+func supply_cap() -> int:
+    var c := 0
+    for p in supply_parts(): c += int(p[1])
+    return mini(c, SUPPLY_MAX)
+func supply_over() -> int: return maxi(0, supply_need() - supply_cap())
+func supply_upkeep() -> float: return supply_over() * float(SUPPLY_HIRE)
+## The best readiness an overstretched fleet can hold: 100% within the limit, falling to 50% at half as much again.
+func rdy_cap() -> float:
+    var c := supply_cap()
+    return clampf(1.0 - float(supply_need() - c) / maxf(1.0, float(c)), 0.5, 1.0)
+## "" if a ship of this design can join you, or why not.
+func can_add_ship(type: String) -> String:
+    if all_ships().size() >= SHIPS_MAX: return "One flag officer cannot handle more than %d ships." % SHIPS_MAX
+    var w := int(SUPPLY_W.get(GameData.hulls[type].klass, 2)); var c := supply_cap()
+    if supply_need() + w > int(c * 1.5): return "Your supply train cannot keep her at sea (supply %d of %d, and she needs %d). Add an oiler, an ammunition ship or a repair ship, hold a port or a base, or part with a ship." % [supply_need(), c, w]
+    return ""
+func supply_text() -> String:
+    var lines := []
+    for p in supply_parts(): lines.append("%s: %d" % [p[0], int(p[1])])
+    var over := supply_over()
+    return "Supply %d of %d. %s%s" % [supply_need(), supply_cap(), "; ".join(lines) + ".", (" Over the limit by %d: tenders hired at %s a day, and readiness cannot be kept above %d%%." % [over, fmt(supply_upkeep()), int(rdy_cap() * 100)]) if over > 0 else ""]
+
 # ------------------------------------------------------------------ the economy: wars, sieges, convoys and works
 ## Prices answer to the world (owner's order of work, step 2; docs/ECONOMY.md). Each port carries a shortage per good
 ## (`short`: 0 is normal, 0.3 is thirty per cent dearer, a little below nought is a glut) and the day each cause last
@@ -949,7 +1005,10 @@ func new_day(moved: bool) -> void:
     if G.cargo.food < 0:
         G.cargo.food = 0; var lost = int(ceil(G.crew * 0.03)); G.crew -= lost
         if lost: toast.emit("No food aboard. %d sailors deserted." % lost)
-    G.credits -= wages()
+    G.credits -= wages() + supply_upkeep()
+    if supply_over() > 0 and not G.get("supplyWarned", false):
+        G.supplyWarned = true; toast.emit("Your fleet has outgrown its supply (%d of %d): tenders are hired at %s a day and the crews cannot be kept fresh. Add auxiliaries, hold a port, or part with a ship." % [supply_need(), supply_cap(), fmt(supply_upkeep())])
+    elif supply_over() == 0: G.supplyWarned = false
     if G.credits < 0:
         var lost = int(ceil(G.crew * 0.05)); G.crew -= lost; G.credits = 0; toast.emit("Pay is in arrears. %d sailors walked off." % lost)
     for p in G.ports:
@@ -1177,7 +1236,8 @@ func _readiness_day(moved: bool) -> void:
     else:
         var k: float = {"slow": 0.0, "half": 0.5, "cruise": 1.0, "full": 1.8, "flank": 3.0}[speed_order()]
         d = -0.004 * k * (2.5 if int(weather_here().sea) >= 3 else (1.4 if int(weather_here().sea) == 2 else 1.0))
-    for s in all_ships(): s.rdy = clampf(readiness(s) + d, RDY_MIN, 1.0)
+    var top := rdy_cap()   # an overstretched supply train cannot keep crews fresh: readiness above what it allows wastes away
+    for s in all_ships(): s.rdy = clampf(readiness(s) + d, RDY_MIN, 1.0) if readiness(s) <= top else maxf(top, readiness(s) + minf(d, 0.0) - 0.02)
     var low := fleet_readiness()
     if low < 0.55 and not G.get("rdyWarned", false):
         G.rdyWarned = true; toast.emit("Your crews are worn out (readiness %d%%): tired ships reload and steam slower and fight fires badly. Rest them in port (Repairs & crew), or heave to." % int(low * 100))
@@ -1192,7 +1252,7 @@ func rest_in_port(days: int) -> void:
         # forces close, patrols fight), while you lie alongside, out of their reach
         var d0: int = G.day; G.movedToday = false; var guard := 0
         while int(G.day) == d0 and guard < 400: update(0.1); guard += 1
-        for s in (all_ships() if near else G.fleet): s.rdy = minf(1.0, readiness(s) + 0.1)
+        for s in (all_ships() if near else G.fleet): s.rdy = maxf(readiness(s), minf(rdy_cap(), readiness(s) + 0.1))
     G.docked = false; G.erase("day_rest"); paused = was_paused; save()
 func days_to_rest() -> int: return int(ceil((1.0 - fleet_readiness()) / 0.112))
 
@@ -1483,8 +1543,9 @@ func do_survey(poi: Dictionary) -> Dictionary:
         out.lines.append("The bunkers still hold %d tons of fuel oil, and the workshops yield spares worth selling." % fuel)
     else: rp = randi_range(15, 32); coin = randi_range(1, 4) * 1000; out.lines.append("Behind a welded door: filing cabinets, wiring diagrams and a crate of prototype valves.")
     G.rp += rp; G.credits += coin; out.lines.append("+%d RP, +%s in salvage." % [rp, fmt(coin)])
-    if poi.type != "site" and roll < 0.22 and all_ships().size() < 10:
-        var hulk = new_ship(["dd", "dd", "corvette", "cl", "ss"].pick_random(), null, "raiders", [])
+    var hk: String = ["dd", "dd", "corvette", "cl", "ss"].pick_random()
+    if poi.type != "site" and roll < 0.22 and can_add_ship(GameData.hulls.keys().filter(func(id): return GameData.hulls[id].klass == hk)[0]) == "":
+        var hulk = new_ship(hk, null, "raiders", [])
         hulk.pal = "player"; hulk.name = GameData.names.player.pick_random(); hulk.hullFrac = 0.22; G.fleet.append(hulk)
         out.lines.append("A %s is still afloat at her moorings. Pumped out and patched, she joins you as the %s at 22%% condition. She needs %d crew." % [hull(hulk).name.to_lower(), hulk.name, hull(hulk).crew])
     log_ev("Surveyed %s (+%d RP)" % [poi.name, rp])
@@ -1503,6 +1564,7 @@ func battle_setup(f: Dictionary) -> Dictionary:
     var recs = []
     for s in G.fleet: if not s.get("reserve", false): recs.append(s)   # ships held in reserve stand off and take no part
     if recs.is_empty(): for s in G.fleet: recs.append(s)
+    if recs.size() > BATTLE_MAX: recs = recs.slice(0, BATTLE_MAX)   # ten fight in one action: those listed after stand off with the reserve
     for o in G.officers: o.lastShip = o.ship
     return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(fac_era(f.fac)),
         "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0,

@@ -204,7 +204,7 @@ func _daily() -> void:
 		ok(Campaign.readiness(s) >= Campaign.RDY_MIN - 0.001 and Campaign.readiness(s) <= 1.0001, "%s: readiness in range" % s.name)
 		ok(float(s.get("ammo", 1.0)) >= 0.0 and float(s.get("ammo", 1.0)) <= 1.0001, "%s: ammunition in range" % s.name)
 		ok(GameData.hulls.has(s.type), "%s is of a known design" % s.name)
-	ok(Campaign.all_ships().size() <= 10, "no more than ten ships in all (%d)" % Campaign.all_ships().size())
+	ok(Campaign.all_ships().size() <= Campaign.SHIPS_MAX, "no more than twenty ships in all (%d)" % Campaign.all_ships().size())
 	ok(G.fleets.size() < 220, "the world's fleets do not pile up (%d)" % G.fleets.size())
 	ok(G.log.size() <= 40 and G.get("news", []).size() <= 80, "the log and the news stay bounded (%d, %d)" % [G.log.size(), G.get("news", []).size()])
 	ok(G.contracts.size() <= 3, "at most three contracts")

@@ -643,7 +643,7 @@ func _build_top() -> void:
     bg.add_theme_stylebox_override("panel", sb); ui.add_child(bg)
     top = HBoxContainer.new(); top.add_theme_constant_override("separation", 22); bg.add_child(top)
     # stats as two-line chips: a small condensed key over its value
-    for k in ["DATE", "FUNDS", "FUEL", "CREW", "HOLD", "RESEARCH", "WEATHER", "SERVING"]:
+    for k in ["DATE", "FUNDS", "FUEL", "CREW", "SUPPLY", "HOLD", "RESEARCH", "WEATHER", "SERVING"]:
         var box = VBoxContainer.new(); box.add_theme_constant_override("separation", -3)
         var key := Label.new(); key.text = k; key.add_theme_font_override("font", UI.font("cond")); key.add_theme_font_size_override("font_size", 11); key.add_theme_color_override("font_color", Color(UI.DIM, 0.8))
         var v := Label.new(); v.add_theme_font_override("font", UI.font("semi")); v.add_theme_font_size_override("font_size", 15); v.add_theme_color_override("font_color", UI.INK)
@@ -704,6 +704,8 @@ func _update_top() -> void:
     _tc(stats.HOLD, "font_color", UI.RED if eat > 0.0 and G.cargo.food / eat < 5.0 else UI.INK)
     stats.CREW.get_parent().tooltip_text = "Crew aboard against the crew your ships need. Readiness of your most worn ship: %d%%." % int(Campaign.fleet_readiness() * 100)
     stats.CREW.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
+    stats.SUPPLY.text = "%d/%d" % [Campaign.supply_need(), Campaign.supply_cap()]; _tc(stats.SUPPLY, "font_color", UI.RED if Campaign.supply_over() > 0 else UI.INK)
+    stats.SUPPLY.get_parent().tooltip_text = "What your ships weigh on the supply train, against what it can carry.\n" + Campaign.supply_text().replace("; ", "\n"); stats.SUPPLY.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()] + ((" · %s troops" % Campaign.fmt(Structures.troops())) if Structures.troops() > 0 else ""); stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
@@ -1276,7 +1278,7 @@ func _show_aftermath(r: Dictionary) -> void:
                 var h: Dictionary = GameData.hulls[s.type]
                 if s.get("taken", "") != "": _p(box, "%s · %s · %s" % [s.name, h.name, s.taken], UI.GREEN); continue
                 box.add_child(UI.row([UI.label("%s · %s · %d%% · needs %d crew" % [s.name, h.name, int(s.hullFrac * 100), h.crew]),
-                    UI.button("Take as prize", func(): _take_prize(s), true, Campaign.all_ships().size() >= 10),
+                    UI.button("Take as prize", func(): _take_prize(s), true, Campaign.can_add_ship(s.type) != ""),
                     UI.button("Scuttle for " + Campaign.fmt(Campaign.ship_value(s) * 0.1), func(): s.taken = "Scuttled"; Campaign.G.credits += round(Campaign.ship_value(s) * 0.1); _show_aftermath(r))]))
         box.add_child(UI.button("Return to the chart", func(): _aftermath_done(r), true))
     , true)
@@ -1323,6 +1325,7 @@ func _hull_bar(f: float) -> Control:
 func _fleet_table(box: Control, at_port: bool) -> void:
     var G: Dictionary = Campaign.G; var need = Campaign.crew_need(); var short = maxi(0, need - int(G.crew))
     _p(box, "The first ship listed is your flagship. Crew %s of %s needed%s. Wages %s a day." % [Campaign.fmt(G.crew), Campaign.fmt(need), ", so undermanned ships reload and steam slower" if short else "", Campaign.fmt(Campaign.wages())], UI.DIM, 14)
+    _p(box, Campaign.supply_text() + (" Only the first %d ships not in reserve fight in one action." % Campaign.BATTLE_MAX if Campaign.G.fleet.size() > Campaign.BATTLE_MAX else ""), UI.RED if Campaign.supply_over() > 0 else UI.DIM, 13)
     if at_port: _p(box, "Sell a ship here for what the yard will give, or scuttle her anywhere: her crew stays with you. You cannot part with your last ship.", UI.DIM, 13)
     else: _p(box, "A ship can be sold in any port (Repairs & crew), or scuttled here and now: her crew stays with you. You cannot part with your last ship.", UI.DIM, 13)
     for i in G.fleet.size():
@@ -1499,7 +1502,7 @@ func _governor(box: Control, p: Dictionary) -> void:
         for sh in vol:
             var h: Dictionary = Campaign.hull(sh); var b := Flag.bounty(sh)
             box.add_child(UI.row([UI.label(sh.name, UI.INK, 14), UI.label("%s · %s class · hull %d%% · late of the %s" % [h.name, h.dn, int(float(sh.hullFrac) * 100), GameData.fac[sh.get("cameFrom", "freeport")].short], UI.DIM, 13),
-                UI.button("Commission her · bounty " + Campaign.fmt(b), func(): _toast(Flag.commission(p, sh)); _render_port(), true, G.credits < b or Campaign.all_ships().size() >= 10),
+                UI.button("Commission her · bounty " + Campaign.fmt(b), func(): _toast(Flag.commission(p, sh)); _render_port(), true, G.credits < b or Campaign.can_add_ship(sh.type) != ""),
                 UI.button("Send her away", func(): p.volunteers.erase(sh); _render_port())]))
     box.add_child(UI.button("Give the port up", func(): var t := Flag.abandon(p); cur_port = {}; close_panel(); _toast(t)))
 
@@ -1912,9 +1915,9 @@ func _yard(box: Control, p: Dictionary) -> void:
         col.add_child(UI.label("%s t · %s m · %s kn · turning circle %s m · belt %d mm · Hull %d · Crew %s · Cargo %d%s%s" % [Campaign.fmt(h.t), str(h.L), str(h.kn), Campaign.fmt(h.td), h.armor, h.hull, Campaign.fmt(h.crew), h.cargo, (" · %d air squadrons" % h.hangar) if h.get("hangar", 0) else "", " · sonar" if h.get("sonar", false) else ""] + _aux_text(h), UI.DIM, 13, true))
         col.add_child(UI.label(", ".join(arms.keys().map(func(k): return "%d× %s" % [arms[k], k])), UI.DIM, 13, true))
         col.add_child(UI.button("Buy · " + Campaign.fmt(pr), func():
-            if G.credits >= pr and Campaign.all_ships().size() < 10:
+            if G.credits >= pr and Campaign.can_add_ship(t) == "":
                 var s = buy_ship(t, pr); _toast("%s (%s) commissioned. Hire crew for her." % [s.name, h.name])
-            _render_port(), false, G.credits < pr or Campaign.all_ships().size() >= 10))
+            _render_port(), false, G.credits < pr or Campaign.can_add_ship(t) != ""))
         var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 14); row.add_child(_thumb(t, "player", 300, fit)); row.add_child(col); box.add_child(row)
         box.add_child(HSeparator.new())
     var mk: Array = GameData.fac_makers.get(p.fac, []) if GameData.fac_makers.get(p.fac) != null else []
@@ -2459,7 +2462,7 @@ func _base_services(box: Control, s: Dictionary) -> void:
             box.add_child(UI.row([UI.label("%s class %s" % [h.dn, h.name.to_lower()], UI.INK), UI.label("era %d · crew %s" % [int(h.era), Campaign.fmt(h.crew)], UI.DIM, 13),
                 UI.button("Build · " + Campaign.fmt(pr), func():
                     var ns: Dictionary = buy_ship(id, pr); ns.name = GameData.names.player.pick_random()
-                    _toast("The %s is commissioned at your base. She needs %d crew." % [ns.name, int(h.crew)]); open_struct(s), false, G.credits < pr or Campaign.all_ships().size() >= 10)]))
+                    _toast("The %s is commissioned at your base. She needs %d crew." % [ns.name, int(h.crew)]); open_struct(s), false, G.credits < pr or Campaign.can_add_ship(id) != "")]))
         _p(box, "Your own yard builds what you have captured and measured, whatever its era, armed with the weapons you have researched.", UI.DIM, 12)
     _store_rows(box, s, true, s.name)
 

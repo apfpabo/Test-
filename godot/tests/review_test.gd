@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy()
-	ok(sections == 7, "every section ran to its end (%d of 7)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply()
+	ok(sections == 8, "every section ran to its end (%d of 8)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -272,7 +272,7 @@ func _chart() -> void:
 			if absf(float(wx.hour) - 8.0) > 0.01: dark_starts.append("%s/%s %.1fh" % [o, nv, float(wx.hour)])
 	ok(dark_starts.is_empty(), "every origin puts to sea at eight in the morning, local time %s" % str(dark_starts))
 	Campaign.new_game("commission"); G = Campaign.G; P = G.player
-	# the cap of ten counts every ship you own
+	# the supply limit counts every ship you own (ten destroyers weigh 20 against a limit of 16: within half as much again, but no room for more... 
 	G.fleet = []; for i in 6: G.fleet.append(Campaign.new_ship("dd", "D%d" % i, "player", []))
 	Campaign.detach(G.fleet.slice(0, 3)); G.fleet.append_array([Campaign.new_ship("dd", "X", "player", []), Campaign.new_ship("dd", "Y", "player", []), Campaign.new_ship("dd", "Z", "player", []), Campaign.new_ship("dd", "W", "player", [])])
 	var wreck: Dictionary = {}
@@ -280,7 +280,7 @@ func _chart() -> void:
 	var most := 0
 	for i in 60: wreck.next = 0; Campaign.do_survey(wreck); most = maxi(most, Campaign.all_ships().size())
 	for f in G.fleets.duplicate(): if f.kind == "raiders" and not f.has("home"): G.fleets.erase(f)
-	ok(most <= 10, "a hulk found on a survey does not take you past ten ships with a division detached (%d)" % most)
+	ok(most > 10 and most <= Campaign.SHIPS_MAX and Campaign.supply_need() <= int(Campaign.supply_cap() * 1.5), "hulks found on surveys join only while supply allows, counting a detached division (%d ships, supply %d of %d)" % [most, Campaign.supply_need(), Campaign.supply_cap()])
 	map.queue_free()
 	sections += 1
 
@@ -559,4 +559,37 @@ func _economy() -> void:
 	# a save made before this had no shortages: the port still prices
 	p.erase("short"); p.erase("why"); G.erase("works")
 	ok(absf(Campaign.supply_mult(p, "food") - 1.0) < 0.01, "a port from an older save, with no shortages recorded, prices as before")
+	sections += 1
+
+## The fleet is limited by its supply, not by a count of ten (docs/SUPPLY.md).
+func _supply() -> void:
+	var over := []
+	for k in Campaign.C.STARTS.keys():
+		Campaign.new_game(k)
+		if Campaign.supply_over() > 0: over.append("%s %d/%d" % [k, Campaign.supply_need(), Campaign.supply_cap()])
+	ok(over.is_empty(), "every origin starts within its supply %s" % str(over))
+	Campaign.new_game("commission")
+	var G: Dictionary = Campaign.G; G.commission = null
+	G.fleet = []; for i in 8: G.fleet.append(Campaign.new_ship("dd", "D%d" % i, "player", []))
+	ok(Campaign.supply_need() == 16 and Campaign.supply_cap() == 16 and Campaign.supply_over() == 0 and is_equal_approx(Campaign.rdy_cap(), 1.0), "eight destroyers weigh sixteen, which a flagship's own staff can supply")
+	ok(Campaign.can_add_ship("bb_iowa") == "" and Campaign.can_add_ship("dd_fletcher") == "", "a battleship can still join (22 of 16 is within half as much again)")
+	G.fleet.append(Campaign.new_ship("bb", "B", "player", []))
+	ok(Campaign.supply_over() == 6 and Campaign.supply_upkeep() == 720.0 and absf(Campaign.rdy_cap() - 0.625) < 0.001, "over the limit by six: tenders at 720 a day, readiness held to %d%%" % int(Campaign.rdy_cap() * 100))
+	ok(Campaign.can_add_ship("bb_iowa") != "" and Campaign.can_add_ship("dd_fletcher") == "", "a second battleship is refused (28 of 16), a destroyer is not (24)")
+	for s in G.fleet: s.rdy = 1.0
+	var c0: float = G.credits
+	for i in 30: Campaign._readiness_day(false)
+	ok(absf(Campaign.fleet_readiness() - 0.625) < 0.02, "an overstretched fleet's readiness wastes away to what its supply allows (%d%%)" % int(Campaign.fleet_readiness() * 100))
+	G.fleet.append(Campaign.new_ship("ao", "Oiler", "player", [])); G.fleet.append(Campaign.new_ship("ar", "Repair", "player", []))
+	ok(Campaign.supply_cap() == 25 and Campaign.supply_need() == 24 and Campaign.supply_over() == 0, "an oiler and a repair ship in company carry the difference (%d of %d)" % [Campaign.supply_need(), Campaign.supply_cap()])
+	for i in 20: Campaign._readiness_day(false)
+	ok(Campaign.fleet_readiness() > 0.8, "and the crews recover (%d%%)" % int(Campaign.fleet_readiness() * 100))
+	# twenty ships at most, ten in one action
+	G.fleet = []; for i in 14: G.fleet.append(Campaign.new_ship("corvette", "C%d" % i, "player", []))
+	var foe := _fleet("patrol", "directorate", G.player.x + 5, G.player.y, ["dd"])
+	ok(Campaign.battle_setup(foe).player_recs.size() == 10, "of fourteen ships, ten fight in one action")
+	for i in 6: G.fleet.append(Campaign.new_ship("corvette", "E%d" % i, "player", []))
+	ok(Campaign.can_add_ship("pt_elco") != "", "a twenty-first ship is refused whatever the supply")
+	G.commission = {"fac": "concord", "since": G.day, "marque": ""}
+	ok(Campaign.supply_cap() == 24, "a navy you serve lends its dockyards (limit %d)" % Campaign.supply_cap())
 	sections += 1

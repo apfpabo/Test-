@@ -102,6 +102,10 @@ var veil_mat: ShaderMaterial
 func _veil_spots() -> void:
     if veil == null or not veil.visible: return
     var vs := get_viewport_rect().size; var z := zoom(); var arr := []; var ct := get_viewport().get_canvas_transform()
+    for f in sim.flares:   # star shell clears a pool in the dark for as long as it burns
+        if float(f.t) <= 0.0 or arr.size() >= 8: continue
+        var fp: Vector2 = ct * f.p; var fk: float = clampf(float(f.t) / 1.5, 0.0, 1.0) * clampf((BattleSim.STAR_LIFE - float(f.t)) / 5.0, 0.0, 1.0)
+        arr.append(Vector4(fp.x, fp.y, BattleSim.STAR_R * 1.1 * z * fk, 0.0))
     for s in sim.ships:
         if not sim.active(s) or arr.size() >= 24: continue
         var r := 0.0
@@ -339,6 +343,21 @@ func _key(k: int) -> void:
             var n := 0
             for x in (_sel() if not _sel().is_empty() else sim.ships): if x.side == 0 and x != sim.flag and sim.make_smoke(x, true): n += 1
             sim.say("Squadron: make smoke!" if n > 0 else "No ship of the squadron has smoke to make.", 2.0)
+        KEY_G:   # star shell over the point of aim
+            if s == null or not sim.can_star(s): sim.say("This ship has no gun to fire star shell.", 1.2)
+            elif not sim.wx.get("night", false): sim.say("Star shell is for the dark: it is daylight.", 1.4)
+            elif sim.fire_star(s, world.get_global_mouse_position()): sim.say("Star shell!", 1.2)
+            else: sim.say("The star-shell gun is reloading.", 1.0)
+        KEY_B:   # where the flagship's damage-control parties go first
+            if s:
+                var pr: Array = ["", "fire", "flood", "mach"]; s.dc_pri = pr[(pr.find(s.dc_pri) + 1) % pr.size()]
+                sim.say("Damage control: %s." % BattleSim.DC_PRI[s.dc_pri], 1.6)
+        KEY_N:
+            if s and sim.flood_magazine(s): sim.say("Flood the magazine! The turret above it is out of action; the ship is safe.", 2.5)
+            elif s: sim.say("No magazine is burning.", 1.0)
+        KEY_J:
+            if s and sim.counter_flood(s): sim.say("Counter-flooding: she comes upright, and sits deeper for it.", 2.2)
+            elif s: sim.say("She has no list worth righting.", 1.0)
         KEY_K:
             if s == null or not sim.can_smoke(s): sim.say("This ship cannot make smoke.", 1.2)
             elif s.smoke_on: sim.make_smoke(s, false); sim.say("Stop making smoke.", 1.2)
@@ -559,7 +578,7 @@ class Drawer extends Node2D:
             "wash": _wash()
             "shadows": _shadows()
             "above": _parts(1); _screens()
-            "light": _parts(2)
+            "light": _parts(2); _flares()
             "overlay": _overlay()
 
     func _puff(tex: Texture2D, p: Vector2, r: float, c: Color) -> void:
@@ -715,6 +734,20 @@ class Drawer extends Node2D:
             if q.life < 0 or (q.t != P.SPLASH and q.t != P.GEYSER and q.t != P.DC) or not vr.has_point(q.pos): continue
             var deep: bool = q.t == P.DC; var R: float = maxf(q.size * (1.5 if deep else 1.0), 2.0 * mn)
             draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
+
+    ## Star shell: a hard white light hanging over the sea, flickering, and the pool it throws on the water.
+    func _flares() -> void:
+        var sim: BattleSim = battle.sim
+        if sim.flares.is_empty(): return
+        var glow: Texture2D = GameData.glow_tex(); var tn: float = Time.get_ticks_msec() / 1000.0; var mn: float = 1.0 / battle.zoom()
+        for f in sim.flares:
+            var t: float = f.t
+            if t <= 0.0: continue
+            var k: float = clampf(t / 1.5, 0.0, 1.0) * clampf((BattleSim.STAR_LIFE - t) / 5.0, 0.0, 1.0) * (0.85 + 0.15 * sin(tn * 23.0 + float(f.v)))
+            _puff(glow, f.p, BattleSim.STAR_R * 1.25, Color(0.75, 0.8, 0.7, 0.2 * k))       # the pool of light on the sea
+            _puff(glow, f.p, BattleSim.STAR_R * 0.5, Color(0.9, 0.92, 0.8, 0.16 * k))
+            _puff(glow, f.p, maxf(60.0, 14.0 * mn), Color(1.0, 0.98, 0.9, 0.95 * k))           # the flare itself
+            _puff(glow, f.p, maxf(18.0, 5.0 * mn), Color(1.0, 1.0, 1.0, k))
 
     ## Scars shells have left on the islands: churned, blackened earth (and scorched where an incendiary burned).
     func _scars() -> void:

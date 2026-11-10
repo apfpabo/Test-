@@ -130,7 +130,7 @@ func _draw() -> void:
     _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "abreast": "Ships hold station abeam of the flagship, turning and changing speed with her; guns fire as they bear.", "screen": "Light ships hold an arc ahead of the flagship, the heavier ones follow her in column.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
-    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · K smoke · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
         _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
@@ -169,11 +169,15 @@ func _draw() -> void:
         _text(Vector2(x + 10, y + 78), "Armour", DIM, 12); _bar(Vector2(x + 60, y + 72), 350, 5, f.armor / maxf(1.0, f.d.armor), Color(0.62, 0.67, 0.67))
         # damaged subsystems, shown only when something is wrong
         var sysl = []
-        if f.mag_fire > 0: sysl.append("MAGAZINE FIRE %d s" % int(f.mag_fire))
+        if f.mag_fire > 0: sysl.append("MAGAZINE FIRE %d s · N floods it" % int(f.mag_fire))
+        if absf(f.list) >= 0.15: sysl.append("list %d%% to %s · J counter-floods" % [int(absf(f.list) * 100), "starboard" if f.list > 0 else "port"])
+        if f.ballast > 0.01: sysl.append("flooded to stay level: %d%% slower" % int(round(f.ballast * 30)))
+        if f.dc_pri != "": sysl.append("damage control: " + String(BattleSim.DC_PRI[f.dc_pri]))
         if f.eng_out > 0: sysl.append("engines out %d s" % int(f.eng_out))
         elif f.eng < 0.95: sysl.append("power %d%%" % int(f.eng * 100))
         if f.jam > 0: sysl.append("rudder jammed %d s" % int(f.jam))
         if f.fc < 0.95: sysl.append("director %d%%" % int(f.fc * 100))
+        if f.steer < 0.8: sysl.append("steering %d%%" % int(f.steer * 100))
         if sysl.size(): _text(Vector2(x + 10, y - 3), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 12, HORIZONTAL_ALIGNMENT_LEFT, w - 10)
         var groups = {}
         for m in f.mounts: if not groups.has(m.w.name): groups[m.w.name] = []

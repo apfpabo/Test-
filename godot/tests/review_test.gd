@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _weights()
-	ok(sections == 11, "every section ran to its end (%d of 11)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _weights()
+	ok(sections == 12, "every section ran to its end (%d of 12)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -679,6 +679,36 @@ func _divisions() -> void:
 		if sim.torps.any(func(tp): return tp.get("src") == d3 or true) and not fired and d3.ord == "": fired = true
 		if d3.ord == "": break
 	ok(d3.ord == "" and closest < 6000.0, "ordered to a torpedo attack she runs in, fires and takes the squadron's order again (closed to %d m)" % int(closest))
+	sections += 1
+
+## Star shell, and the flagship's damage-control decisions.
+func _night_and_dc() -> void:
+	var night := Weather.battle({"sea": 0, "fog": false, "night": true, "moon": 0.0})
+	var sim := _sim(["dd_fletcher"], ["dd_narvik"], night)
+	var a = sim.ships[0]; var e = sim.ships[1]; a.tech = []; e.tech = []
+	a.pos = Vector2(8000, 12000); e.pos = Vector2(8000, 12000 - float(night.vis) * 2.5); e.lit_t = 99.0; a.lit_t = 99.0; e.throttle = 0; e.v = 0.0
+	ok(not sim.visible_to(e, 0), "on a dark night an enemy at two and a half times the lookouts' reach is not seen (%.1f km)" % (float(night.vis) * 2.5 / 1000.0))
+	ok(sim.fire_star(a, e.pos + Vector2(200, 0)) and not sim.fire_star(a, e.pos), "a destroyer fires star shell, and must reload before the next")
+	sim.flares[0].t = 1.0
+	ok(sim.star_lit(e.pos) and sim.visible_to(e, 0), "under the flare she is in sight")
+	ok(a.lit_t < 1.0, "and the ship that fired it has shown herself by the flash")
+	for i in int((BattleSim.STAR_LIFE + 1.0) / 0.1): sim._star_tick(0.1)
+	e.lit_t = 99.0
+	ok(sim.flares.is_empty() and not sim.visible_to(e, 0), "half a minute later the flare has burned out and she is lost again")
+	# damage control: priorities, flooding a magazine, counter-flooding
+	var s2 := _sim(["ca_baltimore"], ["dd_narvik"]); var c = s2.ships[0]; s2.flag = c
+	c.list = 0.8; c.dc_pri = "flood"; var fast: float = 0.0
+	for i in 600: s2.systems_tick(c, 0.1)
+	fast = 0.8 - c.list; c.list = 0.8; c.dc_pri = "mach"
+	for i in 600: s2.systems_tick(c, 0.1)
+	ok(fast > (0.8 - c.list) * 2.5, "with the parties sent to the flooding first a list comes off more than twice as fast (%.2f against %.2f in a minute)" % [fast, 0.8 - c.list])
+	c.list = 0.7; c.ballast = 0.0
+	ok(s2.counter_flood(c) and absf(c.list) < 0.2 and c.ballast > 0.2, "counter-flooding rights her at once and leaves water aboard (list %.2f, ballast %.2f)" % [c.list, c.ballast])
+	c.mag_fire = 30.0; c.mag_x = c.mounts.filter(func(m): return m.w.kind == "gun" and m.slot.y == 0)[0].slot.x
+	ok(s2.flood_magazine(c) and c.mag_fire == 0.0 and c.mounts.any(func(m): return m.dead), "flooding a burning magazine saves the ship and costs the turret above it")
+	var other = s2.ships[1]; other.list = 0.75
+	s2.systems_tick(other, 0.1)
+	ok(absf(other.list) < 0.3, "other captains right a bad list themselves")
 	sections += 1
 
 ## Refits are ruled by weight (docs/REFIT.md).

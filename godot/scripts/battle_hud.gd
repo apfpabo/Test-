@@ -76,14 +76,19 @@ func _bar(p: Vector2, w: float, h: float, f: float, col: Color) -> void:
 func to_screen(p: Vector2) -> Vector2:
     return (p - battle.camera.position) * battle.zoom() + size / 2
 
+var rows: Array = []        # [rect on screen, ship] for each of your ships in the list, for clicks (battle._pick_own)
 func _draw() -> void:
     var sim: BattleSim = battle.sim; var W = size.x; var H = size.y
+    rows.clear()
     # name plates and hull bars over each visible ship
     for s in sim.ships:
         if not sim.active(s) or (s.side == 1 and not sim.visible_to(s, 0)): continue
         var sp = to_screen(s.pos); var off: float = s.d.L * 0.5 * battle.zoom() + 18
         if sp.x < -100 or sp.x > W + 100 or sp.y < -100 or sp.y > H + 100: continue
         var w = maxf(44.0, s.d.L * 0.55 * battle.zoom())
+        if s.side == 0 and battle.sel.has(s):   # picked out for orders of her own: a gold ring
+            draw_arc(sp, s.d.L * 0.5 * battle.zoom() + 12.0, 0, TAU, 48, Color(GOLD, 0.85), 1.5)
+        if s.side == 0 and s.ord == "goto": draw_dashed_line(sp, to_screen(s.ord_pt), Color(GOLD, 0.45), 1.0, 6.0); draw_arc(to_screen(s.ord_pt), 6.0, 0, TAU, 16, Color(GOLD, 0.7), 1.5)
         if s == sim.lock:
             var rr: float = s.d.L * 0.5 * battle.zoom() + 10
             for c in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
@@ -106,9 +111,10 @@ func _draw() -> void:
     # squadron orders, in a row: the standing order in gold
     var orders = [["1", "Engage", "engage"], ["2", "Form on flag", "escort"], ["4", "Line ahead", "line"], ["6", "Line abreast", "abreast"], ["7", "Screen", "screen"], ["3", "Withdraw", "retreat"]]
     var ox := 16.0
-    _text(Vector2(ox, 28), "SQUADRON", DIM, 11); ox += 74.0
+    var nsel: int = battle._sel().size()
+    _text(Vector2(ox, 28), ("PICKED · %d" % nsel) if nsel > 0 else "SQUADRON", GOLD if nsel > 0 else DIM, 11); ox += 74.0
     for i in orders.size():
-        var on: bool = sim.order == orders[i][2]; var lbl: String = orders[i][0] + " " + orders[i][1]
+        var on: bool = (sim.order == orders[i][2]) if nsel == 0 else battle.sel.all(func(x): return sim.ord_of(x) == orders[i][2]); var lbl: String = orders[i][0] + " " + orders[i][1]
         var wd: float = font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
         draw_rect(Rect2(ox, 13, wd, 21), Color(GOLD, 0.16) if on else Color(1, 1, 1, 0.04)); if on: draw_rect(Rect2(ox, 13, wd, 21), Color(GOLD, 0.7), false, 1)
         _text(Vector2(ox + 8, 28), lbl, GOLD if on else Color(INK, 0.6)); ox += wd + 6.0
@@ -124,7 +130,7 @@ func _draw() -> void:
     _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "abreast": "Ships hold station abeam of the flagship, turning and changing speed with her; guns fire as they bear.", "screen": "Light ships hold an arc ahead of the flagship, the heavier ones follow her in column.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
-    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · K smoke · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · K smoke · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
         _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
@@ -133,12 +139,18 @@ func _draw() -> void:
     var step := 16.0; var room: float = (H - 396.0) - ry - 52.0
     if sim.ships.size() * step > room: step = maxf(11.0, room / sim.ships.size())
     for side in [0, 1]:
-        _text(Vector2(16, ry), "Enemy" if side else "Your squadron", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
+        _text(Vector2(16, ry), "Enemy" if side else "Your squadron · click a ship to give her orders of her own", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
         for s in sim.ships:
             if s.side != side: continue
             if side == 1 and sim.active(s) and not sim.visible_to(s, 0): _text(Vector2(16, ry), "? contact lost", Color(INK, 0.35)); ry += step; continue
             var col = Color(INK, 0.3) if not s.alive else (Color(INK, 0.45) if s.escaped else (GOLD if s == sim.flag else INK))
-            _text(Vector2(16, ry), ("★ " if s == sim.flag else "") + s.rec.name + " · " + s.d.name + (" · sunk" if not s.alive else (" · withdrew" if s.escaped else (" · struck" if s.struck else ""))), col)
+            var own: String = ""
+            if side == 0 and s != sim.flag and sim.active(s):
+                rows.append([Rect2(10, ry - 13, 300, step), s])
+                if battle.sel.has(s): draw_rect(Rect2(10, ry - 13, 300, step), Color(GOLD, 0.16)); draw_rect(Rect2(10, ry - 13, 3, step), GOLD)
+                if s.ord != "": own = " · " + String({"engage": "engaging", "escort": "on the flag", "line": "line ahead", "abreast": "line abreast", "screen": "screen", "retreat": "withdrawing", "goto": "to a point", "torp": "torpedo attack"}.get(s.ord, s.ord))
+                if s.hold: own += " · holding fire"
+            _text(Vector2(16, ry), ("★ " if s == sim.flag else "") + s.rec.name + " · " + s.d.name + (" · sunk" if not s.alive else (" · withdrew" if s.escaped else (" · struck" if s.struck else own))), GOLD if (side == 0 and battle.sel.has(s)) else col)
             if sim.active(s): _bar(Vector2(240, ry - 9), 60, 5, s.hull / s.max_hull, RED if side else GREEN)
             ry += step
         ry += 8

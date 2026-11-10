@@ -11,6 +11,7 @@ var speeds = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]   # times BattleSim.BT: real time, 
 var speed_i = 1
 var paused = false
 var cam_free = false
+var sel: Array = []          # ships of yours picked out to be given their own orders (empty: orders go to the whole squadron)
 var drag = {}
 var world: Node2D
 var camera: Camera2D
@@ -218,6 +219,11 @@ func _unhandled_input(e: InputEvent) -> void:
                 camera.zoom = Vector2(z, z); camera.force_update_scroll()
                 if cam_free: camera.position += before - world.get_global_mouse_position()
             return
+        if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and _pick_own(mb.position, mb.shift_pressed): return   # a ship of yours picked from the list, or Shift+clicked on the sea
+        if mb.pressed and mb.ctrl_pressed and mb.button_index == MOUSE_BUTTON_LEFT and not _sel().is_empty():   # send the ships picked out to a point
+            var pt: Vector2 = world.get_global_mouse_position().clamp(Vector2(200, 200), Vector2(sim.AW - 200, sim.AH - 200))
+            for x in _sel(): x.ord = "goto"; x.ord_pt = pt + Vector2((_sel().find(x) % 3 - 1) * 260.0, floor(_sel().find(x) / 3.0) * 260.0)
+            sim.say("%s: make for the point and hold there." % _sel_names(), 1.8); return
         if mb.pressed and mb.ctrl_pressed and mb.button_index == MOUSE_BUTTON_LEFT and sim.flag != null:   # a waypoint for the flagship
             sim.waypoints.append(world.get_global_mouse_position().clamp(Vector2(200, 200), Vector2(sim.AW - 200, sim.AH - 200)))
             if sim.waypoints.size() == 1: sim.say("Helm: steering for the waypoint. A/D takes the helm back.", 1.6)
@@ -243,6 +249,36 @@ func _unhandled_input(e: InputEvent) -> void:
         camera.position = (drag.cam - dlt / zoom()).clamp(Vector2.ZERO, Vector2(sim.AW, sim.AH))
     elif e is InputEventKey and e.pressed and not e.echo:
         _key(e.keycode)
+
+## The ships picked out that can still take an order (the flagship is yours to steer and takes none).
+func _sel() -> Array:
+    sel = sel.filter(func(x): return sim.active(x) and x != sim.flag)
+    return sel
+func _sel_names() -> String:
+    var n: Array = _sel().map(func(x): return x.rec.name)
+    return ", ".join(n) if n.size() <= 3 else "%d ships" % n.size()
+## A click on a row of your squadron's list picks that ship (Shift adds or drops her); Shift+click picks a ship on the sea.
+func _pick_own(at: Vector2, shift: bool) -> bool:
+    var hit: BattleSim.CShip = null
+    for r in hud.rows: if (r[0] as Rect2).has_point(at): hit = r[1]
+    if hit == null and shift:
+        var m: Vector2 = world.get_global_mouse_position(); var bd := INF
+        for o in sim.ships:
+            if o.side != 0 or not sim.active(o) or o == sim.flag: continue
+            var d: float = o.pos.distance_to(m)
+            if d < maxf(30.0 / zoom(), o.d.L * 0.6) and d < bd: bd = d; hit = o
+    if hit == null: return false
+    if hit == sim.flag or not sim.active(hit): return true
+    if shift:
+        if sel.has(hit): sel.erase(hit)
+        else: sel.append(hit)
+    else: sel = [] if (sel.size() == 1 and sel[0] == hit) else [hit]
+    return true
+## An order from the keys: to the ships picked out if there are any, otherwise to the squadron.
+func _order(o: String, all_msg: String, what: String) -> void:
+    if _sel().is_empty(): sim.order = o; sim.say(all_msg, 2.0); return
+    for x in _sel(): x.ord = o
+    sim.say("%s: %s." % [_sel_names(), what], 2.0)
 
 func _lock_at_mouse() -> bool:
     var m = world.get_global_mouse_position(); var best: BattleSim.CShip = null; var bd = INF
@@ -281,22 +317,39 @@ func _key(k: int) -> void:
         KEY_X:
             sim.autofire = not sim.autofire
             sim.say("Main-gun autofire " + ("on" if sim.autofire else "off") + (". Lock a target first." if sim.autofire and sim.lock == null else ""), 1.5)
-        KEY_1: sim.order = "engage"; sim.say("All ships: engage.", 1.5)
-        KEY_2: sim.order = "escort"; sim.say("All ships: form on the flagship.", 1.5)
-        KEY_3: sim.order = "retreat"; sim.say("All ships withdraw! Open the range and break contact.", 2.5)
-        KEY_4: sim.order = "line"; sim.say("Form line ahead: follow in the flagship's wake.", 2.0)
-        KEY_6: sim.order = "abreast"; sim.say("Form line abreast on the flagship.", 2.0)
-        KEY_7: sim.order = "screen"; sim.say("Form a screen: light ships ahead, the rest astern of the flagship.", 2.0)
+        KEY_1: _order("engage", "All ships: engage.", "engage")
+        KEY_2: _order("escort", "All ships: form on the flagship.", "form on the flagship")
+        KEY_3: _order("retreat", "All ships withdraw! Open the range and break contact.", "withdraw")
+        KEY_4: _order("line", "Form line ahead: follow in the flagship's wake.", "form line ahead")
+        KEY_6: _order("abreast", "Form line abreast on the flagship.", "form line abreast")
+        KEY_7: _order("screen", "Form a screen: light ships ahead, the rest astern of the flagship.", "form a screen")
+        KEY_9:   # a torpedo attack: by the ships picked out, or by every light ship with torpedoes; on the ship you have locked, or the nearest
+            var who: Array = _sel() if not _sel().is_empty() else sim.ships.filter(func(x): return x.side == 0 and x != sim.flag and sim.active(x) and x.d.L < 150.0)
+            who = who.filter(func(x): return sim.has_torps(x))
+            for x in who: x.ord = "torp"; x.ord_tgt = sim.lock; x.hold = false
+            sim.say(("%s: torpedo attack%s!" % [", ".join(who.map(func(x): return x.rec.name)) if who.size() <= 3 else "%d ships" % who.size(), (" on the " + sim.lock.rec.name) if sim.lock != null else ""]) if who.size() else "No ship there has torpedoes to fire.", 2.2)
+        KEY_0:   # back under the squadron's orders
+            var back: Array = _sel() if not _sel().is_empty() else sim.ships.filter(func(x): return x.side == 0)
+            for x in back: x.ord = ""; x.ord_tgt = null; x.hold = false
+            sim.say("%s: rejoin the squadron's orders." % (_sel_names() if not _sel().is_empty() else "All ships"), 1.8)
+        KEY_F1: sel = sim.ships.filter(func(x): return x.side == 0 and x != sim.flag and sim.active(x) and x.d.L < 150.0); sim.say("Light ships picked out (%d)." % sel.size(), 1.2)
+        KEY_F2: sel = sim.ships.filter(func(x): return x.side == 0 and x != sim.flag and sim.active(x) and x.d.L >= 150.0); sim.say("Heavy ships picked out (%d)." % sel.size(), 1.2)
+        KEY_F3: sel = []; sim.say("Orders go to the whole squadron.", 1.2)
         KEY_8:
             var n := 0
-            for x in sim.ships: if x.side == 0 and x != sim.flag and sim.make_smoke(x, true): n += 1
+            for x in (_sel() if not _sel().is_empty() else sim.ships): if x.side == 0 and x != sim.flag and sim.make_smoke(x, true): n += 1
             sim.say("Squadron: make smoke!" if n > 0 else "No ship of the squadron has smoke to make.", 2.0)
         KEY_K:
             if s == null or not sim.can_smoke(s): sim.say("This ship cannot make smoke.", 1.2)
             elif s.smoke_on: sim.make_smoke(s, false); sim.say("Stop making smoke.", 1.2)
             elif sim.make_smoke(s, true): sim.say("Make smoke! (%d s in the generators)" % int(s.smoke_left), 1.5)
             else: sim.say("The smoke generators are recharging.", 1.2)
-        KEY_5: sim.hold_fire = not sim.hold_fire; sim.say("Squadron: hold your fire." if sim.hold_fire else "Squadron: open fire.", 2.0)
+        KEY_5:
+            if _sel().is_empty(): sim.hold_fire = not sim.hold_fire; sim.say("Squadron: hold your fire." if sim.hold_fire else "Squadron: open fire.", 2.0)
+            else:
+                var on: bool = not _sel()[0].hold
+                for x in _sel(): x.hold = on
+                sim.say("%s: %s." % [_sel_names(), "hold your fire" if on else "open fire"], 2.0)
         KEY_P: paused = not paused
         KEY_ESCAPE: hud.toggle_menu()
         KEY_Z:
@@ -501,7 +554,7 @@ class Drawer extends Node2D:
     func _draw() -> void:
         match kind:
             "islands": _islands()
-            "below": _wakes(); _parts(0); _wreckage(); _torpedoes()
+            "below": _scars(); _wakes(); _parts(0); _wreckage(); _torpedoes()
             "bursts": _bursts()
             "wash": _wash()
             "shadows": _shadows()
@@ -663,6 +716,18 @@ class Drawer extends Node2D:
             var deep: bool = q.t == P.DC; var R: float = maxf(q.size * (1.5 if deep else 1.0), 2.0 * mn)
             draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
 
+    ## Scars shells have left on the islands: churned, blackened earth (and scorched where an incendiary burned).
+    func _scars() -> void:
+        var sim: BattleSim = battle.sim
+        if sim.scars.is_empty(): return
+        var vr: Rect2 = battle.view_rect().grow(100)
+        for c in sim.scars:
+            if not vr.has_point(c.p): continue
+            var tex: Texture2D = GameData.fx_tex("cloud%d" % int(c.v)); var r: float = float(c.r)
+            _rpuff(tex, c.p, r * 1.7, float(c.v) * 1.9, Color(0.17, 0.13, 0.09, 0.6))
+            _rpuff(tex, c.p, r * 0.9, float(c.v) * 0.7 + 1.0, Color(0.05, 0.04, 0.03, 0.75))
+            if float(c.burn) > 0.0: _puff(GameData.glow_tex(), c.p, r * 3.0, Color(1.0, 0.45, 0.12, 0.25))
+
     ## Smoke screens: each cell of BattleSim.screens as a bank of pale smoke over the ships (it hides what is in it).
     func _screens() -> void:
         var sim: BattleSim = battle.sim
@@ -782,10 +847,12 @@ class Drawer extends Node2D:
                 if q.t in [P.OIL, P.SWAKE, P.TWAKE]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)   # (a gun's blast on the sea is drawn by the wash layer)
             elif layer == 1:
                 match q.t:
-                    P.SMOKE, P.GUNSMOKE, P.FUNNEL, P.STEAM:
+                    P.DIRT: _streak(q, k, Color(0.2, 0.16, 0.11, 1.0 - k * k), mn, false)   # clods thrown up from a hit on land
+                    P.SMOKE, P.GUNSMOKE, P.FUNNEL, P.STEAM, P.DUST:
                         # shaded smoke: a body that rolls as it rises, lit on the sun's side; fresh smoke over a fire glows
                         var base: Color; var hi: Color; var a: float; var grow: float
                         if q.t == P.SMOKE: base = Color(0.2, 0.2, 0.21); hi = Color(0.5, 0.5, 0.5); a = 0.55 * (1 - k) * minf(1.0, q.life * 4); grow = 1 + k * 2.4
+                        elif q.t == P.DUST: base = Color(0.4, 0.33, 0.23); hi = Color(0.74, 0.66, 0.5); a = 0.7 * minf(1.0, q.life * 6) * pow(1 - k, 1.2); grow = 1 + sqrt(k) * 2.6
                         elif q.t == P.STEAM: base = Color(0.82, 0.84, 0.85); hi = Color(1, 1, 1); a = 0.5 * minf(1.0, q.life * 5) * pow(1 - k, 1.4); grow = 1 + sqrt(k) * 2.6
                         elif q.t == P.GUNSMOKE: base = Color(0.24, 0.21, 0.17); hi = Color(0.55, 0.5, 0.42); a = 0.72 * minf(1.0, q.life * 6) * pow(1 - k, 1.3); grow = 1 + sqrt(k) * 3.4
                         else: base = Color(0.3, 0.3, 0.32); hi = Color(0.62, 0.62, 0.64); a = 0.24 * (1 - k); grow = 1 + k * 2.2

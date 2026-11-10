@@ -15,7 +15,7 @@ const WIND := Vector2(7.0, 3.5)  # smoke drift, metres per visual second
 const SUN := Vector2(0.55, 0.85) # direction shadows fall on the chart
 
 enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL,
-    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH, STEAM }   # the modern effects (Settings.fx_modern)
+    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH, STEAM, DIRT }   # the modern effects (Settings.fx_modern)
 
 class Mount:
     var slot: Dictionary
@@ -105,6 +105,10 @@ class CShip:
     var smoke_left = 60.0  # seconds of smoke in the generators
     var smoke_d = 0.0
     var v_cmd = -1.0       # a speed to hold (m/s) when keeping station, or -1 for the engine telegraph
+    var ord = ""           # her own order, if she has been given one apart from the squadron's (see ord_of)
+    var ord_pt := Vector2.ZERO   # where "goto" sends her
+    var ord_tgt: CShip = null    # whom a torpedo attack is made on (or the nearest enemy)
+    var hold = false       # her own hold-fire
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
@@ -148,6 +152,15 @@ var tracers: Array = []
 var hit_marks: Array = []        # floating hit results for the HUD: {pos, text, col, t, ours}
 var islands: Array = []
 var order = "engage"
+## Orders to single ships and divisions (owner's order of work: battle depth). A ship of yours with her own order
+## (`ord`) follows it instead of the squadron's; formations are made among the ships that share an order, so three
+## destroyers told to form line abreast do so by themselves. "goto" sends her to a point to hold there; "torp" is a
+## torpedo attack: run in, turn and fire, then take the squadron's order again.
+func ord_of(s: CShip) -> String: return s.ord if s.side == 0 and s.ord != "" else order
+func holding(s: CShip) -> bool: return s.side == 0 and (hold_fire or s.hold)
+func has_torps(s: CShip) -> bool:
+    for m in s.mounts: if m.w.kind == "torp" and m.ammo != 0: return true
+    return false
 var hold_fire := false            # squadron order: every ship but the flagship holds her fire (to stay unseen at night, or save shells)
 var t = 0.0        # battle clock
 var vt = 0.0       # visual clock
@@ -701,6 +714,37 @@ func fx_boom(p: Vector2, size: float, mx := 0.6) -> void:
     for i in 2: part(P.SMOKE, p + Vector2(randf() - 0.5, randf() - 0.5) * size * 0.5, 5.0 + randf() * 3.0, size * 0.7, Vector2(randf() - 0.5, randf() - 0.5) * 6.0, true, -0.15)
 
 ## A shell into the sea: a white burst, spray thrown out in streaks, a ring running out across the water, then foam.
+## A shell on an island (owner's request): earth and dust go up whatever she was; high explosive bursts as well;
+## incendiary sets the ground alight, with black smoke, for half a minute or so. Each leaves a scar (`scars`).
+var scars: Array = []       # {p, r, burn (seconds of fire left), st, v}
+func fx_land(p: Vector2, sz: float, ammo: String) -> void:
+    scars.append({"p": p, "r": (3.0 + 2.2 * sz) * (1.5 if ammo == "he" else 1.0), "burn": (22.0 + randf() * 22.0) if ammo == "inc" else 0.0, "st": 0.0, "v": randi() % 4})
+    if scars.size() > 160: scars.pop_front()
+    for i in 3 + int(sz * 1.5):   # the earth thrown up, hanging as dust and drifting
+        var q = part(P.DUST, p + rdir() * sz * 1.5, 2.4 + randf() * 1.8, (4.0 + 3.0 * sz) * (0.6 + randf() * 0.6), rdir() * (3.0 + randf() * 7.0), true, -i * 0.04); q.a = randf() * TAU
+    if modern:
+        for i in 6 + int(sz * 3.0):   # clods and stones flying out
+            var c = part(P.DIRT, p, 0.6 + randf() * 0.9, 0.5 + sz * 0.4 * randf(), rdir() * (sz * 16.0 + randf() * sz * 44.0)); c.drag = 0.4; c.wind = false
+    match ammo:
+        "he":
+            fx_boom(p, 6.0 * sz, 0.6)
+            for i in 2 + int(sz): var q2 = part(P.DUST, p + rdir() * sz * 3.0, 3.0 + randf() * 2.0, (6.0 + 4.0 * sz) * (0.7 + randf() * 0.5), rdir() * (6.0 + randf() * 10.0), true, -0.1 - i * 0.05); q2.a = randf() * TAU
+        "inc":
+            for i in 3: part(P.FIRE, p + rdir() * sz * 2.0, 0.9 + randf() * 0.8, 2.5 + sz * 1.5, rdir() * 2.0)
+            for i in 2: part(P.SMOKE, p + rdir() * sz * 2.0, 6.0 + randf() * 3.0, 3.0 + sz * 2.0, Vector2.ZERO, true, -i * 0.1)
+            if modern: part(P.GLOW, p, 0.8, 30.0 + sz * 18.0)
+        _: part(P.SPARK, p, 0.3, 1.5 + sz, rdir() * 60.0)
+    sound("hit", p, 0.07 * sz)
+## Ground an incendiary set alight goes on burning and smoking.
+func _scars_fx(dtv: float) -> void:
+    for c in scars:
+        if float(c.burn) <= 0.0: continue
+        c.burn -= dtv; c.st -= dtv
+        if float(c.st) > 0.0: continue
+        c.st = 0.28
+        part(P.FIRE, c.p + rdir() * float(c.r) * 0.5, 0.7 + randf() * 0.7, float(c.r) * (0.5 + randf() * 0.4), Vector2.ZERO)
+        if randf() < 0.6: part(P.SMOKE, c.p + rdir() * float(c.r) * 0.3, 7.0 + randf() * 4.0, float(c.r) * 0.9, Vector2.ZERO, true)
+
 func fx_splash(p: Vector2, size: float) -> void:
     part(P.SPLASH, p, 2.0 if modern else 1.8, size)
     if not modern: part(P.FOAM, p, 10.0, size * 1.5)
@@ -901,7 +945,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var aligned: bool = absf(ang_diff(want, m.ta)) < 0.04 and ac.x > 0
                 var in_range = p.distance_to(aim) < rng
                 var trigger = (mouse_down or (autofire and aim_lock)) if manual else true
-                if hold_fire and s.side == 0 and not manual and aim_air == null: trigger = false   # holding fire (the AA guns still defend the ship)
+                if holding(s) and not manual and aim_air == null: trigger = false   # holding fire (the AA guns still defend the ship)
                 if manual:
                     m.st = "arc" if ac.x == 0 else "range" if not in_range else "train" if not aligned else "reload" if m.cd > 0 else "ready"
                     m.err = absf(ang_diff(want, m.ta)); gun_aim = {"pos": aim, "lock": aim_lock}
@@ -940,7 +984,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                     var want = ang_diff((mouse_world - p).angle(), s.a)
                     if not arc_check(m.slot, want).x > 0: continue
                     m.ta = want; m.cd = w.rel; fire_torps(s, m, mouse_world); continue
-                if hold_fire and s.side == 0: continue   # holding fire: no torpedoes from the rest of the squadron
+                if holding(s): continue   # holding fire: no torpedoes from the rest of the squadron
                 # straight-running torpedoes pass over a submerged boat; acoustic homers can go after one that is held on sonar
                 var homer: bool = w.get("homing", false)
                 var ok_t = func(x: CShip) -> bool: return not submerged(x) or homer
@@ -958,7 +1002,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                     var tg: CShip = lock if (lock != null and engageable(lock) and visible_to(lock, 0) and not submerged(lock)) else nearest_enemy(mouse_world, 0, 3000.0, func(x: CShip) -> bool: return not submerged(x))
                     if tg == null or p.distance_to(tg.pos) > rng: continue
                     m.cd = w.rel; fire_missile(s, m, tg); continue
-                if hold_fire and s.side == 0: continue
+                if holding(s): continue
                 var tg2: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and not submerged(s.target)) else nearest_enemy(s.pos, s.side, rng, func(x: CShip) -> bool: return not submerged(x))
                 if tg2 != null and p.distance_to(tg2.pos) < rng: m.cd = w.rel * (0.8 + randf() * 0.5); fire_missile(s, m, tg2)
     if s.d.get("sonar", false) and not s.sub:
@@ -1199,9 +1243,10 @@ func helm(s: CShip, desired: float) -> float:
 ## Where a ship of yours belongs in the standing formation, in the flagship's frame (x ahead, y to starboard).
 func station(s: CShip) -> Vector2:
     var mine: Array = []
-    for x in ships: if x.side == 0 and x != flag and active(x): mine.append(x)
+    var o: String = ord_of(s)
+    for x in ships: if x.side == 0 and x != flag and active(x) and ord_of(x) == o: mine.append(x)   # a formation is made by the ships that share the order
     var idx: int = maxi(0, mine.find(s)); var wing: float = 1.0 if idx % 2 else -1.0; var rank: float = floor(idx / 2.0)
-    match order:
+    match o:
         "abreast": return Vector2(0.0, wing * 500.0 * (rank + 1.0))
         "screen":
             # the light ships fan out ahead in an arc; the heavier ones follow the flagship in column
@@ -1231,24 +1276,42 @@ func ai_ship(s: CShip, dt: float) -> void:
     if s.struck: s.throttle = 0; s.rudder = 0; return
     s.v_cmd = -1.0
     # smoke: a ship that is running, or badly hurt with the enemy in sight, covers herself (and those behind her)
-    if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else order == "retreat") or s.hull / s.max_hull < 0.4):
+    if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else ord_of(s) == "retreat") or s.hull / s.max_hull < 0.4):
         if nearest_enemy(s.pos, s.side, 10000.0) != null: make_smoke(s, true)
     if s.sub: s.want_dive = nearest_enemy(s.pos, s.side, 8000.0) != null
-    var retreat = (order == "retreat") if s.side == 0 else s.flee
+    var o: String = ord_of(s)
+    var retreat = (o == "retreat") if s.side == 0 else s.flee
     if retreat:
-        var o = nearest_enemy(s.pos, s.side)
+        var ne = nearest_enemy(s.pos, s.side)
         var home = PI / 2 if s.side == 0 else -PI / 2
-        var away = (s.pos - o.pos).angle() if o != null else home
+        var away = (s.pos - ne.pos).angle() if ne != null else home
         var goal = away if absf(ang_diff(away, home)) < 1.4 else home + clampf(ang_diff(away, home), -0.9, 0.9)
         s.rudder = helm(s, steer_avoid(s, goal)); s.throttle = 4; return
     s.tgt_t -= dt
     if s.tgt_t <= 0 or s.target == null or not engageable(s.target) or not visible_to(s.target, s.side):
         s.tgt_t = 10.0; s.target = best_target(s.pos, s.side, INF, Callable(), true) if heavy_guns(s) else nearest_enemy(s.pos, s.side)
     var tg = s.target
-    if s.side == 0 and order == "line" and flag != null and flag != s:
+    if s.side == 0 and o == "goto":   # sent to a point: go there and lie there, firing as her guns bear
+        var gd := s.pos.distance_to(s.ord_pt)
+        if gd > 250.0: s.rudder = helm(s, steer_avoid(s, (s.ord_pt - s.pos).angle())); s.throttle = 4 if gd > 1500.0 else 2
+        else: s.throttle = 0; s.rudder = 0.0
+        return
+    if s.side == 0 and o == "torp":   # a torpedo attack: run in at speed, turn beam on inside range, fire, and rejoin
+        var tt: CShip = s.ord_tgt if (s.ord_tgt != null and engageable(s.ord_tgt) and visible_to(s.ord_tgt, 0)) else nearest_enemy(s.pos, 0)
+        var loaded := false; var reach := 0.0
+        for m in s.mounts: if m.w.kind == "torp": reach = maxf(reach, float(m.w.range)); if m.cd <= 0 and m.ammo != 0: loaded = true
+        if tt == null or not loaded:
+            s.ord = ""; s.ord_tgt = null; o = ord_of(s)
+            if s.alive: say("The %s has %s and rejoins." % [s.rec.name, "fired her torpedoes" if tt != null else "no target for her torpedoes"], 1.8)
+        else:
+            s.target = tt; var td := s.pos.distance_to(tt.pos); var bearing := (tt.pos - s.pos).angle()
+            if td > reach * 0.6: s.rudder = helm(s, steer_avoid(s, bearing)); s.throttle = 4
+            else: s.rudder = helm(s, steer_avoid(s, bearing - s.pref_side * PI / 2)); s.throttle = 3   # beam on: the tubes bear
+            return
+    if s.side == 0 and o == "line" and flag != null and flag != s:
         # line ahead: each ship follows in the wake of the one ahead of her, the flagship leading; guns fire as they bear
         var col: Array = []
-        for x in ships: if x.side == 0 and x != flag and active(x) and x.d.kind != "carrier" and x.d.kind != "merchant" and not x.sub: col.append(x)
+        for x in ships: if x.side == 0 and x != flag and active(x) and ord_of(x) == "line" and x.d.kind != "carrier" and x.d.kind != "merchant" and not x.sub: col.append(x)
         var idx := col.find(s)
         if idx >= 0:
             var lead: CShip = flag if idx == 0 else col[idx - 1]
@@ -1266,11 +1329,11 @@ func ai_ship(s: CShip, dt: float) -> void:
             if halted: s.throttle = 0 if (dd < 250.0 or s.pos.distance_to(lead.pos) < gap + 200.0) else (3 if dd > 900.0 else 1)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
             else: s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
             return
-    if s.side == 0 and flag != null and flag != s and (order == "escort" or order == "abreast" or order == "screen"):
+    if s.side == 0 and flag != null and flag != s and (o == "escort" or o == "abreast" or o == "screen"):
         # formations: every ship has a station on the flagship and keeps it, turning and changing speed with her.
         # "Form on flag" breaks off to fight what comes within 3 km; line abreast and the screen hold station and
         # fire as their guns bear.
-        var close = nearest_enemy(s.pos, s.side, 3000.0) if order == "escort" else null
+        var close = nearest_enemy(s.pos, s.side, 3000.0) if o == "escort" else null
         if close == null:
             keep_station(s, station(s)); return
         tg = close
@@ -1301,7 +1364,7 @@ func ai_ship(s: CShip, dt: float) -> void:
     if s.pos.x < mg or s.pos.x > AW - mg or s.pos.y < mg or s.pos.y > AH - mg: desired = (Vector2(AW, AH) / 2 - s.pos).angle()
     s.rudder = helm(s, steer_avoid(s, desired))
     s.throttle = 4 if d > pref + 1500 or asw else 3
-    if s.d.kind == "carrier" and not (hold_fire and s.side == 0): launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
+    if s.d.kind == "carrier" and not holding(s): launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
 
 func launch_strike(s: CShip, tg: CShip) -> bool:
     if tg == null or s.sub: return false
@@ -1402,7 +1465,7 @@ func step(dtv: float) -> void:
                     damage(s, s.v * s.d.L * 0.05, "ram"); s.ram_t = 5.0
                     if s == flag: say("We have run aground!", 2.0)
                 s.v *= 0.4
-        var retreating = (order == "retreat") if s.side == 0 else s.flee
+        var retreating = (ord_of(s) == "retreat") if s.side == 0 else s.flee
         if retreating and not s.struck:
             var o = nearest_any(s.pos, s.side)   # seen or not: darkness alone is not an escape
             var edge = s.pos.x < 200 or s.pos.x > AW - 200 or s.pos.y < 200 or s.pos.y > AH - 200
@@ -1478,7 +1541,7 @@ func step(dtv: float) -> void:
             if mine: hit_marks.append({"pos": sh.pos, "text": res.text, "kind": res.kind, "t": 1.8, "ours": hit.side == 0})
             for k2 in (8 if modern else 3): part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * (160.0 if modern else 60.0))
             sound("hit", sh.pos, 0.14 * sz)
-        elif land_at(sh.pos): part(P.DUST, sh.pos, 1.6, 9 * sz)
+        elif land_at(sh.pos): fx_land(sh.pos, sz, str(sh.get("ammo", "ap")))
         else: fx_splash(sh.pos, 6 * sz); sound("splash", sh.pos, 0.05 * sz)
     # torpedoes
     for i in range(torps.size() - 1, -1, -1):
@@ -1580,6 +1643,7 @@ func trail_point(s: CShip) -> Dictionary:
 
 ## Visual effects advance once per frame, in visual seconds.
 func fx(dtv: float) -> void:
+    _scars_fx(dtv)
     _wrecks(dtv)
     if modern:   # a badly hurt ship trails oil, and one sinking leaves her boats, rafts and wreckage on the water
         for s in ships:

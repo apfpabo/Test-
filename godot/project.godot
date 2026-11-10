@@ -6,6 +6,11 @@ config/name="Iron Meridian"
 config/description="Naval fleet command in an alternate 1946."
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icon.png"
+boot_splash/bg_color=Color(0.043, 0.106, 0.133, 1)
+boot_splash/image="res://boot.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
 
 [autoload]
 GameData="*res://scripts/game_data.gd"

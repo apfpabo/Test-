@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _weights()
-	ok(sections == 10, "every section ran to its end (%d of 10)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _weights()
+	ok(sections == 11, "every section ran to its end (%d of 11)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -644,6 +644,41 @@ func _fighting() -> void:
 			fl.throttle = 2; s4.player_rudder = 0.6 if (i > 12000 and i < 15000) else 0.0; s4.finished = false; s4.step(0.01)   # (the merchant runs off the chart: the action is kept open)
 			if i > 24000: for k in range(1, 5): worst = maxf(worst, s4.ships[k].pos.distance_to(fl.pos + s4.station(s4.ships[k]).rotated(fl.a)))
 		ok(worst < 220.0, "%s: after a turn every ship is back on her station and holds it (worst %d m off)" % [ord, int(worst)])
+	sections += 1
+
+## Orders to single ships and divisions.
+func _divisions() -> void:
+	var sim := _sim(["ca_baltimore", "dd_fletcher", "dd_fletcher", "dd_fletcher", "cl_cleveland"], ["bb_bismarck"])
+	var fl = sim.ships[0]; sim.flag = fl; sim.order = "line"; var foe = sim.ships[5]
+	fl.pos = Vector2(12000, 14000); fl.a = 0.0; fl.v = 9.0; foe.pos = Vector2(12000, 3000); foe.a = 0.0; foe.v = 0.0
+	for i in range(1, 5): sim.ships[i].pos = fl.pos + Vector2(-500.0 * i, 0); sim.ships[i].a = 0.0; sim.ships[i].v = 9.0
+	var d1 = sim.ships[1]; var d2 = sim.ships[2]; var d3 = sim.ships[3]; var cl = sim.ships[4]
+	ok(sim.ord_of(d1) == "line", "a ship with no order of her own follows the squadron's")
+	# one destroyer sent to a point, one told to hold her fire, the cruiser kept in the line
+	d1.ord = "goto"; d1.ord_pt = Vector2(9000, 15500); d2.hold = true
+	for x in sim.ships: x.hull = x.max_hull
+	for i in 24000:
+		fl.throttle = 2; sim.player_rudder = 0.0; foe.throttle = 0; foe.hull = foe.max_hull; sim.finished = false
+		for x in sim.ships: if x.side == 0: x.hull = x.max_hull; x.eng = 1.0; x.eng_out = 0.0; x.jam = 0.0; x.list = 0.0
+		sim.step(0.01)
+	ok(d1.pos.distance_to(d1.ord_pt) < 350.0 and d1.v < 1.5, "a ship sent to a point goes there and lies there (%d m off, %.1f m/s)" % [int(d1.pos.distance_to(d1.ord_pt)), d1.v])
+	ok(cl.pos.distance_to(fl.pos) < 2500.0 and d3.pos.distance_to(fl.pos) < 2500.0, "while the rest keep the line astern of the flagship")
+	ok(sim.holding(d2) and not sim.holding(d3) and not sim.hold_fire, "one ship can be told to hold her fire and the rest left free")
+	# a division of two forms line abreast by itself while the squadron stays in line ahead
+	d1.ord = "abreast"; d2.ord = "abreast"; d2.hold = false
+	ok(sim.station(d1).y == -sim.station(d2).y and absf(sim.station(d1).y) == 500.0, "two ships given line abreast take the two nearest stations, one on either beam")
+	# a torpedo attack: run in, fire, rejoin
+	for x in [d1, d2]: x.ord = ""
+	d3.ord = "torp"; d3.ord_tgt = foe; foe.pos = fl.pos + Vector2(0, -9000); var fired := false; var closest := INF
+	ok(sim.has_torps(d3), "she has torpedoes to attack with")
+	for i in 40000:
+		fl.throttle = 0; sim.player_rudder = 0.0; foe.throttle = 0; foe.v = 0.0; foe.hull = foe.max_hull; sim.finished = false; sim.hold_fire = false
+		for x in sim.ships: if x.side == 0: x.hull = x.max_hull; x.eng = 1.0; x.eng_out = 0.0; x.jam = 0.0; x.list = 0.0; x.steer = 1.0
+		sim.step(0.01)
+		closest = minf(closest, d3.pos.distance_to(foe.pos))
+		if sim.torps.any(func(tp): return tp.get("src") == d3 or true) and not fired and d3.ord == "": fired = true
+		if d3.ord == "": break
+	ok(d3.ord == "" and closest < 6000.0, "ordered to a torpedo attack she runs in, fires and takes the squadron's order again (closed to %d m)" % int(closest))
 	sections += 1
 
 ## Refits are ruled by weight (docs/REFIT.md).

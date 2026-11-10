@@ -30,11 +30,15 @@ The rings are drawn for every ship of yours that is in action, the flagship's br
 
 ## On the chart
 
+Your own rings only (owner's request, 10 Nov 2026); R toggles them.
+
 | | |
 | --- | --- |
-| The captain's watch | Owner's decision: how far a force sees is not fixed, it follows its captain, for you and for every other fleet alike. Both start from the same distance (about 555 km on a clear day) times the captain's watch: a green captain (level 1) 87%, a seasoned one (level 4) 108%, the best (level 8) 136%; a flagship with no captain 80%. Yours is the officer commanding your flagship. Every other fleet has a captain of its own (patrols level 1 to 5, convoys 1 to 3, raiders 1 to 4, bounties and hunters 4 to 7); the contact panel names him. Against a captain of your own skill you sight each other at the same moment. |
-| You see fleets within | Green ring: about 550 km on a clear day with an average captain, less in weather and darkness, more with radar in the murk and far more with a carrier's search aircraft. Fleets beyond it are hidden unless a friend, a port or a structure of yours has them in sight. With the radar research a beam turns inside it. |
-| A hostile force finds you within | Red dashed ring: how far off a force hostile to you, under an average captain, notices you and gives chase, with lookouts alone. The dotted ring is the same for a force with radar (a power of Era II or later), when that is farther. Both shrink in weather and darkness; running dark and slow steaming shrink them further, and a wireless call widens them for a day. |
+| Your lookouts see | Pale ring: about 555 km on a clear day under an average captain, much less at night, in fog or in heavy weather. |
+| Your radar sees | Green ring with the turning beam, once you have the Fire-control radar research: at least 80% of the clear-day distance whatever the light (60% in a storm). On a clear day it is the same ring as the lookouts'; its worth shows at night and in the murk. |
+| Your search aircraft see | Blue dashed ring, with a carrier in company and when aircraft can fly: three times her strike reach. |
+| The captain | How sharp a watch is kept follows the captain of your flagship (owner's decision: sighting is not fixed, for you or for anyone else): level 1 sees 87% of the base distance, level 4 108%, level 8 136%; a flagship with no captain 80%. It scales the lookouts' and the radar's rings. The WEATHER chip's tooltip says who he is and what he is worth; the contact panel says the same of the other side's captain. |
+| Being found | A hostile force notices you and gives chase at the same base distance times its own captain's watch, its weather and radar, and your signature (speed, running dark, a wireless call). This is no longer drawn; the Run dark button shows your signature as a percentage. |
 
 ## For the owner
 

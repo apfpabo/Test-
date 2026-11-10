@@ -270,28 +270,33 @@ class LandCopy extends Node2D:    # one copy of the world's land; three side by 
 class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
     var map
     ## A dashed ring at a force's strike reach, drawn only for missile ships and carriers (guns need contact).
-    ## Sensors on the chart (R, docs/SENSORS.md): how far you see other fleets (green, with the radar's turning beam
-    ## once you have radar), and how far off a hostile force notices you and gives chase: with lookouts alone (red,
-    ## dashed) and with radar (red, dotted). Both shrink in weather and darkness; the second with running dark too.
+    ## Sensors on the chart (R, docs/SENSORS.md), yours only (owner's request): how far your lookouts see (pale), how
+    ## far your radar sees once you have it (green, with its turning beam), and a carrier's search aircraft (blue,
+    ## dashed) when they reach farther. All shrink in weather and darkness; radar the least.
     func _sensors(c: Vector2) -> void:
-        var z: float = map.zoom; var green := Color(0.45, 0.95, 0.55); var red := Color(0.85, 0.38, 0.29)
-        var sr := Campaign.sight_radius(); var f0 := Campaign.found_radius(false); var f1 := Campaign.found_radius(true)
-        draw_arc(c, sr, 0, TAU, 96, Color(green, 0.35), 1.2 / z)
-        if Campaign.has_tech("radar"):
+        var z: float = map.zoom; var green := Color(0.45, 0.95, 0.55); var pale := Color(0.93, 0.94, 0.92); var blue := Color(0.55, 0.8, 1.0)
+        var eye := Campaign.eye_radius(); var rad := Campaign.radar_radius(); var air := Campaign.air_radius()
+        var rows := [[eye, "YOUR LOOKOUTS SEE %d KM" % int(eye * Campaign.KM_PER_UNIT), pale]]
+        draw_arc(c, eye, 0, TAU, 96, Color(pale, 0.4), 1.2 / z)
+        if rad > 0.0:   # your radar: its reach, and the beam turning inside it
+            draw_arc(c, rad, 0, TAU, 96, Color(green, 0.45), 1.2 / z)
             var ang := fposmod(map.tnow / 5.0, 1.0) * TAU; var n := 14; var pts := PackedVector2Array([c]); var cols := PackedColorArray([Color(green, 0.0)])
             for i in n + 1:
                 var k := float(i) / n
-                pts.append(c + Vector2.from_angle(ang - 0.7 * (1.0 - k)) * sr); cols.append(Color(green, 0.1 * k * k))
-            draw_polygon(pts, cols); draw_line(c, c + Vector2.from_angle(ang) * sr, Color(green, 0.35), 1.0 / z)
-        for i in 60: if i % 2 == 0: draw_arc(c, f0, i * TAU / 60, (i + 1) * TAU / 60, 3, Color(red, 0.45), 1.2 / z)
-        if f1 > f0 + 1.0: for i in 180: if i % 3 == 0: draw_arc(c, f1, i * TAU / 180, (i + 0.6) * TAU / 180, 2, Color(red, 0.4), 1.2 / z)
-        var fnt: Font = ThemeDB.fallback_font
-        for row in [[sr, "YOU SEE FLEETS WITHIN %d KM%s · YOUR CAPTAIN'S WATCH %d%%" % [int(sr * Campaign.KM_PER_UNIT), " · RADAR" if Campaign.has_tech("radar") else "", int(round(Campaign.your_watch() * 100))], green, -1.0],
-                [f0, ("AN AVERAGE CAPTAIN FINDS YOU WITHIN %d KM" if f1 <= f0 + 1.0 else "AN AVERAGE CAPTAIN'S LOOKOUTS FIND YOU WITHIN %d KM") % int(f0 * Campaign.KM_PER_UNIT), red, 1.0], [f1, "RADAR FINDS YOU WITHIN %d KM" % int(f1 * Campaign.KM_PER_UNIT), red, 2.0]]:
-            if row[3] == 2.0 and f1 <= f0 + 1.0: continue
+                pts.append(c + Vector2.from_angle(ang - 0.7 * (1.0 - k)) * rad); cols.append(Color(green, 0.1 * k * k))
+            draw_polygon(pts, cols); draw_line(c, c + Vector2.from_angle(ang) * rad, Color(green, 0.35), 1.0 / z)
+            rows.append([rad, "YOUR RADAR SEES %d KM" % int(rad * Campaign.KM_PER_UNIT), green])
+        if air > maxf(eye, rad) + 1.0:   # a carrier's search aircraft look farther still, when they can fly
+            for i in 90: if i % 2 == 0: draw_arc(c, air, i * TAU / 90, (i + 1) * TAU / 90, 3, Color(blue, 0.4), 1.2 / z)
+            rows.append([air, "YOUR SEARCH AIRCRAFT SEE %d KM" % int(air * Campaign.KM_PER_UNIT), blue])
+        var fnt: Font = ThemeDB.fallback_font; var used := []
+        for row in rows:
             var w := fnt.get_string_size(row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-            draw_set_transform(c + Vector2(0, float(row[0]) * signf(row[3]) + (14.0 if row[3] > 0.0 else -6.0) / z), 0.0, Vector2.ONE / z)
-            draw_string(fnt, Vector2(-w / 2.0, 0), row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(row[2], 0.75))
+            var up := true   # two rings of nearly one size: the second label goes under its ring
+            for u in used: if absf(float(u) - float(row[0])) * z < 16.0: up = false
+            used.append(row[0])
+            draw_set_transform(c + Vector2(0, -float(row[0]) - 6.0 / z) if up else c + Vector2(0, float(row[0]) + 14.0 / z), 0.0, Vector2.ONE / z)
+            draw_string(fnt, Vector2(-w / 2.0, 0), row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(row[2], 0.8))
         draw_set_transform(Vector2.ZERO)
     func _reach_ring(c: Vector2, r: float, col: Color) -> void:
         if r <= Campaign.CONTACT + 0.5: return
@@ -619,6 +624,8 @@ func _update_top() -> void:
     var wl := []
     if int(wx.sea) >= 2: wl.append("speed %d%%, fuel burn +%d%%" % [int(Weather.speed_mult(wx, G.fleet) * 100), int((Weather.fuel_mult(wx) - 1.0) * 100)])
     if int(wx.sea) >= 3: wl.append("ships under 2,500 tons take damage each day under way")
+    var cap = Campaign.officer_of(G.fleet[0]) if not G.fleet.is_empty() else null
+    wl.append(("%s, commanding your flagship (level %d), keeps a watch that sees %d%% as far as an average captain's" % [cap.name, int(cap.lvl), int(round(Campaign.your_watch() / Campaign.watch(3) * 100))]) if cap != null else "your flagship has no captain: her lookouts see 80% as far as an average captain's (Command, Officers)")
     wl.append("you make contact at %d%% of the clear-day distance%s" % [int(Campaign.ck_you(wx) * 100), " (radar)" if Campaign.has_tech("radar") and float(wx.vis_km) < 60.0 else ""])
     wl.append("a force without radar finds you at %d%%" % int(Weather.contact_mult(wx, false) * 100))
     if not Weather.air_ok(wx, Campaign.has_tech("jets")): wl.append("aircraft cannot fly")

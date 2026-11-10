@@ -1084,9 +1084,15 @@ func always_seen(f: Dictionary) -> bool:
     return friendly_fac(f.fac) or int(f.get("escort", 0)) > 0 or f.get("answering", false) or f.get("warned", false) or G.player.get("escort") == f.id
 ## How far your squadron sees other fleets on the chart, in map units: lookouts and radar about 550 km on a clear
 ## day, a carrier's search aircraft three times as far as her strike reaches, all cut by weather and darkness.
-func sight_radius() -> float:
-    var wx: Dictionary = weather_here()
-    return maxf(SIGHT * your_watch(), strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ck_you(wx)   # the captain's watch is his lookouts; search aircraft reach as far as they fly
+func sight_radius() -> float: return maxf(maxf(eye_radius(), radar_radius()), air_radius())
+## Its three parts, each a ring on the chart: your lookouts, your radar (0 without the research), and a carrier's
+## search aircraft (0 with no carrier, or when they cannot fly). The captain of your flagship sets how sharp a watch
+## is kept (lookouts and the radar plot); the aircraft reach as far as they fly.
+func eye_radius() -> float: return SIGHT * your_watch() * Weather.contact_mult(weather_here(), false)
+func radar_radius() -> float: return SIGHT * your_watch() * Weather.contact_mult(weather_here(), true) if has_tech("radar") else 0.0
+func air_radius() -> float:
+    var wx: Dictionary = weather_here(); var r := strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets")))
+    return r * 3.0 * ck_you(wx) if r > 120.0 / KM_PER_UNIT + 1.0 else 0.0
 ## How far off a hostile force notices you and gives chase (map units): with lookouts alone, or with radar; under the
 ## captain given (a fleet), or an average one.
 func found_radius(radar: bool, f = null) -> float:

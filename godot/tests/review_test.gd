@@ -499,4 +499,14 @@ func _decisions() -> void:
 	var moving := 0.0
 	for x in sim.ships: if x.side == 0 and x != sim.flag: moving = maxf(moving, x.v)
 	ok(close > sim.flag.d.L * 0.8 and moving < 1.0, "astern of a stopped flagship the line stops clear of her (nearest %d m, fastest %.1f m/s)" % [int(close), moving])
+	# a face fits the name: a woman's name never gets a man's portrait, nor the other way about
+	var ArtT = load("res://scripts/art.gd"); var bad := 0; var seen := {}
+	if not ArtT.faces().is_empty():
+		for i in 300:
+			var of: Dictionary = Campaign.new_officer(1); ArtT.portrait(of); var sx: String = ArtT.sex_of(of)
+			if sx != "" and ArtT.is_woman(str(of.face)) != (sx == "f"): bad += 1
+			seen[of.face] = true
+		var oldo := {"id": "7", "name": "Vera Quint", "face": "p01.jpg"}; ArtT.portrait(oldo)
+		ok(bad == 0 and ArtT.is_woman(str(oldo.face)), "portraits fit the officers' names (%d wrong of 300; an old save's mismatch is re-picked: %s)" % [bad, oldo.face])
+		ok(seen.size() >= 20 and not seen.has("port.jpg"), "nearly every portrait is used and none is a scene (%d of %d)" % [seen.size(), ArtT.faces().size()])
 	sections += 1

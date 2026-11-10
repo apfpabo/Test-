@@ -37,6 +37,10 @@ Batteries, radar stations and naval bases stand on the coast itself, about 2 km 
 - **Doctrine:** the Directorate's flak and guns are 30% stronger (fortified coasts), the Federation's fighters 50% (carrier aviation), the Concord's fighters 20%; the Republic, the freeports, the Enclaves and the island flags are lighter. Flak improves with the enemy's era.
 - **Names:** the port, or the strait, and the kind: "Strelsk Airfield", "West Strelsk Steelworks", "the Throat Battery". Far from any port: the landmass ("Austral Barrier Oil Works").
 
+## Nuclear plants (10 Nov 2026)
+
+Five of the industrial works are nuclear plants, one by the capital of each of the Concord, the Directorate, the Federation, the Combine and the Enclaves (5 flak batteries, a fighter squadron, garrison 150, hard to knock out). A working plant you hold makes one warhead a month (two in store at most for each plant), fitted to a missile submarine at a port or base of your own. A power can answer a nuclear strike only while it or a coalition ally holds a working plant and is of the missile age.
+
 ## Striking from the air
 
 - Needs carriers (escort carriers from the Concord, Federation and Combine yards, and second-hand as the Syndicate's improvised carriers in every freeport yard; fleet carriers at the Concord and Federation capitals with jets). Planes aboard: 6 a squadron, tracked per carrier (`air` on the ship record), also in battle.

@@ -439,6 +439,35 @@ func _decisions() -> void:
 	map._sell_ship(G.fleet[1])
 	ok(Campaign.cargo_used() <= Campaign.cargo_cap() and float(G.credits) > money + map.sell_value(Campaign.new_ship("freighter", null, "player", [])) * 0.5, "selling a freighter lands the cargo her holds carried and sells it (hold %d of %d)" % [Campaign.cargo_used(), Campaign.cargo_cap()])
 	map.cur_port = {}; map.queue_free()
+	# nuclear plants: five powers hold one; warheads come only from a working plant, one a month, for you and for them
+	Campaign.new_game("commission"); G = Campaign.G; P = G.player
+	var plants: Array = Structures.all().filter(func(x): return x.kind == "nuclear")
+	ok(plants.size() == 5 and Structures.plants_of("directorate").size() == 1 and Structures.all().size() == 384, "five powers each hold a nuclear plant (%d plants, %d structures)" % [plants.size(), Structures.all().size()])
+	G.tech = ["nuclear", "missiles", "nukes"]; G.fleet = [Campaign.new_ship("ssn_charlie", "Boat", "player", G.tech)]; G.credits = 1000000.0; G.cargo.food = 5000.0; G.cargo.fuel = 500.0
+	ok(Structures.can_arm("player").begins_with("Warheads are made"), "you cannot fit a warhead without a plant")
+	var mine: Dictionary = Structures.plants_of("combine")[0]; mine.fac = "player"; mine.from = ""; mine.garrison = 150; mine.pile = int(G.day)
+	ok(Structures.can_arm("player").begins_with("Your plant has no warhead ready"), "nor until your plant has made one")
+	for i in 31: Campaign.new_day(false)
+	ok(Structures.stock() == 1 and Structures.can_arm("player") == "", "a month on, the plant has made one (%d in store)" % Structures.stock())
+	Structures.arm()
+	ok(Structures.nukes() == 1 and Structures.stock() == 0, "fitting it takes it out of the store")
+	G.facRp = {"directorate": 900.0}
+	ok(Structures.can_answer("directorate"), "a power of the missile age with a working plant can answer in kind")
+	var dp: Dictionary = Structures.plants_of("directorate")[0]; dp.dmg = 1.0
+	ok(not Structures.can_answer("directorate"), "with its plant knocked out it cannot")
+	dp.dmg = 0.0
+	# the standing ledger says why each power thinks of you as it does
+	var victim: Dictionary = {}
+	for x in Structures.all(): if x.fac == "concord" and x.kind == "farm": victim = x; break
+	P.x = victim.x; P.y = victim.y; var before: int = int(G.rep.concord)
+	Structures.nuke(victim)
+	var lines: Array = Campaign.rep_lines("concord"); var sum := 0
+	for k in G.repLog.concord: sum += int(G.repLog.concord[k])
+	ok(lines.any(func(l): return String(l).begins_with("Nuclear strike")) and sum == int(G.rep.concord) and int(G.rep.concord) == -100, "the ledger books a nuclear strike and adds up to the standing (%s)" % str(lines.slice(0, 3)))
+	G.fleets.clear(); G.fleet = [Campaign.new_ship("ca", "Guard", "player", [])]
+	st = {}
+	for x in Structures.all(): if x.fac == "directorate" and x.kind == "farm": st = x; break
+	st.fac = "player"; st.from = "directorate"; st.took = int(G.day); st.garrison = 30
 	# a landing force beaten at sea gives the landing up, even if its troopships got away
 	G.fleet = [Campaign.new_ship("ca", "Guard", "player", [])]; G.fleets.clear()
 	var lf: Dictionary = Structures.launch_assault(st, "directorate")

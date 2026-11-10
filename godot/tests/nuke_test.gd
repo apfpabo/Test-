@@ -19,7 +19,11 @@ func _ready() -> void:
 	G.credits = 1000000
 	ok(Structures.can_arm("player").begins_with("Needs"), "not without the research")
 	G.tech = t3 + ["nukes"]
-	ok(Structures.can_arm("concord") != "" and Structures.can_arm("player") == "" and Structures.can_arm("enclave") == "", "fitted only at your own port or the Enclaves")
+	ok(Structures.can_arm("player").begins_with("Warheads are made at a nuclear plant"), "no warhead without a nuclear plant of your own")
+	var plant: Dictionary = Structures.plants_of("concord")[0]; plant.fac = "player"; plant.garrison = 150; plant.pile = int(G.day)
+	ok(Structures.can_arm("player").begins_with("Your plant has no warhead ready"), "nor before the plant has made one: " + Structures.can_arm("player"))
+	G.warStock = 2
+	ok(Structures.can_arm("concord") != "" and Structures.can_arm("player") == "", "fitted only at a port or base of your own")
 	Structures.arm(); Structures.arm()
 	ok(Structures.nukes() == 2 and int(G.credits) == 1000000 - 2 * Structures.NUKE_COST, "two warheads aboard")
 	var tgt: Dictionary = {}

@@ -1,44 +1,194 @@
 {
-  "kinds": {
-    "farm":      {"name": "Farms and grain depots", "noun": "Farms", "yields": {"food": 60}, "flak": 1.0, "fighters": 0, "guns": 0, "garrison": 30, "hard": 1.0, "military": false,
-                  "text": "Grain fields, silos and a railhead depot. Lightly guarded: a few machine guns and a 40 mm battery by the silos."},
-    "mine":      {"name": "Mines and steelworks", "noun": "Steelworks", "yields": {"steel": 30}, "flak": 2.0, "fighters": 0, "guns": 0, "garrison": 50, "hard": 1.2, "military": false,
-                  "text": "Pitheads, spoil heaps and a rolling mill. Steel for the yards, guarded by heavy flak along the slag banks."},
-    "oil":       {"name": "Oil works", "noun": "Oil Works", "yields": {"money": 2500}, "flak": 3.0, "fighters": 0, "guns": 0, "garrison": 60, "hard": 1.0, "military": false,
-                  "text": "Derricks, a tank farm and a small refinery. Its oil sells for hard currency, and its flak gunners know it."},
-    "industry":  {"name": "Industrial works", "noun": "Works", "yields": {"money": 4000, "steel": 10}, "flak": 4.0, "fighters": 0, "guns": 0, "garrison": 80, "hard": 1.3, "military": false,
-                  "text": "Sheds, chimneys and rail sidings: an arms and engine works rebuilt since the war, ringed with heavy flak."},
-    "airfield":  {"name": "Airfield", "noun": "Airfield", "yields": {}, "flak": 3.0, "fighters": 3, "guns": 0, "garrison": 120, "hard": 1.2, "military": true,
-                  "text": "Runways, hangars and dispersal pens. Its fighters rise to defend every structure of its flag within 300 km, and its search planes report ships that come within reach."},
-    "battery":   {"name": "Coastal battery", "noun": "Battery", "yields": {}, "flak": 2.0, "fighters": 0, "guns": 4, "garrison": 80, "hard": 1.8, "military": true,
-                  "text": "Heavy guns in concrete casemates on a headland. Its guns reach some 35 km to sea, and it shells any ship of a flag at war with its own that comes within range."},
-    "radar":     {"name": "Radar station", "noun": "Radar Station", "yields": {}, "flak": 2.0, "fighters": 0, "guns": 0, "garrison": 40, "hard": 0.9, "military": true,
-                  "text": "Aerial masts and a plotting room on high ground. Its warning makes the flak and fighters of every structure of its flag within 300 km a quarter more effective, and warns of attack."},
-    "navalbase": {"name": "Naval base", "noun": "Naval Base", "yields": {}, "flak": 4.0, "fighters": 1, "guns": 2, "garrison": 200, "hard": 1.5, "military": true,
-                  "text": "A wartime harbour: a breakwater, oil tanks, a slipway and a repair shop. Whoever holds it can repair, rearm and refuel there, and it keeps the goods its holder's structures produce."}
+ "kinds": {
+  "farm": {
+   "name": "Farms and grain depots",
+   "noun": "Farms",
+   "yields": {
+    "food": 60
+   },
+   "flak": 1.0,
+   "fighters": 0,
+   "guns": 0,
+   "garrison": 30,
+   "hard": 1.0,
+   "military": false,
+   "text": "Grain fields, silos and a railhead depot. Lightly guarded: a few machine guns and a 40 mm battery by the silos."
   },
-  "doctrine": {
-    "directorate": {"flak": 1.3, "guns": 1.3, "fighters": 1.0},
-    "pacific":     {"flak": 1.0, "guns": 1.0, "fighters": 1.5},
-    "concord":     {"flak": 1.1, "guns": 1.0, "fighters": 1.2},
-    "combine":     {"flak": 1.2, "guns": 1.0, "fighters": 1.0},
-    "republic":    {"flak": 0.8, "guns": 1.1, "fighters": 0.7},
-    "freeport":    {"flak": 0.8, "guns": 0.8, "fighters": 0.6},
-    "enclave":     {"flak": 0.8, "guns": 1.0, "fighters": 0.5},
-    "ombria":      {"flak": 0.9, "guns": 1.0, "fighters": 0.8},
-    "isles":       {"flak": 0.8, "guns": 0.9, "fighters": 0.8},
-    "player":      {"flak": 1.0, "guns": 1.0, "fighters": 1.0},
-    "":            {"flak": 0.3, "guns": 0.0, "fighters": 0.0}
+  "mine": {
+   "name": "Mines and steelworks",
+   "noun": "Steelworks",
+   "yields": {
+    "steel": 30
+   },
+   "flak": 2.0,
+   "fighters": 0,
+   "guns": 0,
+   "garrison": 50,
+   "hard": 1.2,
+   "military": false,
+   "text": "Pitheads, spoil heaps and a rolling mill. Steel for the yards, guarded by heavy flak along the slag banks."
   },
-  "cover_km": 300,
-  "battery_km": 35,
-  "silenced": 0.8,
-  "repair_per_day": 0.04,
-  "ruin_per_day": 0.01,
-  "plane_cost": 1500,
-  "jet_cost": 3000,
-  "owner_reach": 700,
-  "struct_war_chance": 0.03,
-  "assault_chance": [0.016, 0.006],
-  "max_assaults": 2
+  "oil": {
+   "name": "Oil works",
+   "noun": "Oil Works",
+   "yields": {
+    "money": 2500
+   },
+   "flak": 3.0,
+   "fighters": 0,
+   "guns": 0,
+   "garrison": 60,
+   "hard": 1.0,
+   "military": false,
+   "text": "Derricks, a tank farm and a small refinery. Its oil sells for hard currency, and its flak gunners know it."
+  },
+  "industry": {
+   "name": "Industrial works",
+   "noun": "Works",
+   "yields": {
+    "money": 4000,
+    "steel": 10
+   },
+   "flak": 4.0,
+   "fighters": 0,
+   "guns": 0,
+   "garrison": 80,
+   "hard": 1.3,
+   "military": false,
+   "text": "Sheds, chimneys and rail sidings: an arms and engine works rebuilt since the war, ringed with heavy flak."
+  },
+  "airfield": {
+   "name": "Airfield",
+   "noun": "Airfield",
+   "yields": {},
+   "flak": 3.0,
+   "fighters": 3,
+   "guns": 0,
+   "garrison": 120,
+   "hard": 1.2,
+   "military": true,
+   "text": "Runways, hangars and dispersal pens. Its fighters rise to defend every structure of its flag within 300 km, and its search planes report ships that come within reach."
+  },
+  "battery": {
+   "name": "Coastal battery",
+   "noun": "Battery",
+   "yields": {},
+   "flak": 2.0,
+   "fighters": 0,
+   "guns": 4,
+   "garrison": 80,
+   "hard": 1.8,
+   "military": true,
+   "text": "Heavy guns in concrete casemates on a headland. Its guns reach some 35 km to sea, and it shells any ship of a flag at war with its own that comes within range."
+  },
+  "radar": {
+   "name": "Radar station",
+   "noun": "Radar Station",
+   "yields": {},
+   "flak": 2.0,
+   "fighters": 0,
+   "guns": 0,
+   "garrison": 40,
+   "hard": 0.9,
+   "military": true,
+   "text": "Aerial masts and a plotting room on high ground. Its warning makes the flak and fighters of every structure of its flag within 300 km a quarter more effective, and warns of attack."
+  },
+  "navalbase": {
+   "name": "Naval base",
+   "noun": "Naval Base",
+   "yields": {},
+   "flak": 4.0,
+   "fighters": 1,
+   "guns": 2,
+   "garrison": 200,
+   "hard": 1.5,
+   "military": true,
+   "text": "A wartime harbour: a breakwater, oil tanks, a slipway and a repair shop. Whoever holds it can repair, rearm and refuel there, and it keeps the goods its holder's structures produce."
+  },
+  "nuclear": {
+   "name": "Nuclear plant",
+   "noun": "Nuclear Plant",
+   "yields": {
+    "money": 2000
+   },
+   "flak": 5.0,
+   "fighters": 1,
+   "guns": 0,
+   "garrison": 150,
+   "hard": 1.6,
+   "military": true,
+   "text": "Reactor halls, cooling towers and a separation works behind three fences. Only a power that holds a working plant can make nuclear warheads: one a month from each. Strike it, take it or destroy it, and that power makes no more."
+  }
+ },
+ "doctrine": {
+  "directorate": {
+   "flak": 1.3,
+   "guns": 1.3,
+   "fighters": 1.0
+  },
+  "pacific": {
+   "flak": 1.0,
+   "guns": 1.0,
+   "fighters": 1.5
+  },
+  "concord": {
+   "flak": 1.1,
+   "guns": 1.0,
+   "fighters": 1.2
+  },
+  "combine": {
+   "flak": 1.2,
+   "guns": 1.0,
+   "fighters": 1.0
+  },
+  "republic": {
+   "flak": 0.8,
+   "guns": 1.1,
+   "fighters": 0.7
+  },
+  "freeport": {
+   "flak": 0.8,
+   "guns": 0.8,
+   "fighters": 0.6
+  },
+  "enclave": {
+   "flak": 0.8,
+   "guns": 1.0,
+   "fighters": 0.5
+  },
+  "ombria": {
+   "flak": 0.9,
+   "guns": 1.0,
+   "fighters": 0.8
+  },
+  "isles": {
+   "flak": 0.8,
+   "guns": 0.9,
+   "fighters": 0.8
+  },
+  "player": {
+   "flak": 1.0,
+   "guns": 1.0,
+   "fighters": 1.0
+  },
+  "": {
+   "flak": 0.3,
+   "guns": 0.0,
+   "fighters": 0.0
+  }
+ },
+ "cover_km": 300,
+ "battery_km": 35,
+ "silenced": 0.8,
+ "repair_per_day": 0.04,
+ "ruin_per_day": 0.01,
+ "plane_cost": 1500,
+ "jet_cost": 3000,
+ "owner_reach": 700,
+ "struct_war_chance": 0.03,
+ "assault_chance": [
+  0.016,
+  0.006
+ ],
+ "max_assaults": 2
 }

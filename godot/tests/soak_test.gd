@@ -298,6 +298,8 @@ func _events(day: int) -> void:
 		for t in ["nuclear", "missiles", "nukes"]: if not G.tech.has(t): G.tech.append(t)
 		if Campaign.all_ships().size() >= 10: G.fleet.pop_back()
 		G.fleet.append(Campaign.new_ship("ssn_charlie", null, "player", G.tech)); G.crew = maxi(int(G.crew), Campaign.crew_need()); G.credits = 900000.0
+		var plant: Dictionary = Structures.all().filter(func(x): return x.kind == "nuclear" and not x.get("nuked", false))[0]   # a plant falls into your hands, with a warhead made
+		plant.fac = "player"; plant.from = ""; plant.dmg = 0.0; plant.garrison = Structures.garrison_need(plant); plant.took = int(G.day); G.warStock = 1
 		ok(Structures.can_arm("player") == "", "a missile boat can take a warhead: " + Structures.can_arm("player"))
 		if Structures.can_arm("player") == "": Structures.arm()
 		var tgt: Dictionary = {}

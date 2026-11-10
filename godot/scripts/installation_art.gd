@@ -116,6 +116,7 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, R: float, seed: int, 
 		"mine": _mine(ci, c, R, r)
 		"farm": _farm(ci, c, R, r)
 		"industry": _industry(ci, c, R, r)
+		"nuclear": _nuclear(ci, c, R, r)
 	damage(ci, c, R, seed, dmg, ruin, face, {"battery": 0.5, "radar": 0.5, "navalbase": 0.6}.get(kind, -1.0))
 
 static func _airfield(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator, face: float) -> void:
@@ -226,6 +227,26 @@ static func _farm(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator
 	building(ci, c + Vector2(-R * 0.18, R * 0.02).rotated(a), R * 0.25, R * 0.12, a, ROOF, R * 0.03)   # depot sheds
 	building(ci, c + Vector2(-R * 0.5, -R * 0.3).rotated(a), R * 0.12, R * 0.08, a, ROOF, R * 0.02)
 
+## A nuclear plant: two cooling towers (rings shaded round their throats), a domed reactor hall, the long turbine
+## hall, a separation works, a switchyard, and the fence round it all.
+static func _nuclear(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator) -> void:
+	ci.draw_arc(c, R * 0.78, 0, TAU, 48, Color(0.2, 0.2, 0.18, 0.5), R * 0.012)   # the outer fence
+	ci.draw_arc(c, R * 0.7, 0, TAU, 48, Color(0.2, 0.2, 0.18, 0.35), R * 0.008)
+	for k in 2:   # cooling towers
+		var p := c + Vector2(-R * 0.36, R * (-0.2 + k * 0.42)); var tr := R * 0.17
+		_poly(ci, PackedVector2Array([p + Vector2(tr, tr) * 0.9, p + Vector2(tr * 2.4, tr * 2.4) * 0.9, p + Vector2(tr * 1.2, tr * 2.9) * 0.9, p + Vector2(-tr * 0.2, tr * 1.2) * 0.9]), SHADOW)
+		ci.draw_circle(p, tr, Color(0.72, 0.71, 0.66)); ci.draw_arc(p, tr * 0.96, -2.6, -0.5, 14, Color(0.9, 0.89, 0.84), tr * 0.12)
+		ci.draw_circle(p, tr * 0.62, Color(0.5, 0.5, 0.47)); ci.draw_circle(p + Vector2(tr, tr) * 0.1, tr * 0.5, Color(0.26, 0.26, 0.25))
+		ci.draw_circle(p - Vector2(tr, tr) * 0.25, tr * 0.5, Color(1, 1, 1, 0.16)); ci.draw_circle(p - Vector2(tr, tr) * 0.7, tr * 0.66, Color(1, 1, 1, 0.1))   # steam drifting off
+	var q := c + Vector2(R * 0.12, -R * 0.12)   # the reactor hall and its dome
+	building(ci, q, R * 0.3, R * 0.26, 0.0, Color(0.6, 0.6, 0.57), R * 0.06, false)
+	ci.draw_circle(q + Vector2(R, R) * 0.025, R * 0.1, SHADOW); ci.draw_circle(q, R * 0.1, Color(0.78, 0.78, 0.75)); ci.draw_circle(q - Vector2(R, R) * 0.025, R * 0.055, Color(0.92, 0.92, 0.9))
+	building(ci, c + Vector2(R * 0.16, R * 0.22), R * 0.46, R * 0.14, 0.0, ROOF2, R * 0.04)   # turbine hall
+	building(ci, c + Vector2(R * 0.46, -R * 0.2), R * 0.16, R * 0.3, 0.0, Color(0.5, 0.48, 0.44), R * 0.035)   # separation works
+	ci.draw_circle(c + Vector2(R * 0.46, -R * 0.42), R * 0.03, Color(0.35, 0.33, 0.3))   # its stack
+	for i in 4: for j in 3:   # the switchyard
+		var p2 := c + Vector2(R * (-0.05 + i * 0.07), R * (0.42 + j * 0.05)); ci.draw_rect(Rect2(p2 - Vector2(R, R) * 0.012, Vector2(R, R) * 0.024), STEEL.darkened(0.3))
+	for j in 3: ci.draw_line(c + Vector2(-R * 0.07, R * (0.42 + j * 0.05)), c + Vector2(R * 0.18, R * (0.42 + j * 0.05)), STEEL.darkened(0.4), R * 0.006)
 static func _industry(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator) -> void:
 	for k in 3: ci.draw_line(c + Vector2(-R, R * (0.4 + k * 0.05)), c + Vector2(R, R * (0.35 + k * 0.05)), RAIL, R * 0.015)
 	for i in 3:
@@ -246,6 +267,9 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, ring: Color
 		"mine": ci.draw_line(c + Vector2(-s, -s) * 0.55, c + Vector2(s, s) * 0.55, g, lw); ci.draw_line(c + Vector2(s, -s) * 0.55, c + Vector2(-s, s) * 0.55, g, lw); ci.draw_line(c + Vector2(-s * 0.75, -s * 0.35), c + Vector2(-s * 0.35, -s * 0.75), g, lw * 1.6)
 		"oil": ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.5, s * 0.6), c + Vector2(0, -s * 0.65), c + Vector2(s * 0.5, s * 0.6)]), g, lw); ci.draw_line(c + Vector2(-s * 0.25, s * 0.0), c + Vector2(s * 0.25, s * 0.0), g, lw)
 		"industry": ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.7, s * 0.5), c + Vector2(-s * 0.7, -s * 0.1), c + Vector2(-s * 0.25, -s * 0.5), c + Vector2(-s * 0.25, -s * 0.1), c + Vector2(s * 0.2, -s * 0.5), c + Vector2(s * 0.2, -s * 0.1), c + Vector2(s * 0.7, -s * 0.5), c + Vector2(s * 0.7, s * 0.5), c + Vector2(-s * 0.7, s * 0.5)]), g, lw)
+		"nuclear":   # the trefoil
+			ci.draw_circle(c, s * 0.16, g)
+			for k in 3: ci.draw_arc(c, s * 0.5, k * TAU / 3.0 - 0.5 - PI / 2, k * TAU / 3.0 + 0.5 - PI / 2, 6, g, s * 0.36)
 		"airfield": ci.draw_line(c + Vector2(-s * 0.75, s * 0.2), c + Vector2(s * 0.75, -s * 0.2), g, lw * 1.7); ci.draw_line(c + Vector2(-s * 0.3, -s * 0.7), c + Vector2(s * 0.3, s * 0.7), g, lw * 1.7)
 		"battery": ci.draw_circle(c + Vector2(-s * 0.2, s * 0.15), s * 0.38, g); ci.draw_line(c + Vector2(-s * 0.2, s * 0.15), c + Vector2(s * 0.75, -s * 0.55), g, lw * 1.5)
 		"radar": ci.draw_arc(c + Vector2(0, s * 0.45), s * 0.75, -PI * 0.85, -PI * 0.15, 10, g, lw); ci.draw_arc(c + Vector2(0, s * 0.45), s * 0.4, -PI * 0.85, -PI * 0.15, 8, g, lw); ci.draw_circle(c + Vector2(0, s * 0.45), s * 0.12, g)

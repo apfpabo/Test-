@@ -527,6 +527,9 @@ func new_game(start_key: String, navy := "concord", test := false) -> void:
     var o = new_officer(int(st.get("officer", 1))); o.ship = G.fleet[0].id; G.officers.append(o)
     # hunters stay on your trail for a while: until a given day
     for h in G.perks.get("hunted", []): h.until = int(h.days)
+    G.repSeen = {}; G.repLog = {}
+    for f in rep: if f != "raiders" and int(rep[f]) != 0: G.repLog[f] = {"Where you began (your origin)": int(rep[f])}
+    for f in rep: G.repSeen[f] = int(rep[f])
     Diplomacy.ensure(st)
     Structures.ensure()
     Flag.apply()
@@ -841,7 +844,9 @@ func new_day(moved: bool) -> void:
         var lost = int(ceil(G.crew * 0.05)); G.crew -= lost; G.credits = 0; toast.emit("Pay is in arrears. %d sailors walked off." % lost)
     for p in G.ports:
         for g in C.GOODS: p.drift[g.id] = clampf(p.drift[g.id] * 0.93 + (randf() - 0.5) * 0.05, -0.3, 0.45)
+    rep_note("Other dealings")
     for k in G.rep: G.rep[k] = clampi(int(G.rep[k]), -100, 100)   # standing has a floor and a ceiling, whatever pushed it
+    rep_note("Beyond the limits of -100 and 100 (not counted)")
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()
@@ -1278,6 +1283,7 @@ func take_tow(f: Dictionary) -> String:
     if owed: G.rep[f.fac] = G.rep.get(f.fac, 0) - 5
     else: G.credits -= fee
     var P: Dictionary = G.player
+    rep_note("Towed without paying")
     P.towed = int(f.id); P.follow = null; P.escort = null; P.destPort = int(p.id); f.answering = false
     if not set_course(P, p.sx, p.sy):
         P.towed = null
@@ -1299,6 +1305,40 @@ func known_pos(f: Dictionary) -> Vector2:
     if f.get("vis", true): return Vector2(f.x, f.y)
     if f.has("seenDay"): return Vector2(f.seenX, f.seenY)
     return Vector2(f.home.x, f.home.y) if f.has("home") else Vector2(f.x, f.y)
+## The standing ledger: why each power thinks of you as it does. Standing is changed in many places; after each kind
+## of event `rep_note(reason)` books whatever has changed since the last note under that reason (G.repLog), so the
+## standing screen can show the sums on hover. Anything nobody claimed is booked daily as other dealings.
+func rep_note(reason: String) -> void:
+    if G.is_empty() or not G.has("rep"): return
+    if not G.has("repSeen"):
+        G.repSeen = {}; G.repLog = {}
+        for f in G.rep:
+            G.repSeen[f] = int(G.rep[f])
+            if int(G.rep[f]) != 0: G.repLog[f] = {"Before this record began": int(G.rep[f])}
+    for f in G.rep:
+        var d: int = int(G.rep[f]) - int(G.repSeen.get(f, 0))
+        if d == 0: continue
+        if not G.repLog.has(f): G.repLog[f] = {}
+        G.repLog[f][reason] = int(G.repLog[f].get(reason, 0)) + d
+        if int(G.repLog[f][reason]) == 0: G.repLog[f].erase(reason)
+        G.repSeen[f] = int(G.rep[f])
+## The ledger for one power as lines of text, largest first, and why it is at war with you if it is.
+func rep_lines(fac: String) -> Array:
+    rep_note("Other dealings")
+    var out := []; var log: Dictionary = G.get("repLog", {}).get(fac, {})
+    var keys: Array = log.keys(); keys.sort_custom(func(a, b): return absi(int(log[a])) > absi(int(log[b])))
+    for k in keys: out.append("%s %s%d" % [k, "+" if int(log[k]) > 0 else "", int(log[k])])
+    if out.is_empty(): out.append("Nothing has passed between you yet.")
+    if at_war(fac):
+        var why := []
+        if G.get("nukedFacs", []).has(fac): why.append("you used the bomb on them: an enemy for good")
+        if G.rep.get(fac, 0) <= WAR_STANDING: why.append("standing at %d or below" % WAR_STANDING)
+        if incident_days(fac) > 0: why.append("you opened fire on them: %d days more" % incident_days(fac))
+        if (perk("outlaw", []) as Array).has(fac): why.append("your origin made you their declared enemy")
+        if Diplomacy.commission_enemy(fac): why.append("the flag you serve is at war with them, or your letter of marque names them")
+        out.append("At war with you: " + "; ".join(why) + ".")
+    elif hostile(fac): out.append("Ports closed to you: standing below -10.")
+    return out
 func _fleet(id):
     for f in G.fleets: if f.id == id: return f
     return null
@@ -1478,6 +1518,7 @@ func accept_mission(by: String) -> void:
 func _complete_mission(r: Dictionary) -> void:
     var by: String = G.mission.get("by", "concord"); var m: Dictionary = mission_def()
     G.credits += m.reward.credits; G.rp += m.reward.rp; G.rep[by] = mini(100, G.rep.get(by, 0) + int(m.reward.rep))
+    rep_note("Orders carried out")
     r.notes.append("Orders complete: %s. +%s, +%d RP." % [m.title, fmt(m.reward.credits), m.reward.rp])
     if not G.has("stories"): G.stories = {}
     G.stories[by] = story_idx(by) + 1

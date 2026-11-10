@@ -1131,6 +1131,7 @@ func _hail_body(box: Control, f: Dictionary) -> void:
     acts.append(UI.button("Open fire", func():
         G.rep[f.fac] -= 30; Campaign.incident(f.fac); Diplomacy.on_open_fire(f.fac)
         for e in en: G.rep[e] = mini(100, G.rep[e] + 5)
+        Campaign.rep_note("Opened fire under the armistice")
         _toast("%s standing is now %d." % [GameData.fac[f.fac].name, G.rep[f.fac]]); _battle(f)))
     box.add_child(UI.row(acts))
 
@@ -1655,7 +1656,8 @@ func _repairs(box: Control) -> void:
     if Campaign.has_tech("nukes") and not cur_port.is_empty():
         box.add_child(UI.label("NUCLEAR WARHEADS", UI.DIM, 12))
         var wa := Structures.can_arm(cur_port.fac)
-        _p(box, "Aboard: %d of %d (one to each missile tube of your nuclear submarines). Fitted only here in a port of your own, or by the Enclaves. Fired from the chart at a structure within %d km; read the consequences on its panel first." % [Structures.nukes(), Structures.nuke_capacity(), int(Structures.NUKE_REACH_KM)], UI.DIM, 14)
+        _p(box, "Aboard: %d of %d (one to each missile tube of your nuclear submarines). Made at a nuclear plant you hold (one a month from each) and fitted here in a port of your own: %d in store. Fired from the chart at a structure within %d km; read the consequences on its panel first." % [Structures.nukes(), Structures.nuke_capacity(), Structures.stock(), int(Structures.NUKE_REACH_KM)], UI.DIM, 14)
+        if wa != "": _p(box, wa, UI.GOLD, 13)
         box.add_child(UI.button("Fit a warhead · " + Campaign.fmt(Structures.NUKE_COST), func(): Structures.arm(); _render_port(), false, wa != ""))
         if wa != "": _p(box, wa, UI.DIM, 13)
     var ae: Array = Campaign.aux("ammo"); var ar: Array = Campaign.aux("repair")
@@ -2121,7 +2123,9 @@ func _missions(box: Control, at_admiralty: bool, by := "") -> void:
     for f in GameData.fac:
         if f == "raiders" or f == "player": continue
         var r: int = G.rep.get(f, 0)
-        var nl := UI.label(GameData.fac[f].name); nl.tooltip_text = GameData.fac[f].get("desc", ""); nl.mouse_filter = Control.MOUSE_FILTER_PASS
+        var nl := UI.label(GameData.fac[f].name); nl.mouse_filter = Control.MOUSE_FILTER_PASS
+        # hover: what the standing is made of, and why they are at war with you if they are
+        nl.tooltip_text = "%s  %s%d\n%s%s" % [GameData.fac[f].name, "+" if r > 0 else "", r, "\n".join(Campaign.rep_lines(f)), ("\n\n" + String(GameData.fac[f].get("desc", ""))) if String(GameData.fac[f].get("desc", "")) != "" else ""]
         var stt: String = ("at war · engages on sight" + (" (incident, %d days)" % Campaign.incident_days(f) if Campaign.incident_days(f) > 0 else "")) if Campaign.at_war(f) else ("ports closed" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"))
         var sc: Color = UI.RED if Campaign.at_war(f) else (UI.GOLD if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM))
         nl.add_theme_color_override("font_color", Color(GameData.fac[f].map).lightened(0.15))   # each power in its own colour, as on the chart
@@ -2284,10 +2288,13 @@ func _nuke_confirm(s: Dictionary) -> void:
         box.add_child(UI.row([UI.button("Stand down", func(): open_struct(s), true), UI.button("Fire", func(): _nuke_fire(s))]))
     , true, 680)
 func _nuke_fire(s: Dictionary) -> void:
+    var before: Dictionary = s.duplicate(true)   # as it stood, for the view
     var r := Structures.nuke(s)
-    var fl := ColorRect.new(); fl.color = Color(1, 0.97, 0.9, 1.0); fl.set_anchors_preset(Control.PRESET_FULL_RECT); fl.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(fl)   # the flash
-    var tw := create_tween(); tw.tween_property(fl, "color:a", 0.0, 2.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD); tw.tween_callback(fl.queue_free)
-    Sfx.event("blast", 1.0, 0.5)
+    close_panel(); panel_open = true; _blocking = true; Campaign.paused = true
+    var nv = preload("res://scripts/nuke_view.gd").new(); nv.s = before; nv.face = face_of(s); nv.set_anchors_preset(Control.PRESET_FULL_RECT)
+    nv.done.connect(func(): nv.queue_free(); _nuke_report(r))
+    panel_layer.add_child(nv)
+func _nuke_report(r: Dictionary) -> void:
     open_panel(func(box):
         box.add_child(UI.title("The " + r.name + " is gone"))
         _p(box, "The missile ran true. Where the %s stood there is a crater and a column of smoke forty thousand feet high." % r.name)

@@ -83,6 +83,7 @@ func can_assault(p: Dictionary) -> String:
 func assault(p: Dictionary) -> Dictionary:
 	var G := g(); var old: String = p.fac; var men := Structures.troops(); var D := port_defenders(p); var odds := assault_odds(p)
 	G.rep[old] = G.rep.get(old, 0) - 40; Campaign.incident(old); Diplomacy.on_open_fire(old)
+	Campaign.rep_note("Stormed their port")
 	var A: float = men * (1.25 if Campaign.has_tech("amphib") else 1.0)
 	var won := randf() < odds
 	var lost := int(round(men * clampf(D / maxf(1.0, A + D) * randf_range(0.5, 1.1) * (0.7 if won else 1.4), 0.03, 0.95)))
@@ -96,6 +97,7 @@ func assault(p: Dictionary) -> Dictionary:
 				s.fac = "player"; s.from = old; s.took = G.day; s.garrison = Structures.garrison_need(s); s.militia = int(s.garrison); s.dmg = maxf(float(s.dmg), 0.3); res.took.append(s.name)
 		for o in Diplomacy.POWERS:   # the neighbours draw their conclusions
 			if o != old: G.rep[o] = G.rep.get(o, 0) + (3 if Diplomacy.at_war(o, old) else -3)
+		Campaign.rep_note("A port stormed (the neighbours' view)")
 		Diplomacy.news("FALLEN. %s falls to %s. A new ensign goes up over the harbour, and the %s swears to have it down again." % [p.name, flag_name(), GameData.fac[old].name], true)
 		Campaign.log_ev("Stormed %s" % p.name)
 	else:
@@ -243,6 +245,7 @@ func seek_recognition(fac: String) -> String:
 	var G := g(); G.credits -= RECOG_COST
 	if not G.flag.has("recog"): G.flag.recog = {}
 	G.flag.recog[fac] = G.day; G.rep[fac] = G.rep.get(fac, 0) + 5
+	Campaign.rep_note("Recognition of your flag")
 	Diplomacy.news("RECOGNITION. The %s receives the envoy of %s and recognises its flag. Its merchants may use your harbours, and yours its own." % [GameData.fac[fac].name, flag_name()], true)
 	Campaign.log_ev("Recognised by the " + GameData.fac[fac].short); Campaign.save()
 	return "The %s recognises %s." % [GameData.fac[fac].name, flag_name()]
@@ -279,6 +282,7 @@ func can_peace(fac: String) -> String:
 func make_peace(fac: String) -> String:
 	var G := g(); var ceded: Array = held_from(fac); G.credits -= peace_cost(fac)
 	G.rep[fac] = maxi(int(G.rep.get(fac, 0)), -9); if G.has("incidents"): G.incidents.erase(fac)
+	Campaign.rep_note("Peace made")
 	for c in G.contracts.duplicate(): if c.get("target", "") == fac and (c.kind == "war" or c.kind == "strike"): Diplomacy.fail(c, "You made peace with its target.")
 	for p in ceded: p.from = ""
 	for s in Structures.held(): if s.from == fac: s.from = ""
@@ -293,6 +297,7 @@ func _chancery_day() -> void:
 	for fac in G.flag.get("treaty", {}).keys():
 		if int(G.flag.treaty[fac]) > int(G.day) and Campaign.at_war(fac):
 			G.flag.treaty.erase(fac); G.rep[fac] = G.rep.get(fac, 0) - 20
+			Campaign.rep_note("Treaty broken")
 			Diplomacy.news("TREATY BROKEN. The %s denounces its treaty with %s." % [GameData.fac[fac].name, flag_name()], true)
 	for fac in G.flag.get("recog", {}).keys():
 		if Campaign.at_war(fac): G.flag.recog.erase(fac); Campaign.toast.emit("The %s withdraws its recognition of your flag." % GameData.fac[fac].name)
@@ -301,11 +306,13 @@ func _chancery_day() -> void:
 	for p in ports(): size += weight(p)
 	var alarm := int(floor((size - 2.0) / 2.0))   # two small ports alarm nobody; an empire in the making does
 	if alarm <= 0: return
+	Campaign.rep_note("Other dealings")
 	var wary := []
 	for fac in Diplomacy.POWERS:
 		if treaty(fac) or Campaign.at_war(fac): continue
 		var before: int = G.rep.get(fac, 0); G.rep[fac] = before - mini(4, alarm)
 		if before >= -10 and int(G.rep[fac]) < -10: wary.append(GameData.fac[fac].short)
+	Campaign.rep_note("Alarm at your flag's growth")
 	if not wary.is_empty(): Diplomacy.news("ALARM. Your flag has grown too large for the liking of: %s. Their ports close to you." % ", ".join(wary), true)
 	else: Campaign.toast.emit("The powers watch your flag grow: standing -%d with every power not bound to you by treaty." % mini(4, alarm))
 

@@ -306,12 +306,14 @@ func take_commission(fac: String) -> void:
 	var G := g(); var c: Dictionary = D.commissions[fac]
 	G.commission = {"fac": fac, "since": G.day, "marque": c.get("marque", "")}
 	G.rep[fac] = mini(100, G.rep.get(fac, 0) + 5)
+	Campaign.rep_note("Took their commission")
 	news("You accept a %s. Pay: %s a month." % [c.title, Campaign.fmt(int(c.stipend))])
 	Campaign.log_ev("Accepted a " + c.title)
 
 func resign() -> void:
 	var G := g(); if G.commission == null: return
 	var fac: String = G.commission.fac; G.rep[fac] = G.rep.get(fac, 0) - 10
+	Campaign.rep_note("Resigned their commission")
 	news("You resign your %s. The %s will remember the manner of your going." % [commission_title(fac), GameData.fac[fac].name]); G.commission = null
 
 ## You opened fire on a flag's ships under the armistice: if it is the flag you serve, that is betrayal.
@@ -319,6 +321,7 @@ func on_open_fire(fac: String) -> void:
 	var G := g()
 	if G.commission != null and G.commission.fac == fac:
 		G.rep[fac] = G.rep.get(fac, 0) - 40; G.betrayed.append(fac); G.commission = null
+		Campaign.rep_note("Betrayed their commission")
 		news("Betrayal. You turned your guns on the %s, the flag you served. Your commission is torn up, and they will not forget." % GameData.fac[fac].name)
 
 ## Your commission makes you a combatant: against the flags your flag is at war with, and a letter of marque's target.
@@ -331,6 +334,7 @@ func commission_enemy(fac: String) -> bool:
 func thanks(fac: String, n: int) -> void:
 	var G := g(); var who: Array = ["concord", "pacific", "combine", "freeport"] if fac == "raiders" else enemies(fac)
 	for e in who: G.rep[e] = mini(100, G.rep.get(e, 0) + n * (2 if G.commission != null and G.commission.fac == e else 1))
+	Campaign.rep_note("Thanks for beating their enemies")
 
 ## Wartime prices: munitions and fuel dearer in the ports of a power at war.
 func price_mult(fac: String, gid: String) -> float:
@@ -443,6 +447,7 @@ func accept(c: Dictionary) -> void:
 func complete(c: Dictionary, notes = null) -> void:
 	var G := g(); G.contracts.erase(c)
 	G.credits += int(c.reward); G.rep[c.fac] = mini(100, G.rep.get(c.fac, 0) + int(c.rep))
+	Campaign.rep_note("Contracts completed")
 	var t := "Contract complete: %s. +%s, %s standing +%d." % [c.title, Campaign.fmt(int(c.reward)), GameData.fac[c.fac].short, int(c.rep)]
 	Campaign.log_ev(t)
 	if notes is Array: notes.append(t)
@@ -450,6 +455,7 @@ func complete(c: Dictionary, notes = null) -> void:
 
 func fail(c: Dictionary, why: String) -> void:
 	var G := g(); G.contracts.erase(c); G.rep[c.fac] = maxi(-100, int(G.rep.get(c.fac, 0)) - 8)
+	Campaign.rep_note("Contracts failed or abandoned")
 	if c.kind == "hunt":
 		for f in G.fleets: if int(f.get("contract", 0)) == int(c.id): f.contract = 0; f.name = "Raider flotilla"
 	if c.kind == "escort":   # the convoy sails on by itself (it used to wait for its escort for ever)
@@ -549,6 +555,7 @@ func run_contraband(c: Dictionary, p: Dictionary) -> String:
 	G.rep[p.fac] = G.rep.get(p.fac, 0) - 12
 	if Campaign.hostile(p.fac): Campaign.incident(p.fac)
 	G.contracts.erase(c); G.rep[c.fac] = G.rep.get(c.fac, 0) - 4
+	Campaign.rep_note("Caught smuggling")
 	Campaign.log_ev("Caught smuggling at " + p.name)
 	return "Customs launches catch you at %s. The cargo is seized; %s standing -12%s." % [p.name, GameData.fac[p.fac].short, " and their warships will be looking for you" if Campaign.hostile(p.fac) else ""]
 

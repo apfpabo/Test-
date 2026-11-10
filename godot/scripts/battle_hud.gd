@@ -76,6 +76,21 @@ func _bar(p: Vector2, w: float, h: float, f: float, col: Color) -> void:
 func to_screen(p: Vector2) -> Vector2:
     return (p - battle.camera.position) * battle.zoom() + size / 2
 
+## A carrier's air wing as a row of small aircraft, a group to each squadron: gold = aboard and ready, dull = aboard
+## and rearming, outlined = in the air, a red stroke = lost. Returns the row's width.
+func _wing(at: Vector2, s, u: float) -> float:
+    var x: float = at.x
+    for e in battle.sim.wing(s):
+        for k in int(e.full):
+            var c := Vector2(x + u * 0.5, at.y + u * 0.5)
+            var tri := PackedVector2Array([c + Vector2(0, -u * 0.5), c + Vector2(u * 0.5, u * 0.5), c + Vector2(-u * 0.5, u * 0.5)])
+            if k < int(e.aboard): draw_colored_polygon(tri, Color(0.5, 0.5, 0.44) if e.rearm else GOLD)
+            elif k < int(e.aboard) + int(e.air): tri.append(tri[0]); draw_polyline(tri, Color(0.72, 0.86, 0.92), 1.0)
+            else: draw_line(c + Vector2(-u * 0.35, 0), c + Vector2(u * 0.35, 0), Color(RED, 0.85), 1.5)
+            x += u + 1.0
+        x += u * 0.7
+    return x - at.x
+
 var rows: Array = []        # [rect on screen, ship] for each of your ships in the list, for clicks (battle._pick_own)
 func _draw() -> void:
     var sim: BattleSim = battle.sim; var W = size.x; var H = size.y
@@ -103,7 +118,9 @@ func _draw() -> void:
         elif s.eng < 0.6: ail.append("engines %d%%" % int(s.eng * 100))
         if s.jam > 0: ail.append("rudder jammed")
         elif s.steer < 0.7: ail.append("steering damaged")
-        if absf(s.list) >= 0.3: ail.append("listing")
+        if absf(s.list) >= 0.3: ail.append("listing to " + ("starboard" if s.list > 0 else "port"))
+        if s.deck_out > 0: ail.append("flight deck out")
+        if s.side == 0 and not s.squads.is_empty(): _wing(sp + Vector2(-w / 2, -off + 10), s, 6.0)
         if s.smoke_on: ail.append("making smoke")
         if ail.size(): _text(sp + Vector2(-150, -off - 18), " · ".join(ail), Color(0.93, 0.5, 0.36) if not (ail.size() == 1 and s.smoke_on) else Color(0.8, 0.82, 0.8), 11, HORIZONTAL_ALIGNMENT_CENTER, 300)
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
@@ -211,9 +228,14 @@ func _draw() -> void:
             _text(Vector2(x + w - 210, y + 26), lab, RED if f.dc_left == 0 else (GOLD if dct > 0 else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
             _bar(Vector2(x + w - 110, y + 30), 100, 3, 1.0 - dct / 25.0 if f.dc_left > 0 else 0.0, GREEN if dct <= 0 else GOLD)
         if not f.squads.is_empty():
-            var st = ""
-            for q in f.squads: st += ("▲" + str(q.n) if q.state == "ready" else ("→" if q.state == "out" else ("…" if q.state == "rearm" else "✕"))) + " "
-            _text(Vector2(x + w - 10 - 200, y + 26), "Air: " + st, Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 200)
+            # the air wing, machine by machine: aboard and ready, rearming, in the air, lost
+            var have := 0; var full := 0
+            for e in sim.wing(f): have += int(e.aboard) + int(e.air); full += int(e.full)
+            var note: String = "Air wing %d of %d" % [have, full]
+            if f.deck_out > 0: note += " · flight deck out %d s" % ceili(f.deck_out)
+            elif not sim.deck_ok(f): note += " · no flying: " + sim.deck_why(f)
+            _text(Vector2(x + w - 10 - 300, y + 26), note, RED if not sim.deck_ok(f) else Color(0.84, 0.86, 0.85), 12, HORIZONTAL_ALIGNMENT_RIGHT, 300)
+            _wing(Vector2(x + w - 10 - _wing(Vector2(-1000, -1000), f, 8.0), y + 3), f, 8.0)   # above the note, clear of the ship's name
         _schematic(f, Rect2(x, y - 134, w, 120))   # the three boxes stand 14 px apart
         if f.mounts.any(func(m): return m.w.kind == "gun" and m.w.size != "A"): _shell_panel(f, Rect2(x, y - 134 - 14 - 90, w, 90))
     # hit results: what each shell did, rising from where it struck and fading (hits on your own ships in red)

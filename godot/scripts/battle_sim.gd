@@ -86,6 +86,9 @@ class CShip:
     var wpn_acc = 0.0
     var mounts: Array[Mount] = []
     var squads: Array = []
+    var deck_out := 0.0      # seconds until the flight deck is patched and flying can go on
+    var deck_t := 0.0        # until the deck is clear for the next machine
+    var deck_ops: Array = [] # machines taking off or landing at this moment (drawn one by one)
     var marks: Array = []
     var fires: Array = []
     var trail: Array = []
@@ -342,7 +345,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     var aboard: int = int(rec.get("air", int(d.get("hangar", 0)) * 6))
     for i in int(d.get("hangar", 0)):
         var n := clampi(aboard - i * 6, 0, 6)
-        s.squads.append({"state": "ready" if n > 0 else "lost", "t": 0.0, "n": n})
+        s.squads.append({"state": "ready" if n > 0 else "lost", "t": 0.0, "n": n, "n0": 6})
     if side == 1 and d.kind == "merchant": s.flee = true
     superfiring(s)
     for m in s.mounts: if m.w.kind == "gun": m.clear = clear_bearings(s, m)
@@ -986,7 +989,7 @@ func reload_mult(s: CShip, w: Dictionary) -> float:
 func nearest_air(side: int, p: Vector2, rng: float):
     var best = null; var bd = rng
     for q in air:
-        if q.side == side or q.n <= 0: continue
+        if q.side == side or q.up <= 0: continue   # machines on the deck are not in the sky to be shot at
         var dd: float = p.distance_to(q.pos)
         if dd < bd: bd = dd; best = q
     return best
@@ -1260,6 +1263,12 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
         if s.eng_out <= 0 and (s.eng < 0.15 or randf() < 0.035 * pen * heavy):
             s.eng_out = 30.0 + randf() * 60.0; _log("engines stopped")
             say(("Engine room hit! The %s has lost power." if ours else "The %s loses way, her engines stopped.") % nm, 2.5)
+    # the flight deck: a bomb or a shell through it stops all flying until it is patched
+    if s.d.kind == "carrier" and kind != "torp" and absf(l.x) < L * 0.46 and randf() < (0.5 if kind == "bomb" else 0.22 * heavy):
+        if s.deck_out <= 0.0:
+            _log("flight deck out")
+            say(("The %s's flight deck is holed: no aircraft can take off or land until it is patched." if ours else "The %s's flight deck is torn open.") % nm, 3.0)
+        s.deck_out = minf(240.0, s.deck_out + (50.0 + randf() * 70.0) * maxf(0.6, heavy))
     # steering gear right aft: every hit there wears it; a bad one jams the rudder
     if l.x < -L * 0.3 and pen > 0.25: s.steer = maxf(0.35, s.steer - 0.18 * pen * heavy)
     # flooding: a torpedo, or a heavy hit in a hull already half gone, lets the sea in on that side and she lists
@@ -1310,6 +1319,9 @@ func counter_flood(s: CShip) -> bool:
     return true
 func systems_tick(s: CShip, dt: float) -> void:
     var dc: float = (1.0 + 0.3 * s.sk.dc) * (1.3 if s.tech.has("dc") else 1.0) * CREW[s.cq].dc   # damage control schools, and the crew's own worth
+    if s.deck_out > 0.0:
+        s.deck_out = maxf(0.0, s.deck_out - dt * dc * dc_k(s, "fire"))
+        if s.deck_out <= 0.0 and s.side == 0: say("The %s's flight deck is patched: she can fly again." % s.rec.name, 2.5)
     if s != flag and absf(s.list) > 0.6 and s.alive: counter_flood(s)   # other captains right a bad list themselves
     if s.mag_fire > 0:
         s.mag_fire -= dt
@@ -1334,7 +1346,13 @@ func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool, fire_k := 1.0) -> vo
     # deck edge it takes a bite out of the ship's side. Either throws wreckage clear of the ship.
     var big: bool = hole and sz >= 2.0
     var edge: bool = big and absf(y) > hh * 0.62
-    s.marks.append({"x": x, "y": y, "r": (1.5 + sz * 2.2) * (0.7 + randf() * 0.6), "v": randi() % 4, "hole": hole, "gash": big, "edge": edge, "sd": randi() % 1000, "side": signf(y) if y != 0.0 else 1.0})
+    var r: float = (1.5 + sz * 2.2) * (0.7 + randf() * 0.6)
+    if big:   # a heavy hit beside an older gash widens that one: two tears are never drawn across each other
+        for o in s.marks:
+            if not o.get("gash", false): continue
+            if absf(o.x - x) < (o.r + r) * 0.9 and absf(o.y - y) < (o.r + r) * 0.52:
+                o.r = minf(float(o.r) * 1.12, maxf(float(o.r), 4.0 + float(s.d.B) * 0.3)); big = false; edge = false; hole = false; wreckage(s, wp, 1, sz); break
+    s.marks.append({"x": x, "y": y, "r": r, "v": randi() % 4, "hole": hole, "gash": big, "edge": edge, "sd": randi() % 1000, "side": signf(y) if y != 0.0 else 1.0})
     if s.marks.size() > 70: s.marks.pop_front()
     if big: wreckage(s, wp, int(1 + sz), sz)
     if randf() < 0.12 * sz * fire_k: s.fires.append({"x": x, "y": y, "t": 60.0 + randf() * 180.0, "r": 0.8 + sz * 0.9, "st": 0.0})
@@ -1363,7 +1381,7 @@ func _wrecks(dtv: float) -> void:
         if w.air > 0.0:
             w.pos += w.vel * dtv; w.a += w.spin * dtv; w.air -= dtv
             if w.burn and randf() < dtv * 14.0: part(P.SMOKE, w.pos, 0.8, 1.2, Vector2.ZERO, true)
-            if w.air <= 0.0: fx_splash(w.pos, 0.5 + w.sz * 0.25); w.vel *= 0.15; w.spin *= 0.1
+            if w.air <= 0.0: fx_splash(w.pos, 0.5 + w.sz * 0.25); w.vel *= 0.15; w.spin = 0.0   # it lies where it fell, and does not turn
         else:
             w.pos += w.vel * dtv; w.vel *= pow(0.2, dtv); w.a += w.spin * dtv
             if w.t > w.life: wrecks.remove_at(i)
@@ -1517,30 +1535,82 @@ func ai_ship(s: CShip, dt: float) -> void:
     s.throttle = 4 if d > pref + 1500 or asw else 3
     if s.d.kind == "carrier" and not holding(s): launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
 
+## Flying from a carrier. Aircraft leave the deck and come back to it one at a time: a squadron ordered off forms up
+## ahead of the ship as its machines take off ("form"), flies its strike ("out", then "home"), and circles astern
+## while they land in turn ("land"). A group's `n` is every machine it still has, `up` those in the air, `dk` those
+## not yet flown off, `ops` those on the deck run or the approach at this moment. The flight deck is a system of its
+## own: a bomb or shell through it (`deck_out`, seconds until it is patched) or a heavy list stops all flying, and
+## machines kept waiting too long run out of fuel and ditch.
+const DECK_GAP := 4.0     # seconds between one machine and the next
+const DECK_RUN := 7.0     # the deck run and the climb to the formation
+const DECK_LAND := 9.0    # the approach, the wire and the lift
+const DECK_LIST := 0.6    # a list beyond this and nothing can fly
+## How far a lost ship has gone down, 0..1. A big ship takes longer about it than a small one (some 20 s for a
+## destroyer, over 30 for a battleship, at the battle's ordinary speed): she settles, the sea comes over her low side, and she is gone.
+func sink_k(s: CShip) -> float: return 0.0 if s.alive else minf(1.0, s.sink / (14.0 + float(s.d.L) * 0.07))
+func deck_ok(s: CShip) -> bool: return s.alive and s.deck_out <= 0.0 and absf(s.list) < DECK_LIST
+func deck_why(s: CShip) -> String: return "her flight deck is holed" if s.deck_out > 0.0 else ("she is listing too far" if absf(s.list) >= DECK_LIST else "")
+## The ends of the flight deck in the ship's own frame (x aft end, y fore end).
+func deck_span(s: CShip) -> Vector2:
+    var p: Dictionary = s.d.p
+    if p.has("fd"): var fl: float = s.d.L * float(p.fd.len); var fx: float = float(p.fd.get("x", 0.0)); return Vector2(fx - fl / 2.0, fx + fl / 2.0)
+    return Vector2(-s.d.L * 0.45, s.d.L * 0.45)
+## The air wing, squadron by squadron, for the readouts: machines aboard, in the air, lost, and whether rearming.
+func wing(s: CShip) -> Array:
+    var out: Array = []
+    for sq in s.squads:
+        var e := {"aboard": 0, "air": 0, "lost": 0, "rearm": sq.state == "rearm", "full": int(sq.get("n0", 6))}
+        if sq.state == "out":
+            for q in air:
+                if is_same(q.sq, sq): e.air = int(q.up) + int(q.ops); e.aboard = maxi(0, int(q.n) - int(e.air))
+        elif sq.state != "lost": e.aboard = int(sq.n)
+        e.lost = maxi(0, int(e.full) - int(e.aboard) - int(e.air))
+        out.append(e)
+    return out
+
 func launch_strike(s: CShip, tg: CShip) -> bool:
     if tg == null or s.sub: return false
     if int(wx.sea) >= 3 or wx.fog or (wx.night and not s.tech.has("jets")):   # no flying in a storm or fog, and only jets by night
         if s.side == 0 and s == flag: say("Aircraft cannot fly: " + ("a storm." if int(wx.sea) >= 3 else ("fog." if wx.fog else "it is night, and only jets fly by night.")), 2.5)
         return false
+    if not deck_ok(s):
+        if s.side == 0 and s == flag: say("Aircraft cannot fly: " + deck_why(s) + ".", 2.5)
+        return false
     var launched = 0
     for q in s.squads:
         if q.state != "ready" or q.n <= 0: continue
         var jet = s.tech.has("jets")
-        air.append({"side": s.side, "home": s, "sq": q, "pos": s.pos, "a": s.a, "n": q.n, "type": "tb" if launched % 2 == 0 else "db", "jet": jet, "target": tg, "state": "out"})
+        air.append({"side": s.side, "home": s, "sq": q, "pos": world_pt(s, deck_span(s).y + 150.0, 0.0), "a": s.a, "n": q.n, "n0": q.n, "up": 0, "dk": q.n, "ops": 0, "wait": 0.0,
+            "type": "tb" if launched % 2 == 0 else "db", "jet": jet, "target": tg, "state": "form"})
         q.state = "out"; launched += 1
-    if launched and s.side == 0: say(str(launched) + " squadron" + ("s" if launched > 1 else "") + " launched.", 2.0)
-    if launched and s.side == 1: say("Enemy aircraft inbound!", 2.5)
+    if launched and s.side == 0: say(str(launched) + " squadron" + ("s" if launched > 1 else "") + " taking off.", 2.0)
+    if launched and s.side == 1: say("Enemy aircraft are taking off!", 2.5)
     return launched > 0
 
 func update_air(dt: float) -> void:
     for i in range(air.size() - 1, -1, -1):
         var q: Dictionary = air[i]; var sp = 220.0 if q.jet else 75.0
+        var home: CShip = q.home
+        var on_deck: bool = q.state == "form" or q.state == "land"
+        # gunfire brings down machines in the air, never those still on the deck
+        if q.n < q.n0:
+            var lost: int = int(q.n0) - int(q.n)
+            if on_deck: lost = mini(lost, int(q.up)); q.n = int(q.n0) - lost
+            q.up = maxi(0, int(q.up) - lost)
+        if not on_deck: q.up = q.n
+        if on_deck and not home.alive:   # the ship is gone under them: what is in the air has nowhere to land
+            q.ops = 0; q.dk = 0; q.n = q.up if q.state == "form" else 0; q.state = "out"
+        q.n0 = q.n
         if q.n <= 0: q.sq.n = 0; q.sq.state = "lost"; air.remove_at(i); continue
         if q.state == "out" and (q.target == null or not engageable(q.target)):
             q.target = nearest_enemy(q.pos, q.side, 40000.0, func(o: CShip) -> bool: return not submerged(o))
             if q.target == null: q.state = "home"
         var g: Vector2
-        if q.state == "out":
+        if q.state == "form":
+            if q.dk <= 0 and q.ops <= 0: q.state = "out"
+            g = world_pt(home, deck_span(home).y + 650.0, 0.0)
+            if q.up <= 0: q.pos = world_pt(home, deck_span(home).y + 150.0, 0.0); q.a = home.a; continue
+        elif q.state == "out":
             var tg: CShip = q.target; g = tg.pos; var d: float = q.pos.distance_to(tg.pos)
             if q.type == "tb" and d < 1300 and absf(ang_diff((tg.pos - q.pos).angle(), q.a)) < 0.35:
                 var lp = lead_point(q.pos, tg, 18.0)
@@ -1553,19 +1623,49 @@ func update_air(dt: float) -> void:
                     if hit: mark_hit(tg, bp, 3.0, true); hit_systems(tg, bp, 260 if q.jet else 230, "bomb"); damage(tg, 260 if q.jet else 230, "bomb"); fx_boom(bp, 26.0, 0.8)
                     else: fx_splash(bp, 22.0)
                 q.state = "home"; sound("hit_big", tg.pos, 0.4)
-        else:
-            var home: CShip = q.home
+        elif q.state == "home":
             if not home.alive: q.n = 0; continue
             g = home.pos
-            if q.pos.distance_to(g) < 150:
+            if q.pos.distance_to(g) < 900.0: q.state = "land"; q.wait = 0.0
+        else:   # circling astern while they come down one by one
+            g = world_pt(home, deck_span(home).x - 600.0, 0.0)
+            if q.up <= 0 and q.ops <= 0:
                 q.sq.n = q.n; q.sq.state = "rearm"; q.sq.t = 300.0 / (1 + 0.12 * home.sk.ord); air.remove_at(i); continue
+            if not deck_ok(home):   # nowhere to come down: they circle until the tanks run dry
+                if q.wait <= 0.0 and q.side == 0: say("The %s cannot land her aircraft: %s. They are circling." % [home.rec.name, deck_why(home)], 3.0)
+                q.wait += dt
+                if q.wait > 150.0 and q.up > 0:
+                    q.wait -= 12.0; q.n -= 1; q.up -= 1; q.n0 = q.n; fx_splash(q.pos + rdir() * 60.0, 3.0)
+                    if q.side == 0: say("An aircraft of the %s ditches, out of fuel." % home.rec.name, 2.0)
+        if q.up <= 0: continue
         q.a += clampf(ang_diff((g - q.pos).angle(), q.a), -0.3 * dt, 0.3 * dt)
         q.pos += Vector2.from_angle(q.a) * sp * dt
     for s in ships:
+        if s.squads.is_empty(): continue
         for sq in s.squads:
             if sq.state == "rearm":
                 sq.t -= dt
                 if sq.t <= 0: sq.state = "ready"
+        if not s.alive: s.deck_ops.clear(); continue
+        # the deck: machines already rolling or on the approach finish; the next one goes when the deck is clear
+        for j in range(s.deck_ops.size() - 1, -1, -1):
+            var op: Dictionary = s.deck_ops[j]; op.t += dt
+            if op.t < op.dur: continue
+            op.q.ops = maxi(0, int(op.q.ops) - 1)
+            if op.k == "to": op.q.up += 1
+            s.deck_ops.remove_at(j)
+        s.deck_t -= dt
+        if s.deck_t > 0.0 or not deck_ok(s): continue
+        var nxt = null   # landings first: they are the ones short of fuel
+        for q in air: if q.home == s and q.state == "land" and q.up > 0: nxt = q; break
+        if nxt != null:
+            nxt.up -= 1; nxt.ops += 1; s.deck_t = DECK_GAP * 1.5
+            s.deck_ops.append({"k": "ld", "t": 0.0, "dur": DECK_LAND, "q": nxt, "from": nxt.pos + Vector2(-26.0 * ceili(nxt.up / 2.0), 0).rotated(nxt.a), "a0": nxt.a})
+            continue
+        for q in air: if q.home == s and q.state == "form" and q.dk > 0: nxt = q; break
+        if nxt != null:
+            nxt.dk -= 1; nxt.ops += 1; s.deck_t = DECK_GAP
+            s.deck_ops.append({"k": "to", "t": 0.0, "dur": DECK_RUN, "q": nxt})
 
 # ------------------------------------------------------------------ step
 func step(dtv: float) -> void:
@@ -1802,7 +1902,7 @@ func fx(dtv: float) -> void:
     if modern:   # a badly hurt ship trails oil, and one sinking leaves her boats, rafts and wreckage on the water
         for s in ships:
             if s.alive and not s.escaped and s.hull / s.max_hull < 0.35 and s.v > 1.0 and randf() < dtv * 0.8: part(P.OIL, s.pos - Vector2.from_angle(s.a) * s.d.L * 0.3, 26.0, s.d.B * (0.8 + randf() * 0.8))
-            if not s.alive and s.sink < 3.0 and randf() < dtv * 3.0: wreckage(s, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.7, (randf() - 0.5) * s.d.B).rotated(s.a), 1, 2.0)
+            if not s.alive and sink_k(s) < 0.8 and randf() < dtv * 1.6: wreckage(s, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.7, (randf() - 0.5) * s.d.B).rotated(s.a), 1, 2.0)
     for i in range(parts.size() - 1, -1, -1):
         var q = parts[i]; q.life += dtv
         if q.wind and q.life > 0: q.pos += WIND * dtv

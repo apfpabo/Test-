@@ -514,14 +514,14 @@ const TECH = [
   { id: 'ecm', name: 'Electronic countermeasures', era: 2, cost: 70, req: ['radar'], desc: 'One incoming anti-ship missile in four is decoyed away.' },
   // Era III
   { id: 'ciws', name: 'Close-in weapon system', era: 3, cost: 80, req: ['missiles'], desc: 'Unlocks radar-directed gatling mounts that shred incoming missiles.' },
-  { id: 'aegis', name: 'Area air defense', era: 3, cost: 140, req: ['missiles', 'ciws'], desc: 'SAM range +40%. Unlocks the Missile Cruiser.' },
+  { id: 'aegis', name: 'Area air defence', era: 3, cost: 140, req: ['missiles', 'ciws'], desc: 'SAM range +40%. Unlocks the Missile Cruiser.' },
   { id: 'vls', name: 'Vertical launch systems', era: 3, cost: 110, req: ['missiles'], desc: 'One more missile in every salvo. Unlocks the Era III missile destroyers.' },
   { id: 'reactors', name: 'Advanced naval reactors', era: 3, cost: 150, req: ['nuclear'], desc: 'Unlocks the nuclear fleet carrier and the Era III nuclear submarines.' },
   { id: 'datalink', name: 'Tactical data links', era: 3, cost: 90, req: ['radar', 'ecm'], desc: 'Salvos 15% tighter; anti-ship missiles reach 15% farther.' },
   { id: 'nukes', name: 'Nuclear warheads', era: 3, cost: 220, req: ['reactors', 'missiles'], desc: 'Your missile submarines can carry nuclear warheads, fitted at a port or naval base of your own or at the Enclaves. One destroys a land structure for good. The treaties that kept these weapons out of the world end with the first you fire: think before you do.' },
 ];
 const ERA_GATE = 3;   // technologies of an era needed to open the next
-const ERA_NAME = { 1: 'Era I · Late war', 2: 'Era II · Early Cold War', 3: 'Era III · Late Cold War' };
+const ERA_NAME = { 1: 'Era I · Late war', 2: 'Era II · Jet age', 3: 'Era III · Missile age' };
 const GOODS = [
   { id: 'fuel', name: 'Fuel oil', base: 8 },
   { id: 'food', name: 'Food', base: 14 },
@@ -1288,10 +1288,7 @@ function drawFlightDeck(g, d, P) {
     g.setLineDash([4, 3]); g.strokeStyle = 'rgba(226,226,214,.6)'; g.beginPath(); g.moveTo(2, 0); g.lineTo(len - 2, 0); g.stroke(); g.setLineDash([]);
     g.strokeStyle = 'rgba(214,214,204,.3)'; g.lineWidth = 0.25; g.beginPath(); for (let i = 0; i < 4; i++) { const x = len * 0.1 + i * 7; g.moveTo(x, -hwd * 1.1); g.lineTo(x, hwd * 1.1); } g.stroke();
     g.restore(); }
-  g.fillStyle = shade(P.sup, -0.05); if (f.ang) { // parked along the starboard side, forward and aft of the island, clear of the landing area
-    const isl = f.isl || [fx, 0, 0]; let k = 0;
-    for (let x = x0 + 10; x < x1 - w * 0.5 && k < Math.round(fl / 16); x += 10) { if (Math.abs(x - isl[0]) < isl[1] / 2 + 8) continue; g.save(); g.translate(x, w * 0.33); g.rotate(-0.5); planePlan(g, 0, 0, 0, 11, shade(P.sup, -0.02)); g.restore(); k++; }
-  } else for (let i = 0; i < Math.round(fl / 22); i++) planePlan(g, x0 + 9 + i * 7.5, (i % 2 ? 1 : -1) * w * 0.22, 0, 11, shade(P.sup, -0.02)); // ranged aircraft aft
+  // no aircraft are painted on the deck: the game draws each machine as it takes off and lands
 }
 function drawIslandTop(g, d, P) { // the carrier's island: stepped levels, the funnel, a tripod and radar
   const f = d.p.fd, w = f.w, hd = 2;  // the flight deck stands ~2 m above the hangar-deck plan
@@ -1568,7 +1565,7 @@ const POI_DEFS = [
   { name: 'Bouvet weather station', type: 'site', lon: 3.4, lat: -54.6 },
 ];
 const POI_TEXT = {
-  wreck: 'Oil still weeps from the hulls of the Great War here. Divers can recover fittings, fire-control gear and papers, if nothing else is hunting the same scrap.',
+  wreck: 'Oil still weeps from the hulls of the Meridian War here. Divers can recover fittings, fire-control gear and papers, if nothing else is hunting the same scrap.',
   base: 'An abandoned wartime base: fuel bunkers, workshops, maybe a hulk left at her moorings. Someone may have got here first.',
   site: 'A research station that appears on no published chart. Whatever they worked on here is worth a great deal to the right buyer.',
 };

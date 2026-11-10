@@ -78,7 +78,7 @@ func _place(at: Vector2) -> void:
     var s = sim.spawn(design, side, at.clamp(Vector2(200, 200), Vector2(sim.AW - 200, sim.AH - 200)), -PI / 2 if side == 0 else PI / 2, [])
     battle._add_view(s); pick = s; rebuild()
 func _mend(p) -> void:
-    p.hull = p.max_hull; p.armor = p.d.armor; p.fires.clear(); p.eng = 1.0; p.eng_out = 0.0; p.jam = 0.0; p.steer = 1.0; p.list = 0.0; p.ballast = 0.0; p.mag_fire = 0.0; p.struck = false
+    p.hull = p.max_hull; p.armor = p.d.armor; p.fires.clear(); p.eng = 1.0; p.eng_out = 0.0; p.jam = 0.0; p.steer = 1.0; p.list = 0.0; p.ballast = 0.0; p.mag_fire = 0.0; p.struck = false; p.deck_out = 0.0
     for m in p.mounts: m.dead = false; m.ammo = m.ammo_max
 func _all(what: String) -> void:
     var sim = battle.sim

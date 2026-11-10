@@ -1285,10 +1285,7 @@ function drawFlightDeck(g, d, P) {
     g.setLineDash([4, 3]); g.strokeStyle = 'rgba(226,226,214,.6)'; g.beginPath(); g.moveTo(2, 0); g.lineTo(len - 2, 0); g.stroke(); g.setLineDash([]);
     g.strokeStyle = 'rgba(214,214,204,.3)'; g.lineWidth = 0.25; g.beginPath(); for (let i = 0; i < 4; i++) { const x = len * 0.1 + i * 7; g.moveTo(x, -hwd * 1.1); g.lineTo(x, hwd * 1.1); } g.stroke();
     g.restore(); }
-  g.fillStyle = shade(P.sup, -0.05); if (f.ang) { // parked along the starboard side, forward and aft of the island, clear of the landing area
-    const isl = f.isl || [fx, 0, 0]; let k = 0;
-    for (let x = x0 + 10; x < x1 - w * 0.5 && k < Math.round(fl / 16); x += 10) { if (Math.abs(x - isl[0]) < isl[1] / 2 + 8) continue; g.save(); g.translate(x, w * 0.33); g.rotate(-0.5); planePlan(g, 0, 0, 0, 11, shade(P.sup, -0.02)); g.restore(); k++; }
-  } else for (let i = 0; i < Math.round(fl / 22); i++) planePlan(g, x0 + 9 + i * 7.5, (i % 2 ? 1 : -1) * w * 0.22, 0, 11, shade(P.sup, -0.02)); // ranged aircraft aft
+  // no aircraft are painted on the deck: the game draws each machine as it takes off and lands
 }
 function drawIslandTop(g, d, P) { // the carrier's island: stepped levels, the funnel, a tripod and radar
   const f = d.p.fd, w = f.w, hd = 2;  // the flight deck stands ~2 m above the hangar-deck plan

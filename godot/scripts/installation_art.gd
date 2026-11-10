@@ -4,6 +4,7 @@ class_name InstallationArt
 ## air-raid view. Everything is drawn round a centre c with radius R in the canvas item's current units; `face` is
 ## the bearing towards the sea (gun casemates and piers point that way). Deterministic for a given seed.
 
+const PlaneArt = preload("res://scripts/plane_art.gd")
 const CONCRETE := Color("#8f8b80")
 const ASPHALT := Color("#5b5a55")
 const EARTH := Color("#76664c")
@@ -142,10 +143,9 @@ static func _airfield(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGener
 	for i in 5: gun_pit(ci, c + Vector2.from_angle(a + i * TAU / 5.0 + 0.2) * R * 0.95, R * 0.035, r.randf() * TAU, R * 0.05)
 
 static func _plane(ci: CanvasItem, p: Vector2, s: float, a: float) -> void:
-	var u := Vector2.from_angle(a); var v := Vector2(-u.y, u.x)
-	ci.draw_line(p - u * s * 0.5, p + u * s * 0.5, STEEL.lightened(0.15), s * 0.18)
-	ci.draw_line(p + u * s * 0.1 - v * s * 0.55, p + u * s * 0.1 + v * s * 0.55, STEEL.lightened(0.15), s * 0.16)
-	ci.draw_line(p - u * s * 0.42 - v * s * 0.2, p - u * s * 0.42 + v * s * 0.2, STEEL, s * 0.12)
+	# the same machine the squadrons fly, standing on the ground (s is its wing span)
+	PlaneArt.draw(ci, p, a, s / 13.0, false, 0, false, Vector2(0.5, 0.7), 3.0, Color(0.5, 0.54, 0.55), true)
+	ci.draw_set_transform(Vector2.ZERO)
 
 static func _battery(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator, face: float) -> void:
 	var v := Vector2.from_angle(face + PI / 2)

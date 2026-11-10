@@ -8,6 +8,7 @@ signal done
 var res: Dictionary
 var s: Dictionary
 var t := 0.0
+const PlaneArt = preload("res://scripts/plane_art.gd")
 const DUR := 16.0
 var planes := []      # ours: {off, fate ("ok", "fighter", "flak"), tdie, bomb, dropped}
 var foes := []        # defending fighters: {side, tdie}
@@ -221,19 +222,9 @@ func _sky_naval(ci: CanvasItem) -> void:
 	if t > 9.0: phase = "Cease fire · defences %d%% out of action" % int(float(res.after) * 100)
 	ci.draw_string(font, Vector2(24, 52), phase, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#e3b23c"))
 
-## An aircraft from above: fuselage, wings, tailplane (swept wings for a jet).
+## An aircraft from above: the same machine the squadrons fly in battle (plane_art.gd), with its shadow on the ground.
 func _aircraft(ci: CanvasItem, p: Vector2, a: float, s: float, col: Color, jet: bool) -> void:
-	var u := Vector2.from_angle(a); var v := Vector2(-u.y, u.x)
-	var pts: PackedVector2Array
-	if jet:   # swept wings
-		pts = PackedVector2Array([p + u * s, p + u * s * 0.4 + v * s * 0.12, p - u * s * 0.25 + v * s * 1.0, p - u * s * 0.45 + v * s * 1.0, p - u * s * 0.3 + v * s * 0.12,
-			p - u * s * 0.75 + v * s * 0.45, p - u * s * 0.9 + v * s * 0.45, p - u * s * 0.95, p - u * s * 0.9 - v * s * 0.45, p - u * s * 0.75 - v * s * 0.45,
-			p - u * s * 0.3 - v * s * 0.12, p - u * s * 0.45 - v * s * 1.0, p - u * s * 0.25 - v * s * 1.0, p + u * s * 0.4 - v * s * 0.12])
-	else:     # straight tapered wings, a tailplane, a round cowling
-		pts = PackedVector2Array([p + u * s, p + u * s * 0.35 + v * s * 0.14, p + u * s * 0.3 + v * s * 1.05, p + u * s * 0.05 + v * s * 1.1, p - u * s * 0.05 + v * s * 0.14,
-			p - u * s * 0.7 + v * s * 0.08, p - u * s * 0.72 + v * s * 0.45, p - u * s * 0.9 + v * s * 0.45, p - u * s * 0.95,
-			p - u * s * 0.9 - v * s * 0.45, p - u * s * 0.72 - v * s * 0.45, p - u * s * 0.7 - v * s * 0.08, p - u * s * 0.05 - v * s * 0.14,
-			p + u * s * 0.05 - v * s * 1.1, p + u * s * 0.3 - v * s * 1.05, p + u * s * 0.35 - v * s * 0.14])
-	if Geometry2D.triangulate_polygon(pts).is_empty(): return
-	ci.draw_colored_polygon(pts, col)
-	if col.a > 0.5: ci.draw_line(p + u * s * 0.9, p - u * s * 0.6, col.lightened(0.25), s * 0.1)   # light along the spine
+	if col.a < 0.5: return   # the model casts its own shadow
+	var foe: bool = col.r > col.b
+	PlaneArt.draw(ci, p, a, s / 6.3, jet, 1 if foe else 0, false, Vector2(0.6, 0.8), 110.0)
+	ci.draw_set_transform(Vector2.ZERO)

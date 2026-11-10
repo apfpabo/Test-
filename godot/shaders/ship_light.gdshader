@@ -14,12 +14,41 @@ uniform sampler2D hmap : filter_linear_mipmap, repeat_disable;
 uniform bool use_h = false;
 uniform bool is_top = false;
 uniform float h_max = 40.0;
+// A heeled ship seen from above (lean: metres carried across the ship, towards +y, per metre of height). Everything
+// standing above the deck is drawn as the solid it is: each point is carried over by its own height, so a tower leans
+// further than a deckhouse, and on the high side the walls that were hidden under their own roofs come into view.
+uniform float lean = 0.0;
+varying vec4 modc;
+void vertex() { modc = COLOR; }
 
 float hat(vec2 uv, float lod) { return textureLod(hmap, uv, lod).r * h_max; }
 
 void fragment() {
 	vec4 c = COLOR; // already the texture colour times the node's modulate
-	vec2 m = (UV - 0.5) * size_m;
+	vec2 uv = UV; float wall = 0.0;
+	if (use_h && is_top && abs(lean) > 0.01) {
+		// which point of the ship is seen here? Look back up the slope from the farthest a roof could have been
+		// carried: the first column tall enough to reach this far is the one in front of everything else.
+		float al = abs(lean), sg = sign(lean), far = al * h_max;
+		vec2 fw0 = max(fwidth(UV), vec2(1e-6)); vec2 ts0 = vec2(textureSize(hmap, 0));
+		float lod0 = max(0.0, log2(max(fw0.x * ts0.x, fw0.y * ts0.y)));
+		float t = 0.0, stp = far / 28.0; bool hit = false;
+		for (int i = 0; i < 28; i++) {
+			float tt = far - float(i) * stp;
+			if (hat(UV - vec2(0.0, sg * tt / size_m.y), lod0) * al >= tt) { t = tt; hit = true; break; }
+		}
+		if (hit && t > 0.0) {   // close in on the edge of that column
+			float lo = t, hi = t + stp;
+			for (int j = 0; j < 6; j++) { float mid = 0.5 * (lo + hi); if (hat(UV - vec2(0.0, sg * mid / size_m.y), lod0) * al >= mid) lo = mid; else hi = mid; }
+			t = lo;
+			uv = UV - vec2(0.0, sg * t / size_m.y);
+			// a roof ends where its own height has carried it; if the column stands well above that, this is its side
+			wall = smoothstep(0.25, 0.7, hat(uv, lod0) * al - t);
+		}
+		c = textureLod(TEXTURE, uv, lod0) * modc;
+		if (c.a < 0.5 && wall > 0.0) { c = textureLod(TEXTURE, uv - vec2(0.0, sg * 1.2 / size_m.y), lod0) * modc; }   // the very edge: take the wall's colour from just inside it
+	}
+	vec2 m = (uv - 0.5) * size_m;
 	// the hull's sides face port and starboard, so light depends on which side of the centreline a pixel is on
 	float across = clamp(m.y / (beam * 0.5), -1.0, 1.0);
 	vec2 sd = normalize(sun_local + vec2(0.0001));
@@ -32,14 +61,14 @@ void fragment() {
 		float lod = max(0.0, log2(max(fw.x * tsz.x, fw.y * tsz.y)));
 		float h0 = 0.0;
 		if (is_top) {
-			h0 = hat(UV, lod);
+			h0 = hat(uv, lod);
 			// bevel: the slope across one screen pixel, lit from the sun (elevation: tan = 1 / k)
-			float hx = (hat(UV + vec2(fw.x, 0.0), lod) - hat(UV - vec2(fw.x, 0.0), lod)) / (2.0 * fw.x * size_m.x);
-			float hy = (hat(UV + vec2(0.0, fw.y), lod) - hat(UV - vec2(0.0, fw.y), lod)) / (2.0 * fw.y * size_m.y);
+			float hx = (hat(uv + vec2(fw.x, 0.0), lod) - hat(uv - vec2(fw.x, 0.0), lod)) / (2.0 * fw.x * size_m.x);
+			float hy = (hat(uv + vec2(0.0, fw.y), lod) - hat(uv - vec2(0.0, fw.y), lod)) / (2.0 * fw.y * size_m.y);
 			vec3 n = normalize(vec3(-hx, -hy, 1.0));
 			vec3 L = normalize(vec3(-sd, 1.0 / k));
 			float ratio = clamp(dot(n, L) / L.z, 0.3, 1.7);
-			c.rgb *= mix(1.0, ratio, 0.75);
+			c.rgb *= mix(1.0, ratio, 0.75 * (1.0 - wall));
 		}
 		// cast shadows: is anything between here and the sun tall enough to hide it?
 		// cone-traced: farther samples read a blurrier mip, so thin masts and step edges give soft, continuous shadows
@@ -51,13 +80,17 @@ void fragment() {
 		for (int i = 1; i <= 32; i++) {
 			float t = pow((float(i) - jit) / 32.0, 1.5) * reach;
 			float stp = t - prev; prev = t;
-			vec2 q = UV - sd * t / size_m;
+			vec2 q = uv - sd * t / size_m;
 			if (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) break;
 			float hq = hat(q, max(lod, log2(max(1.0, stp / texel_m))));
 			float soft = 0.25 + 0.5 * stp / k;  // blend across the gap to the next sample, so shadow edges don't step
 			sh = max(sh, smoothstep(-soft, soft, hq - (h0 + t / k + 0.15)));
 		}
 		c.rgb *= 1.0 - 0.38 * sh;
+	}
+	if (wall > 0.0) {   // her upper works' sides: plain plating, lit if the sun is on the high side, in shade if not
+		float lit = clamp(sign(lean) * normalize(sun_local + vec2(0.0001)).y * 0.5 + 0.5, 0.0, 1.0);
+		c.rgb = mix(c.rgb, c.rgb * mix(0.45, 0.8, lit), wall);
 	}
 	c.rgb *= 1.0 - soot * 0.35;
 	COLOR = c;

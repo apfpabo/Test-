@@ -88,6 +88,7 @@ func _ready() -> void:
         editor = Editor.new(); editor.battle = self; hl.add_child(editor)
 
 const Editor = preload("res://scripts/battle_editor.gd")
+const PlaneArt = preload("res://scripts/plane_art.gd")
 var editor = null           # the editor's panel, in editor mode
 var clean := false          # H: nothing on the screen but the picture (for recording)
 ## Hide or show everything that is not the picture: the HUD, the rings and aiming lines, the editor's panel.
@@ -426,10 +427,23 @@ class ShipView extends Node2D:
     var lit_top: ShaderMaterial
     var spr = 1.0
     var size_m = Vector2.ONE
+    var edge: Array = []   # Vector2(x along the ship, half beam there)
+    var lean := 0.0        # metres carried towards her low side per metre of height
+    var freeboard := 4.0
+    var deck_shift := 0.0  # how far the deck is carried to her low side by the heel, metres
+
+    ## How far she is heeled, -1..1 (+ to starboard): her list, and as she sinks she rolls further onto that side.
+    func heel() -> float:
+        var k: float = battle.sim.sink_k(s)
+        if k <= 0.0: return s.list
+        return (signf(s.list) if s.list != 0.0 else 1.0) * maxf(absf(s.list), minf(1.0, k * 1.6))
 
     func build() -> void:
         var id: String = s.rec.type; var info: Dictionary = GameData.sprites.ships[id]
         spr = info.spr; size_m = Vector2(info.w, info.h)
+        for i in 25:   # the deck edge, sampled along her length: for the list and the sea coming over her side
+            var hx: float = lerpf(-float(s.d.L) * 0.495, float(s.d.L) * 0.495, i / 24.0); edge.append(Vector2(hx, battle.sim.hull_half(s.d, hx)))
+        var keel = Keel.new(); keel.view = self; add_child(keel)
         base = _sprite(GameData.ship_tex(id, s.pal, "base"), 1.0 / spr)
         lit_base = ShaderMaterial.new(); lit_base.shader = battle.light_shader; base.material = lit_base
         detail = Detail.new(); detail.view = self; detail.scale = Vector2(spr, spr); base.add_child(detail)
@@ -459,7 +473,7 @@ class ShipView extends Node2D:
     func refresh() -> void:
         var sm = s.dive if s.sub else 0.0
         var alpha = 1.0; var k = 0.0
-        if not s.alive: k = minf(1.0, s.sink / 4.0); alpha = 1.0 - k
+        if not s.alive: k = battle.sim.sink_k(s); alpha = 1.0 - smoothstep(0.6, 1.0, k)   # she settles first, and only then goes from sight
         elif sm > 0: alpha = 1.0 - 0.65 * sm
         visible = alpha > 0.02 and not s.escaped and (s.side == 0 or not s.sub or s.dive < 0.3 or battle.sim.detected_by(s, 0) or not s.alive)
         if visible and s.side == 1 and s.alive and (battle.sim.limited() or not battle.sim.screens.is_empty()) and not battle.sim.visible_to(s, 0): visible = false   # lost in the dark, the murk or behind smoke
@@ -469,15 +483,62 @@ class ShipView extends Node2D:
         var sun_local = BattleSim.SUN.rotated(-s.a)
         var soot = clampf((1.0 - s.hull / s.max_hull - 0.25) * 1.4, 0.0, 1.0)
         for m in [lit_base, lit_top]: m.set_shader_parameter("sun_local", sun_local); m.set_shader_parameter("soot", soot)
-        for c in get_children(): if c is Node2D and not (c is Sprite2D): c.queue_redraw()
+        # a heeled ship seen from above: everything that stands above the waterline is carried over towards her low
+        # side, the more the higher it stands - the deck by her freeboard, the superstructure and each level of
+        # turrets further still - so the whole ship leans, not the hull alone
+        var ln: float = heel() * 0.6
+        var fb: float = 0.6 if s.d.kind == "sub" else (10.0 if s.d.kind == "carrier" else clampf(float(s.d.B) * 0.25, 1.2, 8.0))
+        deck_shift = ln * fb
+        lean = ln; freeboard = fb
+        base.position.y = deck_shift; top.position.y = deck_shift
+        lit_top.set_shader_parameter("lean", ln / (1.0 - 0.13 * absf(s.list)))   # each point of the upper works is carried over by its own height, in the shader
+        for c in get_children():
+            if c is Fires: c.position.y = ln * (fb + 1.0)
+            if c is Node2D and not (c is Sprite2D): c.queue_redraw()
         detail.queue_redraw(); detail_top.queue_redraw()
+
+## What a heel shows from above: along the high side, the plating of her side and below it the red of her bottom,
+## rolled up out of the water.
+class Keel extends Node2D:
+    var view
+    func _draw() -> void:
+        var h: float = view.heel()
+        if absf(h) < 0.08 or view.battle.zoom() * view.s.d.L < 25: return
+        var hi: float = -signf(h); var B: float = view.s.d.B; var off: float = absf(h) * B * 0.3; var e: Array = view.edge
+        for i in e.size() - 1:
+            var a: Vector2 = e[i]; var b: Vector2 = e[i + 1]
+            var ka: float = sqrt(clampf(a.y / (B * 0.5), 0.0, 1.0)); var kb: float = sqrt(clampf(b.y / (B * 0.5), 0.0, 1.0))
+            var sh: float = absf(view.deck_shift) + 0.4   # the deck edge has moved in from the waterline by this much: her side shows between
+            var a0 := Vector2(a.x, hi * (a.y - sh)); var b0 := Vector2(b.x, hi * (b.y - sh))
+            var a1 := Vector2(a.x, hi * (a.y + off * 0.25 * ka)); var b1 := Vector2(b.x, hi * (b.y + off * 0.25 * kb))
+            var a2 := Vector2(a.x, hi * (a.y + off * ka)); var b2 := Vector2(b.x, hi * (b.y + off * kb))
+            var grey := Color(0.3, 0.32, 0.34); var red := Color(0.5, 0.15, 0.12); var deep := Color(0.3, 0.1, 0.09)
+            draw_primitive(PackedVector2Array([a0, b0, b1, a1]), PackedColorArray([grey, grey, grey.darkened(0.25), grey.darkened(0.25)]), PackedVector2Array())
+            draw_primitive(PackedVector2Array([a1, b1, b2, a2]), PackedColorArray([red, red, deep, deep]), PackedVector2Array())
+            draw_line(a1, b1, Color(0.08, 0.08, 0.08, 0.8), 0.25)   # the boot-topping
 
 class Detail extends Node2D:   # soot and shell holes, kept where they struck
     var view
     var upper := false   # the copy over the superstructure: gashes and wrecked mounts, a little soot
     func _draw() -> void:
         var s: BattleSim.CShip = view.s
-        if s.marks.is_empty() or view.battle.zoom() * s.d.L < 25: return
+        if view.battle.zoom() * s.d.L < 25: return
+        var h: float = view.heel()
+        if not upper and absf(h) >= 0.08:   # the sea over her low side: green water on the deck and a line of foam where it stops
+            var lo: float = signf(h); var kk: float = view.battle.sim.sink_k(s); var tm: float = Time.get_ticks_msec() * 0.001
+            var e: Array = view.edge; var foam := PackedVector2Array()
+            var sea := Color(0.04, 0.17, 0.22, 0.62 + 0.3 * absf(h))
+            var ins: Array = []
+            for i in e.size():
+                var p: Vector2 = e[i]
+                var wd: float = minf(2.0 * p.y + 0.5, p.y * (absf(h) * 0.75 + kk * 2.4) + 0.25 * sin(p.x * 0.45 + tm * 1.3) * absf(h))
+                ins.append(Vector2(p.x, lo * (p.y - maxf(0.0, wd)))); foam.append(ins[i])
+            for i in e.size() - 1:
+                var a: Vector2 = e[i]; var b: Vector2 = e[i + 1]
+                draw_primitive(PackedVector2Array([Vector2(a.x, lo * (a.y + 0.5)), Vector2(b.x, lo * (b.y + 0.5)), ins[i + 1], ins[i]]), PackedColorArray([sea, sea, Color(sea, sea.a * 0.75), Color(sea, sea.a * 0.75)]), PackedVector2Array())
+            draw_polyline(foam, Color(0.9, 0.96, 0.96, 0.75), 0.4)
+            draw_polyline(foam, Color(0.9, 0.96, 0.96, 0.22), 1.4)
+        if s.marks.is_empty(): return
         var sunl: Vector2 = BattleSim.SUN.rotated(-s.a).normalized()   # the sun, in the ship's own frame: torn edges catch it
         for m in s.marks:
             var tx = GameData.fx_tex("cloud%d" % m.v); var r: float = m.r; var c := Vector2(m.x, m.y)
@@ -500,14 +561,43 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
                     for k in 7: bite.append(c + Vector2((k - 3) * g * 0.55, side * g * (0.2 + 0.5 * fposmod(sin(float(m.sd) * 0.31 + k * 1.9) * 12.3, 1.0))))
                     bite.append(c + Vector2(g * 1.9, side * g * 3.2)); bite.append(c + Vector2(-g * 1.9, side * g * 3.2))
                     draw_colored_polygon(bite, Color(0.07, 0.15, 0.18, 0.92))   # the sea where her side was
+                    # what the plating hid: the deck below, cut off short, and the frames standing out of it
+                    var shelf := PackedVector2Array(); for k in 7: shelf.append(bite[k])
+                    for k in range(6, -1, -1): shelf.append(bite[k] + Vector2(0, side * g * 0.75))
+                    draw_colored_polygon(shelf, Color(0.13, 0.13, 0.14, 0.95))
+                    for k in 7:
+                        draw_line(bite[k], bite[k] + Vector2(0, side * g * (0.95 + 0.3 * fposmod(sin(float(m.sd) + k * 2.1) * 5.7, 1.0))), Color(0.3, 0.28, 0.26), maxf(0.12, g * 0.07))
+                    draw_polyline(shelf.slice(7, 14), Color(0.34, 0.32, 0.3, 0.9), maxf(0.1, g * 0.06))
                 draw_texture_rect(tx, Rect2(m.x - r * 2.2, m.y - r * 0.7, r * 2.4, r * 1.4), false, Color(0.05, 0.04, 0.03, 0.4))   # soot aft
                 draw_colored_polygon(pts, Color(0.03, 0.03, 0.03, 0.95))
+                # inside the tear: the deck below a shade lighter where the light reaches it, the frames across the
+                # ship and a girder along her, cut to the shape of the hole
+                var low := PackedVector2Array(); for p in pts: low.append(c + (p - c) * 0.78 - sunl * g * 0.12)
+                draw_colored_polygon(low, Color(0.1, 0.1, 0.11, 0.95))
+                var sp_: float = maxf(0.9, g * 0.42); var fx: float = ceilf((c.x - g * 1.6) / sp_) * sp_
+                while fx < c.x + g * 1.6:
+                    var cut: Vector2 = _cut(pts, fx, true)
+                    if cut.y - cut.x > 0.2: draw_line(Vector2(fx, cut.x), Vector2(fx, cut.y), Color(0.27, 0.25, 0.23), maxf(0.1, g * 0.07))
+                    fx += sp_
+                var gy: float = c.y + g * 0.15 * (1.0 if m.sd % 2 else -1.0); var gc: Vector2 = _cut(pts, gy, false)
+                if gc.y - gc.x > 0.2: draw_line(Vector2(gc.x, gy), Vector2(gc.y, gy), Color(0.33, 0.31, 0.29), maxf(0.14, g * 0.1))
                 for k in n:
                     var p0: Vector2 = pts[k]; var p1: Vector2 = pts[(k + 1) % n]; var nrm: Vector2 = (p0 + p1) * 0.5 - c
                     var lit: float = clampf(nrm.normalized().dot(-sunl), 0.0, 1.0)
                     draw_line(p0, p1, Color(0.35, 0.35, 0.36).lerp(Color(0.85, 0.84, 0.8), lit), maxf(0.1, g * 0.14))
                     if k % 3 == 0: draw_line(p0, p0 + nrm.normalized() * g * 0.5, Color(0.25, 0.25, 0.25, 0.8), maxf(0.08, g * 0.08))   # plate peeled back
             elif m.hole: draw_circle(c, r * 0.22, Color(0.04, 0.04, 0.04, 0.9))
+
+    ## Where the line x = v (or y = v) crosses a polygon: the least and greatest of the other coordinate.
+    func _cut(pts: PackedVector2Array, v: float, vertical: bool) -> Vector2:
+        var lo := INF; var hi := -INF; var n: int = pts.size()
+        for k in n:
+            var a: Vector2 = pts[k]; var b: Vector2 = pts[(k + 1) % n]
+            var a0: float = a.x if vertical else a.y; var b0: float = b.x if vertical else b.y
+            if (a0 - v) * (b0 - v) > 0.0 or a0 == b0: continue
+            var w: float = lerpf(a.y if vertical else a.x, b.y if vertical else b.x, (v - a0) / (b0 - a0))
+            lo = minf(lo, w); hi = maxf(hi, w)
+        return Vector2(lo, hi) if hi > lo else Vector2.ZERO
 
 class MountLayer extends Node2D:   # turrets of one level: their contact and cast shadows, or the lit mounts themselves
     var view
@@ -537,6 +627,19 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
             var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
             var split: bool = info.get("split", false)
             var bt: Texture2D = GameData.mount_img(m.wid, style, true) if split else null
+            # heeled, a turret is the solid it is: its foot is carried over with the deck it stands on, its roof further
+            # by its own height, and between the two its side shows (the plan drawn again and again up the slope, dark)
+            var ln: float = view.lean; var foot: float = ln * (view.freeboard + 2.8 * lvl); var roof: float = foot + ln * GameData.turret_h(m.w)
+            p.y += roof if lit else foot
+            if not lit and absf(ln) > 0.03 and not m.dead:
+                var n: int = clampi(ceili(absf(roof - foot) * view.battle.zoom() / 1.2), 2, 10)
+                var wc: Color = Color(0.36, 0.38, 0.4) if ln * sun.y < 0.0 else Color(0.62, 0.64, 0.66)
+                draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04); draw_texture(GameData.mount_ao(m.wid), o, Color(1, 1, 1, 0.75))
+                for k in range(1, n + 1):
+                    draw_set_transform(p + Vector2(0, (roof - foot) * k / n), m.ta, Vector2(sc, sc))
+                    if split and k > n / 2: _barrels(bt, m, info, o, wc)
+                    draw_texture(GameData.mount_img(m.wid, style), o, wc)
+                continue
             if not lit:
                 # a soft contact shadow round the foot, then a crisp shadow cast from the roof's height (raised turrets cast further)
                 draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04)
@@ -731,11 +834,11 @@ class Drawer extends Node2D:
     func _shadows() -> void:  # hull shadows on the water, offset in world space by the height of the deck edge
         var sim: BattleSim = battle.sim
         for s in sim.ships:
-            if s.escaped or (s.sub and s.dive > 0.05) or (not s.alive and s.sink > 4): continue
+            if s.escaped or (s.sub and s.dive > 0.05) or (not s.alive and sim.sink_k(s) >= 1.0): continue
             if s.side == 1 and (s.radar_only or not sim.visible_to(s, 0)): continue   # a ship out of sight casts no shadow you can see
             var info: Dictionary = GameData.sprites.ships[s.rec.type]; var tx = GameData.ship_tex(s.rec.type, s.pal, "hull_shadow")
             var fb: float = 0.6 if s.d.kind == "sub" else (10.0 if s.d.kind == "carrier" else clampf(s.d.B * 0.25, 1.2, 8.0))
-            var k = minf(1.0, s.sink / 4.0) if not s.alive else 0.0
+            var k = sim.sink_k(s)
             draw_set_transform(s.pos + BattleSim.SUN * fb, s.a + k * 0.25, Vector2.ONE * 3.0 / info.spr)
             draw_texture(tx, -tx.get_size() / 2, Color(1, 1, 1, 0.38 * (1.0 - k)))
         draw_set_transform(Vector2.ZERO)
@@ -822,38 +925,7 @@ class Drawer extends Node2D:
     ## An aircraft in plan, in metres (nose along +x): a shadow on the sea first, then the machine in its service
     ## paint with the light on one wing, its canopy, markings, and the propeller's disc or the jet's exhaust.
     func _aircraft(p: Vector2, a: float, sc: float, jet: bool, side: int, torp: bool, sun: Vector2) -> void:
-        var top: Color = Color(0.32, 0.36, 0.33) if side else Color(0.27, 0.36, 0.43)      # theirs olive grey, yours sea blue
-        if jet: top = Color(0.5, 0.52, 0.5) if side else Color(0.56, 0.6, 0.62)
-        var mark: Color = Color(0.78, 0.3, 0.24) if side else Color(0.93, 0.85, 0.55)
-        var shapes: Array
-        if jet:
-            shapes = [PackedVector2Array([Vector2(6.4, 0), Vector2(4.6, -0.75), Vector2(-5.2, -0.8), Vector2(-6.0, -0.45), Vector2(-6.0, 0.45), Vector2(-5.2, 0.8), Vector2(4.6, 0.75)]),   # fuselage
-                PackedVector2Array([Vector2(1.6, -0.7), Vector2(-3.4, -5.3), Vector2(-4.6, -5.3), Vector2(-2.2, -0.7)]), PackedVector2Array([Vector2(1.6, 0.7), Vector2(-2.2, 0.7), Vector2(-4.6, 5.3), Vector2(-3.4, 5.3)]),   # swept wings
-                PackedVector2Array([Vector2(-4.2, -0.6), Vector2(-6.2, -2.4), Vector2(-6.8, -2.4), Vector2(-5.8, -0.6)]), PackedVector2Array([Vector2(-4.2, 0.6), Vector2(-5.8, 0.6), Vector2(-6.8, 2.4), Vector2(-6.2, 2.4)])]   # tailplane
-        else:
-            shapes = [PackedVector2Array([Vector2(4.6, 0), Vector2(4.2, -0.72), Vector2(1.5, -0.8), Vector2(-4.6, -0.3), Vector2(-5.2, 0), Vector2(-4.6, 0.3), Vector2(1.5, 0.8), Vector2(4.2, 0.72)]),   # fuselage
-                PackedVector2Array([Vector2(2.2, -0.7), Vector2(1.5, -6.3), Vector2(0.2, -6.5), Vector2(-0.6, -6.1), Vector2(-0.9, -0.7)]), PackedVector2Array([Vector2(2.2, 0.7), Vector2(-0.9, 0.7), Vector2(-0.6, 6.1), Vector2(0.2, 6.5), Vector2(1.5, 6.3)]),   # wings
-                PackedVector2Array([Vector2(-3.7, -0.3), Vector2(-4.1, -2.3), Vector2(-4.9, -2.3), Vector2(-5.0, -0.2)]), PackedVector2Array([Vector2(-3.7, 0.3), Vector2(-5.0, 0.2), Vector2(-4.9, 2.3), Vector2(-4.1, 2.3)])]   # tailplane
-        var alt: float = 28.0 if torp else 60.0
-        draw_set_transform(p + sun * alt * 0.5, a, Vector2(sc, sc))
-        for sh in shapes: draw_colored_polygon(sh, Color(0.0, 0.03, 0.05, 0.28))
-        draw_set_transform(p, a, Vector2(sc, sc))
-        var rs: Vector2 = sun.rotated(-a)                       # the sun's direction in the aircraft's own axes
-        for i in shapes.size():
-            var c: Color = top
-            if i == 1 or i == 3: c = top.lightened(0.12) if rs.y > 0.0 else top.darkened(0.14)   # one wing takes the light, the other loses it
-            if i == 2 or i == 4: c = top.lightened(0.12) if rs.y < 0.0 else top.darkened(0.14)
-            draw_colored_polygon(shapes[i], c)
-        draw_line(Vector2(3.6 if not jet else 5.0, 0), Vector2(-4.4, 0), top.lightened(0.14), 0.35)                    # the spine catching the light
-        draw_colored_polygon(PackedVector2Array([Vector2(2.2, -0.42), Vector2(0.2, -0.5), Vector2(-0.6, -0.3), Vector2(-0.6, 0.3), Vector2(0.2, 0.5), Vector2(2.2, 0.42)]) if not jet else PackedVector2Array([Vector2(4.0, -0.4), Vector2(2.0, -0.5), Vector2(1.2, 0), Vector2(2.0, 0.5), Vector2(4.0, 0.4)]), Color(0.1, 0.14, 0.17))   # canopy
-        draw_line(Vector2(1.6, -0.2), Vector2(0.4, -0.2), Color(0.75, 0.85, 0.9, 0.6), 0.14)                               # a glint on the glass
-        var wy: float = 3.9 if jet else 4.6; var wx: float = -2.6 if jet else 0.5
-        for sy in [-1.0, 1.0]: draw_circle(Vector2(wx, sy * wy), 0.62, mark); draw_circle(Vector2(wx, sy * wy), 0.26, top.darkened(0.3))   # wing markings
-        if jet:
-            draw_circle(Vector2(-6.3, 0), 0.5, Color(1, 0.7, 0.35, 0.9)); draw_texture_rect(GameData.glow_tex(), Rect2(-10.5, -2.0, 5.0, 4.0), false, Color(1, 0.6, 0.3, 0.45))
-        else:
-            draw_circle(Vector2(4.2, 0), 0.7, top.darkened(0.25)); draw_arc(Vector2(4.75, 0), 1.75, 0, TAU, 16, Color(0.8, 0.82, 0.8, 0.16), 0.9)   # cowling and the propeller's disc
-            if torp: draw_line(Vector2(2.4, 0), Vector2(-2.6, 0), Color(0.62, 0.64, 0.62), 0.42)                         # the torpedo slung beneath
+        PlaneArt.draw(self, p, a, sc, jet, side, torp, sun)
 
     ## A missile in plan (nose along +x): its shadow, the body with wings and fins, and the motor's flame.
     func _missile(m, sc: float, sun: Vector2) -> void:
@@ -1126,18 +1198,22 @@ class Drawer extends Node2D:
         var view: Rect2 = battle.view_rect().grow(50.0)
         for w in sim.wrecks:
             if not view.has_point(w.pos): continue
-            var up: bool = w.air > 0.0; var sz: float = float(w.sz) * (1.0 + (0.5 * float(w.air) if up else 0.0))
+            var up: bool = w.air > 0.0; var sz: float = maxf(float(w.sz), 1.3 / z) * (1.0 + (0.5 * float(w.air) if up else 0.0))   # never smaller than a pixel or two: a smaller piece flickers as it moves
             var fade: float = 1.0 if up else clampf((float(w.life) - float(w.t)) / 8.0, 0.0, 1.0)
+            # each piece is drawn about its own place: built out in the battle's coordinates, thousands of metres from
+            # the origin, a shape this small often failed to triangulate and the piece blinked in and out
             var pts := PackedVector2Array(); var n := 5
             for k in n:
-                var a: float = float(w.a) + k * TAU / n; pts.append(w.pos + Vector2.from_angle(a) * sz * (0.6 + 0.8 * fposmod(sin(float(w.sd) * 0.7 + k * 3.1) * 7.3, 1.0)))
+                var a: float = float(w.a) + k * TAU / n; pts.append(Vector2.from_angle(a) * sz * (0.6 + 0.8 * fposmod(sin(float(w.sd) * 0.7 + k * 3.1) * 7.3, 1.0)))
             if up:
-                var sh := PackedVector2Array(); for p in pts: sh.append(p + BattleSim.SUN * (4.0 + 14.0 * float(w.air)))
-                draw_colored_polygon(sh, Color(0, 0, 0, 0.22))
-            else: draw_arc(w.pos, sz * 1.5, 0, TAU, 14, Color(0.9, 0.96, 0.96, 0.35 * fade), maxf(0.25, 1.0 / z))
+                draw_set_transform(w.pos + BattleSim.SUN * (4.0 + 14.0 * float(w.air)))
+                draw_colored_polygon(pts, Color(0, 0, 0, 0.22))
+            else: draw_set_transform(Vector2.ZERO); _puff(GameData.fx_tex("cloud%d" % (int(w.sd) % 4)), w.pos, sz * 2.6, Color(0.88, 0.95, 0.95, 0.22 * fade))   # a little foam round it, soft, not a hard ring
+            draw_set_transform(w.pos)
             draw_colored_polygon(pts, Color(0.16, 0.15, 0.14, 0.95 * fade) if not w.burn or not up else Color(0.3, 0.15, 0.09, 0.95))
-            if w.burn and up: _puff(GameData.glow_tex(), w.pos, sz * 2.2, Color(1.0, 0.6, 0.25, 0.5))   # a burning piece glows as it goes
-            draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2]]), Color(0.5, 0.5, 0.48, 0.7 * fade), maxf(0.15, 0.8 / z))
+            if sz * z > 3.0: draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2]]), Color(0.5, 0.5, 0.48, 0.7 * fade), maxf(0.15, 0.8 / z))
+            if w.burn and up: draw_set_transform(Vector2.ZERO); _puff(GameData.glow_tex(), w.pos, sz * 2.2, Color(1.0, 0.6, 0.25, 0.5))   # a burning piece glows as it goes
+        draw_set_transform(Vector2.ZERO)
 
     func _overlay() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
@@ -1195,7 +1271,7 @@ class Drawer extends Node2D:
         for q in sim.air:
             var far: bool = z0 < 0.3 or not sim.modern
             var col = Color("#e8a08a") if q.side else Color("#f3e2a8"); var ps = maxf(1.0, 1.6 * mn)
-            for k in int(q.n):
+            for k in int(q.up):
                 var row = ceili(k / 2.0); var sd = 1.0 if k % 2 else -1.0
                 if far:
                     var p: Vector2 = q.pos + Vector2(-row * 14 * ps, sd * row * 12 * ps).rotated(q.a)
@@ -1207,6 +1283,30 @@ class Drawer extends Node2D:
                     var wob: float = sin(Time.get_ticks_msec() * 0.0013 + k * 1.7) * 3.0
                     var pp: Vector2 = q.pos + Vector2(-row * 26.0 * sc, sd * row * 22.0 * sc + wob).rotated(q.a)
                     _aircraft(pp, q.a + sin(Time.get_ticks_msec() * 0.0009 + k) * 0.03, sc, q.jet, q.side, q.type == "tb", sun_s)
+        # machines taking off and landing, one at a time: down the deck and up to the formation ahead, or round
+        # from the formation astern, onto the deck and forward to the lift
+        for cv in sim.ships:
+            if cv.deck_ops.is_empty() or (cv.side == 1 and (sim.limited() or not sim.screens.is_empty()) and not sim.visible_to(cv, 0)): continue
+            var span: Vector2 = sim.deck_span(cv); var dl: float = span.y - span.x
+            for op in cv.deck_ops:
+                var f: float = clampf(op.t / op.dur, 0.0, 1.0); var pp: Vector2; var pa: float = cv.a; var alt := 2.0
+                if op.k == "to":
+                    if f < 0.45: pp = sim.world_pt(cv, lerpf(span.x + dl * 0.4, span.y, pow(f / 0.45, 2.0)), 0.0)
+                    else:
+                        var v: float = smoothstep(0.0, 1.0, (f - 0.45) / 0.55); var bow: Vector2 = sim.world_pt(cv, span.y, 0.0)
+                        pp = bow.lerp(op.q.pos, v); alt = lerpf(2.0, 28.0 if op.q.type == "tb" else 60.0, v)
+                        if op.q.pos.distance_to(bow) > 5.0: pa = lerp_angle(cv.a, (op.q.pos - bow).angle(), v)
+                else:
+                    var wire: Vector2 = sim.world_pt(cv, span.x + dl * 0.12, 0.0)
+                    if f < 0.65:
+                        var v: float = f / 0.65; var p1: Vector2 = sim.world_pt(cv, span.x - 380.0, 0.0)
+                        pp = op.from.lerp(p1, v).lerp(p1.lerp(wire, v), v); alt = lerpf(28.0 if op.q.type == "tb" else 60.0, 2.0, v * v)
+                        var tan: Vector2 = (p1 - op.from).lerp(wire - p1, v); pa = tan.angle() if tan.length() > 1.0 else cv.a
+                    else: pp = sim.world_pt(cv, lerpf(span.x + dl * 0.12, span.x + dl * 0.5, 1.0 - pow(1.0 - (f - 0.65) / 0.35, 2.0)), 0.0)
+                if z0 < 0.3 or not sim.modern:
+                    var ps = maxf(1.0, 1.6 * mn); draw_set_transform(pp, pa, Vector2(ps, ps) * 0.7)
+                    draw_rect(Rect2(-5, -1, 11, 2), Color("#e8a08a") if cv.side else Color("#f3e2a8")); draw_rect(Rect2(0, -7, 2.5, 14), Color("#e8a08a") if cv.side else Color("#f3e2a8"))
+                else: PlaneArt.draw(self, pp, pa, maxf(1.0, 0.8 * mn), op.q.jet, cv.side, op.q.type == "tb", sun_s, alt)
         draw_set_transform(Vector2.ZERO)
         if not sim.modern:
             for tr in sim.tracers: draw_line(tr.a, tr.b, Color(1, 0.86, 0.55, tr.life * 6), mn)

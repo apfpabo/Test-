@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights()
-	ok(sections == 13, "every section ran to its end (%d of 13)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying()
+	ok(sections == 14, "every section ran to its end (%d of 14)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -837,4 +837,73 @@ func _weights() -> void:
 	ok(sim3.ships[1].max_hull > GameData.hulls["ca_hipper"].hull * 1.05 and Campaign.refit_text([e2]).contains("fire control"), "an enemy's refit counts in battle and shows in the contact panel: %s" % Campaign.refit_text([e2]))
 	ok(Campaign.ship_value(e2) > Campaign.ship_value(Campaign.new_ship("ca_hipper", null, "directorate", [])), "and in what she is reckoned to be worth")
 	map.queue_free()
+	sections += 1
+
+## Carriers fly their aircraft off and on one at a time; a holed flight deck stops both; a lost ship takes her time
+## going down; a heavy hit beside an older gash widens it instead of crossing it.
+func _flying() -> void:
+	seed(33)
+	var sim := _sim(["cv_essex"], ["dd_narvik"]); var cv = sim.ships[0]; var e = sim.ships[1]
+	cv.pos = Vector2(6000, 14000); e.pos = Vector2(6000, 2000); e.ai_off = true; cv.ai_off = true; e.god = true; sim.hold_fire = true
+	var full: int = sim.planes_left(cv); var nsq: int = cv.squads.size()
+	ok(sim.launch_strike(cv, e), "a carrier with a sound deck sends her squadrons off")
+	ok(sim.air.size() == nsq and sim.air[0].up == 0, "nothing is in the air the moment the order is given (%d groups, %d up)" % [sim.air.size(), sim.air[0].up])
+	var seen_one := false; var most_ops := 0
+	for i in 400:
+		sim.update_air(0.1); most_ops = maxi(most_ops, cv.deck_ops.size())
+		if sim.air[0].up == 1: seen_one = true
+	ok(seen_one and most_ops <= 3, "the machines leave the deck one after another (never more than %d on the run at once)" % most_ops)
+	var up := 0
+	for q in sim.air: up += int(q.up)
+	ok(up > 0 and up < full, "forty seconds on, some are up and some still wait their turn (%d of %d)" % [up, full])
+	ok(sim.planes_left(cv) == full, "and every machine is still counted, on the deck or off it (%d of %d)" % [sim.planes_left(cv), full])
+	var w: Array = sim.wing(cv); var tot := 0
+	for x in w: tot += int(x.aboard) + int(x.air)
+	ok(w.size() == nsq and tot == full, "the air-wing readout accounts for all of them")
+	# a hole in the deck: the take-offs stop until it is patched
+	cv.deck_out = 30.0
+	for i in 150: sim.update_air(0.1)
+	var up2 := 0
+	for q in sim.air: up2 += int(q.up)
+	for i in 100: sim.update_air(0.1)
+	var up3 := 0
+	for q in sim.air: up3 += int(q.up)
+	ok(up3 == up2 and not sim.launch_strike(cv, e), "with the flight deck holed nothing more takes off (%d up, then %d)" % [up2, up3])
+	cv.deck_out = 0.0
+	for i in 3000:
+		sim.update_air(0.1)
+		if sim.air.all(func(q): return q.state != "form"): break
+	ok(sim.air.all(func(q): return q.state != "form" and q.up == q.n), "patched, the rest follow and the strike goes out")
+	# they come home to a holed deck: they circle, and land when it is mended
+	for q in sim.air: q.state = "home"; q.pos = cv.pos + Vector2(0, 1500)
+	cv.deck_out = 40.0
+	for i in 300: sim.update_air(0.1)
+	ok(sim.air.size() == nsq and sim.air.all(func(q): return q.state == "land" and q.up == q.n), "aircraft cannot land on a holed deck: they circle")
+	cv.deck_out = 0.0
+	for i in 6000:
+		sim.update_air(0.1)
+		if sim.air.is_empty(): break
+	ok(sim.air.is_empty() and sim.planes_left(cv) == full and cv.squads.all(func(sq): return sq.state == "rearm" or sq.state == "ready"), "once it is patched they land in turn and are struck below to rearm (%d of %d aboard)" % [sim.planes_left(cv), full])
+	# a bomb on the deck can hole it
+	var holed := 0
+	for i in 40:
+		cv.deck_out = 0.0; sim.hit_systems(cv, cv.pos, 240.0, "bomb")
+		if cv.deck_out > 0.0: holed += 1
+		cv.eng = 1.0; cv.eng_out = 0.0; cv.mag_fire = 0.0
+	ok(cv.alive and holed > 8 and holed < 36, "a bomb amidships holes the flight deck about half the time (%d of 40)" % holed)
+	# sinking takes its time
+	sim = _sim(["bb_iowa", "dd_fletcher", "dd_fletcher"], ["dd_narvik"]); var bb = sim.ships[0]; var dd = sim.ships[1]
+	for x in sim.ships: x.ai_off = true
+	sim.hold_fire = true; sim.ships[3].hold = true
+	sim.damage(bb, bb.hull + 1.0, "resolved"); sim.damage(dd, dd.hull + 1.0, "resolved")
+	for i in 250: sim.finished = false; sim.step(0.02)   # five seconds
+	ok(not bb.alive and sim.sink_k(bb) < 0.3 and sim.sink_k(dd) < 0.4 and sim.sink_k(dd) > sim.sink_k(bb), "five seconds after she is lost a ship has barely begun to go (battleship %.2f, destroyer %.2f)" % [sim.sink_k(bb), sim.sink_k(dd)])
+	for i in 1800: sim.finished = false; sim.step(0.02)
+	ok(sim.sink_k(bb) >= 1.0, "and within three quarters of a minute she is gone")
+	# gashes do not cross
+	sim = _sim(["bb_iowa"], ["dd_narvik"]); bb = sim.ships[0]
+	for i in 12: sim.mark_hit(bb, bb.pos + Vector2(20.0 + i * 0.4, 1.0).rotated(bb.a), 3.0, true, 0.0)
+	var gashes := 0
+	for m in bb.marks: if m.get("gash", false): gashes += 1
+	ok(gashes == 1, "twelve heavy hits in one place leave one gash, widened, not twelve across each other (%d)" % gashes)
 	sections += 1

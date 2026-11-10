@@ -60,10 +60,13 @@ vec4 blast(vec2 uv, float k, float seed, float big, vec2 lightdir) {
 }
 // The foam left where a shell went in: froth at first, then a lace of white threads round holes that widen until
 // only wisps are left (not slabs: the white is the seams between the cells, and it is soft and broken).
-float foam_at(vec2 p, float k, float seed, float edge) {
+// The foam is never still: the swell under it lifts and sets it down (tm is the clock), and the threads are drawn
+// slowly about as the water works.
+float foam_at(vec2 p, float k, float seed, float edge, float tm) {
 	float r = length(p);
+	p += 0.045 * vec2(sin(tm * 1.1 + p.y * 2.3 + seed), cos(tm * 0.9 + p.x * 2.1 + seed * 1.7));   // riding the swell
 	vec2 fp = p * 3.4 + seed + vec2(k * 0.5, -k * 0.3);
-	fp += (vec2(fbm(fp * 0.8 + 3.1), fbm(fp * 0.8 + 11.7)) - 0.5) * 1.8;        // pulled about, so nothing is regular
+	fp += (vec2(fbm(fp * 0.8 + 3.1 + tm * 0.11), fbm(fp * 0.8 + 11.7 - tm * 0.09)) - 0.5) * 1.8;        // pulled about, so nothing is regular, and always working
 	float big = cells(fp), fine = cells(fp * 2.7 + 5.0);                         // 0 on the seams, rising into each hole
 	float wide = mix(0.6, 0.03, pow(k, 0.55)) * (1.0 - 0.6 * smoothstep(0.45, 1.0, r / edge));   // how thick the threads still are
 	float lace = 1.0 - smoothstep(wide, wide + 0.16, big);
@@ -98,7 +101,7 @@ void fragment() {
 	float disc = 1.0 - smoothstep(edge * 0.55, edge * 1.05, r);
 	over(o, vec3(0.36, 0.62, 0.67), disc * 0.42 * pow(a0, 1.2) * born);
 	// the foam, standing a little proud of the water: its shadow first, then the foam, bright on the edge towards the light
-	float f0 = foam_at(p, k, seed, edge), f1 = foam_at(p + light * 0.07, k, seed, edge), f2 = foam_at(p - light * 0.07, k, seed, edge);
+	float f0 = foam_at(p, k, seed, edge, TIME), f1 = foam_at(p + light * 0.07, k, seed, edge, TIME), f2 = foam_at(p - light * 0.07, k, seed, edge, TIME);
 	float vis = born * min(1.0, a0 * 2.5);
 	over(o, vec3(0.0, 0.05, 0.08), f1 * (1.0 - f0) * 0.16 * vis);
 	vec3 fc = mix(vec3(0.7, 0.83, 0.86), vec3(0.88, 0.93, 0.93), clamp(0.6 + (f0 - f2) * 0.5, 0.0, 1.0));

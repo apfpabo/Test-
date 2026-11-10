@@ -187,11 +187,14 @@ func _siege(k: String) -> void:
 	var la := local_might(att, best); var ld := local_might(dfn, best) + float(D.sieges.get("harbour", 25000)) * float(best.get("garrison", 1))
 	var take := clampf(la / maxf(1.0, la + ld) * 0.8, 0.03, 0.6)
 	if randf() < take: capture(best, att)
-	else: news("SIEGE. A %s attack on %s is beaten off. The %s holds the port." % [GameData.fac[att].short, best.name, GameData.fac[dfn].name], Campaign.mdist(best.sx, best.sy, G.player.x, G.player.y) < 900.0)
+	else:
+		Campaign.shortage(best, ["food", "fuel", "medicine", "munitions"], 0.2, "siege")
+		news("SIEGE. A %s attack on %s is beaten off. The %s holds the port." % [GameData.fac[att].short, best.name, GameData.fac[dfn].name], Campaign.mdist(best.sx, best.sy, G.player.x, G.player.y) < 900.0)
 
 ## A port changes hands: its market, officers and contract board are the new owner's from now on.
 func capture(p: Dictionary, by: String) -> void:
 	var G := g(); var old: String = p.fac
+	Campaign.shortage(p, Campaign.goods_ids(), 0.3, "taken")   # a port that has just been fought over is short of everything
 	var home: String = Campaign.C.ports[int(p.id)].fac   # who held it in 1946: an ally retaking it hands it back
 	if home != by and home != old and (rel(home, by) >= float(D.bands.allied) or (coalition_of(home) != "" and coalition_of(home) == coalition_of(by))):
 		p.fac = home; p.merge(Campaign.market_mods(home), true); p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
@@ -268,7 +271,8 @@ func _fight(a: Dictionary, b: Dictionary, why: String) -> void:
 	var odds := (sb / maxf(sa, 1.0)) if a_wins else (sa / maxf(sb, 1.0))
 	if w.ships.size() > 1 and randf() < 0.25 * minf(1.0, odds): w.ships.pop_back()
 	a.cc = 30.0; b.cc = 30.0
-	for f in [a, b]: if f.ships.is_empty(): Campaign.G.fleets.erase(f)
+	for f in [a, b]:
+		if f.ships.is_empty(): Campaign.G.fleets.erase(f); Campaign.convoy_lost(f)
 	var P: Dictionary = Campaign.G.player; var d := Campaign.mdist(a.x, a.y, P.x, P.y)
 	var tell := d < 600.0 or why == "incident"
 	var lead := ("Incident %s: %s and %s ships traded fire." % [where(a.x, a.y), _who(a), _who(b)]) if why == "incident" else ("Action %s:" % where(a.x, a.y))
@@ -336,10 +340,11 @@ func thanks(fac: String, n: int) -> void:
 	for e in who: G.rep[e] = mini(100, G.rep.get(e, 0) + n * (2 if G.commission != null and G.commission.fac == e else 1))
 	Campaign.rep_note("Thanks for beating their enemies")
 
-## Wartime prices: munitions and fuel dearer in the ports of a power at war.
+## Wartime prices: munitions and fuel dearer in the ports of a power at war, steel and medicine a little.
+const WAR_PRICE := {"munitions": 1.25, "fuel": 1.25, "steel": 1.12, "medicine": 1.15}
 func price_mult(fac: String, gid: String) -> float:
-	if gid != "munitions" and gid != "fuel": return 1.0
-	for o in POWERS: if at_war(fac, o): return 1.25
+	if not WAR_PRICE.has(gid) or not POWERS.has(fac): return 1.0
+	for o in POWERS: if at_war(fac, o): return float(WAR_PRICE[gid])
 	return 1.0
 
 # ------------------------------------------------------------------ contracts

@@ -91,6 +91,7 @@ func assault(p: Dictionary) -> Dictionary:
 	var res := {"name": p.name, "men": men, "lost": lost, "won": won and left > 0, "odds": odds, "defenders": int(round(D)), "from": old, "took": []}
 	if res.won:
 		var ashore := mini(left, hold_need(p)); G.troops = left - ashore
+		Campaign.shortage(p, Campaign.goods_ids(), 0.3, "taken")
 		p.fac = "player"; p.from = old; p.men = ashore; p.took = G.day; p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
 		for s in Structures.all():   # what stands round the port follows it, under its own militia
 			if int(s.port) == int(p.id) and s.fac == old:

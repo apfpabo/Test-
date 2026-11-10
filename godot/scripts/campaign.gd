@@ -487,6 +487,92 @@ func fleet_turn_rate(ships: Array) -> float:
     for s in ships: L = maxf(L, hull(s).L)
     return clampf(0.55 - L / 800.0, 0.15, 0.45)
 
+# ------------------------------------------------------------------ the economy: wars, sieges, convoys and works
+## Prices answer to the world (owner's order of work, step 2; docs/ECONOMY.md). Each port carries a shortage per good
+## (`short`: 0 is normal, 0.3 is thirty per cent dearer, a little below nought is a glut) and the day each cause last
+## bit (`why`), both saved. Convoys that arrive bring it down, convoys lost put it up, a siege or a blockade puts it
+## up, and it wears off by a twentieth a day. A power's farms, steelworks, oil works and industry feed all its
+## markets (`G.works`, worked out once a day): what is burning, taken or destroyed makes that good dearer everywhere
+## under the flag. War demand is Diplomacy.price_mult.
+const SHORT_MAX := 0.9
+const FEEDS := {"farm": ["food"], "mine": ["steel"], "oil": ["fuel"], "industry": ["munitions", "electronics"], "nuclear": ["munitions", "electronics"]}
+const WHY := {"convoy": "a convoy bound here was lost", "siege": "an attack on the port was beaten off", "taken": "the port changed hands", "blockade": "hostile ships lie off the port"}
+func _econ(p: Dictionary) -> void:
+    if not p.has("short"): p.short = {}; p.why = {}
+    for g in C.GOODS: if not p.short.has(g.id): p.short[g.id] = 0.0
+func _need(p: Dictionary) -> float:
+    _econ(p); var t := 0.0
+    for gid in p.short: t += float(p.short[gid])
+    return t
+func goods_ids() -> Array: return C.GOODS.map(func(g): return g.id)
+## Push a port's shortage of some goods up (or down); `why` is a key of WHY, or "" for good news.
+func shortage(p: Dictionary, goods: Array, amt: float, why := "") -> void:
+    _econ(p)
+    for gid in goods: p.short[gid] = clampf(float(p.short[gid]) + amt, -0.15, SHORT_MAX)
+    if why != "": p.why[why] = int(G.day)
+func works_mult(fac: String, gid: String) -> float: return float(G.get("works", {}).get(fac, {}).get(gid, 1.0))
+## Everything the world does to a price at this port, as one factor (war demand, shortage, the flag's works).
+func supply_mult(p: Dictionary, gid: String) -> float:
+    _econ(p)
+    return clampf(Diplomacy.price_mult(p.fac, gid) * (1.0 + float(p.short[gid])) * works_mult(p.fac, gid), 0.6, 2.4)
+## Why prices here are what they are, as short phrases for the market page (newest causes only).
+func market_notes(p: Dictionary) -> Array:
+    _econ(p); var out := []
+    for k in WHY: if p.why.has(k) and int(G.day) - int(p.why[k]) <= 20 and goods_ids().any(func(gid): return float(p.short[gid]) > 0.08): out.append(WHY[k])
+    if p.fac != "player" and Diplomacy.POWERS.has(p.fac) and Diplomacy.POWERS.any(func(o): return Diplomacy.at_war(p.fac, o)): out.append("the %s is at war" % GameData.fac[p.fac].short)
+    var lost := []
+    for g in C.GOODS: if works_mult(p.fac, g.id) > 1.08: lost.append(String(g.name).to_lower())
+    if lost.size(): out.append("works of this flag are burning or lost (%s)" % ", ".join(lost))
+    var glut := []
+    for g in C.GOODS: if float(p.short[g.id]) < -0.06: glut.append(String(g.name).to_lower())
+    if glut.size(): out.append("convoys have lately landed %s" % ", ".join(glut))
+    return out
+## A convoy makes port: what it carries is landed. One that never arrives is missed.
+func convoy_landed(f: Dictionary) -> void:
+    if not f.has("dest") or f.get("cargo", {}).is_empty(): return
+    var gl := []
+    for gid in f.cargo: if float(f.cargo[gid]) > 0: gl.append(gid)
+    shortage(G.ports[int(f.dest)], gl, -0.07)
+func convoy_lost(f: Dictionary) -> void:
+    if f.get("kind", "") != "convoy" or not f.has("dest") or f.get("missed", false): return
+    f.missed = true
+    var p: Dictionary = G.ports[int(f.dest)]; var gl := []
+    for gid in f.get("cargo", {}): gl.append(gid)
+    if gl.is_empty(): gl = goods_ids()
+    shortage(p, gl, 0.12, "convoy")
+    var worst := 0.0
+    for gid in gl: worst = maxf(worst, float(p.short[gid]))
+    if worst >= 0.3 and int(p.get("shortDay", -99)) < int(G.day) - 10:
+        p.shortDay = int(G.day); Diplomacy.news("SHORTAGE. %s is running short: the convoys are not getting through, and prices there are climbing." % p.name, mdist(p.sx, p.sy, G.player.x, G.player.y) < 900.0)
+## Once a day: shortages wear off, blockaded ports go short, and each flag's works are counted.
+func econ_day() -> void:
+    var hostile: Array = G.fleets.filter(func(f): return f.kind == "raiders" or f.kind == "patrol" or Structures._is_assault(f) or Flag.is_relief(f))
+    for p in G.ports:
+        _econ(p)
+        for gid in p.short: p.short[gid] = float(p.short[gid]) * 0.95
+        for f in hostile:
+            if f.fac == p.fac or mdist(f.x, f.y, p.sx, p.sy) > 60.0: continue
+            if f.kind == "raiders" or (p.fac == "player" and Flag.is_relief(f)) or (Diplomacy.POWERS.has(f.fac) and Diplomacy.POWERS.has(p.fac) and Diplomacy.at_war(f.fac, p.fac)):
+                shortage(p, ["food", "fuel", "medicine"], 0.03, "blockade"); break
+        # you blockade a port yourself by lying off it while at war with its flag
+        if p.fac != "player" and not G.get("docked", false) and at_war(p.fac) and mdist(G.player.x, G.player.y, p.sx, p.sy) < 60.0: shortage(p, ["food", "fuel", "medicine"], 0.03, "blockade")
+    var tot := {}; var up := {}; var held := {}
+    for s in Structures.all():
+        if not FEEDS.has(s.kind): continue
+        var home: String = s.get("home", s.fac); var ok: bool = not s.get("nuked", false) and not Structures.silenced(s)
+        for gid in FEEDS[s.kind]:
+            var k: String = home + "|" + gid; tot[k] = int(tot.get(k, 0)) + 1
+            if ok and s.fac == home: up[k] = int(up.get(k, 0)) + 1
+            if ok and s.fac == "player" and home != "player": held[gid] = int(held.get(gid, 0)) + 1
+    var w := {}
+    for k in tot:
+        var fg: PackedStringArray = k.split("|")
+        if not w.has(fg[0]): w[fg[0]] = {}
+        w[fg[0]][fg[1]] = 1.0 + 0.4 * (1.0 - float(up.get(k, 0)) / float(tot[k]))
+    w["player"] = {}
+    for gid in held: w["player"][gid] = maxf(0.7, 1.0 - 0.06 * int(held[gid]))   # works you hold feed your own harbours
+    G.works = w
+
 # ------------------------------------------------------------------ new game and world
 func market_mods(fac: String) -> Dictionary:
     var mod = {}; var drift = {}
@@ -618,6 +704,8 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         var from: Dictionary = G.ports[from_id]; var en = enemies_of(fac)
         var dests: Array = G.ports.filter(func(p): return p.id != from_id and not en.has(p.fac) and mdist(p.sx, p.sy, from.sx, from.sy) < 2600)
         var d: Dictionary = dests.pick_random() if dests.size() else G.ports.filter(func(p): return p.id != from_id).pick_random()
+        if dests.size() > 1 and randf() < 0.5:   # half the convoys sail for whichever port in reach is shortest of goods
+            for p in dests: if _need(p) > _need(d) + 0.05: d = p
         f.dest = d.id; f.from = from_id
         for g in C.GOODS: if randf() < 0.55: f.cargo[g.id] = randi_range(15, 50) * n
         f.cargo.fuel = int(f.cargo.get("fuel", 0)) + randi_range(40, 120)   # bunker fuel to spare: a merchant will sell it
@@ -866,6 +954,7 @@ func new_day(moved: bool) -> void:
         var lost = int(ceil(G.crew * 0.05)); G.crew -= lost; G.credits = 0; toast.emit("Pay is in arrears. %d sailors walked off." % lost)
     for p in G.ports:
         for g in C.GOODS: p.drift[g.id] = clampf(p.drift[g.id] * 0.93 + (randf() - 0.5) * 0.05, -0.3, 0.45)
+    econ_day()
     rep_note("Other dealings")
     for k in G.rep: G.rep[k] = clampi(int(G.rep[k]), -100, 100)   # standing has a floor and a ceiling, whatever pushed it
     rep_note("Beyond the limits of -100 and 100 (not counted)")
@@ -1000,6 +1089,7 @@ func update(dt: float) -> void:
                 elif f.has("dest") and f.get("started", false):
                     if int(f.get("escort", 0)) > 0: Diplomacy.on_convoy_arrived(f)
                     if f.fac == "player": Flag.convoy_arrived(f)
+                    convoy_landed(f)
                     G.fleets.erase(f); continue
                 if Structures._is_assault(f) or Flag.is_relief(f): pass
                 elif f.has("dest"):
@@ -1508,7 +1598,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
         if f.has("home"): set_course(f, f.home.x, f.home.y)
     if f != null:
         if gone:
-            G.fleets.erase(f)
+            G.fleets.erase(f); convoy_lost(f)
             if f.kind == "bounty": r.bounty = f.reward; log_ev("Collected the bounty on " + f.captain)
         else: f.cool = 8.0
     G.credits += r.coin + r.bounty

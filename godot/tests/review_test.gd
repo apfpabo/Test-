@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions()
-	ok(sections == 6, "every section ran to its end (%d of 6)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy()
+	ok(sections == 7, "every section ran to its end (%d of 7)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -509,4 +509,54 @@ func _decisions() -> void:
 		var oldo := {"id": "7", "name": "Vera Quint", "face": "p01.jpg"}; ArtT.portrait(oldo)
 		ok(bad == 0 and ArtT.is_woman(str(oldo.face)), "portraits fit the officers' names (%d wrong of 300; an old save's mismatch is re-picked: %s)" % [bad, oldo.face])
 		ok(seen.size() >= 20 and not seen.has("port.jpg"), "nearly every portrait is used and none is a scene (%d of %d)" % [seen.size(), ArtT.faces().size()])
+	sections += 1
+
+## The economy answers to wars, sieges, convoys and works (docs/ECONOMY.md).
+func _economy() -> void:
+	Campaign.new_game("commission")
+	var G: Dictionary = Campaign.G; G.fleets.clear(); G.wars = {}
+	var p: Dictionary = G.ports.filter(func(q): return q.fac == "directorate" and not q.capital)[0]
+	Campaign.econ_day()
+	var base: float = Campaign.supply_mult(p, "food"); var fuel0: float = Campaign.supply_mult(p, "fuel")
+	ok(absf(base - 1.0) < 0.01 and absf(fuel0 - 1.0) < 0.01, "at peace, with every works standing, the world leaves prices alone (food x%.2f, fuel x%.2f)" % [base, fuel0])
+	# a convoy lost on the way is missed where it was bound; one that arrives is not
+	var c := _fleet("convoy", "directorate", p.sx + 300, p.sy, ["freighter"]); c.dest = int(p.id); c.cargo = {"food": 40, "steel": 30}
+	Campaign.convoy_lost(c); Campaign.convoy_lost(c)
+	ok(absf(Campaign.supply_mult(p, "food") - 1.12) < 0.01 and absf(Campaign.supply_mult(p, "medicine") - 1.0) < 0.01, "a lost convoy makes what it carried dearer where it was bound, once (food x%.2f, medicine x%.2f)" % [Campaign.supply_mult(p, "food"), Campaign.supply_mult(p, "medicine")])
+	ok(Campaign.market_notes(p).size() == 1, "and the market page says why: %s" % str(Campaign.market_notes(p)))
+	var c2 := _fleet("convoy", "directorate", p.sx, p.sy, ["freighter"]); c2.dest = int(p.id); c2.cargo = {"food": 40}
+	Campaign.convoy_landed(c2); G.fleets.clear()
+	ok(absf(Campaign.supply_mult(p, "food") - 1.05) < 0.01, "a convoy that makes port brings the price down again (food x%.2f)" % Campaign.supply_mult(p, "food"))
+	for i in 40: Campaign.econ_day()
+	ok(absf(Campaign.supply_mult(p, "food") - 1.0) < 0.02, "left alone, a shortage wears off in a few weeks (food x%.2f)" % Campaign.supply_mult(p, "food"))
+	# war demand, and a port that changes hands
+	G.wars[Diplomacy.pair("directorate", "concord")] = {"day": G.day}
+	ok(Campaign.supply_mult(p, "munitions") > 1.2 and Campaign.supply_mult(p, "steel") > 1.1 and absf(Campaign.supply_mult(p, "food") - 1.0) < 0.02, "a power at war pays more for munitions, fuel, steel and medicine, not for food")
+	# raiders lying off a port starve it; so does an enemy squadron in a war
+	var r := _fleet("raiders", "raiders", p.sx + 20, p.sy, ["dd"])
+	for i in 10: Campaign.econ_day()
+	var blk: float = Campaign.supply_mult(p, "food")
+	ok(blk > 1.2, "raiders lying off a port for ten days make food dear there (x%.2f)" % blk)
+	G.fleets.clear(); G.wars = {}
+	for i in 60: Campaign.econ_day()
+	Diplomacy.capture(p, "concord")
+	ok(Campaign.supply_mult(p, "food") > 1.25 and Campaign.market_notes(p).has(Campaign.WHY.taken), "a port that has just changed hands is short of everything (food x%.2f)" % Campaign.supply_mult(p, "food"))
+	# the works that feed a flag
+	var farms: Array = Structures.all().filter(func(s): return s.kind == "farm" and s.get("home", s.fac) == "directorate" and s.fac == "directorate")
+	if farms.size():
+		var q: Dictionary = G.ports.filter(func(x): return x.fac == "directorate")[0]
+		for s in farms: s.dmg = 1.0
+		Campaign.econ_day()
+		ok(absf(Campaign.works_mult("directorate", "food") - 1.4) < 0.01 and Campaign.supply_mult(q, "food") > 1.35, "with every farm of a flag burning, food is dear in all its ports (x%.2f)" % Campaign.supply_mult(q, "food"))
+		for s in farms: s.dmg = 0.0
+		farms[0].fac = "player"; Campaign.econ_day()
+		ok(Campaign.works_mult("player", "food") < 1.0 and Campaign.works_mult("directorate", "food") > 1.0, "a farm you hold feeds your harbours and is missed by the flag that lost it")
+		farms[0].fac = "directorate"
+	else: ok(false, "the Directorate has farms to test with")
+	# prices stay within bounds whatever is piled on
+	Campaign.shortage(p, Campaign.goods_ids(), 5.0, "siege"); G.wars[Diplomacy.pair(p.fac, "directorate")] = {"day": G.day}
+	ok(Campaign.supply_mult(p, "munitions") <= 2.4, "however much is piled on, the world cannot more than multiply a price by 2.4")
+	# a save made before this had no shortages: the port still prices
+	p.erase("short"); p.erase("why"); G.erase("works")
+	ok(absf(Campaign.supply_mult(p, "food") - 1.0) < 0.01, "a port from an older save, with no shortages recorded, prices as before")
 	sections += 1

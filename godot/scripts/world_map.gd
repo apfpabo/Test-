@@ -1405,7 +1405,7 @@ func apply_refit(s: Dictionary, plan: Array) -> void:
 func port_price(p: Dictionary, gid: String) -> int:
     var base = 1.0
     for g in Campaign.C.GOODS: if g.id == gid: base = g.base
-    return maxi(1, int(round(base * p.mod[gid] * (1 + p.drift[gid]) * Diplomacy.price_mult(p.fac, gid))))
+    return maxi(1, int(round(base * p.mod[gid] * (1 + p.drift[gid]) * Campaign.supply_mult(p, gid))))
 func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p, gid) * 1.06 * (1.1 if Campaign.G.rep.get(p.fac, 0) < 0 else 1.0) * (1.15 if Campaign.restricted(p.fac) else 1.0) * (1.0 - float(Campaign.perk("trade", 0.0)))))
 func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93 * (0.9 if Campaign.restricted(p.fac) else 1.0) * (1.0 + float(Campaign.perk("trade", 0.0)))))
 
@@ -1504,7 +1504,7 @@ func _market(box: Control, p: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var free = Campaign.cargo_cap() - Campaign.cargo_used()
     _p(box, "Hold %d / %d · Funds %s · Fleet burns %.1f fuel a day under way · Bunkers %d / %d%s" % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.fmt(G.credits), Campaign.fuel_use(), int(G.cargo.fuel), Campaign.bunker_cap(), (" (%d in oilers' tanks)" % Campaign.tank_cap()) if Campaign.tank_cap() > 0 else ""], UI.DIM, 14)
     for g in Campaign.C.GOODS:
-        var gid: String = g.id; var m: float = p.mod[gid] * (1 + p.drift[gid])
+        var gid: String = g.id; var m: float = p.mod[gid] * (1 + p.drift[gid]) * Campaign.supply_mult(p, gid)
         var tag = " · surplus" if m < 0.75 else (" · shortage" if m > 1.3 else "")
         var bp = buy_price(p, gid); var sp = sell_price(p, gid); var held = int(floor(G.cargo[gid]))
         var can: bool = G.credits >= bp and (Campaign.fuel_room() >= 1 if gid == "fuel" else free >= 1)
@@ -1512,7 +1512,9 @@ func _market(box: Control, p: Dictionary) -> void:
         box.add_child(UI.row([nm, UI.label("buy %d · sell %d · held %d" % [bp, sp, held], UI.DIM, 13),
             UI.button("Buy 10", func(): _buy(p, gid, 10), false, not can), UI.button("Max", func(): _buy(p, gid, -1), false, not can),
             UI.button("Sell 10", func(): _sell(p, gid, 10), false, held < 1), UI.button("Sell all", func(): _sell(p, gid, -1), false, held < 1)]))
-    _p(box, "Your own trading moves local prices. Buying drives them up, selling drives them down.", UI.DIM, 13)
+    var why: Array = Campaign.market_notes(p)
+    if why.size(): _p(box, "Supply: " + "; ".join(why) + ".", UI.GOLD, 13)
+    _p(box, "Prices follow the world: wars, sieges, convoys that arrive or are lost, and the works that feed a flag. Your own trading moves them too.", UI.DIM, 13)
 
 func _buy(p: Dictionary, gid: String, n: int) -> void:
     var G: Dictionary = Campaign.G; var bp = buy_price(p, gid)

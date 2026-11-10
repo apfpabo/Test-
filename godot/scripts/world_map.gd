@@ -1597,7 +1597,7 @@ func close_drawer() -> void:
     tw.chain().tween_callback(d.queue_free)
 func _fit_drawer(scroll: ScrollContainer, box: Control, keep: int) -> void:
     if not is_instance_valid(scroll): return
-    scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y - 150)
+    scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y * 0.52)   # and about half its height: the rest scrolls
     if keep > 0:
         await get_tree().process_frame
         if is_instance_valid(scroll): scroll.scroll_vertical = keep
@@ -1608,7 +1608,7 @@ func show_command() -> void:
     if not fresh and not new_tab: keep = drawer_scroll.scroll_vertical
     if is_instance_valid(drawer): drawer.queue_free()
     drawer_tab = cmd_tab
-    var vs := get_viewport_rect().size; var w := minf(960.0, vs.x - 28.0)
+    var vs := get_viewport_rect().size; var w := clampf(vs.x * 0.42, 560.0, 720.0)   # a drawer, not a screen: under half the chart's width
     var pc := PanelContainer.new(); pc.mouse_filter = Control.MOUSE_FILTER_STOP; ui.add_child(pc); ui.move_child(pc, cmdbar.get_index())
     pc.set_anchor_and_offset(SIDE_LEFT, 0, 14); pc.set_anchor_and_offset(SIDE_BOTTOM, 1, -58); pc.set_anchor_and_offset(SIDE_TOP, 1, -98)   # just above the tabs
     pc.grow_vertical = Control.GROW_DIRECTION_BEGIN; pc.custom_minimum_size.x = w

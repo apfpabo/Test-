@@ -225,6 +225,14 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - Nuclear plants: the Concord, the Directorate, the Federation, the Combine and the Enclaves each hold one (the industrial works nearest the capital). Warheads are made only at a working plant, one a month from each you hold, and fitted at a port or base of your own (the Enclaves no longer sell them). A power answers a nuclear strike in kind only if it, or a coalition ally, is of the missile age and still has a working plant: silence, take or destroy the plant and it cannot.
   - A nuclear strike is shown: the missile coming in, the flash, the fireball and shock ring, then the stem and cap of the mushroom cloud rising over the crater (`scripts/nuke_view.gd`, `tests/shot_nuke.tscn`).
   - Standing: hovering a power's name shows what its standing is made of ("Nuclear strike -100", "Thanks for beating their enemies +6", ...) and, if it is at war with you, why (`Campaign.rep_note`, `rep_lines`).
+- **The owner's order of work after the review (10 Nov 2026).** From a comparison with Starsector and Rule the Waves, in the order the owner set:
+  1. **Art pass on the chart** (in progress): coastlines rounded instead of stepped, harbour towns drawn close in, a flag for every power (`scripts/flags.gd`), then officer portraits and a handful of event illustrations (waiting on the owner's choice of how they are made).
+  2. **Economy that reacts to wars and sieges, then a supply-based fleet limit.**
+  3. **A refit budget.** The owner likes it but asked how it fits real ships. Answer: real refits were ruled by weight and stability. Every hull has a margin of topweight and displacement; heavier guns, more AA, radar and armour eat it, and going over costs speed, stability (worse gunnery in a sea, slower roll) and freeboard. So each design gets a weight budget, the standard fit uses most of it, and a refit trades one thing for another, as the navies did (a turret landed for AA, torpedoes for radar).
+  4. **Battle depth for the player:** orders to single ships and divisions, smoke, star shell, and more for the flagship to manage from moment to moment.
+  5. **Music, and a sound check on the owner's machine.**
+  6. **Tuning the first two hours**, last, once the above are in.
+  7. Then, from the owner's list: gunnery that finds the range over successive salvos (and a look at the compressed ranges); flooding, list, counter-flooding and crew quality in the damage model; and the fitting and combat-decision gaps above, taken further.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

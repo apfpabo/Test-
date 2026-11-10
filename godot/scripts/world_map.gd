@@ -108,10 +108,23 @@ func _uvs(pv: PackedVector2Array) -> PackedVector2Array:
     for p in pv: out.append(Vector2(p.x * k.x, clampf(p.y * k.y, 0.5, terrain.get_height() - 0.5)))
     return out
 
+## Rounds a coastline traced from the 0.1 degree land grid (all right angles) by cutting its corners twice (Chaikin):
+## every vertex moves less than half a cell, so the drawn coast still agrees with the mask ships are tested against.
+func _smooth(pv: PackedVector2Array) -> PackedVector2Array:
+    if pv.size() < 4: return pv
+    for it in 2:
+        var out := PackedVector2Array(); var n := pv.size()
+        for i in n:
+            var a: Vector2 = pv[i]; var b: Vector2 = pv[(i + 1) % n]
+            out.append(a.lerp(b, 0.25)); out.append(a.lerp(b, 0.75))
+        pv = out
+    return pv
+const Flags = preload("res://scripts/flags.gd")
 func _prepare_land() -> void:
     for poly in Campaign.C.land:
         var pv = PackedVector2Array()
         for i in range(0, poly.size(), 2): pv.append(Vector2(poly[i], poly[i + 1]))
+        pv = _smooth(pv)   # the coast as a line, not the steps of the grid it was traced from
         var closed = pv.duplicate(); closed.append(pv[0]); coast_lines.append(closed)
         if not Geometry2D.triangulate_polygon(pv).is_empty(): land_tris.append(pv)
         else:
@@ -342,7 +355,12 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var s = (7.0 if p.capital else 5.5) / z
             draw_line(Vector2(x, p.y), Vector2(map.rx(p.sx), p.sy), Color(0.89, 0.91, 0.89, 0.35), 1.0 / z)
             var col = Color(GameData.fac[p.fac].map)
-            if p.capital: draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), Color("#ecebe2")); draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), col, false, 3.0 / z)
+            if z >= 2.2:   # close in: the harbour town itself, on the shore and facing its roadstead, under its flag
+                var face: float = Campaign.mang(p.x, p.y, p.sx, p.sy); var pr: float = 6.5 if p.capital else 4.8
+                InstallationArt.draw(self, "capital" if p.capital else "port", Vector2(x, p.y), pr, int(p.id) * 13 + 5, face, 0.0, 0.0, false, map.tnow)
+                var fp := Vector2(x, p.y) + Vector2(0, -pr * 0.9); var fh := 13.0 / z
+                draw_line(fp, fp + Vector2(0, -fh * 1.9), Color(0.85, 0.85, 0.8), 1.0 / z); map.Flags.draw(self, p.fac, Rect2(fp + Vector2(0, -fh * 1.9), Vector2(fh * 1.55, fh)))
+            elif p.capital: draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), Color("#ecebe2")); draw_rect(Rect2(x - s, p.y - s, s * 2, s * 2), col, false, 3.0 / z)
             else: draw_circle(Vector2(x, p.y), s, Color("#ecebe2")); draw_arc(Vector2(x, p.y), s, 0, TAU, 20, col, 3.0 / z)
         for m in Diplomacy.marks():   # active contracts: where to go
             var x: float = map.rx(m[0]); var rr: float = 11.0 / z
@@ -409,7 +427,8 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
                 var fc: Color = Color("#e3b23c") if mine else (Color(0.6, 0.6, 0.55) if s.fac == "" else Color(GameData.fac[s.fac].map))
                 var fp := dc + Vector2(0, -R * 0.95)   # a small flag on its staff
                 draw_line(fp, fp + Vector2(0, -9.0 / z), Color(0.85, 0.85, 0.8), 1.0 / z)
-                draw_colored_polygon(PackedVector2Array([fp + Vector2(0, -9.0 / z), fp + Vector2(7.0 / z, -7.0 / z), fp + Vector2(0, -5.0 / z)]), fc)
+                if s.fac == "": draw_colored_polygon(PackedVector2Array([fp + Vector2(0, -9.0 / z), fp + Vector2(7.0 / z, -7.0 / z), fp + Vector2(0, -5.0 / z)]), fc)
+                else: map.Flags.draw(self, s.fac, Rect2(fp + Vector2(0, -13.0 / z), Vector2(15.5 / z, 10.0 / z)))   # its owner's flag
             else:
                 var ring: Color = Color("#e3b23c") if mine else (Color(0.55, 0.55, 0.5) if s.fac == "" else Color(GameData.fac[s.fac].map))
                 if s.get("nuked", false): draw_circle(c, 6.0 / z, Color(0.05, 0.05, 0.04, 0.85)); draw_arc(c, 6.0 / z, 0, TAU, 20, Color(0.75, 0.3, 0.2), 1.5 / z); draw_line(c - Vector2(3, 3) / z, c + Vector2(3, 3) / z, Color(0.75, 0.3, 0.2), 1.5 / z); draw_line(c - Vector2(3, -3) / z, c + Vector2(3, -3) / z, Color(0.75, 0.3, 0.2), 1.5 / z)
@@ -564,6 +583,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             if sp.x < -150 or sp.x > vs.x + 150: continue
             var s = 7.0 if p.capital else 5.5; var closed = Campaign.hostile(p.fac)
             _t(sp - Vector2(0, s + 5), p.name, Color("#eef0ec"), 15 if p.capital else 13)
+            if z > 0.45 and z < 2.2: map.Flags.draw(self, p.fac, Rect2(sp + Vector2(-s - 22, -7), Vector2(17, 11)))   # its flag beside the mark
             if z > 0.45: _t(sp + Vector2(0, s + 15), GameData.fac[p.fac].short + (" · capital" if p.capital else "") + (" · closed to you" if closed else ""), Color("#d9614a") if closed else Color(GameData.fac[p.fac].map), 11)
         for f in G.fleets:
             if not f.get("vis", true):
@@ -2129,7 +2149,7 @@ func _missions(box: Control, at_admiralty: bool, by := "") -> void:
         var stt: String = ("at war · engages on sight" + (" (incident, %d days)" % Campaign.incident_days(f) if Campaign.incident_days(f) > 0 else "")) if Campaign.at_war(f) else ("ports closed" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"))
         var sc: Color = UI.RED if Campaign.at_war(f) else (UI.GOLD if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM))
         nl.add_theme_color_override("font_color", Color(GameData.fac[f].map).lightened(0.15))   # each power in its own colour, as on the chart
-        box.add_child(UI.row([nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label(stt, sc, 13)]))
+        box.add_child(UI.row([Flags.icon(f, 15.0), nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label(stt, sc, 13)]))
     if not at_admiralty: _powers(box)
     if G.log.size():
         box.add_child(UI.label("LOG", UI.DIM, 12))

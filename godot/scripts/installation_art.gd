@@ -117,6 +117,7 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, R: float, seed: int, 
 		"farm": _farm(ci, c, R, r)
 		"industry": _industry(ci, c, R, r)
 		"nuclear": _nuclear(ci, c, R, r)
+		"port", "capital": _port(ci, c, R, r, face, kind == "capital"); return   # a town takes no bomb craters here
 	damage(ci, c, R, seed, dmg, ruin, face, {"battery": 0.5, "radar": 0.5, "navalbase": 0.6}.get(kind, -1.0))
 
 static func _airfield(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator, face: float) -> void:
@@ -226,6 +227,47 @@ static func _farm(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator
 	for i in 3: tank(ci, c + Vector2(R * (0.05 + i * 0.12), -R * 0.08).rotated(a), R * 0.05)   # silos
 	building(ci, c + Vector2(-R * 0.18, R * 0.02).rotated(a), R * 0.25, R * 0.12, a, ROOF, R * 0.03)   # depot sheds
 	building(ci, c + Vector2(-R * 0.5, -R * 0.3).rotated(a), R * 0.12, R * 0.08, a, ROOF, R * 0.02)
+
+## A harbour town from the air, the sea towards `face`: two moles round the basin, quays with cranes and piers,
+## sheds along the waterfront, the town's blocks behind in a loose grid with a square and a tower, oil tanks on the
+## flank; a capital is larger, with a dockyard's slips and a longer waterfront.
+static func _port(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator, face: float, capital: bool) -> void:
+	ci.draw_set_transform(c, face, Vector2.ONE)   # x runs out to sea, y along the shore
+	var W := R * (1.0 if capital else 0.8)
+	var water := Color(0.13, 0.26, 0.31); var stone := Color(0.62, 0.6, 0.55); var roofs := [ROOF, ROOF2, Color(0.56, 0.42, 0.34), Color(0.5, 0.5, 0.48)]
+	# the basin and its two moles
+	ci.draw_colored_polygon(PackedVector2Array([Vector2(R * 0.12, -W * 0.62), Vector2(R * 0.62, -W * 0.5), Vector2(R * 0.74, 0), Vector2(R * 0.62, W * 0.5), Vector2(R * 0.12, W * 0.62)]), water)
+	for sd in [-1.0, 1.0]:
+		var mole := PackedVector2Array(); for i in 9: var t := i / 8.0; mole.append(Vector2(R * (0.12 + 0.6 * t), sd * W * (0.66 - 0.5 * t * t)))
+		ci.draw_polyline(mole, stone.darkened(0.25), R * 0.05); ci.draw_polyline(mole, stone, R * 0.028)
+		ci.draw_circle(mole[8], R * 0.035, Color(0.85, 0.83, 0.75))   # the light at its head
+	# the quay, piers and cranes
+	ci.draw_rect(Rect2(R * 0.04, -W * 0.62, R * 0.09, W * 1.24), stone)
+	for k in (5 if capital else 3):
+		var y := W * (-0.45 + k * (0.9 / maxf(1.0, (4.0 if capital else 2.0))))
+		ci.draw_rect(Rect2(R * 0.12, y - R * 0.018, R * 0.26, R * 0.036), stone.darkened(0.1))
+		ci.draw_line(Vector2(R * 0.08, y + R * 0.06), Vector2(R * 0.2, y + R * 0.06), STEEL.darkened(0.35), R * 0.012)   # a crane's jib
+		ci.draw_rect(Rect2(R * 0.06, y + R * 0.045, R * 0.03, R * 0.03), STEEL.darkened(0.2))
+	# sheds along the waterfront
+	for k in (8 if capital else 5):
+		var y2 := W * (-0.58 + (k + 0.5) * (1.16 / (8.0 if capital else 5.0)))
+		building(ci, Vector2(-R * 0.06, y2), R * 0.11, W * 0.12, 0.0, roofs[k % 2], R * 0.02)
+	# the town: blocks in a loose grid, a square, a tower
+	var cols := 5 if capital else 4; var rows := 8 if capital else 5
+	for i in cols:
+		for j in rows:
+			if r.randf() < 0.14 or (i == 1 and j == rows / 2): continue
+			var p := Vector2(-R * (0.24 + i * 0.13) + r.randf_range(-0.01, 0.01) * R, W * (-0.56 + (j + 0.5) * (1.12 / rows)))
+			building(ci, p, R * r.randf_range(0.07, 0.1), W * r.randf_range(0.07, 0.1) * (5.0 / rows), r.randf_range(-0.06, 0.06), roofs[r.randi() % 4], R * 0.016)
+	var sq := Vector2(-R * 0.37, 0.0); ci.draw_rect(Rect2(sq - Vector2(R, R) * 0.045, Vector2(R, R) * 0.09), Color(0.7, 0.67, 0.58))
+	ci.draw_circle(sq + Vector2(R * 0.012, R * 0.012), R * 0.022, SHADOW); ci.draw_circle(sq, R * 0.02, Color(0.82, 0.8, 0.74))
+	for j in 4: ci.draw_line(Vector2(-R * 0.86, W * (-0.42 + j * 0.28)), Vector2(-R * 0.2, W * (-0.42 + j * 0.28)), Color(0.72, 0.68, 0.56, 0.5), R * 0.01)   # roads inland
+	for k in 3: tank(ci, Vector2(-R * 0.08 + k * R * 0.07, W * 0.74), R * 0.03)   # oil tanks on the flank
+	if capital:   # the dockyard: slips with a hull on one
+		for k in 2:
+			var sy := -W * 0.8 - k * R * 0.09
+			ci.draw_rect(Rect2(R * 0.0, sy, R * 0.3, R * 0.05), stone.darkened(0.15)); ci.draw_rect(Rect2(R * 0.04, sy + R * 0.012, R * 0.2, R * 0.026), Color(0.4, 0.2, 0.16) if k == 0 else stone.darkened(0.3))
+	ci.draw_set_transform(Vector2.ZERO)
 
 ## A nuclear plant: two cooling towers (rings shaded round their throats), a domed reactor hall, the long turbine
 ## hall, a separation works, a switchyard, and the fence round it all.

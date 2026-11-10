@@ -286,7 +286,7 @@ func strength(ships: Array) -> float:
     return t
 func cargo_cap() -> int:
     var t = 0
-    for s in G.fleet: t += int(hull(s).cargo)
+    for s in all_ships(): t += int(hull(s).cargo)
     return t
 func cargo_used() -> int:
     var t = 0
@@ -294,7 +294,7 @@ func cargo_used() -> int:
     return t
 func crew_need() -> int:
     var t = 0
-    for s in G.fleet: t += int(hull(s).crew)
+    for s in all_ships(): t += int(hull(s).crew)
     return t
 func crew_frac() -> float: return minf(1.0, G.crew / maxf(1.0, crew_need()))
 func fuel_use() -> float:
@@ -311,7 +311,7 @@ func reserve_cap() -> float: return fuel_use() * 4.0
 ## Fuel oil the squadron can carry: forty days' steaming in the ships' own bunkers, plus the cargo tanks of its oilers.
 func tank_cap() -> int:
     var t := 0
-    for s in G.fleet: t += int(hull(s).get("tank", 0))
+    for s in all_ships(): t += int(hull(s).get("tank", 0))
     return t
 func bunker_cap() -> int: return int(ceil(fuel_use() * 40.0)) + tank_cap()
 func fuel_room() -> int: return maxi(0, bunker_cap() - int(ceil(G.cargo.fuel)))
@@ -761,6 +761,7 @@ func new_day(moved: bool) -> void:
             if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
         else: G.iceWarned = false
     _storm_day(moved)
+    _readiness_day(moved)
     G.cargo.food -= food_use()
     if G.cargo.food < 0:
         G.cargo.food = 0; var lost = int(ceil(G.crew * 0.03)); G.crew -= lost
@@ -864,7 +865,14 @@ func update(dt: float) -> void:
             f.chasing = chase
         else:
             if f.get("chasing", false): f.chasing = false; f.route = null
-            if f.get("answering", false):   # answering your wireless call: steam to where you are
+            if f.get("body", false):   # your main body, left astern when the fast division was detached: it follows you
+                f.ansT = f.get("ansT", 0.0) - dt; rate = 1.0
+                if dP < 6.0: f.route = null
+                elif f.ansT <= 0.0:
+                    f.ansT = 1.5
+                    if not set_course(f, P.x, P.y): f.route = null
+                if f.get("join", false) and dP < 14.0: rejoin(); continue
+            elif f.get("answering", false):   # answering your wireless call: steam to where you are
                 f.ansT = f.get("ansT", 0.0) - dt
                 if f.ansT <= 0.0:
                     f.ansT = 1.5
@@ -915,6 +923,61 @@ func update(dt: float) -> void:
         var close_in: bool = ((P.follow == f.id or f.get("answering", false)) and dP < CONTACT * maxf(ky, 0.35)) or (hos and dP < CONTACT * maxf(kt, ky))   # inside gun range, whoever sees the other brings on the action
         if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
             f.met = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
+
+# ------------------------------------------------------------------ divisions, reserve and readiness
+## Every ship you own: the squadron you sail with and, when a fast division is detached, the main body left astern.
+func body():
+    for f in G.fleets: if f.get("body", false): return f
+    return null
+func all_ships() -> Array:
+    var b = body()
+    return G.fleet + b.ships if b != null else G.fleet
+## Detach a fast division: you go on with these ships, and the rest become the main body, which follows at its own
+## speed. It is a fleet like any other while it is apart: powers at war with you will fight it if they meet it.
+func detach(fast: Array) -> String:
+    if body() != null: return "The main body is already detached."
+    var rest: Array = G.fleet.filter(func(s): return not fast.has(s))
+    if fast.is_empty() or rest.is_empty(): return "Mark some ships, and leave some."
+    var P: Dictionary = G.player
+    var f = {"id": G.nextId, "kind": "division", "fac": "player", "h": P.h, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": rest, "cargo": {},
+        "x": P.x, "y": P.y, "home": {"x": P.x, "y": P.y}, "body": true, "join": false, "name": "Your main body"}
+    G.nextId += 1; G.fleets.append(f); G.fleet = fast
+    for s in G.fleet: s.erase("fast")
+    return "The fast division parts company: %d ships at %d knots. The main body (%d ships) follows at %d." % [fast.size(), int(fleet_map_speed(fast) / 0.576 * 0.7), rest.size(), int(fleet_map_speed(rest) / 0.576 * 0.7)]
+func rejoin() -> void:
+    var b = body()
+    if b == null: return
+    G.fleet.append_array(b.ships); G.fleets.erase(b)
+    toast.emit("The main body rejoins: %d ships in company." % G.fleet.size())
+
+## Readiness: how fresh a ship's company and machinery are, 1 down to RDY_MIN. Steaming wears it (faster at full
+## speed and in a storm, not at all at Slow), a battle costs a tenth and more for damage taken; lying hove to brings
+## it back slowly and rest in port quickly. In battle a tired ship reloads, steams and fights fires as if short of crew.
+const RDY_MIN := 0.3
+func readiness(s: Dictionary) -> float: return float(s.get("rdy", 1.0))
+func fleet_readiness() -> float:
+    var m := 1.0
+    for s in all_ships(): m = minf(m, readiness(s))
+    return m
+func _readiness_day(moved: bool) -> void:
+    var d := 0.0
+    if not moved: d = 0.012
+    else:
+        var k: float = {"slow": 0.0, "half": 0.5, "cruise": 1.0, "full": 1.8, "flank": 3.0}[speed_order()]
+        d = -0.004 * k * (2.5 if int(weather_here().sea) >= 3 else (1.4 if int(weather_here().sea) == 2 else 1.0))
+    for s in all_ships(): s.rdy = clampf(readiness(s) + d, RDY_MIN, 1.0)
+    var low := fleet_readiness()
+    if low < 0.55 and not G.get("rdyWarned", false):
+        G.rdyWarned = true; toast.emit("Your crews are worn out (readiness %d%%): tired ships reload and steam slower and fight fires badly. Rest them in port (Repairs & crew), or heave to." % int(low * 100))
+    elif low > 0.7: G.rdyWarned = false
+## Days alongside: the calendar runs on (wages, food, the world's business) and the crews rest.
+func rest_in_port(days: int) -> void:
+    G.docked = true
+    for i in days:
+        G.day_rest = true; new_day(false)
+        for s in all_ships(): s.rdy = minf(1.0, readiness(s) + 0.1)
+    G.docked = false; G.erase("day_rest"); save()
+func days_to_rest() -> int: return int(ceil((1.0 - fleet_readiness()) / 0.112))
 
 ## The weather where your squadron is (cached for the tick), and how far each side sees in it as a share of clear
 ## daylight: lookouts, or radar for a side that has it (you: the Fire-control radar research; a power: Era II).
@@ -1034,7 +1097,8 @@ func do_survey(poi: Dictionary) -> Dictionary:
 ## Squadrons for the battle scene, as records it can fight with directly.
 func battle_setup(f: Dictionary) -> Dictionary:
     var recs = []
-    for s in G.fleet: recs.append(s)
+    for s in G.fleet: if not s.get("reserve", false): recs.append(s)   # ships held in reserve stand off and take no part
+    if recs.is_empty(): for s in G.fleet: recs.append(s)
     for o in G.officers: o.lastShip = o.ship
     return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(fac_era(f.fac)),
         "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0,
@@ -1059,7 +1123,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     for s in sim.ships:
         if s.side == 0:
             if not s.alive: r.lost.append(s.rec); cas += s.d.crew * 0.5
-            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = sim.planes_left(s); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
+            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = sim.planes_left(s); s.rec.rdy = maxf(RDY_MIN, readiness(s.rec) - 0.1 - 0.25 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
         else:
             if not s.alive: r.sunk.append(s.rec)
             else:

@@ -94,10 +94,20 @@ func _draw() -> void:
         var tag = " · STRUCK" if s.struck else (" · fleeing" if s.flee else (" · submerged" if sim.submerged(s) else ""))
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
     # orders and help
-    var orders = [["1", "Engage", "engage"], ["2", "Escort", "escort"], ["3", "Retreat (break contact)", "retreat"]]
+    # squadron orders, in a row: the standing order in gold
+    var orders = [["1", "Engage", "engage"], ["2", "Form on flag", "escort"], ["4", "Line ahead", "line"], ["3", "Withdraw", "retreat"]]
+    var ox := 16.0
+    _text(Vector2(ox, 28), "SQUADRON", DIM, 11); ox += 74.0
     for i in orders.size():
-        var on: bool = sim.order == orders[i][2]
-        _text(Vector2(16, 28 + i * 18), ("▸ " if on else "   ") + orders[i][0] + " " + orders[i][1], GOLD if on else Color(INK, 0.55))
+        var on: bool = sim.order == orders[i][2]; var lbl: String = orders[i][0] + " " + orders[i][1]
+        var wd: float = font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
+        draw_rect(Rect2(ox, 13, wd, 21), Color(GOLD, 0.16) if on else Color(1, 1, 1, 0.04)); if on: draw_rect(Rect2(ox, 13, wd, 21), Color(GOLD, 0.7), false, 1)
+        _text(Vector2(ox + 8, 28), lbl, GOLD if on else Color(INK, 0.6)); ox += wd + 6.0
+    var hl := "5 Hold fire" + (" · HOLDING" if sim.hold_fire else "")
+    var hw: float = font.get_string_size(hl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
+    draw_rect(Rect2(ox + 10, 13, hw, 21), Color(RED, 0.2) if sim.hold_fire else Color(1, 1, 1, 0.04)); if sim.hold_fire: draw_rect(Rect2(ox + 10, 13, hw, 21), Color(RED, 0.8), false, 1)
+    _text(Vector2(ox + 18, 28), hl, RED if sim.hold_fire else Color(INK, 0.6))
+    _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
     _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)

@@ -10,7 +10,7 @@ var raid: Node
 func _ready() -> void:
 	out = OS.get_cmdline_user_args()[0]
 	seed(5)
-	Campaign.new_game("commission")
+	Campaign.new_game("commission"); Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	var G: Dictionary = Campaign.G
 	G.fleet = [Campaign.new_ship("cve_colossus", "Vigilant", "player", []), Campaign.new_ship("cve_casa", "Harbinger", "player", []), Campaign.new_ship("dd", "Escort", "player", [])]
 	G.crew = Campaign.crew_need() + 400; G.credits = 120000

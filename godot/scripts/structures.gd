@@ -361,7 +361,7 @@ func landing_force() -> int: return int(g().crew) + troops()
 func troops() -> int: return int(g().get("troops", 0))
 func troop_capacity() -> int:
 	var n := 0
-	for r in g().fleet: n += int(Campaign.hull(r).get("troops", 0))
+	for r in Campaign.all_ships(): n += int(Campaign.hull(r).get("troops", 0))
 	return n
 const TROOP_COST := 40      # to embark a soldier in port
 const TROOP_WAGE := 0.2     # a day

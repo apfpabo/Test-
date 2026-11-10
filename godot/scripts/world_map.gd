@@ -577,6 +577,8 @@ func _update_top() -> void:
     stats.HOLD.get_parent().tooltip_text = "Cargo aboard against the room in your holds (fuel is in the bunkers and does not count).\nFood: %d tons, eaten at %.1f a day by %s men: %s." % [int(G.cargo.food), eat, Campaign.fmt(int(G.crew) + Structures.troops()), ("%d days left" % int(G.cargo.food / eat)) if eat > 0.0 else "nobody to feed"]
     stats.HOLD.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     stats.HOLD.add_theme_color_override("font_color", UI.RED if eat > 0.0 and G.cargo.food / eat < 5.0 else UI.INK)
+    stats.CREW.get_parent().tooltip_text = "Crew aboard against the crew your ships need. Readiness of your most worn ship: %d%%." % int(Campaign.fleet_readiness() * 100)
+    stats.CREW.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()] + ((" · %s troops" % Campaign.fmt(Structures.troops())) if Structures.troops() > 0 else ""); stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
@@ -956,11 +958,30 @@ func _on_encounter(f: Dictionary) -> void:
         else:
             var who: String = ("Your mission target, " + f.name + ",") if f.get("mission", false) else ("The flotilla you were hired to hunt" if int(f.get("contract", 0)) > 0 else (("%s's squadron, worth %s," % [f.captain, Campaign.fmt(f.reward)]) if f.kind == "bounty" else "A " + GameData.fac[f.fac].name + " force"))
             box.add_child(UI.title("Contact")); box.add_child(_lead_pic(f)); _p(box, "%s is closing on you: %s." % [who, _counts(f.ships)]); _p(box, _contact_line(f), UI.DIM); _p(box, odds, UI.DIM)
+            _commit_rows(box, f)
             box.add_child(UI.row([UI.button("Battle stations", func(): _battle(f), true),
                 UI.button("Break off (%d%%)" % evade, func():
                     if randf() * 100 < evade: f.cool = 7.0; P.cool = 4.0; close_panel(); _toast("You turn away under a smoke screen and open the range.")
                     else: open_panel(func(b2): b2.add_child(UI.title("No escape")); _p(b2, "Their lookouts have you, and they hold the faster ships. You will have to fight."); b2.add_child(UI.button("Battle stations", func(): _battle(f), true)), true))]))
     , true)
+
+func _toggle_commit(s: Dictionary, f: Dictionary) -> void:
+    s.reserve = not s.get("reserve", false)
+    if Campaign.G.fleet.all(func(x): return x.get("reserve", false)): s.reserve = false   # somebody has to fight
+    _on_encounter(f)
+
+## On the contact panel: which of your ships will fight and which stand off in reserve, changed with a click.
+func _commit_rows(box: Control, f: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    if G.fleet.size() < 2: return
+    box.add_child(UI.label("YOUR SHIPS · CLICK TO COMMIT OR HOLD IN RESERVE", UI.DIM, 12))
+    var row := HFlowContainer.new(); row.add_theme_constant_override("h_separation", 6); row.add_theme_constant_override("v_separation", 6); box.add_child(row)
+    for s in G.fleet:
+        var res: bool = s.get("reserve", false)
+        var b := UI.button("%s%s" % [s.name, " · reserve" if res else ""], func(): _toggle_commit(s, f), not res)
+        b.tooltip_text = "%s, hull %d%%, readiness %d%%, magazines %d%%" % [Campaign.hull(s).name, int(float(s.hullFrac) * 100), int(Campaign.readiness(s) * 100), int(float(s.get("ammo", 1.0)) * 100)]
+        row.add_child(b)
+    _p(box, "Ships in reserve stand off: they take no part and no damage.", UI.DIM, 12)
 
 ## Where the contact was made and whose reach made it: lookouts and radar, missiles, or a carrier's search planes.
 ## Hailing a fleet that does not fire on you (alongside, or come to your wireless call): pass on, trade with a
@@ -1128,8 +1149,15 @@ func _fleet_table(box: Control, at_port: bool) -> void:
         var s: Dictionary = G.fleet[i]; var h: Dictionary = GameData.hulls[s.type]; var o = Campaign.officer_of(s)
         # two lines to a ship, so the buttons are never pushed off the panel by a long name
         var nm := UI.label(("★ " if i == 0 else "") + s.name, UI.GOLD if i == 0 else UI.INK); nm.custom_minimum_size.x = 190
-        box.add_child(UI.row([nm, UI.label("%s · %s class (%s)" % [h.name, h.dn, GameData.makers[h.yard].short], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13)]))
+        var rd: float = Campaign.readiness(s)
+        box.add_child(UI.row([nm, UI.label("%s · %s class (%s) · %s kn" % [h.name, h.dn, GameData.makers[h.yard].short, str(h.kn)], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
+            UI.label("Readiness %d%%" % int(rd * 100), UI.GREEN if rd > 0.8 else (UI.GOLD if rd > 0.55 else UI.RED), 13)]))
         var items = [_captain_pick(s)]
+        var rb := UI.button("In reserve ✓" if s.get("reserve", false) else "Hold in reserve", func(): s.reserve = not s.get("reserve", false); _rerender()); rb.tooltip_text = "A ship in reserve stands off when the squadron fights: she takes no part and no damage. Useful for transports, oilers and cripples."
+        items.append(rb)
+        if Campaign.body() == null and G.fleet.size() > 1:
+            var fb := UI.button("Fast division ✓" if s.get("fast", false) else "Mark for the fast division", func(): s.fast = not s.get("fast", false); _rerender()); fb.tooltip_text = "Mark your fastest ships, then detach them below to run down an enemy your slowest ship cannot catch."
+            items.append(fb)
         if at_port:
             var rc = repair_cost(s)
             items.append(UI.button("Repair · " + Campaign.fmt(rc), func(): G.credits -= rc; s.hullFrac = 1.0; _rerender(), false, rc == 0 or G.credits < rc))
@@ -1140,6 +1168,23 @@ func _fleet_table(box: Control, at_port: bool) -> void:
         else: items.append(UI.button("Scuttle", func(): _scuttle_id = str(s.id); _rerender(), false, G.fleet.size() < 2))
         if i: items.append(UI.button("Make flagship", func(): G.fleet.erase(s); G.fleet.push_front(s); _rerender()))
         box.add_child(UI.row(items))
+    _division_section(box)
+
+## Under the fleet list: detaching a fast division, and the main body when it is apart.
+func _division_section(box: Control) -> void:
+    var G: Dictionary = Campaign.G; var b = Campaign.body()
+    box.add_child(UI.label("DIVISIONS", UI.DIM, 12))
+    if b != null:
+        var km := int(Campaign.mdist(G.player.x, G.player.y, b.x, b.y) * Campaign.KM_PER_UNIT)
+        _p(box, "Your main body is detached: %s, %d km from you, following at %d knots. Apart from you it is a fleet like any other: a power at war with you will fight it if they meet." % [_counts(b.ships), km, int(Campaign.fleet_map_speed(b.ships) / 0.576 * 0.7)], UI.GOLD, 14)
+        box.add_child(UI.row([UI.button("Signal the main body to rejoin" if not b.get("join", false) else "Rejoining when in company ✓", func(): b.join = not b.get("join", false); _rerender(), not b.get("join", false))]))
+        _p(box, "It rejoins when it comes up with you (within about 75 km). Slow down or stop to let it.", UI.DIM, 13)
+        return
+    var fast: Array = G.fleet.filter(func(s): return s.get("fast", false))
+    if G.fleet.size() < 2: _p(box, "One ship is no squadron to divide.", UI.DIM, 13); return
+    var all_kn := int(Campaign.fleet_map_speed(G.fleet) / 0.576 * 0.7)
+    _p(box, "The squadron steams at the pace of its slowest ship: %d knots at cruising speed. Mark your fastest ships above and detach them to run down a faster enemy; the rest follow as the main body.%s" % [all_kn, (" The marked ships would make %d knots." % int(Campaign.fleet_map_speed(fast) / 0.576 * 0.7)) if not fast.is_empty() else ""], UI.DIM, 13)
+    box.add_child(UI.button("Detach the fast division (%d ships)" % fast.size(), func(): _toast(Campaign.detach(fast)); _rerender(), true, fast.is_empty() or fast.size() == G.fleet.size()))
 
 var _scuttle_id := ""
 ## Open the sea cocks: the ship is gone, with nothing for her but her crew, who stay with you.
@@ -1376,6 +1421,12 @@ func _repairs(box: Control) -> void:
     box.add_child(UI.row([UI.button("Repair all · " + Campaign.fmt(total), func(): _repair_all(total), false, total == 0 or G.credits < total),
         UI.button("Hire %s crew · %s" % [Campaign.fmt(short), Campaign.fmt(short * 25)], func(): G.credits -= short * 25; G.crew += short; _render_port(), false, short == 0 or G.credits < short * 25),
         UI.button("Hire 50 spare · 1,250", func(): G.credits -= 1250; G.crew += 50; _render_port(), false, G.credits < 1250)]))
+    var rlow := Campaign.fleet_readiness()
+    box.add_child(UI.label("READINESS", UI.DIM, 12))
+    _p(box, "Your most worn ship is at %d%%. Steaming wears crews and machinery (faster at Full and Flank and in heavy weather, not at all at Slow); a battle costs a tenth and more. Tired ships reload and steam slower and fight fires badly. Days alongside restore a tenth a day; wages and food run on." % int(rlow * 100), UI.DIM, 14)
+    var need_d := Campaign.days_to_rest()
+    box.add_child(UI.row([UI.button("Rest the crews 3 days", func(): Campaign.rest_in_port(3); _toast("Three days alongside."); _render_port(), false, rlow >= 0.999),
+        UI.button("Rest until fresh (%d days)" % need_d, func(): Campaign.rest_in_port(need_d); _toast("%d days alongside: the squadron is rested." % need_d); _render_port(), false, need_d <= 0)]))
     var cap := Structures.troop_capacity(); var men := Structures.troops()
     if cap > 0 or men > 0:
         box.add_child(UI.label("TROOPS", UI.DIM, 12))

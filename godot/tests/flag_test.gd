@@ -11,7 +11,7 @@ func _ready() -> void:
 	seed(5)
 	Campaign.new_game("commission")
 	var G: Dictionary = Campaign.G
-	ok(not Flag.founded() and Flag.can_found() != "" and not GameData.fac.has("player"), "no flag without ground: " + Flag.can_found())
+	ok(not Flag.founded() and Flag.can_found() != "", "no flag without ground: " + Flag.can_found())
 	var base: Dictionary = {}
 	for s in Structures.all(): if s.kind == "navalbase" and s.fac == "": base = s; break
 	if base.is_empty():
@@ -138,9 +138,9 @@ func _ready() -> void:
 	ok(G.fleet.size() == nf + 1 and port2.volunteers.is_empty(), "and is commissioned for a bounty")
 	port.fac = "player"; port.from = "directorate"; port.men = 300; port.took = G.day
 	if Flag.guard(port) == null: Flag.raise_guard(port)
-	Campaign.save(); GameData.fac.erase("player"); var loaded := Campaign.load_game()
+	Campaign.save(); GameData.fac.player.name = "x"; var loaded := Campaign.load_game()
 	print("after load: ports ", Flag.ports().size(), " treaty ", Flag.treaty("concord"), " battery ", Flag.works(Flag.ports()[0], "battery") if Flag.ports().size() else -1, " guard ", Flag.guard(Flag.ports()[0]) != null if Flag.ports().size() else false)
-	ok(loaded and GameData.fac.has("player") and Flag.ports().size() == 1 and Flag.treaty("concord") and Flag.works(Flag.ports()[0], "battery") == 1 and Flag.guard(Flag.ports()[0]) != null, "flag, port, treaty, works and guard survive a save")
+	ok(loaded and GameData.fac.player.name == "Meridian Company" and Flag.ports().size() == 1 and Flag.treaty("concord") and Flag.works(Flag.ports()[0], "battery") == 1 and Flag.guard(Flag.ports()[0]) != null, "flag, port, treaty, works and guard survive a save")
 	print(Flag.abandon(Flag.ports()[0])); ok(Flag.ports().is_empty(), "given up")
 	print("FLAG TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)

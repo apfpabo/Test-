@@ -21,8 +21,8 @@ func apply() -> void:
 	var G := g()
 	if G.has("flag"):
 		GameData.fac["player"] = {"name": G.flag.name, "short": G.flag.short, "map": COLOUR, "desc": "Your own flag, founded in %d." % Campaign.year()}
-	else:
-		GameData.fac.erase("player")
+	else:   # no flag yet: your ships still need a name and a colour (a detached division is drawn like any fleet)
+		GameData.fac["player"] = {"name": "Your squadron", "short": "Yours", "map": COLOUR, "desc": ""}
 
 ## Why you can't found a flag yet, or "".
 func can_found() -> String:

@@ -8,7 +8,7 @@ var bat: Dictionary
 var raid
 func _ready() -> void:
 	out = OS.get_cmdline_user_args()[0]; seed(9)
-	Campaign.new_game("commission")
+	Campaign.new_game("commission"); Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	var G: Dictionary = Campaign.G
 	G.fleet = [Campaign.new_ship("bb_iowa", "Resolute", "player", []), Campaign.new_ship("dd_fletcher", "Petrel", "player", [])]
 	G.crew = Campaign.crew_need() + 200

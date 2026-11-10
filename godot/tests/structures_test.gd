@@ -10,6 +10,7 @@ func ok(c: bool, what: String) -> void:
 func _ready() -> void:
 	seed(7)
 	Campaign.new_game("commission")
+	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}   # a clear day throughout: this test is about structures, not the weather
 	var G: Dictionary = Campaign.G; var S: Array = Structures.all()
 	var by := {}; var kinds := {}
 	for s in S: by[s.fac] = by.get(s.fac, 0) + 1; kinds[s.kind] = kinds.get(s.kind, 0) + 1

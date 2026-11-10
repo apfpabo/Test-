@@ -37,7 +37,7 @@ func _ready() -> void:
         sim.setup(cfg.player_recs, cfg.enemy_recs, pt, et, cfg.get("islands", 1))
         for sh in sim.ships:
             if sh.side == 0:
-                sh.cf = cfg.get("crew_frac", 1.0)
+                sh.cf = cfg.get("crew_frac", 1.0) * (0.7 + 0.3 * Campaign.readiness(sh.rec))   # a tired ship fights as if short-handed
                 if cfg.get("no_fuel", false): sh.fuel_k = 0.25   # dry bunkers: emergency reserves give steerage way, little more
                 for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk
             else: sh.sk = {"gun": mini(2, int(Campaign.G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
@@ -269,6 +269,8 @@ func _key(k: int) -> void:
         KEY_1: sim.order = "engage"; sim.say("All ships: engage.", 1.5)
         KEY_2: sim.order = "escort"; sim.say("All ships: form on the flagship.", 1.5)
         KEY_3: sim.order = "retreat"; sim.say("All ships withdraw! Open the range and break contact.", 2.5)
+        KEY_4: sim.order = "line"; sim.say("Form line ahead: follow in the flagship's wake.", 2.0)
+        KEY_5: sim.hold_fire = not sim.hold_fire; sim.say("Squadron: hold your fire." if sim.hold_fire else "Squadron: open fire.", 2.0)
         KEY_P: paused = not paused
         KEY_ESCAPE: hud.toggle_menu()
         KEY_Z:

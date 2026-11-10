@@ -136,6 +136,7 @@ var tracers: Array = []
 var hit_marks: Array = []        # floating hit results for the HUD: {pos, text, col, t, ours}
 var islands: Array = []
 var order = "engage"
+var hold_fire := false            # squadron order: every ship but the flagship holds her fire (to stay unseen at night, or save shells)
 var t = 0.0        # battle clock
 var vt = 0.0       # visual clock
 var end_t = 0.0
@@ -748,6 +749,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var aligned: bool = absf(ang_diff(want, m.ta)) < 0.04 and ac.x > 0
                 var in_range = p.distance_to(aim) < rng
                 var trigger = (mouse_down or (autofire and aim_lock)) if manual else true
+                if hold_fire and s.side == 0 and not manual and aim_air == null: trigger = false   # holding fire (the AA guns still defend the ship)
                 if manual:
                     m.st = "arc" if ac.x == 0 else "range" if not in_range else "train" if not aligned else "reload" if m.cd > 0 else "ready"
                     m.err = absf(ang_diff(want, m.ta)); gun_aim = {"pos": aim, "lock": aim_lock}
@@ -1018,6 +1020,23 @@ func ai_ship(s: CShip, dt: float) -> void:
     if s.tgt_t <= 0 or s.target == null or not engageable(s.target) or not visible_to(s.target, s.side):
         s.tgt_t = 10.0; s.target = best_target(s.pos, s.side, INF, Callable(), true) if heavy_guns(s) else nearest_enemy(s.pos, s.side)
     var tg = s.target
+    if s.side == 0 and order == "line" and flag != null and flag != s:
+        # line ahead: each ship follows in the wake of the one ahead of her, the flagship leading; guns fire as they bear
+        var col: Array = []
+        for x in ships: if x.side == 0 and x != flag and active(x) and x.d.kind != "carrier" and x.d.kind != "merchant" and not x.sub: col.append(x)
+        var idx := col.find(s)
+        if idx >= 0:
+            var lead: CShip = flag if idx == 0 else col[idx - 1]
+            var gap: float = lead.d.L * 0.5 + s.d.L * 0.5 + 350.0
+            # steer for the point astern of the leader on her track (her trail), or straight astern if she has none yet
+            var goal: Vector2 = lead.pos - Vector2.from_angle(lead.a) * gap; var run := 0.0; var prev: Vector2 = lead.pos
+            for i in range(lead.trail.size() - 1, -1, -1):
+                var tp: Vector2 = lead.trail[i].p; run += prev.distance_to(tp); prev = tp
+                if run >= gap * 0.75: goal = tp; break
+            var dd := s.pos.distance_to(goal)
+            s.rudder = helm(s, steer_avoid(s, (goal - s.pos).angle() if dd > 120.0 else lead.a))
+            s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
+            return
     if s.side == 0 and order == "escort" and flag != null and flag != s:
         var close = nearest_enemy(s.pos, s.side, 3000.0)
         if close == null:

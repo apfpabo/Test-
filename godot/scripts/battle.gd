@@ -308,6 +308,7 @@ class ShipView extends Node2D:
     var top: Sprite2D
     var style := "us"
     var detail: Node2D
+    var detail_top
     var lit_base: ShaderMaterial
     var lit_top: ShaderMaterial
     var spr = 1.0
@@ -322,6 +323,9 @@ class ShipView extends Node2D:
         base.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW  # soot and holes stay on the hull
         top = _sprite(GameData.ship_tex(id, s.pal, "top"), 1.0 / spr)
         lit_top = ShaderMaterial.new(); lit_top.shader = battle.light_shader; top.material = lit_top
+        # the same damage on the superstructure, kept to its outline: a gash in the bridge shows as one, not hidden under it
+        detail_top = Detail.new(); detail_top.view = self; detail_top.upper = true; detail_top.scale = Vector2(spr, spr); top.add_child(detail_top)
+        top.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
         style = GameData.style_of(id)
         var mmat = GameData.mount_material(s.pal)
         for lvl in range(0, s.max_lvl + 1):
@@ -353,17 +357,44 @@ class ShipView extends Node2D:
         var soot = clampf((1.0 - s.hull / s.max_hull - 0.25) * 1.4, 0.0, 1.0)
         for m in [lit_base, lit_top]: m.set_shader_parameter("sun_local", sun_local); m.set_shader_parameter("soot", soot)
         for c in get_children(): if c is Node2D and not (c is Sprite2D): c.queue_redraw()
-        detail.queue_redraw()
+        detail.queue_redraw(); detail_top.queue_redraw()
 
 class Detail extends Node2D:   # soot and shell holes, kept where they struck
     var view
+    var upper := false   # the copy over the superstructure: gashes and wrecked mounts, a little soot
     func _draw() -> void:
         var s: BattleSim.CShip = view.s
         if s.marks.is_empty() or view.battle.zoom() * s.d.L < 25: return
+        var sunl: Vector2 = BattleSim.SUN.rotated(-s.a).normalized()   # the sun, in the ship's own frame: torn edges catch it
         for m in s.marks:
-            var tx = GameData.fx_tex("cloud%d" % m.v); var r: float = m.r
-            draw_texture_rect(tx, Rect2(m.x - r, m.y - r, 2 * r, 2 * r), false, Color(0.09, 0.07, 0.05, 0.45))
-            if m.hole: draw_circle(Vector2(m.x, m.y), r * 0.22, Color(0.04, 0.04, 0.04, 0.9))
+            var tx = GameData.fx_tex("cloud%d" % m.v); var r: float = m.r; var c := Vector2(m.x, m.y)
+            if upper and not m.get("gash", false): continue
+            draw_texture_rect(tx, Rect2(m.x - r, m.y - r, 2 * r, 2 * r), false, Color(0.09, 0.07, 0.05, 0.3 if upper else 0.45))
+            if m.get("wreck", false):   # a mount knocked out: burnt round it, plating buckled, bits of the shield strewn about
+                draw_texture_rect(tx, Rect2(m.x - r * 1.2, m.y - r * 1.2, 2.4 * r, 2.4 * r), false, Color(0.03, 0.03, 0.03, 0.55))
+                for k in 5:
+                    var a: float = float(m.sd) * 0.37 + k * 1.31; var p: Vector2 = c + Vector2.from_angle(a) * r * (0.5 + 0.12 * k)
+                    draw_line(p, p + Vector2.from_angle(a * 2.3) * r * 0.3, Color(0.2, 0.2, 0.2, 0.9), maxf(0.12, r * 0.06))
+            elif m.get("gash", false):
+                # a gash: a ragged tear, black inside, its rim of bent plate bright where it faces the sun and a
+                # streak of soot blown aft from it; at the deck edge, a bite out of the ship's side
+                var n := 9; var pts := PackedVector2Array(); var g: float = r * 0.55
+                for k in n:
+                    var a: float = k * TAU / n; var jag: float = 0.55 + 0.6 * fposmod(sin(float(m.sd) * 0.13 + k * 2.7) * 43.7, 1.0)
+                    pts.append(c + Vector2(cos(a) * 1.5, sin(a) * 0.8) * g * jag)
+                if m.get("edge", false) and not upper:
+                    var side: float = float(m.get("side", 1.0)); var bite := PackedVector2Array()
+                    for k in 7: bite.append(c + Vector2((k - 3) * g * 0.55, side * g * (0.2 + 0.5 * fposmod(sin(float(m.sd) * 0.31 + k * 1.9) * 12.3, 1.0))))
+                    bite.append(c + Vector2(g * 1.9, side * g * 3.2)); bite.append(c + Vector2(-g * 1.9, side * g * 3.2))
+                    draw_colored_polygon(bite, Color(0.07, 0.15, 0.18, 0.92))   # the sea where her side was
+                draw_texture_rect(tx, Rect2(m.x - r * 2.2, m.y - r * 0.7, r * 2.4, r * 1.4), false, Color(0.05, 0.04, 0.03, 0.4))   # soot aft
+                draw_colored_polygon(pts, Color(0.03, 0.03, 0.03, 0.95))
+                for k in n:
+                    var p0: Vector2 = pts[k]; var p1: Vector2 = pts[(k + 1) % n]; var nrm: Vector2 = (p0 + p1) * 0.5 - c
+                    var lit: float = clampf(nrm.normalized().dot(-sunl), 0.0, 1.0)
+                    draw_line(p0, p1, Color(0.35, 0.35, 0.36).lerp(Color(0.85, 0.84, 0.8), lit), maxf(0.1, g * 0.14))
+                    if k % 3 == 0: draw_line(p0, p0 + nrm.normalized() * g * 0.5, Color(0.25, 0.25, 0.25, 0.8), maxf(0.08, g * 0.08))   # plate peeled back
+            elif m.hole: draw_circle(c, r * 0.22, Color(0.04, 0.04, 0.04, 0.9))
 
 class MountLayer extends Node2D:   # turrets of one level: their contact and cast shadows, or the lit mounts themselves
     var view
@@ -457,7 +488,7 @@ class Drawer extends Node2D:
     func _draw() -> void:
         match kind:
             "islands": _islands()
-            "below": _wakes(); _parts(0); _torpedoes()
+            "below": _wakes(); _parts(0); _wreckage(); _torpedoes()
             "bursts": _bursts()
             "shadows": _shadows()
             "above": _parts(1)
@@ -913,6 +944,27 @@ class Drawer extends Node2D:
                 var head: Vector2 = a + d * t; var tail: Vector2 = head - dir * minf(D * streak, D * t)
                 draw_polygon(PackedVector2Array([tail, head + nrm * wd * 0.5, head + dir * wd * 0.6, head - nrm * wd * 0.5]), PackedColorArray([Color(col, 0.0), Color(core, 0.95), Color(core, 0.95), Color(core, 0.95)]))
                 if z > 0.1: _puff(glow, head, wd * 4.5, Color(col, 0.6)); _puff(glow, head, wd * 1.6, Color(1.0, 0.97, 0.9, 0.8))
+
+    ## Wreckage on the water and in the air: dark, ragged pieces, tumbling while they fly (with a shadow that closes
+    ## on them as they fall) and then awash, each with a little ring of foam, fading as it sinks.
+    func _wreckage() -> void:
+        var sim: BattleSim = battle.sim; var z: float = battle.zoom()
+        if sim.wrecks.is_empty() or z < 0.12: return
+        var view: Rect2 = battle.view_rect().grow(50.0)
+        for w in sim.wrecks:
+            if not view.has_point(w.pos): continue
+            var up: bool = w.air > 0.0; var sz: float = float(w.sz) * (1.0 + (0.5 * float(w.air) if up else 0.0))
+            var fade: float = 1.0 if up else clampf((float(w.life) - float(w.t)) / 8.0, 0.0, 1.0)
+            var pts := PackedVector2Array(); var n := 5
+            for k in n:
+                var a: float = float(w.a) + k * TAU / n; pts.append(w.pos + Vector2.from_angle(a) * sz * (0.6 + 0.8 * fposmod(sin(float(w.sd) * 0.7 + k * 3.1) * 7.3, 1.0)))
+            if up:
+                var sh := PackedVector2Array(); for p in pts: sh.append(p + BattleSim.SUN * (4.0 + 14.0 * float(w.air)))
+                draw_colored_polygon(sh, Color(0, 0, 0, 0.22))
+            else: draw_arc(w.pos, sz * 1.5, 0, TAU, 14, Color(0.9, 0.96, 0.96, 0.35 * fade), maxf(0.25, 1.0 / z))
+            draw_colored_polygon(pts, Color(0.16, 0.15, 0.14, 0.95 * fade) if not w.burn or not up else Color(0.3, 0.15, 0.09, 0.95))
+            if w.burn and up: _puff(GameData.glow_tex(), w.pos, sz * 2.2, Color(1.0, 0.6, 0.25, 0.5))   # a burning piece glows as it goes
+            draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2]]), Color(0.5, 0.5, 0.48, 0.7 * fade), maxf(0.15, 0.8 / z))
 
     func _overlay() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z

@@ -27,7 +27,7 @@ func _ready() -> void:
 	Structures.arm(); Structures.arm()
 	ok(Structures.nukes() == 2 and int(G.credits) == 1000000 - 2 * Structures.NUKE_COST, "two warheads aboard")
 	var tgt: Dictionary = {}
-	for s in Structures.all(): if s.kind == "industry" and s.fac == "directorate": tgt = s; break
+	for s in Structures.all(): if s.kind == "mine" and s.fac == "directorate": tgt = s; break
 	ok(Structures.can_nuke(tgt).begins_with("Out of reach"), "not from the far side of the world")
 	var w := Campaign.nearest_water(tgt.x, tgt.y, 80); G.player.x = w.x; G.player.y = w.y
 	ok(Structures.can_nuke(tgt) == "", "within 600 km: possible")
@@ -49,7 +49,7 @@ func _ready() -> void:
 	ok(worse == Diplomacy.POWERS.size() - 1 and not Flag.treaty("concord") and not Flag.recognised("concord"), "every other power turns on you; treaties and recognition are void")
 	ok(Structures.nukes() == 1 and G.get("nukeDebt", []).size() == 1, "one warhead left; an answer is owed")
 	G.day = int(G.nukeDebt[0].day); Structures.new_day()
-	ok(base.get("nuked", false) and Structures.held().is_empty() and G.nukeDebt.is_empty(), "the answer destroys your naval base")
+	ok(base.get("nuked", false) and not Structures.held().has(base) and G.nukeDebt.is_empty(), "the answer destroys your naval base")
 	for i in 40: Structures.new_day()
 	ok(float(tgt.ruin) == 1.0 and float(base.dmg) == 1.0, "nothing mends there")
 	# the screens

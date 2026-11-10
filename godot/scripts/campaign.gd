@@ -759,6 +759,13 @@ func route_move(o: Dictionary, max_sp: float, turn: float, dt: float) -> bool:
         if sl >= look: aim += (seg_end - aim) / maxf(sl, 0.0001) * look; look = 0
         else: aim = seg_end; look -= sl; k += 1
     var end: Vector2 = r[r.size() - 1]; var rem = route_remaining(o)
+    # a watch on her progress: under way for four seconds and no nearer the end of the route, she is jammed against
+    # the land (a leg of the route clips the coast in a few tight places): `jam` counts it, for `unjam` to act on
+    o.prT = float(o.get("prT", 0.0)) + dt
+    if o.prT >= 4.0:
+        if max_sp > 0.5 and float(o.get("prR", INF)) - rem < 0.3: o.jam = 1; o.jams = int(o.get("jams", 0)) + 1
+        else: o.jam = 0; o.jams = 0
+        o.prT = 0.0; o.prR = rem
     if rem < maxf(0.6, o.v * dt * 1.5) and o.ri >= r.size() - 2:   # arrived
         o.rx = end.x; o.ry = end.y; o.x = wrap_x(end.x); o.y = end.y; o.route = null; return true
     var want := (aim - cur).angle(); var err := ang_diff(want, o.h)
@@ -780,13 +787,13 @@ func route_move(o: Dictionary, max_sp: float, turn: float, dt: float) -> bool:
         # point steered for, the nearest point of the leg she is on, its next waypoint, then feeling round to either
         # hand of the course. (Only the first was tried: a ship that left harbour pointing at the shore could wedge
         # in a corner of the coast with the point she steered for across a headland, and lie there for ever.)
-        var sl := maxf(step.length(), 0.05); var found := false
+        var sl := maxf(step.length(), 0.05); var found := false; var probe := maxf(sl, 1.0)   # look a cell ahead, not a ship's length
         var tries: Array = [aim - cur, proj - cur, b0 - cur]
         for da in [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0, 2.4, -2.4, 2.8, -2.8, PI]: tries.append(Vector2.from_angle(want + da))   # right round, astern last
         for dv in tries:
             if dv.length_squared() < 0.000001: continue
-            var cand: Vector2 = cur + dv.normalized() * minf(sl, maxf(dv.length(), sl))
-            if not on_land(cand.x, cand.y):
+            var cand: Vector2 = cur + dv.normalized() * minf(sl, maxf(dv.length(), sl)); var ahead: Vector2 = cur + dv.normalized() * probe
+            if not on_land(cand.x, cand.y) and not on_land(ahead.x, ahead.y):
                 nxt = cand; found = true
                 o.h = wrapf(o.h + clampf(ang_diff(dv.angle(), o.h), -rate * dt * 4.0, rate * dt * 4.0), -PI, PI)   # her bow comes round to the way she is going
                 break
@@ -794,6 +801,21 @@ func route_move(o: Dictionary, max_sp: float, turn: float, dt: float) -> bool:
     o.rx = nxt.x; o.ry = nxt.y; o.x = wrap_x(nxt.x); o.y = nxt.y
     return false
 
+## A fleet (or you) jammed against the land: plan the course again from where she lies; if that jams too, the pilot
+## takes her clear to the nearest water with sea room and plans from there.
+func unjam(o: Dictionary) -> void:
+    var n := int(o.get("jams", 1)); var tx = o.get("tx"); var ty = o.get("ty")
+    if n >= 2:
+        for rad in [2.0, 3.5, 5.0, 7.0, 10.0]:
+            var done := false
+            for k in 16:
+                var q := Vector2(o.x + cos(k * TAU / 16.0) * rad, o.y + sin(k * TAU / 16.0) * rad)
+                if not land_near(q.x, q.y, 2.2) and bare_line(o.x, o.y, q.x, q.y): o.x = wrap_x(q.x); o.y = q.y; o.rx = o.x; o.ry = o.y; done = true; break
+            if done: break
+    var keep_port = o.get("destPort")
+    if tx == null or not set_course(o, tx, ty): o.route = null
+    if keep_port != null: o.destPort = keep_port
+    o.jam = 0; o.jams = n; o.prT = 0.0; o.prR = INF   # acted on once: the watch starts again
 func coast(o: Dictionary, dt: float) -> void: o.v = maxf(0.0, o.v - 8 * dt)
 
 func nearest_port(max_d: float):
@@ -923,6 +945,7 @@ func update(dt: float) -> void:
         if esc != null: sp = minf(sp, maxf(esc.v, 0.5) + maxf(0.0, mdist(P.x, P.y, esc.x, esc.y) - 6.0) * 0.6 + 0.3)   # close up, then match her speed
         G.movedToday = sp > 0.0
         if sp <= 0.0: coast(P, dt)   # dead in the water: way comes off her, and she drifts to a stop
+        elif int(P.get("jam", 0)) > 0 and P.get("tx") != null: unjam(P)
         elif route_move(P, sp, fleet_turn_rate(G.fleet), dt):
             P.tx = null; P.route = null
             if P.follow == null and P.get("escort") == null: _arrive()
@@ -996,7 +1019,8 @@ func update(dt: float) -> void:
         if int(f.get("escort", 0)) > 0 and dP > 45.0: fsp = 0.0   # an escorted convoy waits for its escort
         if f.get("route") != null:
             var was := Vector2(f.x, f.y)
-            if route_move(f, fsp, float(f.mtr), dt): f.route = null
+            if int(f.get("jam", 0)) > 0: unjam(f)
+            elif route_move(f, fsp, float(f.mtr), dt): f.route = null
             # wedged against a headland in narrow waters: after a few seconds, plan again from here
             elif fsp > 0.0 and was.distance_to(Vector2(f.x, f.y)) < 0.001:
                 f.stuckT = f.get("stuckT", 0.0) + dt
@@ -1537,7 +1561,7 @@ func save() -> void:
     var fa = FileAccess.open(SAVE_PATH, FileAccess.WRITE); fa.store_string(JSON.stringify(g))
 
 func _strip_routes(o: Dictionary) -> void:
-    for k in ["remI", "remN", "remX", "remY", "remT", "msp", "mtr"]: o.erase(k)   # worked out again as needed
+    for k in ["remI", "remN", "remX", "remY", "remT", "msp", "mtr", "prT", "prR", "jam", "jams"]: o.erase(k)   # worked out again as needed
     if o.get("route") != null:
         var pts = []
         for q in o.route: pts.append([q.x, q.y])

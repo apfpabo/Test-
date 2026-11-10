@@ -346,6 +346,7 @@ func price_mult(fac: String, gid: String) -> float:
 ## The offers on a port's board, renewed every couple of weeks. Hostile ports post nothing for you.
 func offers(p: Dictionary) -> Array:
 	var G := g(); ensure(); var key := str(int(p.id))
+	if p.fac == "player": return []   # your own harbours post no contracts (and there is no "player" in the tables a contract is made from)
 	var o = G.offers.get(key)
 	if o == null or G.day - int(o.day) >= int(D.contracts.refresh_days):
 		var list := []

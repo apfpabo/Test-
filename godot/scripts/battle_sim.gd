@@ -1034,15 +1034,43 @@ func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool, fire_k := 1.0) -> vo
     if not s.alive: return
     var l = (wp - s.pos).rotated(-s.a)
     var x = clampf(l.x, -s.d.L * 0.46, s.d.L * 0.46); var hh = hull_half(s.d, x) * 0.85; var y = clampf(l.y, -hh, hh)
-    s.marks.append({"x": x, "y": y, "r": (1.5 + sz * 2.2) * (0.7 + randf() * 0.6), "v": randi() % 4, "hole": hole})
-    if s.marks.size() > 50: s.marks.pop_front()
+    # a heavy hit that gets in tears a gash in the plating (jagged, with a torn rim) instead of a neat hole; near the
+    # deck edge it takes a bite out of the ship's side. Either throws wreckage clear of the ship.
+    var big: bool = hole and sz >= 2.0
+    var edge: bool = big and absf(y) > hh * 0.62
+    s.marks.append({"x": x, "y": y, "r": (1.5 + sz * 2.2) * (0.7 + randf() * 0.6), "v": randi() % 4, "hole": hole, "gash": big, "edge": edge, "sd": randi() % 1000, "side": signf(y) if y != 0.0 else 1.0})
+    if s.marks.size() > 70: s.marks.pop_front()
+    if big: wreckage(s, wp, int(1 + sz), sz)
     if randf() < 0.12 * sz * fire_k: s.fires.append({"x": x, "y": y, "t": 60.0 + randf() * 180.0, "r": 0.8 + sz * 0.9, "st": 0.0})
     for m in s.mounts:
         if m.dead or m.w.kind == "sam" or m.w.kind == "ssm": continue
         if Vector2(m.slot.x - x, m.slot.y - y).length() < m.w.get("tw", 2.5) * 0.9 + 1 and randf() < 0.1 * sz:
             m.dead = true
+            s.marks.append({"x": float(m.slot.x), "y": float(m.slot.y), "r": float(m.w.get("tw", 2.5)) * 1.5 + 1.5, "v": randi() % 4, "hole": false, "gash": false, "edge": false, "sd": randi() % 1000, "side": 1.0, "wreck": true})
+            wreckage(s, world_pt(s, m.slot.x, m.slot.y), 2, 1.5)   # the shield, the sights, the ready-use lockers
             if s.side == 0: say("A " + m.w.name + " mount on the " + s.rec.name + " is knocked out!", 2.0)
 
+## Wreckage thrown off a ship by a heavy hit (the modern effects): plating, boats, davits, gun shields. Each piece
+## flies clear, falls into the sea with a splash, and floats where it fell as the ship steams on, until it sinks.
+var wrecks: Array = []
+func wreckage(s: CShip, wp: Vector2, n: int, sz: float) -> void:
+    if not modern: return
+    var out: Vector2 = (wp - s.pos); out = out.normalized() if out.length() > 1.0 else rdir()
+    for i in n:
+        var dir: Vector2 = (out + rdir() * 0.9).normalized()
+        wrecks.append({"pos": wp, "vel": dir * (18.0 + randf() * 30.0 + sz * 5.0) + Vector2.from_angle(s.a) * s.v * 0.6, "a": randf() * TAU, "spin": randf_range(-6.0, 6.0),
+            "sz": (0.5 + randf() * 0.9) * (0.7 + sz * 0.2), "air": 0.5 + randf() * 0.9, "t": 0.0, "life": 35.0 + randf() * 30.0, "sd": randi() % 1000, "burn": randf() < 0.3})
+    while wrecks.size() > 140: wrecks.pop_front()
+func _wrecks(dtv: float) -> void:
+    for i in range(wrecks.size() - 1, -1, -1):
+        var w: Dictionary = wrecks[i]; w.t += dtv
+        if w.air > 0.0:
+            w.pos += w.vel * dtv; w.a += w.spin * dtv; w.air -= dtv
+            if w.burn and randf() < dtv * 14.0: part(P.SMOKE, w.pos, 0.8, 1.2, Vector2.ZERO, true)
+            if w.air <= 0.0: fx_splash(w.pos, 0.5 + w.sz * 0.25); w.vel *= 0.15; w.spin *= 0.1
+        else:
+            w.pos += w.vel * dtv; w.vel *= pow(0.2, dtv); w.a += w.spin * dtv
+            if w.t > w.life: wrecks.remove_at(i)
 func next_flag(m: String) -> void:
     for x in ships:
         if x.side == 0 and engageable(x): flag = x; say(m + x.rec.name + "."); return
@@ -1095,7 +1123,7 @@ func ai_ship(s: CShip, dt: float) -> void:
             # a leader who has stopped (ordered, or her engines out): close up to station slowly and stop there,
             # instead of creeping on into her stern
             var halted: bool = lead.throttle == 0 or lead.eng_out > 0 or lead.v < 2.5
-            if halted: s.throttle = 3 if dd > 900.0 else (1 if dd > 250.0 else 0)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
+            if halted: s.throttle = 0 if (dd < 250.0 or s.pos.distance_to(lead.pos) < gap + 200.0) else (3 if dd > 900.0 else 1)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
             else: s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
             return
     if s.side == 0 and order == "escort" and flag != null and flag != s:
@@ -1407,6 +1435,11 @@ func trail_point(s: CShip) -> Dictionary:
 
 ## Visual effects advance once per frame, in visual seconds.
 func fx(dtv: float) -> void:
+    _wrecks(dtv)
+    if modern:   # a badly hurt ship trails oil, and one sinking leaves her boats, rafts and wreckage on the water
+        for s in ships:
+            if s.alive and not s.escaped and s.hull / s.max_hull < 0.35 and s.v > 1.0 and randf() < dtv * 0.8: part(P.OIL, s.pos - Vector2.from_angle(s.a) * s.d.L * 0.3, 26.0, s.d.B * (0.8 + randf() * 0.8))
+            if not s.alive and s.sink < 3.0 and randf() < dtv * 3.0: wreckage(s, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.7, (randf() - 0.5) * s.d.B).rotated(s.a), 1, 2.0)
     for i in range(parts.size() - 1, -1, -1):
         var q = parts[i]; q.life += dtv
         if q.wind and q.life > 0: q.pos += WIND * dtv

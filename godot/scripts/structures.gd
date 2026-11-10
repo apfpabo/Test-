@@ -79,7 +79,7 @@ func _place_plants() -> void:
 				if s.kind != "industry" or s.get("nuked", false): continue
 				var dd := Campaign.mdist(s.x, s.y, cap.x, cap.y)
 				if dd < bd: bd = dd; best = s
-		if best != null: best.kind = "nuclear"; best.name = "%s Nuclear Plant" % cap.name; best.pile = int(G.day)
+		if best != null: best.kind = "nuclear"; best.fac = fac; best.home = fac; best.port = int(cap.id); best.name = "%s Nuclear Plant" % cap.name; best.pile = int(G.day)
 ## The working plants a flag holds ("player" for yours): not destroyed, not silenced.
 func plants_of(fac: String) -> Array: return all().filter(func(s): return s.kind == "nuclear" and s.fac == fac and not s.get("nuked", false) and not silenced(s))
 ## Warheads your plants have made and nobody has fitted yet.

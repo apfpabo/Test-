@@ -65,6 +65,7 @@ func _ready() -> void:
 	var steps := 0
 	while G.fleets.has(f) and steps < 30 * 10 * 40:
 		Campaign.paused = false; G.player.cool = 99.0; Campaign.update(1.0 / 30.0); steps += 1
+	if G.fleets.has(f): print("  still at sea at %.1f,%.1f, %.1f from the coast point, route %s ri %s of %s, v %.2f, on land %s" % [f.x, f.y, Campaign.mdist(f.x, f.y, f.tgt.x, f.tgt.y), f.get("route") != null, f.get("ri"), f.route.size() if f.get("route") != null else 0, f.v, Campaign.on_land(f.x, f.y)])
 	ok(not G.fleets.has(f), "the assault landed after %.1f days: the %s is %s" % [steps / 300.0, oil.name, Structures.owner_name(oil)])
 	# bombardment: a battleship off a Directorate battery shells it until it is silenced; its guns answer
 	var bat: Dictionary = {}

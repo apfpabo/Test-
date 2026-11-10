@@ -873,16 +873,17 @@ class Drawer extends Node2D:
             if sim.limited(): draw_arc(o.pos, float(sim.wx.vis), 0, TAU, 96, Color(pale, 0.22 if mine else 0.1), mn)
             if sim.has_radar(o) and not sim.submerged(o):
                 var rr := sim.sight(o) if sim.limited() else float(sim.wx.radar)
-                draw_arc(o.pos, rr, 0, TAU, 128, Color(green, 0.4 if mine else 0.16), (1.5 if mine else 1.0) * mn)
+                var ro: Vector2 = sim.radar_pos(o)   # the aerial on her foremast (or island): the ring and the beam turn about it
+                draw_arc(ro, rr, 0, TAU, 128, Color(green, 0.4 if mine else 0.16), (1.5 if mine else 1.0) * mn)
                 if not sim.phased(o):   # the beam, with its afterglow trailing behind it
-                    var n := 14; var span := 0.7; var pts := PackedVector2Array([o.pos]); var cols := PackedColorArray([Color(green, 0.0)])
+                    var n := 14; var span := 0.7; var pts := PackedVector2Array([ro]); var cols := PackedColorArray([Color(green, 0.0)])
                     for i in n + 1:
                         var a := ang - span * (1.0 - float(i) / n); var kk := float(i) / n
-                        pts.append(o.pos + Vector2.from_angle(a) * rr); cols.append(Color(green, (0.26 if mine else 0.08) * kk * kk))
+                        pts.append(ro + Vector2.from_angle(a) * rr); cols.append(Color(green, (0.26 if mine else 0.08) * kk * kk))
                     draw_polygon(pts, cols)
-                    draw_line(o.pos, o.pos + Vector2.from_angle(ang) * rr, Color(green, 0.55 if mine else 0.22), 1.2 * mn)
+                    draw_line(ro, ro + Vector2.from_angle(ang) * rr, Color(green, 0.55 if mine else 0.22), 1.2 * mn)
                 if mine:
-                    battle.hud_text(self, o.pos + Vector2(0, -rr - 8.0 * mn), "RADAR %.1f km%s" % [rr / 1000.0, " · phased array" if sim.phased(o) else ""], Color(green, 0.8), mn)
+                    battle.hud_text(self, ro + Vector2(0, -rr - 8.0 * mn), "RADAR %.1f km%s" % [rr / 1000.0, " · phased array" if sim.phased(o) else ""], Color(green, 0.8), mn)
             var sr := sim.sonar_range(o)
             if sr > 0.0:
                 draw_arc(o.pos, sr, 0, TAU, 64, Color(blue, 0.45 if mine else 0.2), mn)

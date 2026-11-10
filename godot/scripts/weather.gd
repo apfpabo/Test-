@@ -31,7 +31,9 @@ func storm(x: float, y: float, t: float) -> float:
 	var base := 0.3 + 0.22 * smoothstep(30.0, 62.0, lat) + 0.12 * w * smoothstep(20.0, 45.0, lat) + 0.14 * maxf(0.0, -w) * (1.0 - smoothstep(8.0, 24.0, lat))
 	# the pattern is periodic in x so it joins across the chart's east-west seam
 	var a: float = (x - t * 55.0) / float(Campaign.MW) * TAU; var r: float = float(Campaign.MW) / TAU / 620.0
-	var n := _n.get_noise_3d(cos(a) * r, sin(a) * r + y / 620.0, t / 5.0 + y / 4000.0)
+	# east-west runs round a circle (so the pattern joins at the chart's seam) and north-south is its own axis: the
+	# latitude used to be folded into the circle's second axis, which smeared systems into long diagonal streaks
+	var n := _n.get_noise_3d(cos(a) * r, sin(a) * r, y / 620.0 + t / 9.0)
 	return clampf(base + n * 0.62, 0.0, 1.0)
 func sea(x: float, y: float, t: float) -> int:
 	var v := storm(x, y, t)
@@ -39,7 +41,7 @@ func sea(x: float, y: float, t: float) -> int:
 ## Fog as a smooth field (for the chart), and whether it is foggy at a place (above one half).
 func fog_v(x: float, y: float, t: float) -> float:
 	var lat := absf(Campaign.y_lat(y)); var a: float = (x - t * 20.0) / float(Campaign.MW) * TAU; var r: float = float(Campaign.MW) / TAU / 380.0
-	var n := _f.get_noise_3d(cos(a) * r, sin(a) * r + y / 380.0, t / 2.5)
+	var n := _f.get_noise_3d(cos(a) * r, sin(a) * r, y / 380.0 + t / 5.0)
 	return clampf((n - (0.5 - 0.22 * smoothstep(35.0, 65.0, lat))) * 5.0 + 0.5, 0.0, 1.0) * (1.0 - smoothstep(0.5, 0.6, storm(x, y, t)))
 func fog(x: float, y: float, t: float) -> bool: return fog_v(x, y, t) > 0.5
 

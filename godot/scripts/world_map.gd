@@ -183,7 +183,7 @@ func _process(delta: float) -> void:
         _hud_t = 0.2
         _update_top(); _update_dock(); _update_telegraph()
         for k in cmd_btns:   # the tab of the Command page that is open, underlined in gold
-            var on: bool = panel_open and _panel_key == "cmd:" + k
+            var on: bool = drawer_open() and drawer_tab == k
             var sb = cmd_btns[k].get_theme_stylebox("normal"); var bc: Color = UI.GOLD if on else Color(0, 0, 0, 0)
             if sb.border_color != bc: sb.border_color = bc
             _tc(cmd_btns[k], "font_color", UI.GOLD if on else UI.DIM)
@@ -286,6 +286,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
                 pts.append(c + Vector2.from_angle(ang - 0.7 * (1.0 - k)) * rad); cols.append(Color(green, 0.1 * k * k))
             draw_polygon(pts, cols); draw_line(c, c + Vector2.from_angle(ang) * rad, Color(green, 0.35), 1.0 / z)
             rows.append([rad, "YOUR RADAR SEES %d KM" % int(rad * Campaign.KM_PER_UNIT), green])
+        else: rows.append([eye, "NO RADAR YET (RESEARCH: FIRE-CONTROL RADAR)", Color(green, 0.7)])
         if air > maxf(eye, rad) + 1.0:   # a carrier's search aircraft look farther still, when they can fly
             for i in 90: if i % 2 == 0: draw_arc(c, air, i * TAU / 90, (i + 1) * TAU / 90, 3, Color(blue, 0.4), 1.2 / z)
             rows.append([air, "YOUR SEARCH AIRCRAFT SEE %d KM" % int(air * Campaign.KM_PER_UNIT), blue])
@@ -732,7 +733,7 @@ func _build_cmdbar() -> void:
 ## A Command tab from the bar: opens Command at that tab, or closes it if it is already showing.
 func _cmd_tab(key: String) -> void:
     if _blocking: return   # answer the contact first
-    if panel_open and _panel_key == "cmd:" + key: close_panel(); return
+    if drawer_open() and drawer_tab == key: close_drawer(); return
     cmd_tab = key; show_command()
 
 # ------------------------------------------------------------------ the engine-room telegraph (bottom right)
@@ -811,7 +812,10 @@ func _unhandled_input(e: InputEvent) -> void:
             if not cur_port.is_empty(): cur_port = {}; Campaign.G.player.cool = maxf(Campaign.G.player.cool, 2.5); Campaign.save()   # Esc in port is "Put to sea"
             close_panel()
         return
-    if e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE: _pause_menu(); return
+    if e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE:
+        if drawer_open(): close_drawer()
+        else: _pause_menu()
+        return
     if e is InputEventMouseButton:
         var mb = e as InputEventMouseButton
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed: _zoom_at(1.12, mb.position)
@@ -1534,10 +1538,54 @@ func _render_port() -> void:
         box.add_child(UI.button("Put to sea", func(): cur_port = {}; G.player.cool = maxf(G.player.cool, 2.5); Campaign.save(); close_panel(), true))
     , false, 960, "port:%s:%s:%d" % [p.name, port_tab, refit_idx])
 
+## The Command pages open as a drawer above their tabs (owner's request): the chart stays in use behind it and the
+## clock runs on; it closes by its ✕ or by clicking its tab again, not by a click outside it; it slides open and shut.
+var drawer: PanelContainer
+var drawer_scroll: ScrollContainer
+var drawer_tab := ""
+func drawer_open() -> bool: return is_instance_valid(drawer) and not drawer.has_meta("closing")
+func close_drawer() -> void:
+    if not drawer_open(): return
+    var d := drawer; d.set_meta("closing", true); d.propagate_call("set_mouse_filter", [Control.MOUSE_FILTER_IGNORE])
+    var tw := create_tween().set_parallel(true)
+    tw.tween_property(d, "modulate:a", 0.0, 0.16).set_ease(Tween.EASE_IN)
+    tw.tween_property(d, "scale:y", 0.9, 0.16).set_ease(Tween.EASE_IN)
+    tw.chain().tween_callback(d.queue_free)
+func _fit_drawer(scroll: ScrollContainer, box: Control, keep: int) -> void:
+    if not is_instance_valid(scroll): return
+    scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y - 150)
+    if keep > 0:
+        await get_tree().process_frame
+        if is_instance_valid(scroll): scroll.scroll_vertical = keep
 func show_command() -> void:
-    cur_port = {}
-    open_panel(func(box):
-        box.add_child(UI.title(str(CMD_TABS.filter(func(t): return t[0] == cmd_tab)[0][1])))
+    if not cur_port.is_empty(): cur_port = {}; Campaign.G.player.cool = maxf(Campaign.G.player.cool, 2.5); Campaign.save()   # leaving a port for Command is putting to sea
+    if panel_open and not _blocking: close_panel()
+    var keep := -1; var fresh := not drawer_open(); var new_tab: bool = drawer_tab != cmd_tab
+    if not fresh and not new_tab: keep = drawer_scroll.scroll_vertical
+    if is_instance_valid(drawer): drawer.queue_free()
+    drawer_tab = cmd_tab
+    var vs := get_viewport_rect().size; var w := minf(960.0, vs.x - 28.0)
+    var pc := PanelContainer.new(); pc.mouse_filter = Control.MOUSE_FILTER_STOP; ui.add_child(pc); ui.move_child(pc, cmdbar.get_index())
+    pc.set_anchor_and_offset(SIDE_LEFT, 0, 14); pc.set_anchor_and_offset(SIDE_BOTTOM, 1, -58); pc.set_anchor_and_offset(SIDE_TOP, 1, -98)   # just above the tabs
+    pc.grow_vertical = Control.GROW_DIRECTION_BEGIN; pc.custom_minimum_size.x = w
+    var scroll := ScrollContainer.new(); scroll.custom_minimum_size = Vector2(w - 44, 0); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; pc.add_child(scroll)
+    var box := VBoxContainer.new(); box.size_flags_horizontal = Control.SIZE_EXPAND_FILL; box.add_theme_constant_override("separation", 8); scroll.add_child(box)
+    drawer = pc; drawer_scroll = scroll
+    var head := HBoxContainer.new(); var ttl := UI.title(str(CMD_TABS.filter(func(t): return t[0] == cmd_tab)[0][1])); ttl.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(ttl)
+    var xb := UI.button("✕", close_drawer); xb.focus_mode = Control.FOCUS_NONE; xb.tooltip_text = "Close (or click the tab again, or Esc)"; xb.size_flags_vertical = Control.SIZE_SHRINK_BEGIN; head.add_child(xb)
+    box.add_child(head)
+    _command_page(box)
+    _fit_drawer.call_deferred(scroll, box, keep)
+    pc.resized.connect(func(): pc.pivot_offset = Vector2(0, pc.size.y))   # it grows out of the tab bar
+    if fresh:
+        pc.modulate.a = 0.0; pc.scale = Vector2(1.0, 0.9)
+        var tw := create_tween().set_parallel(true)
+        tw.tween_property(pc, "modulate:a", 1.0, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+        tw.tween_property(pc, "scale:y", 1.0, 0.22).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+    elif new_tab:
+        box.modulate.a = 0.0; create_tween().tween_property(box, "modulate:a", 1.0, 0.18).set_ease(Tween.EASE_OUT)
+func _command_page(box: Control) -> void:
+    if true:
         match cmd_tab:
             "fleet": _fleet_table(box, false)
             "officers": _officers(box, {})
@@ -1548,8 +1596,6 @@ func show_command() -> void:
             "hold":
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
                 _p(box, "%d / %d used. %d enemy ships sunk or taken." % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.G.kills], UI.DIM, 14)
-        box.add_child(UI.row([UI.button("Close", close_panel, true)]))   # save and exit live in the pause menu (Esc)
-    , false, 960, "cmd:" + cmd_tab)
 
 func _repairs(box: Control) -> void:
     var G: Dictionary = Campaign.G

@@ -34,8 +34,11 @@ void fragment() {
 	float storm = smoothstep(0.74, 0.86, s);          // the storm itself: a dark, solid mass
 	vec3 col = mix(vec3(0.78, 0.82, 0.84), vec3(0.3, 0.33, 0.37), storm);
 	float a = cloud * 0.32 + storm * 0.3;
-	float fog = smoothstep(0.4, 0.62, w.g + (det - 0.5) * 0.25);
-	col = mix(col, vec3(0.86, 0.88, 0.88), fog * (1.0 - cloud)); a = max(a, fog * 0.3);
+	// fog banks: soft-edged and wispy like the cloud (they were flat slabs with hard edges, which read as a
+	// different, more solid kind of cloud)
+	float wisp = fbm(p * 2.3 + vec2(-rt * 0.008, 9.0));
+	float fog = smoothstep(0.3, 0.85, w.g + (det - 0.5) * 0.55) * (0.55 + 0.7 * wisp);
+	col = mix(col, vec3(0.86, 0.88, 0.88), fog * (1.0 - cloud)); a = max(a, fog * 0.26);
 	// the night side
 	float lat = radians(82.0 - UV.y * 160.0);
 	float hour = fract(day_frac + UV.x - 0.5) * 24.0;

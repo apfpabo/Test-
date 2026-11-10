@@ -431,6 +431,13 @@ func detected_by(sb: CShip, side: int) -> bool:
 const RADAR_PERIOD := 10.0   # battle seconds for one turn of a rotating aerial
 func has_radar(s: CShip) -> bool: return not s.sub and (s.tech.has("radar") or upg(s, "radar") > 0)
 func phased(s: CShip) -> bool: return s.tech.has("aegis")
+## Where a ship's search aerial stands: her foremast (the plan's `mast`), a carrier's island, else her bridge.
+func radar_pos(o: CShip) -> Vector2:
+    var p: Dictionary = o.d.get("p", {}); var x: float = o.d.L * 0.1; var y := 0.0
+    if p.has("mast") and not p.mast.is_empty(): x = float(p.mast[0][0])
+    elif p.has("fd") and p.fd.has("isl"): x = float(p.fd.isl[0]); y = float(p.fd.w) / 2.0 - float(p.fd.isl[2]) / 2.0 + 1.2
+    elif p.has("sup") and not p.sup.is_empty(): x = float(p.sup[0][0])
+    return world_pt(o, x, y)
 func radar_angle() -> float: return fposmod(t / RADAR_PERIOD, 1.0) * TAU
 ## How far a ship's sonar hears a submerged boat (a surface ship's active set, or a boat's own hydrophones); 0 if none.
 func sonar_range(o: CShip) -> float:
@@ -459,7 +466,7 @@ func _radar_plot(dt: float) -> void:
             var r := sight(o)
             if o.pos.distance_squared_to(e.pos) > r * r: continue
             # the beam turned from a0 to a1 this step: did it cross her bearing?
-            if phased(o) or fposmod((e.pos - o.pos).angle() - a0, TAU) <= a1 - a0 + 0.0001: e.paint_t = 0.0; e.paint_pos = e.pos; break
+            if phased(o) or fposmod((e.pos - radar_pos(o)).angle() - a0, TAU) <= a1 - a0 + 0.0001: e.paint_t = 0.0; e.paint_pos = e.pos; break
 
 func sight(o: CShip) -> float:
     var v: float = float(wx.vis)

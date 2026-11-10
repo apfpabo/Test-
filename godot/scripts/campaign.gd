@@ -315,7 +315,7 @@ func crew_need() -> int:
 func crew_frac() -> float: return minf(1.0, G.crew / maxf(1.0, crew_need()))
 func fuel_use() -> float:
     var t = 0.0
-    for s in G.fleet: t += hull(s).fuel
+    for s in all_ships(): t += hull(s).fuel   # a detached main body steams too, and still fills the bunkers
     return t
 ## The reserve: the last few days of fuel kept back in the bunkers, burned at a third of the normal rate at a
 ## crawl once the bunkers are dry. When it is gone the squadron is dead in the water: call a friendly fleet by
@@ -772,10 +772,10 @@ func new_day(moved: bool) -> void:
     # the reserve fills again from the bunkers
     if G.cargo.fuel > 0 and reserve() < reserve_cap():
         var k: float = minf(reserve_cap() - reserve(), G.cargo.fuel); G.reserve = reserve() + k; G.cargo.fuel -= k; G.deadWarned = false
-        if in_ice(P.x, P.y):
-            for s in G.fleet: s.hullFrac = maxf(0.05, s.hullFrac - 0.015)
-            if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
-        else: G.iceWarned = false
+    if moved and in_ice(P.x, P.y):   # (this sat inside the reserve's refill, so ice only bit while the reserve was short)
+        for s in G.fleet: s.hullFrac = maxf(0.05, s.hullFrac - 0.015)
+        if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
+    elif not in_ice(P.x, P.y): G.iceWarned = false
     _storm_day(moved)
     _readiness_day(moved)
     G.cargo.food -= food_use()
@@ -1051,7 +1051,7 @@ func salvage(sunk: Array) -> Dictionary:
         fuel += float(h.fuel) * randf_range(1.0, 5.0)
         coin += ship_value(s) * randf_range(0.01, 0.03)
         if int(h.era) > player_era(): rp += float(h.price) / 12000.0
-    var free: int = cargo_cap() - cargo_used()
+    var free: int = maxi(0, cargo_cap() - cargo_used())   # holds already over-full (a freighter lost) take nothing, and give nothing up
     out.steel = mini(int(steel * k), free); free -= int(out.steel)
     out.munitions = mini(int(mun * k), free)
     out.fuel = mini(int(fuel * k), fuel_room())

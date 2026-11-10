@@ -196,6 +196,10 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
     if sim.finished: return
+    if hud != null and is_instance_valid(hud.menu) and hud.menu.visible:   # the pause menu is up: nothing reaches the battle but Esc
+        if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE: hud.toggle_menu()
+        sim.mouse_down = false
+        return
     if e is InputEventMouseButton:
         var mb = e as InputEventMouseButton
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -255,8 +259,10 @@ func _key(k: int) -> void:
             if s:
                 if s.squads.is_empty(): sim.say("This ship carries no aircraft.", 1.2)
                 else:
-                    var tg: BattleSim.CShip = sim.lock if (sim.lock != null and sim.engageable(sim.lock)) else sim.nearest_enemy(sim.mouse_world, 0, INF, func(o): return not sim.submerged(o))
-                    if not sim.launch_strike(s, tg): sim.say("No squadrons ready.", 1.2)
+                    var tg: BattleSim.CShip = sim.lock if (sim.lock != null and sim.engageable(sim.lock) and sim.visible_to(sim.lock, 0)) else sim.nearest_enemy(sim.mouse_world, 0, INF, func(o): return not sim.submerged(o))
+                    var can_fly: bool = tg != null and not (int(sim.wx.sea) >= 3 or sim.wx.fog or (sim.wx.night and not s.tech.has("jets")))
+                    if tg == null: sim.say("No target in sight for a strike.", 1.5)
+                    elif not sim.launch_strike(s, tg) and can_fly: sim.say("No squadrons ready.", 1.2)   # otherwise the sim has said why
         KEY_C:
             if s and s.sub: s.want_dive = not s.want_dive; sim.say("Dive, dive, dive!" if s.want_dive else "Surfacing.", 1.2)
         KEY_V:
@@ -283,7 +289,7 @@ func _key(k: int) -> void:
         KEY_TAB:
             var mine: Array = []
             for x in sim.ships: if x.side == 0 and sim.engageable(x): mine.append(x)
-            if mine.size() > 1: sim.waypoints.clear(); sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
+            if mine.size() > 1: sim.waypoints.clear(); sim.flag.shell_mode = "auto"; sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
         KEY_M: Sfx.muted = not Sfx.muted
 
 # ================================================================== ship view
@@ -550,6 +556,7 @@ class Drawer extends Node2D:
         var sim: BattleSim = battle.sim
         for s in sim.ships:
             if s.escaped or (s.sub and s.dive > 0.05) or (not s.alive and s.sink > 4): continue
+            if s.side == 1 and not sim.visible_to(s, 0): continue   # a ship out of sight casts no shadow you can see
             var info: Dictionary = GameData.sprites.ships[s.rec.type]; var tx = GameData.ship_tex(s.rec.type, s.pal, "hull_shadow")
             var fb: float = 0.6 if s.d.kind == "sub" else (10.0 if s.d.kind == "carrier" else clampf(s.d.B * 0.25, 1.2, 8.0))
             var k = minf(1.0, s.sink / 4.0) if not s.alive else 0.0

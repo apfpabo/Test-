@@ -299,8 +299,9 @@ func clear_bearings(s: CShip, m: Mount) -> PackedByteArray:
         var fd: Dictionary = p.fd; var fl: float = d.L * fd.len; var fx: float = fd.get("x", 0.0)
         var r := Rect2(fx - fl / 2, -fd.w / 2.0, fl, fd.w)
         if not r.has_point(mp): rects.append(r.grow(pad))
-        var isl: Array = fd.isl; var iy: float = fd.w / 2.0 - isl[2] / 2.0 + 1.2
-        rects.append(Rect2(isl[0] - isl[1] / 2.0, iy - isl[2] / 2.0, isl[1], isl[2]).grow(pad))
+        if fd.has("isl"):   # a flat-top (the Ryujo) has no island to mask her guns
+            var isl: Array = fd.isl; var iy: float = fd.w / 2.0 - isl[2] / 2.0 + 1.2
+            rects.append(Rect2(isl[0] - isl[1] / 2.0, iy - isl[2] / 2.0, isl[1], isl[2]).grow(pad))
     var funnels := []
     for fu in p.get("fun", []): funnels.append([Vector2(fu[0], fu[3] if fu.size() > 3 else 0.0), fu[1] + pad, fu[2] + pad])
     var houses := []  # other turrets as high or higher than this one
@@ -387,7 +388,7 @@ func planes_left(s: CShip) -> int:
     var n := 0
     for sq in s.squads:
         if sq.state == "out":
-            for q in air: if q.sq == sq: n += int(q.n)
+            for q in air: if is_same(q.sq, sq): n += int(q.n)   # the same squadron, not one that merely looks the same
         elif sq.state != "lost": n += int(sq.n)
     return n
 
@@ -489,10 +490,11 @@ func lead_point(from: Vector2, tg: CShip, speed: float) -> Vector2:
 func best_target(from: Vector2, side: int, max_d: float, filt: Callable, heavy: bool) -> CShip:
     var best: CShip = null; var bs = INF
     for o in ships:
-        if o.side == side or not engageable(o) or not visible_to(o, side): continue
-        if filt.is_valid() and not filt.call(o): continue
+        if o.side == side or not engageable(o): continue
         var dd = from.distance_to(o.pos)
         if dd > max_d: continue
+        if filt.is_valid() and not filt.call(o): continue
+        if not visible_to(o, side): continue
         var sc = dd / clampf(o.d.L / 110.0, 0.5, 2.6) if heavy else dd
         if sc < bs: bs = sc; best = o
     return best
@@ -500,10 +502,11 @@ func best_target(from: Vector2, side: int, max_d: float, filt: Callable, heavy: 
 func nearest_enemy(from: Vector2, side: int, max_d := INF, filt := Callable()) -> CShip:
     var best: CShip = null; var bd = max_d
     for o in ships:
-        if o.side == side or not engageable(o) or not visible_to(o, side): continue
-        if filt.is_valid() and not filt.call(o): continue
+        if o.side == side or not engageable(o): continue
         var dd = from.distance_to(o.pos)
-        if dd < bd: bd = dd; best = o
+        if dd >= bd: continue
+        if filt.is_valid() and not filt.call(o): continue
+        if visible_to(o, side): bd = dd; best = o
     return best
 
 func heavy_guns(s: CShip) -> bool:
@@ -788,6 +791,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                     var want = ang_diff((mouse_world - p).angle(), s.a)
                     if not arc_check(m.slot, want).x > 0: continue
                     m.ta = want; m.cd = w.rel; fire_torps(s, m, mouse_world); continue
+                if hold_fire and s.side == 0: continue   # holding fire: no torpedoes from the rest of the squadron
                 # straight-running torpedoes pass over a submerged boat; acoustic homers can go after one that is held on sonar
                 var homer: bool = w.get("homing", false)
                 var ok_t = func(x: CShip) -> bool: return not submerged(x) or homer
@@ -805,6 +809,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                     var tg: CShip = lock if (lock != null and engageable(lock) and visible_to(lock, 0) and not submerged(lock)) else nearest_enemy(mouse_world, 0, 3000.0, func(x: CShip) -> bool: return not submerged(x))
                     if tg == null or p.distance_to(tg.pos) > rng: continue
                     m.cd = w.rel; fire_missile(s, m, tg); continue
+                if hold_fire and s.side == 0: continue
                 var tg2: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and not submerged(s.target)) else nearest_enemy(s.pos, s.side, rng, func(x: CShip) -> bool: return not submerged(x))
                 if tg2 != null and p.distance_to(tg2.pos) < rng: m.cd = w.rel * (0.8 + randf() * 0.5); fire_missile(s, m, tg2)
     if s.d.get("sonar", false) and not s.sub:
@@ -881,7 +886,7 @@ func damage(s: CShip, dmg: float, type: String) -> void:
         "missile": hd = dmg * (1 - minf(0.55, s.armor / 550.0))
         "bomb": hd = dmg * dmg / (dmg + s.armor * 0.7); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.15)
         _: hd = dmg
-    hd *= 1 - 0.07 * s.sk.dc
+    if type != "magazine": hd *= 1 - 0.07 * s.sk.dc   # damage control cannot save a ship whose magazine has gone up
     s.hull -= hd; s.dmg_taken += hd; last_hit = t
     if s.side == 1 and not s.flee and s.hull / s.max_hull < 0.25 and randf() < 0.3: s.flee = true
     if s.hull <= 0:
@@ -1076,7 +1081,7 @@ func ai_ship(s: CShip, dt: float) -> void:
     if s.pos.x < mg or s.pos.x > AW - mg or s.pos.y < mg or s.pos.y > AH - mg: desired = (Vector2(AW, AH) / 2 - s.pos).angle()
     s.rudder = helm(s, steer_avoid(s, desired))
     s.throttle = 4 if d > pref + 1500 or asw else 3
-    if s.d.kind == "carrier": launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
+    if s.d.kind == "carrier" and not (hold_fire and s.side == 0): launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
 
 func launch_strike(s: CShip, tg: CShip) -> bool:
     if tg == null or s.sub: return false
@@ -1155,7 +1160,8 @@ func step(dtv: float) -> void:
         var top: float = (s.d.get("subKn", s.d.kn * 0.4) if sm else s.d.kn) * KN * speed_mult(s)
         var want: float = top * TELEGRAPH[s.throttle] * (1 - 0.3 * absf(s.rud) * minf(1.0, s.v / maxf(1.0, top)))
         var t_acc: float = 40.0 + s.d.L * 0.6
-        s.v += clampf(want - s.v, -top / (t_acc * 1.4) * dt, top / t_acc * dt)
+        if top <= 0.0: s.v = maxf(0.0, s.v - s.d.kn * KN / (t_acc * 1.4) * dt)   # engines stopped: she loses way
+        else: s.v += clampf(want - s.v, -top / (t_acc * 1.4) * dt, top / t_acc * dt)
         # helm: about 10 s to put the rudder hard over, then the ship settles into a turn on its tactical diameter
         if s.jam > 0: s.rud = s.jam_r   # steering gear out: the rudder stays where it jammed
         else: s.rud += clampf(s.rudder - s.rud, -dt / 10.0, dt / 10.0)
@@ -1173,8 +1179,8 @@ func step(dtv: float) -> void:
                     if s == flag: say("We have run aground!", 2.0)
                 s.v *= 0.4
         var retreating = (order == "retreat") if s.side == 0 else s.flee
-        if retreating:
-            var o = nearest_enemy(s.pos, s.side)
+        if retreating and not s.struck:
+            var o = nearest_any(s.pos, s.side)   # seen or not: darkness alone is not an escape
             var edge = s.pos.x < 200 or s.pos.x > AW - 200 or s.pos.y < 200 or s.pos.y > AH - 200
             if edge or o == null or s.pos.distance_to(o.pos) > escape_r:
                 s.escaped = true; say(s.rec.name + (" escapes." if s.side == 1 else " has withdrawn safely."), 2.5)

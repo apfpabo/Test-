@@ -122,6 +122,7 @@ func abandon(p: Dictionary) -> String:
 	return "%s is handed back to the %s." % [p.name, GameData.fac[old].name]
 func _lose(p: Dictionary, to: String) -> void:
 	p.fac = to; p.men = 0; p.erase("from"); p.officers = []; p.offDay = -99; g().offers.erase(str(int(p.id)))
+	disband_guard(p)   # its guard squadron is paid off (it would draw pay for ever, with no Governor tab left to disband it)
 	for s in Structures.all():
 		if int(s.port) == int(p.id) and s.fac == "player": s.fac = to; s.garrison = 0; s.from = ""
 

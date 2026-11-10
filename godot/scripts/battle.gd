@@ -7,7 +7,7 @@ const HUD := preload("res://scripts/battle_hud.gd")
 const P := BattleSim.P
 
 var sim: BattleSim
-var speeds = [0.5, 1.0, 2.0, 4.0, 8.0]
+var speeds = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]   # times BattleSim.BT: real time, x2 ... x32 (owner's request)
 var speed_i = 1
 var paused = false
 var cam_free = false
@@ -214,7 +214,7 @@ func _unhandled_input(e: InputEvent) -> void:
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
             if mb.pressed:
                 var before = world.get_global_mouse_position()
-                var z = clampf(zoom() * (1.12 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1 / 1.12), 0.035, 2.5)
+                var z = clampf(zoom() * (1.12 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1 / 1.12), 0.035, 6.5)   # close enough to read a destroyer's deck (owner's request)
                 camera.zoom = Vector2(z, z); camera.force_update_scroll()
                 if cam_free: camera.position += before - world.get_global_mouse_position()
             return

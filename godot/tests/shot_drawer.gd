@@ -3,7 +3,7 @@ extends Node
 var map: Node
 var f := 0
 var out := ""
-const TABS := ["fleet", "officers", "research", "missions", "holdings", "hold", "codex"]
+const TABS := ["fleet", "officers", "research", "missions", "holdings", "hold", "locations", "codex"]
 func _ready() -> void:
 	out = OS.get_cmdline_user_args()[0]
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}

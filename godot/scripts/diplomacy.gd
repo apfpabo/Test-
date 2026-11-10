@@ -510,7 +510,11 @@ func marks() -> Array:
 		match c.kind:
 			"delivery", "smuggle": var p: Dictionary = G.ports[int(c.dest)]; out.append([p.x, p.y, c.title])
 			"escort":
-				for f in G.fleets: if int(f.get("escort", 0)) == int(c.id): out.append([f.x, f.y, c.title])
+				for f in G.fleets:
+					if int(f.get("escort", 0)) != int(c.id): continue
+					out.append([f.x, f.y, c.title])
+					if f.has("dest"):   # and where she is bound: a fourth entry marks a destination and where the line to it starts
+						var dp: Dictionary = G.ports[int(f.dest)]; out.append([dp.x, dp.y, dp.name + " (bring the convoy here)", Vector2(f.x, f.y)])
 			"survey": var q: Dictionary = G.pois[int(c.poi)]; out.append([q.x, q.y, c.title])
 			"hunt":
 				for f in G.fleets:   # where she was last seen (or was reported, if never): the mark moves when somebody of yours sights her

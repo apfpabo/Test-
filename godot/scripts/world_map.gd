@@ -381,6 +381,13 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         for m in Diplomacy.marks():   # active contracts: where to go
             var x: float = map.rx(m[0]); var rr: float = 11.0 / z
             draw_arc(Vector2(x, m[1]), rr, 0, TAU, 28, Color("#e3b23c"), 2.0 / z); draw_arc(Vector2(x, m[1]), rr * 1.5, 0, TAU, 28, Color(0.89, 0.7, 0.24, 0.35), 1.2 / z)
+            if m.size() > 3:   # an escort's destination: a beacon that beats, and a dashed line to it from the convoy
+                var c := Vector2(x, m[1]); var beat: float = fposmod(map.tnow * 0.7, 1.0); var gold := Color("#e3b23c")
+                draw_arc(c, rr * (1.6 + 2.2 * beat), 0, TAU, 36, Color(gold, 0.8 * (1.0 - beat)), 2.5 / z)
+                draw_arc(c, rr * 2.1, 0, TAU, 36, gold, 2.5 / z)
+                draw_colored_polygon(PackedVector2Array([c + Vector2(0, -rr * 0.8), c + Vector2(rr * 0.8, 0), c + Vector2(0, rr * 0.8), c + Vector2(-rr * 0.8, 0)]), gold)
+                var from: Vector2 = m[3]
+                _dash(Vector2(map.rx(from.x), from.y), c, Color(gold, 0.55), 1.6 / z, 10.0 / z)
         # planned route
         if P.get("tx") != null and P.get("route") != null:
             var r: Array = P.route; var off: Vector2 = Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
@@ -616,7 +623,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             _t(sp + Vector2(0, 18 * b + 12), ("◎ " if P.follow == f.id else ("⚓ escorted · " if P.get("escort") == f.id else "")) + txt, col, 12)
         for m in Diplomacy.marks():
             var sp: Vector2 = map.to_screen(Vector2(m[0], m[1]))
-            if sp.x > -150 and sp.x < vs.x + 150 and z > 0.2: _t(sp + Vector2(0, -16 - 11.0), "Contract: " + m[2], Color("#e3b23c"), 12)
+            if sp.x > -150 and sp.x < vs.x + 150 and (z > 0.2 or m.size() > 3): _t(sp + Vector2(0, -16 - (24.0 if m.size() > 3 else 11.0)), ("Destination: " if m.size() > 3 else "Contract: ") + m[2], Color("#e3b23c"), 14 if m.size() > 3 else 12)
         var psp: Vector2 = map.to_screen(Vector2(P.x, P.y))
         var lab_off: float = 21 * b
         if G.fleet.size(): lab_off = minf(lab_off, maxf(14.0, map.marks._layout(G.fleet)[0][3] * z * 0.75) + 4.0)
@@ -774,7 +781,7 @@ func _toast(text: String) -> void:
     get_tree().create_timer(6.5).timeout.connect(func(): if is_instance_valid(pc): pc.queue_free())
 
 # ------------------------------------------------------------------ the Command tabs (bottom left)
-const CMD_TABS := [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["codex", "Codex"]]
+const CMD_TABS := [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["locations", "Locations"], ["codex", "Codex"]]
 var cmd_btns := {}
 var cmdbar: Control
 func _build_cmdbar() -> void:
@@ -1656,10 +1663,44 @@ func _command_page(box: Control) -> void:
             "research": _research(box)
             "missions": _missions(box, false)
             "holdings": _holdings(box)
+            "locations": _locations(box)
             "codex": Codex.build(box, codex_tab, func(k): codex_tab = k; show_command())
             "hold":
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
                 _p(box, "%d / %d used. %d enemy ships sunk or taken." % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.G.kills], UI.DIM, 14)
+
+## Every harbour you can put into, nearest first, each under its flag and in its colours, with a search box. "Show"
+## turns the chart to it; "Set course" sails there. Naval bases you hold are docks too.
+var loc_query := ""
+func _locations(box: Control) -> void:
+    var ed := LineEdit.new(); ed.text = loc_query; ed.placeholder_text = "Search by name, flag or land"; ed.clear_button_enabled = true; ed.custom_minimum_size.x = 320; box.add_child(ed)
+    var list := VBoxContainer.new(); list.add_theme_constant_override("separation", 2); box.add_child(list)
+    var fill := func():
+        for c in list.get_children(): c.queue_free()
+        var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var rows := []
+        for p in G.ports: rows.append({"name": p.name, "fac": p.fac, "x": p.sx, "y": p.sy, "cx": p.x, "cy": p.y, "tag": "capital" if p.capital else "port", "land": str(Campaign.C.ports[int(p.id)].get("land", ""))})
+        for s in Structures.held(): if s.kind == "navalbase": rows.append({"name": s.name, "fac": "player", "x": s.get("sx", s.x), "y": s.get("sy", s.y), "cx": s.x, "cy": s.y, "tag": "naval base", "land": str(s.get("land", ""))})
+        var q := loc_query.strip_edges().to_lower(); var shown := 0
+        for r in rows: r.d = Campaign.mdist(P.x, P.y, r.x, r.y)
+        rows.sort_custom(func(a, b): return a.d < b.d)
+        for r in rows:
+            var fname: String = GameData.fac[r.fac].name if GameData.fac.has(r.fac) else "Your flag"
+            if q != "" and not (String(r.name).to_lower().contains(q) or fname.to_lower().contains(q) or String(r.land).to_lower().contains(q)): continue
+            shown += 1
+            var col: Color = UI.GOLD if r.fac == "player" else Color(GameData.fac[r.fac].map).lightened(0.25)
+            var war: bool = r.fac != "player" and Campaign.at_war(r.fac)
+            var nm := UI.label(r.name, col); nm.custom_minimum_size.x = 150
+            var sub := UI.label("%s · %s · %d km%s" % [fname, r.tag, int(r.d * Campaign.KM_PER_UNIT), " · at war with you" if war else ""], UI.RED if war else UI.DIM, 13); sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            var cx: float = r.cx; var cy: float = r.cy; var sx: float = r.x; var sy: float = r.y; var nmx: String = r.name
+            var show := UI.button("Show", func(): free_cam = true; cam = Vector2(cx, cy); zoom = maxf(zoom, 2.4))
+            var go := UI.button("Set course", func():
+                if Campaign.set_course(Campaign.G.player, sx, sy): free_cam = false; _toast("Course set: %s." % nmx)
+                else: _toast("No way to %s by sea from here." % nmx))
+            for b in [show, go]: b.focus_mode = Control.FOCUS_NONE
+            list.add_child(UI.row([Flags.icon(r.fac, 15.0), nm, sub, show, go]))
+        if shown == 0: list.add_child(UI.label("Nothing by that name.", UI.DIM, 13))
+    ed.text_changed.connect(func(t): loc_query = t; fill.call())
+    fill.call()
 
 func _repairs(box: Control) -> void:
     var G: Dictionary = Campaign.G

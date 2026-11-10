@@ -3,7 +3,7 @@
 Here’s a coherent lore backbone that fits the geography, the 1946 start date, the named factions, and the classic Starsector-style “the world already has an opinion of you” feeling.
 
 ### The World in Brief
-Iron Meridian is an Alternate Earth whose continents were shaped differently. The great northern landmass is **Varga**, with its southern lobe **Ombria**. Across the Hesperian Ocean lies the joined continents of **Hallandia** and **Austrine**, linked by the narrow Corvo Isthmus. The island continent of **Skarn** sits in the northern passages, and the long island chains of the **Halcyon Ocean** stretch toward the east. The far south is locked by the **Austral Barrier** and the storm-wracked **Howling Seas**.
+Iron Meridian is an Alternate Earth whose continents were shaped differently. The great northern landmass is **Varga**, with its southern lobe **Ombria**. Across the Hesperian Ocean lie the joined continents of **Hallandia** and **Austrine**, linked by the narrow Corvo Isthmus. The island continent of **Skarn** sits in the northern passages, and the long island chains of the **Halcyon Ocean** stretch toward the east. The far south is locked by the **Austral Barrier** and the storm-wracked **Howling Seas**.
 
 Climate still follows latitude. Pack ice, seasonal ice, monsoon winds, and the warm Vargan current are real constraints on naval movement. Every major enclosed sea can be sealed by controlling its gates — the Tarsene Gate, the Throat, the Kessel Canal, the Hakar Strait, the Corvo Canal, and the Strelsk Sounds.
 
@@ -15,7 +15,7 @@ It began as a struggle for the Cradle Sea and the trade arteries of the Monsoon 
 - The **Continental Compact** (dominated by the Vargan Directorate and its Ombrian clients)
 - The **Oceanic Entente** (led by the Hesperian Concord, with the Halcyon Federation and various island states)
 
-The war ground to a bloody stalemate in late 1945. Exhaustion, mutual destruction of merchant fleets, and the terrifying debut of long-range rocketry and early guided weapons produced an armistice that satisfied no one. No formal peace treaty was signed. Demilitarized zones, disputed islands, and “temporary” occupations remain in place. Everyone is rearming. Everyone is watching the research labs.
+The war ground to a bloody stalemate in late 1945. Exhaustion, mutual destruction of merchant fleets, and the terrifying debut of long-range rocketry and early guided weapons produced an armistice that satisfied no one. No formal peace treaty was signed. Demilitarised zones, disputed islands, and “temporary” occupations remain in place. Everyone is rearming. Everyone is watching the research labs.
 
 March 1946 is a nervous peace. Convoys still sail under heavy escort. Raider flotillas operate in the grey zones. Freeports thrive on the chaos. The great powers are one serious incident away from open war again.
 
@@ -23,7 +23,7 @@ March 1946 is a nervous peace. Convoys still sail under heavy escort. Raider flo
 
 **Hesperian Concord**  
 Home: Calder Roads (Hallandia)  
-The leading naval power of the Oceanic Entente. Professional, bureaucratic, and convinced that sea control is the only guarantee of civilization. Still the strongest blue-water navy, but overstretched and politically fractured between hardliners who want to finish the war and moderates who fear another round of mutual ruin. Controls the eastern approaches to the Cradle Sea and maintains a heavy presence at Gatehold on the Tarsene Gate.
+The leading naval power of the Oceanic Entente. Professional, bureaucratic, and convinced that sea control is the only guarantee of civilisation. Still the strongest blue-water navy, but overstretched and politically fractured between hardliners who want to finish the war and moderates who fear another round of mutual ruin. Controls the eastern approaches to the Cradle Sea and maintains a heavy presence at Gatehold on the Tarsene Gate.
 
 **Vargan Directorate**  
 Home: Strelsk (Varga)  
@@ -39,11 +39,11 @@ A powerful corporate-state hybrid that controls the critical Lantern Strait and 
 
 **Tarsene Free Republic**  
 Home: Tarsa (Tarsene Gate)  
-A young, ideologically fierce republic that seized control of the western side of the Tarsene Gate during the war’s chaotic final year. Sees itself as the true heir of the old liberal order. Small but highly motivated navy. Constantly under pressure from both Concord and Directorate, who both want the Gate under “responsible” control.
+A young, ideologically fierce republic that seized control of the western side of the Tarsene Gate during the war’s chaotic final year. Sees itself as the true heir of the old liberal order. Small but highly motivated navy. Constantly under pressure from both Concord and Directorate, each of which wants the Gate under “responsible” control.
 
 **Freeport Syndicate**  
 Home: Port Saffron (Saffron Isle)  
-Not a state but a loose, heavily armed association of freeports, smugglers, privateers, and exiles. Port Saffron is the most famous (and notorious) of them. The Syndicate provides the grey market that keeps the world running: fuel, spare parts, black-market weapons, and safe harbor for those the great powers have discarded. Officially despised, practically indispensable.
+Not a state but a loose, heavily armed association of freeports, smugglers, privateers, and exiles. Port Saffron is the most famous (and notorious) of them. The Syndicate provides the grey market that keeps the world running: fuel, spare parts, black-market weapons, and safe harbour for those the great powers have discarded. Officially despised, practically indispensable.
 
 **Halvard Enclaves**  
 Home: Halvardsby (Rime Isles)  
@@ -84,7 +84,7 @@ In the spring of 1939 the Vargan Directorate, citing decades of “oceanic stran
 For six years the world’s navies bled each other white. Great battle-lines clashed in the Hesperian and the Monsoon Ocean. Submarines turned the trade routes into graveyards. Carrier air groups fought for control of the sky above the choke points. By 1944 both sides were introducing primitive guided rockets and early jet aircraft. In the final year, long-range rocketry and the first true guided bombs appeared.
 
 The war did not end in victory. It ended in exhaustion.  
-In November 1945, after the mutual annihilation of two major task forces in the central Hesperian and the near-collapse of several home fronts, an armistice was signed aboard a neutral Halvard icebreaker in the Skarn Passages. No peace treaty followed. Occupied islands remain occupied. Demilitarized zones are still mined. Reparations were never agreed.  
+In November 1945, after the mutual annihilation of two major task forces in the central Hesperian and the near-collapse of several home fronts, an armistice was signed aboard a neutral Halvard icebreaker in the Skarn Passages. No peace treaty followed. Occupied islands remain occupied. Demilitarised zones are still mined. Reparations were never agreed.  
 
 The history books call it an armistice.  
 Every admiral still serving calls it a pause.
@@ -94,14 +94,14 @@ Every admiral still serving calls it a pause.
 ### 2. Faction Profiles (1946)
 
 **Hesperian Concord**  
-- **Personality**: Professional, hierarchical, quietly arrogant. Believes it is the last serious guardian of ordered maritime civilization.  
+- **Personality**: Professional, hierarchical, quietly arrogant. Believes it is the last serious guardian of ordered maritime civilisation.  
 - **Doctrine**: Balanced battle-fleet with strong carrier emphasis. Prefers decisive fleet actions and control of choke points.  
-- **Current Goals**: Maintain the armistice on favorable terms, prevent the Directorate from breaking out into the open ocean, and quietly absorb or neutralize the Tarsene Free Republic.  
+- **Current Goals**: Maintain the armistice on favourable terms, prevent the Directorate from breaking out into the open ocean, and quietly absorb or neutralize the Tarsene Free Republic.  
 - **Attitude toward independents**: Useful when they fly the Concord flag or take Concord contracts. Suspect when they do not. Former Concord officers who left under a cloud are watched closely.
 
 **Vargan Directorate**  
 - **Personality**: Grim, industrious, permanently aggrieved. Views the ocean powers as historical thieves.  
-- **Doctrine**: Sea-denial first. Heavy investment in submarines, coastal missiles, mine warfare, and fortified harbors. Surface fleet is secondary but improving.  
+- **Doctrine**: Sea-denial first. Heavy investment in submarines, coastal missiles, mine warfare, and fortified harbours. Surface fleet is secondary but improving.  
 - **Current Goals**: Break the “oceanic encirclement,” secure reliable access to the Monsoon and Halcyon trade, and close the technological gap as fast as possible.  
 - **Attitude toward independents**: Potential assets or potential spies. Defectors from the Concord are welcomed (and never fully trusted). Raiders who hurt Concord shipping are tolerated.
 
@@ -109,19 +109,19 @@ Every admiral still serving calls it a pause.
 - **Personality**: Pragmatic, commercially minded, allergic to permanent alliances.  
 - **Doctrine**: Dispersed light forces, excellent scouting, strong naval aviation relative to its size. Avoids head-on fleet battles.  
 - **Current Goals**: Keep the great powers balanced, protect the island trade network, and ensure no single power dominates the Halcyon Ocean.  
-- **Attitude toward independents**: Open for business. A captain who pays docking fees and does not bring heat is welcome. One who brings heat is asked to leave — permanently if necessary.
+- **Attitude toward independents**: Open for business. A captain who pays docking fees and brings no trouble is welcome. One who brings trouble is asked to leave — permanently if necessary.
 
 **Meridian Combine**  
 - **Personality**: Corporate, calculating, polite, and utterly ruthless beneath the surface.  
-- **Doctrine**: Modern, well-maintained security fleets optimized for trade protection and selective power projection. Money buys the best foreign designs and the best talent.  
+- **Doctrine**: Modern, well-maintained security fleets optimised for trade protection and selective power projection. Money buys the best foreign designs and the best talent.  
 - **Current Goals**: Control the Lantern Strait and the eastern approaches, sell to both sides, and own the next generation of naval technology.  
 - **Attitude toward independents**: Everything is a contract. Reliable contractors are retained. Unreliable ones are blacklisted or removed.
 
 **Tarsene Free Republic**  
 - **Personality**: Young, idealistic, brittle, and defiant.  
-- **Doctrine**: Aggressive light forces and coastal defense. Makes up for lack of capital ships with motivation and intimate knowledge of the Gate approaches.  
+- **Doctrine**: Aggressive light forces and coastal defence. Makes up for lack of capital ships with motivation and intimate knowledge of the Gate approaches.  
 - **Current Goals**: Survive. Hold the western Tarsene Gate. Force the great powers to recognize its sovereignty.  
-- **Attitude toward independents**: Desperate for friends. Privateers and sympathetic captains are offered letters of marque and safe harbor. Betrayal is remembered forever.
+- **Attitude toward independents**: Desperate for friends. Privateers and sympathetic captains are offered letters of marque and safe harbour. Betrayal is remembered forever.
 
 **Freeport Syndicate**  
 - **Personality**: Cynical, opportunistic, fiercely independent. More a network than a state.  
@@ -146,10 +146,10 @@ Every admiral still serving calls it a pause.
   Dozens of ships from both coalitions lie in the cold northern passages. Some still contain sealed technical archives and prototype weapons. The Halvards restrict access; everyone else tries to sneak in.
 
 - **The Throat Research Anchorage**  
-  A heavily damaged Directorate research complex in the inner Sable Sea. Officially abandoned. Unofficially, signals still occasionally leave it.
+  A heavily damaged Directorate research complex in the inner Sable Sea. Officially abandoned. Unofficially, signals still leave it now and then.
 
 - **The Corvo Canal Zone**  
-  Demilitarized on paper. In practice a nest of spies, smugglers, and deniable special forces. Whoever truly controls the Canal in the next war will control the movement of fleets between the Hesperian and the southern oceans.
+  Demilitarised on paper. In practice a nest of spies, smugglers, and deniable special forces. Whoever truly controls the Canal in the next war will control the movement of fleets between the Hesperian and the southern oceans.
 
 - **The Amakura Black Archives**  
   The Halcyon Federation is rumored to possess captured Concord and Directorate research that it has not shared with either side. Several powers would go to war to seize or destroy it.
@@ -167,7 +167,7 @@ Every admiral still serving calls it a pause.
 No one calls it a “tech tree.”  
 They call it the **Quiet Race**.
 
-Both the Concord and the Directorate emerged from the war convinced that the next conflict will be decided by weapons that only existed as prototypes or theoretical papers in 1945. Early guided missiles, improved radar and sonar, jet aircraft, and the first practical nuclear propulsion concepts are the prizes.
+Both the Concord and the Directorate emerged from the war convinced that the next conflict will be decided by weapons that existed only as prototypes or theoretical papers in 1945. Early guided missiles, improved radar and sonar, jet aircraft, and the first practical nuclear propulsion concepts are the prizes.
 
 Research points in game terms represent:
 - Recovered technical documents and prototype components from wrecks
@@ -194,7 +194,7 @@ In the chaotic winter of 1945 you and a handful of desperate men took the freigh
 You own the *Southern Trader*, a hard-used but reliable freighter that somehow survived six years of unrestricted submarine warfare. The armistice has not restored safe routes. You are free, solvent for the moment, and completely exposed.
 
 **Survivor of the Lost Fleet**  
-You were junior officer or senior rating on one of the ships of the vanished Central Hesperian squadron (or the Directorate’s 4th Battle Division). You and a handful of others made it out in a damaged escort or launch. Officially the squadron was lost to enemy action. You know the official story is incomplete. Certain people would prefer you stopped looking.
+You were a junior officer or senior rating on one of the ships of the vanished Central Hesperian squadron (or the Directorate’s 4th Battle Division). You and a handful of others made it out in a damaged escort or launch. Officially the squadron was lost to enemy action. You know the official story is incomplete. Certain people would prefer you stopped looking.
 
 **Privateer (Tarsene or Syndicate)**  
 The Free Republic (or a Syndicate letter-broker) gave you a letter of marque and a tired destroyer-escort in exchange for a share of prizes and a promise to harass the enemies of your sponsor. The paper is only as good as the guns behind it.

@@ -11,7 +11,7 @@
    "title": "The Hijacker",
    "subtitle": "Lone Terrorist / Pirate",
    "story": "You and a small crew seized a freighter or light warship in a bloody action. You are now a wanted man with a price on your head.",
-   "world": "Most legitimate ports will fire on you or refuse entry. Pirate havens and freeports are your only real safe harbors at first. Bounty hunters and naval patrols actively hunt you.",
+   "world": "Most legitimate ports will fire on you or refuse entry. Pirate havens and freeports are your only real safe harbours at first. Bounty hunters and naval patrols actively hunt you.",
    "feel": "High-risk, high-freedom start. You begin with a ship and almost no friends, forced to live by raiding, smuggling, and carefully choosing when to show a flag."
   },
   "merchant": {
@@ -32,44 +32,44 @@
    "title": "The Privateer",
    "subtitle": "",
    "story": "You hold (or claim to hold) a letter of marque from a secondary power or breakaway state. You are legally a pirate to some and a legitimate combatant to others.",
-   "world": "Your sponsoring power is friendly and may offer contracts and safe harbor. Their enemies treat you as a hostile combatant. Neutrals are wary.",
+   "world": "Your sponsoring power is friendly and may offer contracts and safe harbour. Their enemies treat you as a hostile combatant. Neutrals are wary.",
    "feel": "A middle ground between lawful officer and outlaw. You have a thin veneer of legitimacy and a clear early employer, but you’re still mostly on your own."
   },
   "defector": {
    "title": "The Defector",
    "subtitle": "",
-   "story": "You were an officer or senior enlisted in a major navy and deliberately switched sides (or went independent) with a valuable ship and sensitive knowledge.",
+   "story": "You were an officer or senior rating in a major navy and deliberately switched sides (or went independent) with a valuable ship and sensitive knowledge.",
    "world": "Your old flag wants you dead or captured. Your new patrons are interested but don’t fully trust you. Intelligence services on all sides take notice.",
    "feel": "You start with a solid ship and useful intelligence, but also active hunters and a reputation for treachery that follows you."
   },
   "smuggler": {
    "title": "The Smuggler / Black-Market Runner",
    "subtitle": "",
-   "story": "You specialize in moving restricted goods, people, and information through blockades and contested waters. Your ship is fast, discreet, and lightly armed.",
+   "story": "You specialise in moving restricted goods, people, and information through blockades and contested waters. Your ship is fast, discreet, and lightly armed.",
    "world": "Most navies view you as a nuisance or criminal. Freeports, criminal syndicates, and certain intelligence agencies are potential customers or protectors.",
    "feel": "Stealth, speed, and information-focused start. Weaker in open battle, strong in evasion, contacts, and early money-making."
   },
   "academy": {
    "title": "The Academy Cast-Off / Junior Officer",
    "subtitle": "",
-   "story": "A recent graduate (or near-graduate) of a naval academy who was given a minor command as a political favor, punishment, or because of heavy losses. You have training but almost no real experience or political cover.",
+   "story": "A recent graduate (or near-graduate) of a naval academy who was given a minor command as a political favour, punishment, or because of heavy losses. You have training but almost no real experience or political cover.",
    "world": "Treated as green and insignificant by the major powers. Easier to be ignored or underestimated. Some older officers may take a mentorship interest (or try to use you).",
    "feel": "Classic “young captain with something to prove.” Lower starting skills/resources, but cleaner reputation and more room to define yourself."
   }
  },
  "world": {
   "source": "docs/lore/foundational_lore.md",
-  "brief": "Iron Meridian is an Alternate Earth whose continents were shaped differently. The great northern landmass is **Varga**, with its southern lobe **Ombria**. Across the Hesperian Ocean lies the joined continents of **Hallandia** and **Austrine**, linked by the narrow Corvo Isthmus. The island continent of **Skarn** sits in the northern passages, and the long island chains of the **Halcyon Ocean** stretch toward the east. The far south is locked by the **Austral Barrier** and the storm-wracked **Howling Seas**.\n\nClimate still follows latitude. Pack ice, seasonal ice, monsoon winds, and the warm Vargan current are real constraints on naval movement. Every major enclosed sea can be sealed by controlling its gates — the Tarsene Gate, the Throat, the Kessel Canal, the Hakar Strait, the Corvo Canal, and the Strelsk Sounds.",
-  "war": "What the history books call the **Meridian War** never truly ended.\n\nIt began as a struggle for the Cradle Sea and the trade arteries of the Monsoon Ocean. By 1943 it had become a global conflict between two loose coalitions:\n\n- The **Continental Compact** (dominated by the Vargan Directorate and its Ombrian clients)\n- The **Oceanic Entente** (led by the Hesperian Concord, with the Halcyon Federation and various island states)\n\nThe war ground to a bloody stalemate in late 1945. Exhaustion, mutual destruction of merchant fleets, and the terrifying debut of long-range rocketry and early guided weapons produced an armistice that satisfied no one. No formal peace treaty was signed. Demilitarized zones, disputed islands, and “temporary” occupations remain in place. Everyone is rearming. Everyone is watching the research labs.\n\nMarch 1946 is a nervous peace. Convoys still sail under heavy escort. Raider flotillas operate in the grey zones. Freeports thrive on the chaos. The great powers are one serious incident away from open war again.",
+  "brief": "Iron Meridian is an Alternate Earth whose continents were shaped differently. The great northern landmass is **Varga**, with its southern lobe **Ombria**. Across the Hesperian Ocean lie the joined continents of **Hallandia** and **Austrine**, linked by the narrow Corvo Isthmus. The island continent of **Skarn** sits in the northern passages, and the long island chains of the **Halcyon Ocean** stretch toward the east. The far south is locked by the **Austral Barrier** and the storm-wracked **Howling Seas**.\n\nClimate still follows latitude. Pack ice, seasonal ice, monsoon winds, and the warm Vargan current are real constraints on naval movement. Every major enclosed sea can be sealed by controlling its gates — the Tarsene Gate, the Throat, the Kessel Canal, the Hakar Strait, the Corvo Canal, and the Strelsk Sounds.",
+  "war": "What the history books call the **Meridian War** never truly ended.\n\nIt began as a struggle for the Cradle Sea and the trade arteries of the Monsoon Ocean. By 1943 it had become a global conflict between two loose coalitions:\n\n- The **Continental Compact** (dominated by the Vargan Directorate and its Ombrian clients)\n- The **Oceanic Entente** (led by the Hesperian Concord, with the Halcyon Federation and various island states)\n\nThe war ground to a bloody stalemate in late 1945. Exhaustion, mutual destruction of merchant fleets, and the terrifying debut of long-range rocketry and early guided weapons produced an armistice that satisfied no one. No formal peace treaty was signed. Demilitarised zones, disputed islands, and “temporary” occupations remain in place. Everyone is rearming. Everyone is watching the research labs.\n\nMarch 1946 is a nervous peace. Convoys still sail under heavy escort. Raider flotillas operate in the grey zones. Freeports thrive on the chaos. The great powers are one serious incident away from open war again.",
   "atmosphere": "- The great powers are rebuilding and rearming while publicly insisting the armistice is permanent.\n- Raider activity is rising in the Saffron Sea, the approaches to the Tarsene Gate, and the open Hesperian.\n- Research stations and wartime wrecks are being quietly scavenged by everyone.\n- Freeports are booming.\n- A handful of “lost” squadrons and independent captains are becoming legends — or problems.\n\nThis is a world that still remembers the war vividly, still hates its enemies, and still believes the next round will decide who rules the oceans for the next century.",
   "history_title": "The Meridian War (1939–1945)",
-  "history": "What began as a regional struggle for the Cradle Sea and the monsoon trade routes became the most destructive conflict in recorded history.\n\nIn the spring of 1939 the Vargan Directorate, citing decades of “oceanic strangulation,” moved to secure the Throat and the western Sable Sea. The Hesperian Concord answered with a blockade of the Tarsene Gate. Within months the fighting had spread to the Halcyon island chains, the Lantern Strait, and the approaches to the Corvo Canal.\n\nFor six years the world’s navies bled each other white. Great battle-lines clashed in the Hesperian and the Monsoon Ocean. Submarines turned the trade routes into graveyards. Carrier air groups fought for control of the sky above the choke points. By 1944 both sides were introducing primitive guided rockets and early jet aircraft. In the final year, long-range rocketry and the first true guided bombs appeared.\n\nThe war did not end in victory. It ended in exhaustion.  \nIn November 1945, after the mutual annihilation of two major task forces in the central Hesperian and the near-collapse of several home fronts, an armistice was signed aboard a neutral Halvard icebreaker in the Skarn Passages. No peace treaty followed. Occupied islands remain occupied. Demilitarized zones are still mined. Reparations were never agreed.  \n\nThe history books call it an armistice.  \nEvery admiral still serving calls it a pause.",
-  "quiet_race": "No one calls it a “tech tree.”  \nThey call it the **Quiet Race**.\n\nBoth the Concord and the Directorate emerged from the war convinced that the next conflict will be decided by weapons that only existed as prototypes or theoretical papers in 1945. Early guided missiles, improved radar and sonar, jet aircraft, and the first practical nuclear propulsion concepts are the prizes.\n\nResearch points in game terms represent:\n- Recovered technical documents and prototype components from wrecks\n- Captured or defecting scientists and engineers\n- Data from black-site laboratories\n- Industrial reverse-engineering\n- Quiet purchases from the Meridian Combine or Halvard archives\n\nThe great powers run official programs. The Combine runs parallel commercial ones. The Freeports and independents run scavenger ones. Everyone is racing, and everyone is stealing.\n\nA captain who consistently recovers high-value technical material becomes interesting to every intelligence service on the map — for good or ill.",
+  "history": "What began as a regional struggle for the Cradle Sea and the monsoon trade routes became the most destructive conflict in recorded history.\n\nIn the spring of 1939 the Vargan Directorate, citing decades of “oceanic strangulation,” moved to secure the Throat and the western Sable Sea. The Hesperian Concord answered with a blockade of the Tarsene Gate. Within months the fighting had spread to the Halcyon island chains, the Lantern Strait, and the approaches to the Corvo Canal.\n\nFor six years the world’s navies bled each other white. Great battle-lines clashed in the Hesperian and the Monsoon Ocean. Submarines turned the trade routes into graveyards. Carrier air groups fought for control of the sky above the choke points. By 1944 both sides were introducing primitive guided rockets and early jet aircraft. In the final year, long-range rocketry and the first true guided bombs appeared.\n\nThe war did not end in victory. It ended in exhaustion.  \nIn November 1945, after the mutual annihilation of two major task forces in the central Hesperian and the near-collapse of several home fronts, an armistice was signed aboard a neutral Halvard icebreaker in the Skarn Passages. No peace treaty followed. Occupied islands remain occupied. Demilitarised zones are still mined. Reparations were never agreed.  \n\nThe history books call it an armistice.  \nEvery admiral still serving calls it a pause.",
+  "quiet_race": "No one calls it a “tech tree.”  \nThey call it the **Quiet Race**.\n\nBoth the Concord and the Directorate emerged from the war convinced that the next conflict will be decided by weapons that existed only as prototypes or theoretical papers in 1945. Early guided missiles, improved radar and sonar, jet aircraft, and the first practical nuclear propulsion concepts are the prizes.\n\nResearch points in game terms represent:\n- Recovered technical documents and prototype components from wrecks\n- Captured or defecting scientists and engineers\n- Data from black-site laboratories\n- Industrial reverse-engineering\n- Quiet purchases from the Meridian Combine or Halvard archives\n\nThe great powers run official programs. The Combine runs parallel commercial ones. The Freeports and independents run scavenger ones. Everyone is racing, and everyone is stealing.\n\nA captain who consistently recovers high-value technical material becomes interesting to every intelligence service on the map — for good or ill.",
   "powers": {
    "concord": {
     "name": "Hesperian Concord",
     "home": "Calder Roads (Hallandia)",
-    "text": "The leading naval power of the Oceanic Entente. Professional, bureaucratic, and convinced that sea control is the only guarantee of civilization. Still the strongest blue-water navy, but overstretched and politically fractured between hardliners who want to finish the war and moderates who fear another round of mutual ruin. Controls the eastern approaches to the Cradle Sea and maintains a heavy presence at Gatehold on the Tarsene Gate."
+    "text": "The leading naval power of the Oceanic Entente. Professional, bureaucratic, and convinced that sea control is the only guarantee of civilisation. Still the strongest blue-water navy, but overstretched and politically fractured between hardliners who want to finish the war and moderates who fear another round of mutual ruin. Controls the eastern approaches to the Cradle Sea and maintains a heavy presence at Gatehold on the Tarsene Gate."
    },
    "directorate": {
     "name": "Vargan Directorate",
@@ -89,12 +89,12 @@
    "republic": {
     "name": "Tarsene Free Republic",
     "home": "Tarsa (Tarsene Gate)",
-    "text": "A young, ideologically fierce republic that seized control of the western side of the Tarsene Gate during the war’s chaotic final year. Sees itself as the true heir of the old liberal order. Small but highly motivated navy. Constantly under pressure from both Concord and Directorate, who both want the Gate under “responsible” control."
+    "text": "A young, ideologically fierce republic that seized control of the western side of the Tarsene Gate during the war’s chaotic final year. Sees itself as the true heir of the old liberal order. Small but highly motivated navy. Constantly under pressure from both Concord and Directorate, each of which wants the Gate under “responsible” control."
    },
    "freeport": {
     "name": "Freeport Syndicate",
     "home": "Port Saffron (Saffron Isle)",
-    "text": "Not a state but a loose, heavily armed association of freeports, smugglers, privateers, and exiles. Port Saffron is the most famous (and notorious) of them. The Syndicate provides the grey market that keeps the world running: fuel, spare parts, black-market weapons, and safe harbor for those the great powers have discarded. Officially despised, practically indispensable."
+    "text": "Not a state but a loose, heavily armed association of freeports, smugglers, privateers, and exiles. Port Saffron is the most famous (and notorious) of them. The Syndicate provides the grey market that keeps the world running: fuel, spare parts, black-market weapons, and safe harbour for those the great powers have discarded. Officially despised, practically indispensable."
    },
    "enclave": {
     "name": "Halvard Enclaves",
@@ -104,14 +104,14 @@
   },
   "profiles": {
    "concord": {
-    "Personality": "Professional, hierarchical, quietly arrogant. Believes it is the last serious guardian of ordered maritime civilization.",
+    "Personality": "Professional, hierarchical, quietly arrogant. Believes it is the last serious guardian of ordered maritime civilisation.",
     "Doctrine": "Balanced battle-fleet with strong carrier emphasis. Prefers decisive fleet actions and control of choke points.",
-    "Current Goals": "Maintain the armistice on favorable terms, prevent the Directorate from breaking out into the open ocean, and quietly absorb or neutralize the Tarsene Free Republic.",
+    "Current Goals": "Maintain the armistice on favourable terms, prevent the Directorate from breaking out into the open ocean, and quietly absorb or neutralize the Tarsene Free Republic.",
     "Attitude toward independents": "Useful when they fly the Concord flag or take Concord contracts. Suspect when they do not. Former Concord officers who left under a cloud are watched closely."
    },
    "directorate": {
     "Personality": "Grim, industrious, permanently aggrieved. Views the ocean powers as historical thieves.",
-    "Doctrine": "Sea-denial first. Heavy investment in submarines, coastal missiles, mine warfare, and fortified harbors. Surface fleet is secondary but improving.",
+    "Doctrine": "Sea-denial first. Heavy investment in submarines, coastal missiles, mine warfare, and fortified harbours. Surface fleet is secondary but improving.",
     "Current Goals": "Break the “oceanic encirclement,” secure reliable access to the Monsoon and Halcyon trade, and close the technological gap as fast as possible.",
     "Attitude toward independents": "Potential assets or potential spies. Defectors from the Concord are welcomed (and never fully trusted). Raiders who hurt Concord shipping are tolerated."
    },
@@ -119,19 +119,19 @@
     "Personality": "Pragmatic, commercially minded, allergic to permanent alliances.",
     "Doctrine": "Dispersed light forces, excellent scouting, strong naval aviation relative to its size. Avoids head-on fleet battles.",
     "Current Goals": "Keep the great powers balanced, protect the island trade network, and ensure no single power dominates the Halcyon Ocean.",
-    "Attitude toward independents": "Open for business. A captain who pays docking fees and does not bring heat is welcome. One who brings heat is asked to leave — permanently if necessary."
+    "Attitude toward independents": "Open for business. A captain who pays docking fees and brings no trouble is welcome. One who brings trouble is asked to leave — permanently if necessary."
    },
    "combine": {
     "Personality": "Corporate, calculating, polite, and utterly ruthless beneath the surface.",
-    "Doctrine": "Modern, well-maintained security fleets optimized for trade protection and selective power projection. Money buys the best foreign designs and the best talent.",
+    "Doctrine": "Modern, well-maintained security fleets optimised for trade protection and selective power projection. Money buys the best foreign designs and the best talent.",
     "Current Goals": "Control the Lantern Strait and the eastern approaches, sell to both sides, and own the next generation of naval technology.",
     "Attitude toward independents": "Everything is a contract. Reliable contractors are retained. Unreliable ones are blacklisted or removed."
    },
    "republic": {
     "Personality": "Young, idealistic, brittle, and defiant.",
-    "Doctrine": "Aggressive light forces and coastal defense. Makes up for lack of capital ships with motivation and intimate knowledge of the Gate approaches.",
+    "Doctrine": "Aggressive light forces and coastal defence. Makes up for lack of capital ships with motivation and intimate knowledge of the Gate approaches.",
     "Current Goals": "Survive. Hold the western Tarsene Gate. Force the great powers to recognize its sovereignty.",
-    "Attitude toward independents": "Desperate for friends. Privateers and sympathetic captains are offered letters of marque and safe harbor. Betrayal is remembered forever."
+    "Attitude toward independents": "Desperate for friends. Privateers and sympathetic captains are offered letters of marque and safe harbour. Betrayal is remembered forever."
    },
    "freeport": {
     "Personality": "Cynical, opportunistic, fiercely independent. More a network than a state.",
@@ -157,11 +157,11 @@
    },
    {
     "name": "The Throat Research Anchorage",
-    "text": "A heavily damaged Directorate research complex in the inner Sable Sea. Officially abandoned. Unofficially, signals still occasionally leave it."
+    "text": "A heavily damaged Directorate research complex in the inner Sable Sea. Officially abandoned. Unofficially, signals still leave it now and then."
    },
    {
     "name": "The Corvo Canal Zone",
-    "text": "Demilitarized on paper. In practice a nest of spies, smugglers, and deniable special forces. Whoever truly controls the Canal in the next war will control the movement of fleets between the Hesperian and the southern oceans."
+    "text": "Demilitarised on paper. In practice a nest of spies, smugglers, and deniable special forces. Whoever truly controls the Canal in the next war will control the movement of fleets between the Hesperian and the southern oceans."
    },
    {
     "name": "The Amakura Black Archives",
@@ -191,7 +191,7 @@
    },
    "survivor": {
     "title": "Survivor of the Lost Fleet",
-    "text": "You were junior officer or senior rating on one of the ships of the vanished Central Hesperian squadron (or the Directorate’s 4th Battle Division). You and a handful of others made it out in a damaged escort or launch. Officially the squadron was lost to enemy action. You know the official story is incomplete. Certain people would prefer you stopped looking."
+    "text": "You were a junior officer or senior rating on one of the ships of the vanished Central Hesperian squadron (or the Directorate’s 4th Battle Division). You and a handful of others made it out in a damaged escort or launch. Officially the squadron was lost to enemy action. You know the official story is incomplete. Certain people would prefer you stopped looking."
    },
    "privateer": {
     "title": "Privateer (Tarsene or Syndicate)",

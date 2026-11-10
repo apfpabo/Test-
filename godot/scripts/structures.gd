@@ -480,7 +480,7 @@ func trim_troops() -> int:
 	return maxi(0, over)
 
 # ------------------------------------------------------------------ nuclear weapons
-## The treaties of 1945 kept nuclear weapons out of the world. With the Nuclear warheads research your missile
+## The weapons treaties of the armistice kept nuclear weapons out of the world. With the Nuclear warheads research your missile
 ## submarines (nuclear boats with missile tubes) can carry them: one warhead to a missile tube, fitted at a port or
 ## naval base of your own or at an Enclave port. A warhead fired from the chart at a structure within reach destroys
 ## it for good: nothing can be built or held there again. Its owner is at war with you from that hour, at the lowest
@@ -545,7 +545,7 @@ func nuke(s: Dictionary) -> Dictionary:
 	if G.get("commission") != null: res.notes.append("Your commission is revoked."); G.commission = null
 	Campaign.rep_note("Nuclear strike")
 	res.notes.append("Every power has marked it: standing -60 with %s, -30 with the rest (-15 with the victim's enemies). Treaties and recognition of your flag are void." % (", ".join(turned) if not turned.is_empty() else "the victim's allies"))
-	Diplomacy.news("THE BOMB. A nuclear weapon has destroyed the %s%s. The treaties of 1945 are ash. Every chancellery in the world knows whose missile it was." % [s.name, (", a %s possession" % GameData.fac[old].short) if old != "" else ""], true)
+	Diplomacy.news("THE BOMB. A nuclear weapon has destroyed the %s%s. The weapons treaties are ash. Every chancellery in the world knows whose missile it was." % [s.name, (", a %s possession" % GameData.fac[old].short) if old != "" else ""], true)
 	Campaign.log_ev("Destroyed the %s with a nuclear weapon" % s.name); Campaign.save()
 	return res
 ## A power that was struck answers in kind, once for each strike: it destroys the most valuable thing you hold.

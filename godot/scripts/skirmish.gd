@@ -5,13 +5,13 @@ extends Control
 const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"], 3: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"]}
 const PRESETS := [
     {"name": "Destroyer action", "desc": "Three Tidewater destroyers against three Strelsk destroyers. Fast, close, torpedoes in the water.", "player": ["dd_fletcher", "dd_fletcher", "dd_gearing"], "enemy": ["dd_narvik", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
-    {"name": "Cruiser action", "desc": "A Baltimore-type and a Cleveland-type with a destroyer screen against two Hipper-types.", "player": ["ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"], "enemy": ["ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
-    {"name": "Battle line", "desc": "Iowa- and King George V-types against a Bismarck-type and her cruisers. Heavy shells at 6 km.", "player": ["bb_iowa", "bb_kgv", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
-    {"name": "The long lances", "desc": "A Cleveland-type and destroyers against a Halcyon Federation squadron armed with long-range torpedoes.", "player": ["cl_cleveland", "dd_fletcher", "dd_fletcher", "dd_fletcher"], "enemy": ["cl_agano", "dd_kagero", "dd_kagero", "dd_kagero"], "fac": "pacific", "era": 1},
-    {"name": "Yamato sorties", "desc": "Two Iowa-types against the largest battleship afloat and her screen.", "player": ["bb_iowa", "bb_iowa", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_yamato", "ca_takao", "dd_kagero", "dd_kagero"], "fac": "pacific", "era": 1},
+    {"name": "Cruiser action", "desc": "A Sovereign-class heavy cruiser and an Arbiter-class light cruiser with a destroyer screen against two Feldherr-class cruisers.", "player": ["ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"], "enemy": ["ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
+    {"name": "Battle line", "desc": "Constellation- and Monarch-class battleships against a Hochmeister-class battleship and her cruisers. Heavy shells at 6 km.", "player": ["bb_iowa", "bb_kgv", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
+    {"name": "The long lances", "desc": "An Arbiter-class cruiser and destroyers against a Halcyon Federation squadron armed with long-range torpedoes.", "player": ["cl_cleveland", "dd_fletcher", "dd_fletcher", "dd_fletcher"], "enemy": ["cl_agano", "dd_kagero", "dd_kagero", "dd_kagero"], "fac": "pacific", "era": 1},
+    {"name": "The Amaterasu sorties", "desc": "Two Constellation-class battleships against the largest battleship afloat and her screen.", "player": ["bb_iowa", "bb_iowa", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_yamato", "ca_takao", "dd_kagero", "dd_kagero"], "fac": "pacific", "era": 1},
     {"name": "Convoy raid", "desc": "One submarine against a Combine convoy and its corvette.", "player": ["ss_gato"], "enemy": ["fr_liberty", "fr_liberty", "fr_victory", "co_castle"], "fac": "combine", "era": 1},
     {"name": "Carrier strike", "desc": "An escort carrier and destroyers against a heavy cruiser group. Launch with F.", "player": ["cve_casa", "dd_fletcher", "dd_fletcher"], "enemy": ["ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
-    {"name": "Missile age", "desc": "Era III: an Aegis cruiser group against a Slava-type group, with nuclear submarines on both sides.", "player": ["cg_tico", "ddg_adams", "ssn_skipjack"], "enemy": ["cg_slava", "ddg_kashin", "ssn_november"], "fac": "directorate", "era": 3},
+    {"name": "Missile age", "desc": "Era III: a Bastion-class missile cruiser group against a Gromoboi-class group, with nuclear submarines on both sides.", "player": ["cg_tico", "ddg_adams", "ssn_skipjack"], "enemy": ["cg_slava", "ddg_kashin", "ssn_november"], "fac": "directorate", "era": 3},
 ]
 var mine: Array = []
 var theirs: Array = []
@@ -54,7 +54,7 @@ func _ready() -> void:
     fac_pick = OptionButton.new(); for f in ["directorate", "pacific", "concord", "combine", "republic", "freeport", "raiders"]: fac_pick.add_item(GameData.fac[f].name); fac_pick.set_item_metadata(fac_pick.item_count - 1, f)
     row2.add_child(fac_pick)
     var l2 = Label.new(); l2.text = "   Technology"; row2.add_child(l2)
-    era_pick = OptionButton.new(); era_pick.add_item("Era I · Late war"); era_pick.add_item("Era II · Early Cold War"); era_pick.add_item("Era III · Late Cold War"); row2.add_child(era_pick)
+    era_pick = OptionButton.new(); era_pick.add_item("Era I · Late war"); era_pick.add_item("Era II · Jet age"); era_pick.add_item("Era III · Missile age"); row2.add_child(era_pick)
     var l3 = Label.new(); l3.text = "   Weather"; row2.add_child(l3)
     wx_pick = OptionButton.new(); for n in ["Calm", "Moderate sea", "Rough sea", "Storm", "Fog"]: wx_pick.add_item(n)
     row2.add_child(wx_pick)

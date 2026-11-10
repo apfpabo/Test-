@@ -220,7 +220,7 @@
     "republic": { "name": "Tarsene Free Republic", "desc": "Revolutionary breakaway regime holding the Tarsene Gate to the Cradle Sea." }
   },
   "story": [
-    { "near": "St. Aldric", "brief": "Black Flag raiders are stalking Concord colliers off the Calder capes. Find the flotilla led by the destroyer Jackal and sink it." },
+    { "near": "St. Aldric", "brief": "Black Flag raiders are stalking Concord colliers off St. Aldric. Find the flotilla led by the destroyer Jackal and sink it." },
     { "near": "Halbrook", "brief": "A Directorate submarine pack is sinking tankers on the Halbrook convoy route. Bring sonar ships (destroyers or corvettes). Submerged boats stay invisible until a sonar ship gets close." },
     { "near": "Wexmouth", "brief": "The Directorate destroyer Vigil carries a cipher machine and patrols the Wexmouth approaches. Sinking her gains nothing. Batter her until she strikes her colours, then take her as a prize." },
     { "near": "Strelsk", "title": "Breaking the Strelsk Sounds", "brief": "A Directorate cruiser squadron under Admiral Orlov holds the Strelsk Sounds shut. Break it and the Vargan coast is open to Concord trade." },

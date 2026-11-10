@@ -18,7 +18,7 @@ You were a commissioned officer in one of the major navies. After a disastrous e
 
 You and a small crew seized a freighter or light warship in a bloody action. You are now a wanted man with a price on your head.
 
-**World reaction:** Most legitimate ports will fire on you or refuse entry. Pirate havens and freeports are your only real safe harbors at first. Bounty hunters and naval patrols actively hunt you.
+**World reaction:** Most legitimate ports will fire on you or refuse entry. Pirate havens and freeports are your only real safe harbours at first. Bounty hunters and naval patrols actively hunt you.
 
 **Feel:** High-risk, high-freedom start. You begin with a ship and almost no friends, forced to live by raiding, smuggling, and carefully choosing when to show a flag.
 
@@ -42,13 +42,13 @@ You were part of a major task force that was annihilated in a decisive (and poss
 
 You hold (or claim to hold) a letter of marque from a secondary power or breakaway state. You are legally a pirate to some and a legitimate combatant to others.
 
-**World reaction:** Your sponsoring power is friendly and may offer contracts and safe harbor. Their enemies treat you as a hostile combatant. Neutrals are wary.
+**World reaction:** Your sponsoring power is friendly and may offer contracts and safe harbour. Their enemies treat you as a hostile combatant. Neutrals are wary.
 
 **Feel:** A middle ground between lawful officer and outlaw. You have a thin veneer of legitimacy and a clear early employer, but you’re still mostly on your own.
 
 ### 6. The Defector
 
-You were an officer or senior enlisted in a major navy and deliberately switched sides (or went independent) with a valuable ship and sensitive knowledge.
+You were an officer or senior rating in a major navy and deliberately switched sides (or went independent) with a valuable ship and sensitive knowledge.
 
 **World reaction:** Your old flag wants you dead or captured. Your new patrons are interested but don’t fully trust you. Intelligence services on all sides take notice.
 
@@ -56,7 +56,7 @@ You were an officer or senior enlisted in a major navy and deliberately switched
 
 ### 7. The Smuggler / Black-Market Runner
 
-You specialize in moving restricted goods, people, and information through blockades and contested waters. Your ship is fast, discreet, and lightly armed.
+You specialise in moving restricted goods, people, and information through blockades and contested waters. Your ship is fast, discreet, and lightly armed.
 
 **World reaction:** Most navies view you as a nuisance or criminal. Freeports, criminal syndicates, and certain intelligence agencies are potential customers or protectors.
 
@@ -64,7 +64,7 @@ You specialize in moving restricted goods, people, and information through block
 
 ### 8. The Academy Cast-Off / Junior Officer
 
-A recent graduate (or near-graduate) of a naval academy who was given a minor command as a political favor, punishment, or because of heavy losses. You have training but almost no real experience or political cover.
+A recent graduate (or near-graduate) of a naval academy who was given a minor command as a political favour, punishment, or because of heavy losses. You have training but almost no real experience or political cover.
 
 **World reaction:** Treated as green and insignificant by the major powers. Easier to be ignored or underestimated. Some older officers may take a mentorship interest (or try to use you).
 

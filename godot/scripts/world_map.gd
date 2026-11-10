@@ -120,6 +120,20 @@ func _smooth(pv: PackedVector2Array) -> PackedVector2Array:
         pv = out
     return pv
 const Flags = preload("res://scripts/flags.gd")
+const Art = preload("res://scripts/art.gd")
+## A scene illustration across the top of a panel, if the picture exists (docs/ART.md); nothing otherwise.
+func _banner(box: Control, key: String, h := 170.0) -> void:
+    var t: Texture2D = Art.scene(key)
+    if t == null: return
+    var tr := TextureRect.new(); tr.texture = t; tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    tr.custom_minimum_size = Vector2(0, h); tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL; tr.clip_contents = true; box.add_child(tr)
+## An officer's portrait for a row, if there are portraits.
+func _face(o: Dictionary, h := 64.0) -> Control:
+    var t: Texture2D = Art.portrait(o)
+    if t == null: return null
+    var tr := TextureRect.new(); tr.texture = t; tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    tr.custom_minimum_size = Vector2(h * 0.8, h); tr.clip_contents = true; tr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+    return tr
 func _prepare_land() -> void:
     for poly in Campaign.C.land:
         var pv = PackedVector2Array()
@@ -1225,6 +1239,7 @@ func _show_aftermath(r: Dictionary) -> void:
             box.add_child(UI.button("New campaign", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"), true)), true)
         return
     open_panel(func(box):
+        _banner(box, "victory" if r.victory else ("disengaged" if r.retreated else "defeat"))
         box.add_child(UI.title("Victory" if r.victory else ("Disengaged" if r.retreated else "Defeat")))
         var nm = func(list): return ", ".join(list.map(func(s): return "%s (%s)" % [s.name, GameData.hulls[s.type].name]))
         if r.sunk.size(): _p(box, "Sunk: " + nm.call(r.sunk))
@@ -1558,6 +1573,7 @@ func _render_port() -> void:
         for t in tabs: if not ["market", "fleet", "contracts", "warehouse"].has(t[0]): t.append("Closed to you at %s ports: your old service has not forgiven you." % GameData.fac[p.fac].short)
         if not ["market", "fleet", "contracts", "warehouse"].has(port_tab): port_tab = "market"
     open_panel(func(box):
+        _banner(box, "capital" if p.capital and Art.scene("capital") != null else "port", 130.0)
         box.add_child(UI.title(p.name))
         _p(box, "%s%s · %d, day %d · Funds %s" % [GameData.fac[p.fac].name, " · capital" if p.capital else "", Campaign.year(), G.day, Campaign.fmt(G.credits)], UI.DIM, 14)
         var att: String = Codex.profile(p.fac).get("Attitude toward independents", "")
@@ -2020,6 +2036,7 @@ func _officers(box: Control, p: Dictionary) -> void:
         for s in Campaign.all_ships(): if s.id == o.ship: sh = s
         box.add_child(UI.label("%s · level %d%s · %s · XP %d/%d" % [o.name, o.lvl, (" · %d point%s to spend" % [o.pts, "s" if o.pts > 1 else ""]) if o.pts else "", ("Commands " + sh.name) if sh != null else "Ashore, no command", o.xp, o.lvl * 100], UI.GOLD if o.pts else UI.INK))
         var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 14)
+        var fc = _face(o); if fc != null: row.add_child(fc)
         for k in Campaign.C.SKILLS:
             var key: String = k
             row.add_child(UI.label("%s %s%s" % [Campaign.C.SKILLS[k][0], "■".repeat(o.sk[k]), "□".repeat(3 - o.sk[k])], UI.DIM, 13))
@@ -2304,7 +2321,7 @@ func _nuke_confirm(s: Dictionary) -> void:
     open_panel(func(box):
         box.add_child(UI.title("Nuclear release"))
         _p(box, "Target: the %s%s. %d km from your squadron." % [s.name, (", held by the " + GameData.fac[s.fac].name) if s.fac != "" else ", unclaimed", int(Campaign.mdist(Campaign.G.player.x, Campaign.G.player.y, s.x, s.y) * Campaign.KM_PER_UNIT)])
-        _p(box, "No such weapon has been used since the treaties of 1945%s. It cannot be undone: the place is destroyed for good, its owner becomes your enemy for good, and the world will not look at your flag the same way again." % ("" if not Campaign.G.get("nukeUsed", false) else ", except by you"), UI.RED, 14)
+        _p(box, "No such weapon has been used since the weapons treaties were signed%s. It cannot be undone: the place is destroyed for good, its owner becomes your enemy for good, and the world will not look at your flag the same way again." % ("" if not Campaign.G.get("nukeUsed", false) else ", except by you"), UI.RED, 14)
         box.add_child(UI.row([UI.button("Stand down", func(): open_struct(s), true), UI.button("Fire", func(): _nuke_fire(s))]))
     , true, 680)
 func _nuke_fire(s: Dictionary) -> void:
@@ -2316,6 +2333,7 @@ func _nuke_fire(s: Dictionary) -> void:
     panel_layer.add_child(nv)
 func _nuke_report(r: Dictionary) -> void:
     open_panel(func(box):
+        _banner(box, "bomb")
         box.add_child(UI.title("The " + r.name + " is gone"))
         _p(box, "The missile ran true. Where the %s stood there is a crater and a column of smoke forty thousand feet high." % r.name)
         for n in r.notes: _p(box, n, UI.RED, 14)

@@ -629,7 +629,7 @@ func _spotting() -> void:
 	if not G.has("spotted"): G.spotted = {}
 	for a in all():
 		if a.kind != "airfield" or a.fac == "" or a.fac == "player" or silenced(a) or not Campaign.at_war(a.fac): continue
-		if Campaign.mdist(a.x, a.y, P.x, P.y) > cover_units(): continue
+		if Campaign.mdist(a.x, a.y, P.x, P.y) > cover_units() * minf(1.0, Campaign.signature()) * (0.5 if Campaign.weather_here().night else 1.0): continue   # search planes find a darkened, slow squadron late, and little by night
 		if G.day - int(G.spotted.get(str(a.id), -99)) < 3: continue
 		G.spotted[str(a.id)] = G.day; var sent := 0
 		for f in G.fleets:

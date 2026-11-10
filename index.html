@@ -341,6 +341,9 @@ const DESIGN_LIST = [
   { id: 'ar_vulcan', cls: 'ar', yard: 'tidewater', dn: 'Artificer', model: 'Vulcan-class repair ship', year: 1941, era: 1, L: 161.4, B: 22.3, t: 9140, kn: 19.2, td: 740, armor: 0, crew: 1297, repair: true, price: 60000,
     p: { bow: .26, run: .2, stern: 'c', merchant: true, holds: [50, -52], sup: [[0, 60, 17, 3], [-70, 6, 7, 1]], fun: [[-4, 3, 2.4]], mast: [[40, 'k'], [-40, 'k']], boats: [[14, 2], [-20, 2]], crane: [[37, 0]] },
     slots: [sl('S', 65, 0, FWD, 'g127s'), sl('S', -62, 0, AFT, 'g127s'), ...pair('A', -38, 7.6, 'aa40')] },
+  { id: 'ar_diver', cls: 'ar', name: 'Salvage Ship', yard: 'marine', dn: 'Grappler', model: 'Diver-class rescue and salvage ship', year: 1943, era: 1, L: 65.1, B: 12, t: 1530, kn: 14.8, td: 320, armor: 0, crew: 120, salvage: true, price: 26000, cargo: 160,
+    p: { bow: .28, run: .2, stern: 'c', merchant: true, holds: [14, -16], sup: [[2, 14, 9, 3]], fun: [[-4, 1.5, 1.2]], mast: [[12, 'k'], [-12, 'k']], boats: [[-6, 1]], crane: [[-22, 0]] },
+    slots: [sl('A', 25, 0, FWD, 'aa40'), ...pair('A', -8, 4.4, 'aa20')] },
   // ---------------------------------------------------------------- light cruisers
   { id: 'cl_fiji', cls: 'cl', yard: 'clydemouth', dn: 'Dominion', model: 'Fiji-class cruiser', year: 1940, era: 1, L: 169.3, B: 18.9, t: 8530, kn: 31.5, td: 760, armor: 83, crew: 733, price: 38000,
     p: { bow: .32, run: .22, stern: 't', tw: .4, sup: [[28, 20, 12, 4], [-34, 10, 9, 2]], fun: [[12, 3, 2.5], [-6, 3, 2.5]], mast: [[22, 't'], [-27, 't']], boats: [[3, 2]], crane: [[3, 0]] },

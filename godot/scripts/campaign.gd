@@ -979,6 +979,52 @@ func rest_in_port(days: int) -> void:
     G.docked = false; G.erase("day_rest"); save()
 func days_to_rest() -> int: return int(ceil((1.0 - fleet_readiness()) / 0.112))
 
+# ------------------------------------------------------------------ salvage
+## After a victory your boats work the wrecks. From every sunk ship: steel from her plating, munitions and fuel oil
+## from what floats or can be reached, and money for fittings; from a ship of an era ahead of yours, research from
+## her equipment. Shoal water (land within about 150 km) lets divers reach the hull: half as much again. A salvage
+## ship doubles everything. What the holds cannot take is left; fuel goes to the bunkers.
+func salvage_ships() -> Array: return G.fleet.filter(func(s): return hull(s).get("salvage", false) and not s.get("reserve", false))
+func salvage_mult() -> float:
+    var P: Dictionary = G.player
+    return (1.5 if land_near(P.x, P.y, 28.0) else 1.0) * (2.0 if not salvage_ships().is_empty() else 1.0)
+func salvage(sunk: Array) -> Dictionary:
+    var out := {"steel": 0, "munitions": 0, "fuel": 0, "coin": 0, "rp": 0, "shoal": land_near(G.player.x, G.player.y, 28.0), "ship": "", "left": false}
+    if sunk.is_empty(): return out
+    var ss: Array = salvage_ships(); if not ss.is_empty(): out.ship = ss[0].name
+    var k := salvage_mult(); var steel := 0.0; var mun := 0.0; var fuel := 0.0; var coin := 0.0; var rp := 0.0
+    for s in sunk:
+        var h: Dictionary = hull(s); var t: float = float(h.t)
+        steel += sqrt(t) * 0.12 * randf_range(0.5, 1.2)
+        if h.kind != "merchant": mun += sqrt(t) * 0.05 * randf_range(0.3, 1.2) * float(s.get("ammo", 1.0))
+        fuel += float(h.fuel) * randf_range(1.0, 5.0)
+        coin += ship_value(s) * randf_range(0.01, 0.03)
+        if int(h.era) > player_era(): rp += float(h.price) / 12000.0
+    var free: int = cargo_cap() - cargo_used()
+    out.steel = mini(int(steel * k), free); free -= int(out.steel)
+    out.munitions = mini(int(mun * k), free)
+    out.fuel = mini(int(fuel * k), fuel_room())
+    out.left = int(steel * k) > int(out.steel) or int(mun * k) > int(out.munitions)
+    out.coin = int(round(coin * k / 50.0) * 50); out.rp = int(round(rp * k))
+    G.cargo.steel += out.steel; G.cargo.munitions += out.munitions; G.cargo.fuel += out.fuel; G.credits += out.coin; G.rp += out.rp
+    return out
+
+# ------------------------------------------------------------------ running dark
+## How easily you are found, as a share of the usual distance. Speed makes smoke, wake and noise (Slow 70% to Flank
+## 130%). Running dark (ship darkened, wireless silent, no smoke: at most Half speed) cuts it to 60% by night and
+## 85% by day. A wireless call gives your position away for a day (150%). The enemy's weather and radar still apply.
+const SIG_SPEED := {"slow": 0.7, "half": 0.85, "cruise": 1.0, "full": 1.15, "flank": 1.3}
+func dark() -> bool: return G.player.get("dark", false)
+func set_dark(on: bool) -> void:
+    G.player.dark = on
+    if on and SPEED_ORDER.find(speed_order()) > 1: G.player.spd = "half"   # a darkened ship makes no smoke: no more than Half
+func heard() -> bool: return int(G.get("heardUntil", 0)) > int(G.day)
+func signature() -> float:
+    var k: float = SIG_SPEED[speed_order()]
+    if dark(): k *= 0.6 if weather_here().night else 0.85
+    if heard(): k *= 1.5
+    return k
+
 ## The weather where your squadron is (cached for the tick), and how far each side sees in it as a share of clear
 ## daylight: lookouts, or radar for a side that has it (you: the Fire-control radar research; a power: Era II).
 var _wx := {}
@@ -988,7 +1034,7 @@ func weather_here() -> Dictionary:
     if _wx.is_empty() or absf(t - _wx_t) > 0.01: _wx = Weather.at(G.player.x, G.player.y, t); _wx_t = t
     return _wx
 func ck_you(wx: Dictionary) -> float: return Weather.contact_mult(wx, has_tech("radar"))
-func ck_them(f: Dictionary, wx: Dictionary) -> float: return Weather.contact_mult(wx, f.fac != "raiders" and fac_era(f.fac) >= 2)
+func ck_them(f: Dictionary, wx: Dictionary) -> float: return Weather.contact_mult(wx, f.fac != "raiders" and fac_era(f.fac) >= 2) * signature()
 
 ## How far a force can reach out and start a fight, in map units (1 unit = 0.05°, about 5.5 km). Guns need contact,
 ## about 90 km, close enough to bring the lines together; anti-ship missiles about 120 km; a carrier's strike group
@@ -1009,10 +1055,12 @@ func strike_reach(ships: Array, air := true) -> float:
 const WIRELESS := 900.0   # map units, about 5,000 km: the long-range sets of 1946
 func call_fleet(f: Dictionary) -> String:
     var d := mdist(f.x, f.y, G.player.x, G.player.y)
+    if dark(): return "You are running dark: the wireless is silent. Stop running dark to call."
     if d > WIRELESS: return "The %s is beyond the range of your wireless (%d km)." % [f.name.to_lower(), int(d * KM_PER_UNIT)]
     if hostile_fleet(f) or f.kind == "raiders" or f.kind == "bounty": return "That is no friend to call on."
     if f.fac != "player" and G.rep.get(f.fac, 0) < -10: return "The %s acknowledges your call and steams on. Your standing with the %s is too low for help." % [f.name.to_lower(), GameData.fac[f.fac].short]
     f.answering = true; f.ansT = 0.0; f.cool = 0.0; f.met = false
+    G.heardUntil = int(G.day) + 1   # every direction-finding station within a thousand miles has your bearing
     return "The %s answers your call and alters course to close you, %d km off." % [f.name.to_lower(), int(d * KM_PER_UNIT)]
 
 ## The nearest harbour open to you, by sea.
@@ -1155,6 +1203,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
                 G.cargo[g] += take; free -= take
                 for gd in C.GOODS: if gd.id == g: got.append("%d %s" % [take, gd.name.to_lower()])
         r.goods = ", ".join(got)
+    r.salvage = salvage(r.sunk) if r.victory else {}
     # officers gain experience from the tonnage beaten; those aboard ships that sank go down with them
     var xp = int(round(beaten_value / 600.0)) + 10
     for s in sim.ships:

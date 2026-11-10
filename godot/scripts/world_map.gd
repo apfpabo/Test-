@@ -697,8 +697,13 @@ func _build_telegraph() -> void:
         var b := UI.button(sp[2], func(): _set_speed(key)); b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size.x = 66; b.add_theme_font_size_override("font_size", 14)
         b.tooltip_text = "%s: %d%% of cruising speed, burning %d%% of the cruising fuel a day. Q and E step the telegraph." % [sp[3], int(float(sp[0]) * 100), int(float(sp[1]) * 100)]
         seg.add_child(b); tele_btns[k] = b
+    dark_btn = UI.button("Run dark", func(): Campaign.set_dark(not Campaign.dark()); _toast("Darken ship: lights out, wireless silent, no smoke." if Campaign.dark() else "Lights and wireless as usual.")); dark_btn.focus_mode = Control.FOCUS_NONE
+    dark_btn.add_theme_font_size_override("font_size", 13); col.add_child(dark_btn)
+    pc.set_anchor_and_offset(SIDE_TOP, 1, -132)
 
+var dark_btn: Button
 func _set_speed(k: String) -> void:
+    if Campaign.dark() and Campaign.SPEED_ORDER.find(k) > 1: _toast("Running dark, the engines stay at Half or below: more would make smoke. Stop running dark first."); return
     Campaign.G.player.spd = k
     _toast("Engine room: %s." % Campaign.SPEEDS[k][3].to_lower())
 
@@ -709,6 +714,10 @@ func _update_telegraph() -> void:
         tele_btns[k].add_theme_color_override("font_hover_color", UI.GOLD if k == cur else UI.INK)
     var fb := Campaign.fuel_burn()
     tele_info.text = "%d kn · %.1f t fuel a day" % [int(round(Campaign.player_speed() / 0.8)), fb] if fb > 0 else "%d kn" % int(round(Campaign.player_speed() / 0.8))
+    var sig := int(round(Campaign.signature() * 100))
+    dark_btn.text = ("Running dark ✓" if Campaign.dark() else "Run dark") + " · found at %d%% of the usual distance%s" % [sig, " (wireless heard)" if Campaign.heard() else ""]
+    dark_btn.add_theme_color_override("font_color", UI.GOLD if Campaign.dark() else UI.DIM)
+    dark_btn.tooltip_text = "How easily you are found. Speed makes smoke and wake: Slow 70%, Half 85%, Cruise 100%, Full 115%, Flank 130%.\nRunning dark (lights out, wireless silent, no smoke) cuts it to 60% by night and 85% by day, holds the engines to Half or below, and you cannot call fleets by wireless.\nA wireless call gives your position away for a day (150%).\nThe weather and the enemy's radar still count: see the WEATHER chip."
 
 func _update_dock() -> void:
     if panel_open: dock.visible = false; return
@@ -1088,6 +1097,18 @@ func _show_aftermath(r: Dictionary) -> void:
         if r.casualties: _p(box, "%s sailors killed or wounded." % Campaign.fmt(r.casualties), UI.DIM)
         if r.coin: _p(box, "Prize money: %s%s." % [Campaign.fmt(r.coin), (", plus " + r.goods) if r.goods != "" else ""])
         if r.rp: _p(box, "Research: +%d RP from salvaged equipment and documents." % r.rp)
+        var sv: Dictionary = r.get("salvage", {})
+        if not sv.is_empty() and r.sunk.size():
+            var got := []
+            if int(sv.steel) > 0: got.append("%d tons of steel" % int(sv.steel))
+            if int(sv.munitions) > 0: got.append("%d tons of munitions" % int(sv.munitions))
+            if int(sv.fuel) > 0: got.append("%d tons of fuel oil" % int(sv.fuel))
+            if int(sv.coin) > 0: got.append("fittings worth %s" % Campaign.fmt(int(sv.coin)))
+            if int(sv.rp) > 0: got.append("%d RP from equipment ahead of yours" % int(sv.rp))
+            box.add_child(UI.label("SALVAGE", UI.DIM, 12))
+            _p(box, ("Your boats work the wrecks%s%s: %s." % [" in shoal water, where divers reach the hulls" if sv.shoal else "", (", with the %s's gear" % sv.ship) if sv.ship != "" else "", ", ".join(got)]) if not got.is_empty() else "Your boats find nothing worth taking from the wrecks.")
+            if sv.left: _p(box, "The holds are full: some of it was left in the water.", UI.GOLD, 13)
+            if sv.ship == "": _p(box, "A salvage ship in company doubles what is raised; shoal water adds half as much again.", UI.DIM, 12)
         if r.bounty: _p(box, "Bounty paid: %s." % Campaign.fmt(r.bounty))
         for n in r.notes: _p(box, n, UI.GOLD)
         if r.prizes.size():
@@ -1505,6 +1526,7 @@ func _aux_text(h: Dictionary) -> String:
     if int(h.get("tank", 0)) > 0: t += " · carries %d tons of fuel oil beyond the bunkers" % int(h.tank)
     if h.get("ammo", false): t += " · rearms the squadron at sea from munitions in the holds"
     if h.get("repair", false): t += " · patches hulls at sea with steel from the holds"
+    if h.get("salvage", false): t += " · doubles what is salvaged from the ships you sink"
     if h.get("nuc", false) or (h.kind == "sub" and float(h.fuel) <= 0.0): t += " · nuclear: burns no fuel oil"
     return t
 func ship_price(p: Dictionary, t: String) -> int: return int(round(GameData.hulls[t].price * (1.1 if p.fac == "freeport" else 1.0) * (0.9 if Campaign.G.rep.get(p.fac, 0) > 30 else 1.0) * (0.85 if p.fac == "player" else 1.0)))

@@ -4324,6 +4324,117 @@
    "fuel": 4.3,
    "island": null
   },
+  "ar_diver": {
+   "kind": "merchant",
+   "cls": "Medium",
+   "cargo": 160,
+   "id": "ar_diver",
+   "name": "Salvage Ship",
+   "yard": "marine",
+   "dn": "Grappler",
+   "model": "Diver-class rescue and salvage ship",
+   "year": 1943,
+   "era": 1,
+   "L": 65.1,
+   "B": 12,
+   "t": 1530,
+   "kn": 14.8,
+   "td": 320,
+   "armor": 0,
+   "crew": 120,
+   "salvage": true,
+   "price": 26000,
+   "p": {
+    "bow": 0.28,
+    "run": 0.2,
+    "stern": "c",
+    "merchant": true,
+    "holds": [
+     14,
+     -16
+    ],
+    "sup": [
+     [
+      2,
+      14,
+      9,
+      3
+     ]
+    ],
+    "fun": [
+     [
+      -4,
+      1.5,
+      1.2
+     ]
+    ],
+    "mast": [
+     [
+      12,
+      "k"
+     ],
+     [
+      -12,
+      "k"
+     ]
+    ],
+    "boats": [
+     [
+      -6,
+      1
+     ]
+    ],
+    "crane": [
+     [
+      -22,
+      0
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "A",
+     "x": 25,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "aa40"
+    },
+    {
+     "s": "A",
+     "x": -8,
+     "y": -4.4,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "aa20"
+    },
+    {
+     "s": "A",
+     "x": -8,
+     "y": 4.4,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "aa20"
+    }
+   ],
+   "klass": "ar",
+   "speed": 14.8,
+   "hull": 1140,
+   "fuel": 1.8,
+   "island": null
+  },
   "cl_fiji": {
    "kind": "war",
    "cls": "Medium",

@@ -140,7 +140,7 @@ func new_day() -> void:
 	# the old owner comes back for it: a relief force with troopships, the first within two months, then now and again
 	for p in ports():
 		var by: String = p.get("from", "")
-		if by == "" or Campaign.ports_of(by).is_empty(): continue
+		if by == "" or Campaign.ports_of(by).is_empty() or treaty(by): continue   # a treaty stops all hostilities, the old owner's too
 		if G.fleets.any(func(f): return int(f.get("portAssault", -1)) == int(p.id)): continue
 		var age: int = G.day - int(p.get("took", G.day))
 		if age < 25: continue
@@ -269,6 +269,9 @@ func peace_cost(fac: String) -> int: return PEACE_COST + CEDE_COST * held_from(f
 func can_peace(fac: String) -> String:
 	var G := g()
 	if not Campaign.at_war(fac): return "You are not at war with them."
+	# a war that is your commission's or a contract's is not theirs to end: paying would change nothing
+	if int(G.rep.get(fac, 0)) > Campaign.WAR_STANDING and Campaign.incident_days(fac) <= 0 and held_from(fac).is_empty() and not g().get("nukedFacs", []).has(fac) and not (Campaign.perk("outlaw", []) as Array).has(fac):
+		return "Your quarrel with them is your commission's, not your own: there is nothing between you to settle."
 	if g().get("nukedFacs", []).has(fac): return "They will never treat with you: you used the bomb on them."
 	if (Campaign.perk("outlaw", []) as Array).has(fac): return "They will not treat with you: your quarrel with them is older than your flag."
 	if int(G.credits) < peace_cost(fac): return "Their terms: %s." % Campaign.fmt(peace_cost(fac))
@@ -276,6 +279,7 @@ func can_peace(fac: String) -> String:
 func make_peace(fac: String) -> String:
 	var G := g(); var ceded: Array = held_from(fac); G.credits -= peace_cost(fac)
 	G.rep[fac] = maxi(int(G.rep.get(fac, 0)), -9); if G.has("incidents"): G.incidents.erase(fac)
+	for c in G.contracts.duplicate(): if c.get("target", "") == fac and (c.kind == "war" or c.kind == "strike"): Diplomacy.fail(c, "You made peace with its target.")
 	for p in ceded: p.from = ""
 	for s in Structures.held(): if s.from == fac: s.from = ""
 	for f in G.fleets.duplicate(): if (is_relief(f) or Structures._is_assault(f)) and f.fac == fac: G.fleets.erase(f)

@@ -32,10 +32,10 @@ The rings are drawn for every ship of yours that is in action, the flagship's br
 
 | | |
 | --- | --- |
-| You see fleets within | Green ring: about 550 km on a clear day, less in weather and darkness, more with radar in the murk and far more with a carrier's search aircraft. Fleets beyond it are hidden unless a friend, a port or a structure of yours has them in sight. With the radar research a beam turns inside it. |
-| A hostile force finds you within | Red dashed ring: how far off a force hostile to you notices you and gives chase, with lookouts alone. The dotted ring is the same for a force with radar (a power of Era II or later), when that is farther. Both shrink in weather and darkness; running dark and slow steaming shrink them further, and a wireless call widens them for a day. |
+| The captain's watch | Owner's decision: how far a force sees is not fixed, it follows its captain, for you and for every other fleet alike. Both start from the same distance (about 555 km on a clear day) times the captain's watch: a green captain (level 1) 87%, a seasoned one (level 4) 108%, the best (level 8) 136%; a flagship with no captain 80%. Yours is the officer commanding your flagship. Every other fleet has a captain of its own (patrols level 1 to 5, convoys 1 to 3, raiders 1 to 4, bounties and hunters 4 to 7); the contact panel names him. Against a captain of your own skill you sight each other at the same moment. |
+| You see fleets within | Green ring: about 550 km on a clear day with an average captain, less in weather and darkness, more with radar in the murk and far more with a carrier's search aircraft. Fleets beyond it are hidden unless a friend, a port or a structure of yours has them in sight. With the radar research a beam turns inside it. |
+| A hostile force finds you within | Red dashed ring: how far off a force hostile to you, under an average captain, notices you and gives chase, with lookouts alone. The dotted ring is the same for a force with radar (a power of Era II or later), when that is farther. Both shrink in weather and darkness; running dark and slow steaming shrink them further, and a wireless call widens them for a day. |
 
 ## For the owner
 
-- On a clear day a hostile force notices you at about 890 km while you see fleets at 555 km, so a patrol can be steering for you before you can see it. The numbers are the existing rules (`160` and `SIGHT = 100` map units); I have only drawn them. Say if you want them matched.
 - Wartime sonar could be made directional (a beam the escort has to sweep, and a blind arc astern), and wartime submarines could be given a short-range surface radar. Both would change how submarine actions play, so they are left for you to decide.

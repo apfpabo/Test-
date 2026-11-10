@@ -286,8 +286,8 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         for i in 60: if i % 2 == 0: draw_arc(c, f0, i * TAU / 60, (i + 1) * TAU / 60, 3, Color(red, 0.45), 1.2 / z)
         if f1 > f0 + 1.0: for i in 180: if i % 3 == 0: draw_arc(c, f1, i * TAU / 180, (i + 0.6) * TAU / 180, 2, Color(red, 0.4), 1.2 / z)
         var fnt: Font = ThemeDB.fallback_font
-        for row in [[sr, "YOU SEE FLEETS WITHIN %d KM%s" % [int(sr * Campaign.KM_PER_UNIT), " · RADAR" if Campaign.has_tech("radar") else ""], green, -1.0],
-                [f0, ("A HOSTILE FORCE FINDS YOU WITHIN %d KM" if f1 <= f0 + 1.0 else "LOOKOUTS FIND YOU WITHIN %d KM") % int(f0 * Campaign.KM_PER_UNIT), red, 1.0], [f1, "RADAR FINDS YOU WITHIN %d KM" % int(f1 * Campaign.KM_PER_UNIT), red, 2.0]]:
+        for row in [[sr, "YOU SEE FLEETS WITHIN %d KM%s · YOUR CAPTAIN'S WATCH %d%%" % [int(sr * Campaign.KM_PER_UNIT), " · RADAR" if Campaign.has_tech("radar") else "", int(round(Campaign.your_watch() * 100))], green, -1.0],
+                [f0, ("AN AVERAGE CAPTAIN FINDS YOU WITHIN %d KM" if f1 <= f0 + 1.0 else "AN AVERAGE CAPTAIN'S LOOKOUTS FIND YOU WITHIN %d KM") % int(f0 * Campaign.KM_PER_UNIT), red, 1.0], [f1, "RADAR FINDS YOU WITHIN %d KM" % int(f1 * Campaign.KM_PER_UNIT), red, 2.0]]:
             if row[3] == 2.0 and f1 <= f0 + 1.0: continue
             var w := fnt.get_string_size(row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
             draw_set_transform(c + Vector2(0, float(row[0]) * signf(row[3]) + (14.0 if row[3] > 0.0 else -6.0) / z), 0.0, Vector2.ONE / z)
@@ -687,7 +687,7 @@ func _course_to_order(it: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var t = null
     if it.has("c"): t = Diplomacy.target_of(it.c)
     elif it.has("fleet"):
-        for f in G.fleets: if int(f.id) == int(it.fleet): t = Vector2(f.x, f.y)
+        for f in G.fleets: if int(f.id) == int(it.fleet): t = Campaign.known_pos(f)   # last seen, or where she was reported
     if t == null: _toast("No fix on that target yet."); return
     var P: Dictionary = G.player; P.follow = null; P.escort = null; P.destPort = null
     if it.has("c") and (it.c.kind == "delivery" or it.c.kind == "smuggle"): P.destPort = int(it.c.dest)
@@ -1129,7 +1129,8 @@ func _deal(f: Dictionary, gid: String, n: int, price: int, buying: bool) -> void
     if gid == "fuel" and buying: G.deadWarned = false
     _trade(f)
 
-func _contact_line(f: Dictionary) -> String:
+func _contact_line(f: Dictionary) -> String: return _contact_range(f) + " They sail under a %s: her lookouts see %d%% as far as an average captain's; yours %d%%." % [Campaign.capt_text(f), int(round(Campaign.fleet_watch(f) / Campaign.watch(3) * 100)), int(round(Campaign.your_watch() / Campaign.watch(3) * 100))]
+func _contact_range(f: Dictionary) -> String:
     var km := int(f.get("contactKm", 0)); var er := Campaign.strike_reach(f.ships); var pr := Campaign.strike_reach(Campaign.G.fleet)
     var by := func(r: float) -> String: return "search planes" if r * Campaign.KM_PER_UNIT >= 240.0 else "missile ships"
     if km <= int(Campaign.CONTACT * Campaign.KM_PER_UNIT) + 5: return "Contact at about %d km, on lookouts and radar." % km
@@ -1292,6 +1293,8 @@ func _scuttle(s: Dictionary) -> void:
     var G: Dictionary = Campaign.G
     G.fleet.erase(s)
     for o in G.officers: if o.ship == s.id: o.ship = null
+    var over: Dictionary = Campaign.trim_cargo()
+    if not over.is_empty(): _toast("Cargo that no longer fits goes down with her: %s." % Campaign.cargo_text(over))
     var left := Structures.trim_troops()
     _toast("The %s is scuttled. Her crew is taken off%s." % [s.name, (", but %d soldiers had no berth left and were paid off" % left) if left > 0 else ""])
     Campaign.log_ev("Scuttled the " + s.name); _rerender()
@@ -1459,6 +1462,11 @@ func _sell(p: Dictionary, gid: String, n: int) -> void:
 func _sell_ship(s: Dictionary) -> void:
     var G: Dictionary = Campaign.G
     G.credits += sell_value(s); G.fleet.erase(s)
+    var over: Dictionary = Campaign.trim_cargo()   # her holds go with her: what no longer fits is sold here at the port's price
+    if not over.is_empty():
+        var got := 0
+        for gid in over: got += int(over[gid]) * sell_price(cur_port, gid) if not cur_port.is_empty() else 0
+        G.credits += got; _toast("Cargo that no longer fits is landed and sold: %s, for %s." % [Campaign.cargo_text(over), Campaign.fmt(got)])
     var left := Structures.trim_troops()
     if left > 0: _toast("%d soldiers had no berth left and were paid off." % left)
     for o in G.officers:

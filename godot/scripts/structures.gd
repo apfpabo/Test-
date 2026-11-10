@@ -361,8 +361,12 @@ func landing_force() -> int: return int(g().crew) + troops()
 func troops() -> int: return int(g().get("troops", 0))
 func troop_capacity() -> int:
 	var n := 0
-	for r in Campaign.all_ships(): n += int(Campaign.hull(r).get("troops", 0))
+	for r in g().fleet: n += int(Campaign.hull(r).get("troops", 0))   # the transports in company: a detached main body keeps its own soldiers (its fleet's `troops`)
 	return n
+## Every soldier you pay and feed: those with you and those in a detached main body's transports.
+func troops_all() -> int:
+	var b = Campaign.body()
+	return troops() + (int(b.get("troops", 0)) if b != null else 0)
 const TROOP_COST := 40      # to embark a soldier in port
 const TROOP_WAGE := 0.2     # a day
 
@@ -423,6 +427,11 @@ func disembark() -> int:
 func trim_troops() -> int:
 	var over := troops() - troop_capacity()
 	if over > 0: g().troops = troop_capacity()
+	var b = Campaign.body()
+	if b != null:   # and the main body's, if it lost a transport
+		var cap := 0
+		for r in b.ships: cap += int(Campaign.hull(r).get("troops", 0))
+		if int(b.get("troops", 0)) > cap: over = maxi(0, over) + int(b.troops) - cap; b.troops = cap
 	if g().has("nukes"):   # and warheads go down with the boats that carried them
 		var tubes := 0
 		for r in Campaign.all_ships(): if Campaign.hull(r).klass == "ssn": for w in r.fit: if w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm": tubes += 1
@@ -694,12 +703,12 @@ func _counterattacks() -> void:
 	for s in held():
 		if live.any(func(f): return int(f.assault) == int(s.id)): continue
 		var by := ""
-		if s.from != "" and not Campaign.ports_of(s.from).is_empty():
+		if s.from != "" and not Campaign.ports_of(s.from).is_empty() and not Flag.treaty(s.from):   # a treaty stops all hostilities
 			var ch: float = float(D.assault_chance[0]) if G.day - int(s.took) < 150 else float(D.assault_chance[1])
 			if randf() < ch: by = s.from
 		if by == "":
 			for f in Diplomacy.POWERS:
-				if not Campaign.at_war(f) or Campaign.ports_of(f).is_empty(): continue
+				if not Campaign.at_war(f) or Flag.treaty(f) or Campaign.ports_of(f).is_empty(): continue
 				if Campaign.ports_of(f).any(func(p): return Campaign.mdist(p.x, p.y, s.x, s.y) < 1500.0) and randf() < 0.004: by = f; break
 		if by != "": launch_assault(s, by); return
 

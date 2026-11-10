@@ -501,7 +501,8 @@ func marks() -> Array:
 				for f in G.fleets: if int(f.get("escort", 0)) == int(c.id): out.append([f.x, f.y, c.title])
 			"survey": var q: Dictionary = G.pois[int(c.poi)]; out.append([q.x, q.y, c.title])
 			"hunt":
-				for f in G.fleets: if int(f.get("contract", 0)) == int(c.id): out.append([f.x, f.y, c.title])
+				for f in G.fleets:   # where she was last seen (or was reported, if never): the mark moves when somebody of yours sights her
+					if int(f.get("contract", 0)) == int(c.id): var kp := Campaign.known_pos(f); out.append([kp.x, kp.y, c.title + ("" if f.get("vis", true) else (" · last seen" if f.has("seenDay") else " · reported here"))])
 			"strike": var st: Dictionary = Structures.all()[int(c.struct)]; out.append([st.x, st.y, c.title])
 	return out
 
@@ -561,7 +562,7 @@ func target_of(c: Dictionary):
 		"strike":   # flown from the sea: aim for the water off the coast nearest it
 			return Structures.coast_point(Structures.all()[int(c.struct)])
 		"hunt", "escort":
-			for f in G.fleets: if int(f.get("contract", 0)) == int(c.id) or int(f.get("escort", 0)) == int(c.id): return Vector2(f.x, f.y)
+			for f in G.fleets: if int(f.get("contract", 0)) == int(c.id) or int(f.get("escort", 0)) == int(c.id): return Campaign.known_pos(f)
 	return null
 
 ## The full story of a contract, for a tooltip: what it asks, who posted it, the pay and the time left.

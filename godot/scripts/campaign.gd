@@ -310,6 +310,28 @@ func cargo_cap() -> int:
     var t = 0
     for s in all_ships(): t += int(hull(s).cargo)
     return t
+## Cargo beyond the room in the holds (a ship sold, scuttled or sunk took her holds with her) and fuel beyond the
+## bunkers: taken out of the stores, share and share alike, and returned as {good: tons} for the caller to sell or
+## to write off.
+func trim_cargo() -> Dictionary:
+    var out := {}; var over: int = cargo_used() - cargo_cap()
+    if over > 0:
+        var used: float = maxf(1.0, cargo_used()); var left := over
+        for g in C.GOODS:
+            if g.id == "fuel" or left <= 0: continue
+            var n: int = mini(left, int(ceil(float(G.cargo[g.id]) * over / used))); n = mini(n, int(floor(G.cargo[g.id])))
+            if n > 0: G.cargo[g.id] -= n; out[g.id] = n; left -= n
+        for g in C.GOODS:   # rounding: whatever is still over comes off the fullest
+            if g.id == "fuel" or left <= 0: continue
+            var n: int = mini(left, int(floor(G.cargo[g.id])))
+            if n > 0: G.cargo[g.id] -= n; out[g.id] = int(out.get(g.id, 0)) + n; left -= n
+    var fo: int = int(ceil(G.cargo.fuel)) - bunker_cap()
+    if fo > 0 and bunker_cap() >= 0: G.cargo.fuel = float(bunker_cap()); out["fuel"] = fo
+    return out
+func cargo_text(lost: Dictionary) -> String:
+    var parts := []
+    for g in C.GOODS: if lost.has(g.id): parts.append("%d %s" % [int(lost[g.id]), String(g.name).to_lower()])
+    return ", ".join(parts)
 func cargo_used() -> int:
     var t = 0
     for g in C.GOODS: if g.id != "fuel": t += int(floor(G.cargo[g.id]))   # fuel lives in the bunkers, not the hold
@@ -328,7 +350,7 @@ func fuel_use() -> float:
 ## wireless for a tow or a merchant convoy for fuel. It fills again from the bunkers once you have fuel.
 ## Food eaten a day: a ton feeds about 400 men (the owner found the old rate, 250 men, too fast).
 const FOOD_PER_MAN := 0.0025
-func food_use() -> float: return (float(G.crew) + Structures.troops()) * FOOD_PER_MAN
+func food_use() -> float: return (float(G.crew) + Structures.troops_all()) * FOOD_PER_MAN
 func reserve_cap() -> float: return fuel_use() * 4.0
 ## Fuel oil the squadron can carry: forty days' steaming in the ships' own bunkers, plus the cargo tanks of its oilers.
 func tank_cap() -> int:
@@ -400,7 +422,7 @@ func wages() -> float:
     for o in G.officers: t += 40 * o.lvl
     t += (Structures.garrison_total() + Flag.garrison_total()) * 0.15   # the men holding your structures and ports ashore
     t += Flag.guards() * Flag.GUARD_PAY                                # guard squadrons on station
-    t += Structures.troops() * Structures.TROOP_WAGE   # soldiers embarked in troopships
+    t += Structures.troops_all() * Structures.TROOP_WAGE   # soldiers embarked in troopships
     return t
 var show_origin := false   # the chart opens with the origin's story once, at the start of a campaign
 
@@ -416,7 +438,7 @@ const INCIDENT_DAYS := 90
 func at_war(fac: String) -> bool:
     if fac == "raiders": return true
     if fac == "player": return false
-    return G.rep.get(fac, 0) <= WAR_STANDING or int(G.get("incidents", {}).get(fac, 0)) > G.day or (perk("outlaw", []) as Array).has(fac) or Diplomacy.commission_enemy(fac)
+    return G.rep.get(fac, 0) <= WAR_STANDING or G.get("nukedFacs", []).has(fac) or int(G.get("incidents", {}).get(fac, 0)) > G.day or (perk("outlaw", []) as Array).has(fac) or Diplomacy.commission_enemy(fac)
 ## Days left of an incident with this flag (0 if none).
 func incident_days(fac: String) -> int: return maxi(0, int(G.get("incidents", {}).get(fac, 0)) - G.day)
 ## You fired on a flag's ships under the armistice: its warships engage you on sight for three months.
@@ -605,6 +627,7 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         f.ships.append_array(build_by_budget(["pt", "dd", "dd", "ss"], (30000 + randf() * 30000) * scale, 5, "raiders", tl))
         f.reward = round(strength(f.ships) * 0.35 / 500.0) * 500
     if f.ships.is_empty(): f.ships.append(new_ship("pt" if fac == "raiders" else "corvette", null, f.fac, tl))
+    f.capt = {"patrol": randi_range(1, 5), "convoy": randi_range(1, 3), "raiders": randi_range(1, 4), "bounty": randi_range(4, 7), "mission": randi_range(3, 6)}.get(f.kind, randi_range(1, 4))
     G.fleets.append(f)
     return f
 
@@ -639,6 +662,7 @@ func spawn_hunter(h: Dictionary) -> Dictionary:
     var tl = enemy_tech(fac_era(fac)); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
     f.ships = build_by_budget(pool, float(h.budget) * (1.0 + G.day / 200.0), 4, fac, tl)
     if f.ships.is_empty(): f.ships.append(new_ship("dd", null, fac, tl))
+    f.capt = randi_range(4, 7)   # they send a good man after you
     G.fleets.append(f)
     toast.emit("Word reaches you that a %s is searching for you." % h.name.to_lower())
     return f
@@ -902,7 +926,7 @@ func update(dt: float) -> void:
         if not war.has(f.fac): war[f.fac] = at_war(f.fac)
         var hos: bool = war[f.fac] or f.get("hunter", false) or f.get("mission", false) or f.kind == "assault"   # as hostile_fleet()
         var rate = 0.6
-        if hos and f.cool <= 0 and P.cool <= 0 and dP < 160.0 * ck_them(f, wx) and not f.ships.all(func(s): return hull(s).kind == "merchant"):   # a hunter that cannot see you does not chase
+        if hos and f.cool <= 0 and P.cool <= 0 and dP < SIGHT * fleet_watch(f) * ck_them(f, wx) and not f.ships.all(func(s): return hull(s).kind == "merchant"):   # a hunter that cannot see you does not chase
             var chase: bool = strength(f.ships) > ps * 0.5 or f.get("mission", false)
             f.chaseT = f.get("chaseT", 0.0) - dt; rate = 1.0 if chase else 0.95
             if f.chaseT <= 0 or f.get("route") == null:
@@ -970,7 +994,7 @@ func update(dt: float) -> void:
         var reach := maxf(strike_reach(f.ships, Weather.air_ok(wx, fac_era(f.fac) >= 2)) * kt, pr * ky) if hos else 0.0
         if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
         var close_in: bool = ((P.follow == f.id or f.get("answering", false)) and dP < CONTACT * maxf(ky, 0.35)) or (hos and dP < CONTACT * maxf(kt, ky))   # inside gun range, whoever sees the other brings on the action
-        if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
+        if f.cool <= 0 and P.cool <= 0 and not G.get("docked", false) and (close_in or (hos and dP < reach and not f.get("met", false))):
             f.met = true; f.vis = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
 
 # ------------------------------------------------------------------ divisions, reserve and readiness
@@ -990,13 +1014,20 @@ func detach(fast: Array) -> String:
     var P: Dictionary = G.player
     var f = {"id": G.nextId, "kind": "division", "fac": "player", "h": P.h, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": rest, "cargo": {},
         "x": P.x, "y": P.y, "home": {"x": P.x, "y": P.y}, "body": true, "join": false, "name": "Your main body"}
+    # soldiers stay with the transports they are in: those berthed in the main body go with it
+    var berths := func(list: Array) -> int:
+        var n := 0
+        for s in list: n += int(hull(s).get("troops", 0))
+        return n
+    var all_b: int = berths.call(G.fleet); var away: int = int(round(float(Structures.troops()) * berths.call(rest) / all_b)) if all_b > 0 else 0
+    f.troops = away; G.troops = Structures.troops() - away
     G.nextId += 1; G.fleets.append(f); G.fleet = fast
     for s in G.fleet: s.erase("fast")
     return "The fast division parts company: %d ships at %d knots. The main body (%d ships) follows at %d." % [fast.size(), int(fleet_map_speed(fast) / 0.576 * 0.7), rest.size(), int(fleet_map_speed(rest) / 0.576 * 0.7)]
 func rejoin() -> void:
     var b = body()
     if b == null: return
-    G.fleet.append_array(b.ships); G.fleets.erase(b)
+    G.fleet.append_array(b.ships); G.fleets.erase(b); G.troops = Structures.troops() + int(b.get("troops", 0))
     toast.emit("The main body rejoins: %d ships in company." % G.fleet.size())
 
 ## Readiness: how fresh a ship's company and machinery are, 1 down to RDY_MIN. Steaming wears it (faster at full
@@ -1021,11 +1052,16 @@ func _readiness_day(moved: bool) -> void:
     elif low > 0.7: G.rdyWarned = false
 ## Days alongside: the calendar runs on (wages, food, the world's business) and the crews rest.
 func rest_in_port(days: int) -> void:
-    G.docked = true
+    G.docked = true; var was_paused: bool = paused; paused = false
+    var b = body(); var near: bool = b == null or mdist(b.x, b.y, G.player.x, G.player.y) < 30.0   # a main body far astern is not alongside
     for i in days:
-        G.day_rest = true; new_day(false)
-        for s in all_ships(): s.rdy = minf(1.0, readiness(s) + 0.1)
-    G.docked = false; G.erase("day_rest"); save()
+        G.day_rest = true
+        # the world does not stop for you: every other fleet steams on through the day (convoys arrive, relief
+        # forces close, patrols fight), while you lie alongside, out of their reach
+        var d0: int = G.day; G.movedToday = false; var guard := 0
+        while int(G.day) == d0 and guard < 400: update(0.1); guard += 1
+        for s in (all_ships() if near else G.fleet): s.rdy = minf(1.0, readiness(s) + 0.1)
+    G.docked = false; G.erase("day_rest"); paused = was_paused; save()
 func days_to_rest() -> int: return int(ceil((1.0 - fleet_readiness()) / 0.112))
 
 # ------------------------------------------------------------------ what you can see of the world's fleets
@@ -1050,9 +1086,26 @@ func always_seen(f: Dictionary) -> bool:
 ## day, a carrier's search aircraft three times as far as her strike reaches, all cut by weather and darkness.
 func sight_radius() -> float:
     var wx: Dictionary = weather_here()
-    return maxf(SIGHT, strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ck_you(wx)
-## How far off a hostile force notices you and gives chase (map units): with lookouts alone, or with radar.
-func found_radius(radar: bool) -> float: return 160.0 * Weather.contact_mult(weather_here(), radar) * signature()
+    return maxf(SIGHT, strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ck_you(wx) * your_watch()
+## How far off a hostile force notices you and gives chase (map units): with lookouts alone, or with radar; under the
+## captain given (a fleet), or an average one.
+func found_radius(radar: bool, f = null) -> float:
+    return SIGHT * Weather.contact_mult(weather_here(), radar) * signature() * (fleet_watch(f) if f != null else watch(3))
+## The watch a captain keeps (owner's decision): how far a force sees is not fixed, it follows its captain. The same
+## base distance (SIGHT) for you and for every other fleet, times this: a green captain (level 1) 87%, a seasoned one
+## (level 4) 108%, the best (level 8) 136%; a squadron with no captain in the flagship 80%.
+func watch(lvl: float) -> float: return 0.8 + 0.07 * clampf(lvl, 0.0, 8.0)
+func your_watch() -> float:
+    if G.fleet.is_empty(): return watch(0)
+    var o = officer_of(G.fleet[0])
+    return watch(float(o.lvl) if o != null else 0.0)
+## A fleet's captain: set when it is formed (`capt`); fleets from older saves get one by their number.
+func fleet_capt(f: Dictionary) -> int:
+    if f.has("capt"): return int(f.capt)
+    return 1 + int(f.id) % 4 + (2 if f.get("hunter", false) or f.get("mission", false) or f.get("kind", "") == "bounty" else 0)
+func fleet_watch(f: Dictionary) -> float: return watch(fleet_capt(f))
+const CAPT_WORD := ["green", "green", "able", "able", "seasoned", "seasoned", "veteran", "veteran", "renowned"]
+func capt_text(f: Dictionary) -> String: return "%s captain (level %d)" % [CAPT_WORD[clampi(fleet_capt(f), 0, 8)], fleet_capt(f)]
 func _sighting() -> void:
     var P: Dictionary = G.player; var wx: Dictionary = weather_here(); var ky := ck_you(wx)
     var eyes := [[P.x, P.y, sight_radius()]]
@@ -1221,6 +1274,12 @@ func fname(f: Dictionary) -> String:
     var n: String = f.name
     if n.begins_with("Your "): return n.substr(5)
     return n.to_lower() if n.begins_with("Raider") else n
+## Where a fleet is as far as you know: where it is if somebody of yours has it in sight, else where it was last
+## seen, else where it was reported when you were told of it (its station: a contract's or a mission's fleet).
+func known_pos(f: Dictionary) -> Vector2:
+    if f.get("vis", true): return Vector2(f.x, f.y)
+    if f.has("seenDay"): return Vector2(f.seenX, f.seenY)
+    return Vector2(f.home.x, f.home.y) if f.has("home") else Vector2(f.x, f.y)
 func _fleet(id):
     for f in G.fleets: if f.id == id: return f
     return null
@@ -1305,9 +1364,12 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     G.fleet = G.fleet.filter(func(s): return not r.lost.has(s))
     if G.fleet.is_empty() and body() != null:   # the division you sailed with is gone, but your main body is afloat: it is your squadron now
         var b = body(); r.notes.append("The division you led is lost. Your flag shifts to the main body, %d km away." % int(mdist(b.x, b.y, G.player.x, G.player.y) * KM_PER_UNIT))
+        G.troops = int(b.get("troops", 0))   # the soldiers with the lost division went with it
         G.fleet = b.ships; G.fleets.erase(b); G.player.x = b.x; G.player.y = b.y; G.player.route = null; G.player.follow = null
     var drowned := Structures.trim_troops()
     if drowned > 0: r.notes.append("%d soldiers were lost with their transport." % drowned)
+    var sunk_cargo := trim_cargo()
+    if not sunk_cargo.is_empty(): r.notes.append("Cargo went down with the ships that carried it: %s." % cargo_text(sunk_cargo))
     for o in G.officers: if not all_ships().any(func(s): return s.id == o.ship): o.ship = null
     var had: int = f.ships.size() if f != null else 0
     var enemy_left = false

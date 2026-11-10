@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds()
-	ok(sections == 5, "every section ran to its end (%d of 5)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions()
+	ok(sections == 6, "every section ran to its end (%d of 6)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -342,3 +342,83 @@ func _radar() -> void:
 			prev = foe.paint_t; if i > 300: worst = maxf(worst, foe.paint_t)
 		if phased: ok(foe.radar_only and worst < 0.1, "a phased array holds the contact all the time (longest gap %.2f s)" % worst)
 		else: ok(foe.radar_only and paints >= 5 and paints <= 7 and worst > 8.0 and worst <= 10.1, "a rotating set paints her once a turn: %d times in a minute, the echo up to %.1f s old" % [paints, worst])
+
+## The owner's decisions after the review (10 Nov 2026): sighting follows the captain, for you and for them; resting
+## in port lets the world move; marks show where a hunted fleet was last seen; a treaty stops all hostilities; the
+## bomb makes an enemy for good; soldiers are in particular transports; a ship sold or lost takes her holds with her.
+func _decisions() -> void:
+	Campaign.new_game("commission")
+	var G: Dictionary = Campaign.G; var P: Dictionary = G.player
+	# the same distance for both sides, times each captain's watch
+	var o = Campaign.officer_of(G.fleet[0]); o.lvl = 1; var s1 := Campaign.sight_radius(); o.lvl = 8; var s8 := Campaign.sight_radius()
+	ok(s8 > s1 * 1.4, "a renowned captain sees farther than a green one (%d km against %d)" % [int(s8 * Campaign.KM_PER_UNIT), int(s1 * Campaign.KM_PER_UNIT)])
+	var w := Campaign.water_point(8.0); P.x = w.x; P.y = w.y; G.fleets.clear(); o.lvl = 4
+	var green := _fleet("patrol", "directorate", w.x, w.y, ["dd"]); green.capt = 1
+	var old := _fleet("patrol", "directorate", w.x, w.y, ["dd"]); old.capt = 8
+	ok(Campaign.found_radius(false, old) > Campaign.found_radius(false, green) * 1.4, "and a renowned captain finds you from farther off (%d km against %d)" % [int(Campaign.found_radius(false, old) * Campaign.KM_PER_UNIT), int(Campaign.found_radius(false, green) * Campaign.KM_PER_UNIT)])
+	green.capt = 4
+	ok(absf(Campaign.found_radius(false, green) - Campaign.sight_radius()) < 1.0, "captains of equal skill see each other at the same distance (%d km and %d km)" % [int(Campaign.found_radius(false, green) * Campaign.KM_PER_UNIT), int(Campaign.sight_radius() * Campaign.KM_PER_UNIT)])
+	# resting in port: the world moves, and nothing can bring you to action alongside
+	G.fleets.clear(); G.cargo.food = 500.0; G.credits = 100000.0
+	var cv := _fleet("convoy", "combine", w.x + 600.0, w.y, ["freighter"]); cv.capt = 2
+	var far := Campaign.water_point(8.0, Vector2(w.x + 600.0, w.y), 200.0); cv.x = far.x; cv.y = far.y; var cx: float = cv.x; var cy: float = cv.y
+	var foe := _fleet("raiders", "raiders", w.x + 3.0, w.y, ["dd"]); var met := [0]
+	var cb := func(_f): met[0] += 1
+	Campaign.encounter.connect(cb)
+	var d0: int = G.day; Campaign.paused = true; Campaign.rest_in_port(3)
+	Campaign.encounter.disconnect(cb)
+	ok(int(G.day) == d0 + 3 and Campaign.paused, "three days alongside are three days (and the clock is as you left it)")
+	ok(not G.fleets.has(cv) or Campaign.mdist(cv.x, cv.y, cx, cy) > 20.0, "other fleets steam on while you rest")
+	ok(met[0] == 0, "and nobody brings you to action while you lie in harbour (%d contacts)" % met[0])
+	Campaign.paused = false
+	# a hunted flotilla is marked where it was last seen, not where it is
+	G.fleets.clear(); G.contracts.clear()
+	var c := {"id": 9100, "kind": "hunt", "fac": "concord", "port": 0, "x": w.x + 300.0, "y": w.y, "days": 30, "reward": 8000, "rep": 5, "title": "Hunt"}
+	Diplomacy.accept(c); var hf = Campaign._fleet(int(c.fleet)); hf.vis = false; hf.erase("seenDay")
+	var home := Vector2(hf.home.x, hf.home.y); hf.x = home.x + 150.0
+	var mk: Array = Diplomacy.marks()[0]
+	ok(absf(float(mk[0]) - home.x) < 1.0, "never sighted, she is marked where she was reported")
+	hf.seenX = home.x + 40.0; hf.seenY = home.y; hf.seenDay = G.day
+	ok(absf(float(Diplomacy.marks()[0][0]) - (home.x + 40.0)) < 1.0 and absf(Diplomacy.target_of(c).x - (home.x + 40.0)) < 1.0, "once sighted and lost, at her last known position")
+	hf.vis = true
+	ok(absf(float(Diplomacy.marks()[0][0]) - hf.x) < 1.0, "and in sight, where she is")
+	G.fleets.clear(); G.contracts.clear()
+	# a treaty stops every attack by that power; the bomb makes an enemy for good
+	G.flag = {"name": "Test Company", "short": "Company", "day": G.day, "recog": {"directorate": G.day}, "treaty": {"directorate": int(G.day) + 300}}; Flag.apply()
+	var st: Dictionary = {}
+	for x in Structures.all(): if x.fac == "directorate" and x.kind == "farm": st = x; break
+	st.fac = "player"; st.from = "directorate"; st.took = int(G.day) - 200; st.garrison = 30
+	var port: Dictionary = {}
+	for q in G.ports: if q.fac == "directorate" and not q.capital: port = q; break
+	port.fac = "player"; port.from = "directorate"; port.men = 300; port.took = int(G.day) - 200
+	seed(3)
+	for i in 600: Structures._counterattacks(); Flag.new_day()
+	ok(not G.fleets.any(func(f): return f.kind == "assault"), "under a treaty the old owner sends nothing against your port or your structures")
+	G.flag.treaty = {}
+	for i in 600: Structures._counterattacks()
+	ok(G.fleets.any(func(f): return f.kind == "assault"), "without one, it does")
+	G.fleets.clear(); G.rep.pacific = 40; G.nukedFacs = ["pacific"]
+	ok(Campaign.at_war("pacific") and Flag.can_peace("pacific").begins_with("They will never"), "a power you used the bomb on stays at war with you whatever your standing")
+	G.nukedFacs = []; G.commission = {"fac": "concord", "since": G.day, "marque": "republic"}; G.rep.republic = 0
+	ok(Campaign.at_war("republic") and Flag.can_peace("republic") != "" and not Flag.can_peace("republic").begins_with("Their terms"), "no paying for a peace that is not yours to make: " + Flag.can_peace("republic"))
+	G.commission = null
+	# soldiers are in particular transports
+	G.fleet = [Campaign.new_ship("dd", "Fast", "player", []), Campaign.new_ship("ap_haskell", "T1", "player", ["amphib"]), Campaign.new_ship("ca", "Heavy", "player", [])]
+	G.troops = 1200; var tgt: Dictionary = {}
+	for x in Structures.all(): if x.fac == "concord" and x.kind == "farm" and int(x.coastKm) < 300: tgt = x; break
+	var cp := Structures.coast_point(tgt); P.x = cp.x; P.y = cp.y
+	ok(Structures.can_invade(tgt) == "", "with the troopship in company a landing is possible")
+	Campaign.detach([G.fleet[0]])
+	ok(Structures.troops() == 0 and Structures.troops_all() == 1200 and Structures.can_invade(tgt) != "", "with her left in the main body the soldiers are there, not with you: " + Structures.can_invade(tgt))
+	var wages_split := Campaign.wages(); Campaign.rejoin()
+	ok(Structures.troops() == 1200 and is_equal_approx(Campaign.wages(), wages_split), "they are paid all the same, and come back when the main body rejoins")
+	# a ship sold or lost takes her holds with her
+	G.troops = 0; G.fleet = [Campaign.new_ship("dd", "Keeper", "player", []), Campaign.new_ship("freighter", "Hauler", "player", [])]
+	for gd in Campaign.C.GOODS: G.cargo[gd.id] = 0.0
+	G.cargo.steel = float(Campaign.cargo_cap() - 10); G.cargo.food = 10.0
+	var map = load("res://scenes/world_map.tscn").instantiate(); add_child(map)
+	map.cur_port = G.ports[0]; var money: float = G.credits
+	map._sell_ship(G.fleet[1])
+	ok(Campaign.cargo_used() <= Campaign.cargo_cap() and float(G.credits) > money + map.sell_value(Campaign.new_ship("freighter", null, "player", [])) * 0.5, "selling a freighter lands the cargo her holds carried and sells it (hold %d of %d)" % [Campaign.cargo_used(), Campaign.cargo_cap()])
+	map.cur_port = {}; map.queue_free()
+	sections += 1

@@ -50,7 +50,7 @@ func _ready() -> void:
     water_mat = ShaderMaterial.new(); water_mat.shader = preload("res://shaders/water.gdshader"); water.material = water_mat; bg.add_child(water)
     # world layers, bottom to top
     world = Node2D.new(); world.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS; add_child(world)
-    for n in ["islands", "below", "bursts", "shadows", "ships", "above", "light", "overlay"]:
+    for n in ["islands", "wash", "below", "bursts", "shadows", "ships", "above", "light", "overlay"]:
         var node: Node2D
         if n == "ships": node = Node2D.new()
         else: node = Drawer.new(); node.battle = self; node.kind = n; node.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
@@ -59,6 +59,7 @@ func _ready() -> void:
             var ll := CanvasLayer.new(); ll.layer = 1; ll.follow_viewport_enabled = true; add_child(ll); ll.add_child(node); layers[n] = node; continue
         if n == "overlay":   # range rings and aiming lines stay readable at night too
             var ol := CanvasLayer.new(); ol.layer = 2; ol.follow_viewport_enabled = true; add_child(ol); ol.add_child(node); layers[n] = node; continue
+        if n == "wash": wash_mat = ShaderMaterial.new(); wash_mat.shader = preload("res://shaders/wash.gdshader"); node.material = wash_mat
         if n == "bursts": burst_mat = ShaderMaterial.new(); burst_mat.shader = preload("res://shaders/burst.gdshader"); burst_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = burst_mat
         world.add_child(node); layers[n] = node
     for is_ in sim.islands: _add_island(is_)
@@ -93,6 +94,7 @@ func _ready() -> void:
 
 var bloom: ColorRect
 var burst_mat: ShaderMaterial
+var wash_mat: ShaderMaterial
 var veil: ColorRect
 var veil_mat: ShaderMaterial
 ## Each frame: the pools of sight round your ships (and round enemies that are seen), in screen pixels, for the veil.
@@ -490,6 +492,7 @@ class Drawer extends Node2D:
             "islands": _islands()
             "below": _wakes(); _parts(0); _wreckage(); _torpedoes()
             "bursts": _bursts()
+            "wash": _wash()
             "shadows": _shadows()
             "above": _parts(1)
             "light": _parts(2)
@@ -647,7 +650,17 @@ class Drawer extends Node2D:
         for q in sim.parts:
             if q.life < 0 or (q.t != P.SPLASH and q.t != P.GEYSER and q.t != P.DC) or not vr.has_point(q.pos): continue
             var deep: bool = q.t == P.DC; var R: float = maxf(q.size * (1.5 if deep else 1.0), 2.0 * mn)
-            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, 1.0))
+            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
+
+    ## What a shell leaves on the sea: a foam patch and a spreading trough, one quad each (shaders/wash.gdshader).
+    func _wash() -> void:
+        var sim: BattleSim = battle.sim
+        if not sim.modern: return
+        var vr: Rect2 = battle.view_rect().grow(300); var mn: float = 1.0 / battle.zoom()
+        for q in sim.parts:
+            if q.t != P.WASH or q.life < 0 or not vr.has_point(q.pos): continue
+            var R: float = maxf(q.size, 1.5 * mn)
+            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(1.0 - q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0173 + q.pos.y * 0.0091, 1.0), 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
 
     ## An aircraft in plan, in metres (nose along +x): a shadow on the sea first, then the machine in its service
     ## paint with the light on one wing, its canopy, markings, and the propeller's disc or the jet's exhaust.

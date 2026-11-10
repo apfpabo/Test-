@@ -18,6 +18,9 @@ func _process(_d: float) -> void:
         for i in 4: sim.fx_splash(s.pos + Vector2(-140 + i * 95, -95), [5.0, 9.0, 15.0, 24.0][i])
         sim.drop_dcs(s)
     if f == 30 + 16: sim.fx_splash(s.pos + Vector2(40, 150), 24.0); sim.fx_splash(s.pos + Vector2(170, 130), 15.0)
-    for t in [38, 50, 75, 110, 150, 200]:
+    for t in [3, 6, 10, 38, 50, 75, 110, 150, 200]:
         if f == 30 + t: get_viewport().get_texture().get_image().save_png("%s/splash_%03d.png" % [out, t])
-    if f == 235: get_tree().quit()
+    if f == 236: for i in 6: sim.fx_splash(s.pos + Vector2(-300 + i * 110, -220 + (i % 2) * 60), 5.0 + (i % 3) * 2.0)
+    if f == 240: battle.camera.zoom = Vector2.ONE * 0.35
+    if f == 262: get_viewport().get_texture().get_image().save_png("%s/splash_far.png" % out)
+    if f == 266: get_tree().quit()

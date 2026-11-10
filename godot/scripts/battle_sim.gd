@@ -15,7 +15,7 @@ const WIND := Vector2(7.0, 3.5)  # smoke drift, metres per visual second
 const SUN := Vector2(0.55, 0.85) # direction shadows fall on the chart
 
 enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL,
-    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT }   # the modern effects (Settings.fx_modern)
+    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH }   # the modern effects (Settings.fx_modern)
 
 class Mount:
     var slot: Dictionary
@@ -606,12 +606,13 @@ func fx_boom(p: Vector2, size: float, mx := 0.6) -> void:
 
 ## A shell into the sea: a white burst, spray thrown out in streaks, a ring running out across the water, then foam.
 func fx_splash(p: Vector2, size: float) -> void:
-    part(P.SPLASH, p, 1.8, size); part(P.FOAM, p, 10.0, size * 1.5)
+    part(P.SPLASH, p, 2.0 if modern else 1.8, size)
+    if not modern: part(P.FOAM, p, 10.0, size * 1.5)
     if modern:
+        part(P.WASH, p, 9.0 + size * 0.4, size * 1.5)   # the foam patch and the trough it leaves (shaders/wash.gdshader)
         for i in 4 + int(size * 0.35):
             var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.7 + randf() * 0.9, size * (0.22 + randf() * 0.2), rdir() * (size * 1.2 + randf() * size * 4.0)); q.drag = 0.18
         part(P.WRING, p, 1.4 + size / 25.0, size * 2.4)
-        if size > 12.0: var f = part(P.FOAM, p, 16.0, size * 2.6); f.a = randf() * TAU; f.spin = (randf() - 0.5) * 0.1
 
 func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
     var S: float = {"S": 5.5, "M": 9.5, "L": 15.0, "H": 24.0}[size]
@@ -1350,7 +1351,7 @@ func step(dtv: float) -> void:
                 if s.side == tp.side or not active(s) or (submerged(s) and not tp.homing): continue
                 var l: Vector2 = (tp.pos - s.pos).rotated(-s.a)
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
-                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.FOAM, tp.pos, 12.0, 60.0)
+                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.WASH if modern else P.FOAM, tp.pos, 16.0 if modern else 12.0, 45.0 if modern else 60.0)
                     sound("torp_hit", tp.pos, 0.55); gone = true; break
         if not gone and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
         if gone: torps.remove_at(i)
@@ -1413,7 +1414,7 @@ func step(dtv: float) -> void:
         if modern:   # spray flung out of the dome, a ring across the water, and the foam it leaves
             for j in 9:
                 var sp = part(P.SPRAY, q.pos + rdir() * 8.0, 0.8 + randf() * 0.9, 7.0 + randf() * 6.0, rdir() * (40.0 + randf() * 110.0)); sp.drag = 0.2
-            part(P.WRING, q.pos, 2.2, 90.0); var fm = part(P.FOAM, q.pos, 18.0, 55.0); fm.a = randf() * TAU; fm.spin = (randf() - 0.5) * 0.08
+            part(P.WRING, q.pos, 2.2, 90.0); var fm = part(P.WASH if modern else P.FOAM, q.pos, 18.0, 40.0 if modern else 55.0); fm.a = randf() * TAU; fm.spin = (randf() - 0.5) * 0.08
         for s in ships:
             if s.sub and active(s) and s.side != q.side and s.pos.distance_to(q.pos) < 60: damage(s, 160, "dc"); s.reveal_t = 30.0
     # end of the action: one side gone, or fifteen battle minutes without a hit and nothing in flight

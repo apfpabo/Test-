@@ -40,6 +40,21 @@ vec3 swell_waves(vec2 w) {
 	}
 	return acc;
 }
+// Wavelets: the small restless texture of open water, always moving (owner's request: the sea looked still).
+// Two sheets of ridged noise slide across each other, so the bright seams between them crawl and never repeat.
+// `len` is the size of a wavelet in metres; a sheet shows only while its wavelets are a sensible size on screen.
+float wavelets(vec2 w, float len) {
+	float px = len * zoom;                                   // size of a wavelet in pixels
+	float vis = smoothstep(5.0, 14.0, px) * (1.0 - smoothstep(140.0, 380.0, px));
+	if (vis <= 0.0) return 0.0;
+	float sp = 0.22 * sqrt(len);                             // bigger wavelets travel faster, as real ones do
+	// each sheet is turned a different way, so the lattice of the noise never lines up with the screen or itself
+	vec2 wa = vec2(w.x * 0.82 - w.y * 0.57, w.x * 0.57 + w.y * 0.82), wb = vec2(w.x * 0.34 + w.y * 0.94, -w.x * 0.94 + w.y * 0.34);
+	vec2 a = wa / len + vec2(rt * sp / len, rt * sp * 0.35 / len);
+	vec2 b = wb / (len * 0.71) + vec2(-rt * sp * 0.6 / len, rt * sp * 0.8 / len) + 31.7;
+	float n = noise(a) * 0.65 + noise(a * 2.3 + 7.1) * 0.35, m = noise(b) * 0.65 + noise(b * 2.3 + 3.3) * 0.35;
+	return (smoothstep(0.05, 0.95, n * m * 2.0) - 0.45) * vis;
+}
 void fragment() {
 	vec2 w = cam + (SCREEN_UV - 0.5) * screen / zoom;
 	// lighting follows the broad swell only, so glints are smooth sheens rather than speckle
@@ -47,7 +62,7 @@ void fragment() {
 	float h = sea(w), hs = swell_h(w);
 	vec2 grad = vec2(swell_h(w + vec2(e, 0.0)) - hs, swell_h(w + vec2(0.0, e)) - hs) / e;
 	vec3 sw = swell_waves(w);
-	float fade = clamp((zoom - 0.45) / 0.8, 0.0, 1.0);   // far out the waves would alias into streaks: leave the broad sea
+	float fade = clamp((zoom - 0.25) / 0.7, 0.0, 1.0);   // far out the waves would alias into streaks: leave the broad sea
 	vec3 n = normalize(vec3(-grad * 90.0 - sw.yz * 3.5 * fade, 1.0));
 	vec3 l = normalize(vec3(sun_dir, 0.9));
 	float diff = clamp(dot(n, l), 0.0, 1.0);
@@ -59,6 +74,8 @@ void fragment() {
 	float cloud = smoothstep(0.45, 0.75, fbm(w / 2600.0 + vec2(rt * 0.0016, rt * 0.0009)));
 	col *= 1.0 - 0.16 * cloud;
 	col *= 0.82 + 0.3 * diff;
+	float wl = wavelets(w, 7.0) + wavelets(w, 30.0) * 0.8 + wavelets(w, 130.0) * 0.7 + wavelets(w, 560.0) * 0.7;
+	col += (vec3(0.5, 0.62, 0.62) * max(wl, 0.0) * 0.075 + vec3(0.03, 0.05, 0.05) * min(wl, 0.0)) * (1.0 + 0.5 * clamp(sea_state / 3.0, 0.0, 1.0));
 	col += vec3(0.75, 0.8, 0.78) * spec * 0.12 * clamp(zoom * 2.0, 0.2, 1.0);
 	// weather: a grey, steep sea with whitecaps running down-wind as it rises
 	float ss = clamp(sea_state / 3.0, 0.0, 1.0);

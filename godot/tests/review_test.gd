@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting()
-	ok(sections == 9, "every section ran to its end (%d of 9)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _weights()
+	ok(sections == 10, "every section ran to its end (%d of 10)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -644,4 +644,48 @@ func _fighting() -> void:
 			fl.throttle = 2; s4.player_rudder = 0.6 if (i > 12000 and i < 15000) else 0.0; s4.finished = false; s4.step(0.01)   # (the merchant runs off the chart: the action is kept open)
 			if i > 24000: for k in range(1, 5): worst = maxf(worst, s4.ships[k].pos.distance_to(fl.pos + s4.station(s4.ships[k]).rotated(fl.a)))
 		ok(worst < 220.0, "%s: after a turn every ship is back on her station and holds it (worst %d m off)" % [ord, int(worst)])
+	sections += 1
+
+## Refits are ruled by weight (docs/REFIT.md).
+func _weights() -> void:
+	var over := []; var none := []
+	for id in GameData.hulls:
+		var d: Dictionary = GameData.hulls[id]; var raw := []
+		for sl in d.slots:
+			raw.append(sl.def)
+			if not BattleSim.TONS.has(sl.def): none.append(sl.def)
+		var ld: Dictionary = BattleSim.loading(d, raw, {})
+		if not ld.ok or absf(float(ld.speed) - 1.0) > 0.001 or absf(float(ld.spread) - 1.0) > 0.001: over.append(id)
+		for tech in [["homing", "ciws", "missiles", "radar"], ["homing"], []]:
+			var l2: Dictionary = BattleSim.loading(d, BattleSim.default_fit(d, tech), {})
+			if float(l2.over_t) > 0.0 or float(l2.top) > BattleSim.TOP_SLACK: over.append("%s with %s (%d t over, top %.2f)" % [id, str(tech), int(l2.over_t), float(l2.top)])
+	ok(none.is_empty(), "every weapon a design carries has a weight %s" % str(none))
+	ok(over.is_empty(), "every design as built, in any era's standard fit, is within her weight and topweight %s" % str(over.slice(0, 6)))
+	for w in GameData.weapons: if not BattleSim.TONS.has(w): none.append(w)
+	ok(none.is_empty(), "every weapon in the yard's list has a weight %s" % str(none))
+	var d: Dictionary = GameData.hulls["dd_fletcher"]; var fit := []
+	for sl in d.slots: fit.append(sl.def)
+	var base: Dictionary = BattleSim.loading(d, fit, {})
+	var armoured: Dictionary = BattleSim.loading(d, fit, {"hull": 1})
+	ok(float(armoured.over_t) > 0.0 and armoured.ok and float(armoured.speed) < 1.0 and float(armoured.turn) < 1.0, "armour on a destroyer eats her margin: %d t over, %d%% slower" % [int(armoured.over_t), int(round((1.0 - float(armoured.speed)) * 100))])
+	ok(not BattleSim.loading(d, fit, {"hull": 2, "tds": 2}).ok, "and the yard will not pass her with two marks of armour and of torpedo protection")
+	var landed: Array = fit.duplicate()
+	for i in d.slots.size(): if d.slots[i].s == "T": landed[i] = ""
+	var traded: Dictionary = BattleSim.loading(d, landed, {"hull": 1})
+	ok(float(traded.over_t) <= 0.0 and is_equal_approx(float(traded.speed), 1.0), "landing her torpedoes pays for it, as navies did (%d t in hand)" % int(-float(traded.over_t)))
+	ok(float(BattleSim.loading(d, landed, {}).speed) > 1.0, "a ship lighter than designed is a little faster")
+	var top: Dictionary = BattleSim.loading(d, fit, {"radar": 2, "fc": 2})
+	ok(float(top.top) > BattleSim.TOP_SLACK and float(top.spread) > 1.0, "directors and radar aloft make her top-heavy: salvos %d%% wider" % int(round((float(top.spread) - 1.0) * 100)))
+	# it tells in battle, for you and not for other navies' ships
+	var rec: Dictionary = Campaign.new_ship("dd_fletcher", null, "player", []); rec.up = {"hull": 1, "radar": 2, "fc": 2}
+	var sim := BattleSim.new(); sim.wx = Weather.CLEAR
+	sim.setup([rec], [Campaign.new_ship("dd_narvik", null, "directorate", [])], [], [], 0)
+	ok(sim.ships[0].ld_speed < 1.0 and sim.ships[0].ld_spread > 1.0 and is_equal_approx(sim.ships[1].ld_speed, 1.0), "an overloaded ship of yours is slower and shoots wider in battle (speed x%.2f, spread x%.2f)" % [sim.ships[0].ld_speed, sim.ships[0].ld_spread])
+	var map = load("res://scenes/world_map.tscn").instantiate(); add_child(map)
+	var plan: Array = rec.fit.duplicate(); var ti := -1
+	for i in d.slots.size(): if d.slots[i].s == "T" and ti < 0: ti = i
+	plan[ti] = ""
+	var c: Array = map.refit_cost(rec, plan)
+	ok(int(c[0]) == int(BattleSim.weapon_tons(rec.fit[ti]) * map.YARD_PER_TON), "the yard charges by the ton for landing a mount (%d)" % int(c[0]))
+	map.queue_free()
 	sections += 1

@@ -58,15 +58,18 @@ vec4 blast(vec2 uv, float k, float seed, float big, vec2 lightdir) {
 	o.a *= 1.0 - smoothstep(1.8, 2.0, r);
 	return o;
 }
-// The foam left where a shell went in: cells that open up and waste away from the edge inwards.
+// The foam left where a shell went in: froth at first, then a lace of white threads round holes that widen until
+// only wisps are left (not slabs: the white is the seams between the cells, and it is soft and broken).
 float foam_at(vec2 p, float k, float seed, float edge) {
 	float r = length(p);
-	vec2 fp = p * (2.8 + 0.5 * k) + seed + vec2(k * 0.6, -k * 0.4);
-	fp += (vec2(fbm(fp * 0.9 + 3.1), fbm(fp * 0.9 + 11.7)) - 0.5) * 1.5;      // pulled about, so the cells are ragged, not tiles
-	float tex = fbm(fp * 1.6 + seed);
-	float c = min(1.0, cells(fp) * 2.4) * 0.5 + tex * 0.75;
-	float th = mix(0.3, 1.0, pow(k, 0.75)) + 0.25 * smoothstep(0.5, 1.0, r / edge);
-	return smoothstep(th, th + 0.2, c) * (0.6 + 0.4 * smoothstep(0.3, 0.7, tex)) * (1.0 - smoothstep(edge * 0.85, edge * 1.02, r));
+	vec2 fp = p * 3.4 + seed + vec2(k * 0.5, -k * 0.3);
+	fp += (vec2(fbm(fp * 0.8 + 3.1), fbm(fp * 0.8 + 11.7)) - 0.5) * 1.8;        // pulled about, so nothing is regular
+	float big = cells(fp), fine = cells(fp * 2.7 + 5.0);                         // 0 on the seams, rising into each hole
+	float wide = mix(0.6, 0.03, pow(k, 0.55)) * (1.0 - 0.6 * smoothstep(0.45, 1.0, r / edge));   // how thick the threads still are
+	float lace = 1.0 - smoothstep(wide, wide + 0.16, big);
+	lace = max(lace, (1.0 - smoothstep(wide * 0.6, wide * 0.6 + 0.2, fine)) * 0.7);
+	float froth = 0.55 + 0.45 * fbm(fp * 4.0 + seed);                            // fine grain: bubbles, not paint
+	return lace * froth * (1.0 - smoothstep(edge * 0.8, edge * 1.05, r));
 }
 void fragment() {
 	float k = COLOR.r, seed = COLOR.g * 37.0;
@@ -97,9 +100,9 @@ void fragment() {
 	// the foam, standing a little proud of the water: its shadow first, then the foam, bright on the edge towards the light
 	float f0 = foam_at(p, k, seed, edge), f1 = foam_at(p + light * 0.07, k, seed, edge), f2 = foam_at(p - light * 0.07, k, seed, edge);
 	float vis = born * min(1.0, a0 * 2.5);
-	over(o, vec3(0.0, 0.05, 0.08), f1 * (1.0 - f0) * 0.45 * vis);
-	vec3 fc = mix(vec3(0.7, 0.83, 0.87), vec3(0.93, 0.96, 0.96), clamp(0.55 + (f0 - f2) * 0.9, 0.0, 1.0));
-	over(o, fc, f0 * 0.82 * vis);
+	over(o, vec3(0.0, 0.05, 0.08), f1 * (1.0 - f0) * 0.16 * vis);
+	vec3 fc = mix(vec3(0.7, 0.83, 0.86), vec3(0.88, 0.93, 0.93), clamp(0.6 + (f0 - f2) * 0.5, 0.0, 1.0));
+	over(o, fc, clamp(f0 * 1.15, 0.0, 1.0) * 0.78 * vis);
 	o.rgb *= mix(1.0, 0.5, night);
 	COLOR = o;
 	}

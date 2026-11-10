@@ -1399,6 +1399,7 @@ func buy_ship(t: String, pr: int) -> Dictionary:
     return s
 ## What a refit plan costs: [new weapons, sold back]. Weapons taken off go back at half price, but a ship you bought
 ## cannot return more than half of what you have put into her (her standard weapons came with the yard's price).
+const YARD_PER_TON := 12
 func refit_cost(s: Dictionary, plan: Array) -> Array:
     var buy := 0; var refund := 0
     for i in s.fit.size():
@@ -1406,6 +1407,7 @@ func refit_cost(s: Dictionary, plan: Array) -> Array:
         if a == b: continue
         if b != "": buy += int(GameData.weapons[b].price)
         if a != "": refund += int(GameData.weapons[a].price / 2)
+        buy += int((BattleSim.weapon_tons(a) + BattleSim.weapon_tons(b)) * YARD_PER_TON)   # the yard's labour: every ton landed or shipped
     if s.has("paid"): refund = mini(refund, int(float(s.paid) * 0.5) + buy)
     return [buy, refund]
 func apply_refit(s: Dictionary, plan: Array) -> void:
@@ -1934,7 +1936,7 @@ func _refit(box: Control) -> void:
     refit_idx = clampi(refit_idx, 0, G.fleet.size() - 1); var s: Dictionary = G.fleet[refit_idx]; var d: Dictionary = GameData.hulls[s.type]
     var plan: Array = refit_plan.get(s.id, s.fit.duplicate()); refit_plan[s.id] = plan
     refit_sel = clampi(refit_sel, 0, d.slots.size() - 1)
-    _p(box, "Choose a weapon for any mount, then confirm the refit. Old weapons sell back for half their price. Smaller guns fit larger mounts.", UI.DIM, 14)
+    _p(box, "Choose a weapon for any mount, then confirm the refit. Old weapons sell back for half their price; the yard charges %d for every ton landed or shipped. Smaller guns fit larger mounts. She was designed round her standard fit: weight beyond her margin costs speed and helm, and weight carried high spreads her salvos." % YARD_PER_TON, UI.DIM, 14)
     var picks = HBoxContainer.new()
     for i in G.fleet.size():
         var k = i
@@ -1953,7 +1955,7 @@ func _refit(box: Control) -> void:
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
             if not _fits(wid, sl.s) or not Campaign.tech_ok(w.get("tech"), G.tech): continue
-            ob.add_item(w.name + ("" if wid == fitted else " · " + Campaign.fmt(w.price))); ob.set_item_metadata(ob.item_count - 1, wid)
+            ob.add_item(w.name + " · %d t" % int(BattleSim.weapon_tons(wid)) + ("" if wid == fitted else " · " + Campaign.fmt(w.price))); ob.set_item_metadata(ob.item_count - 1, wid)
             if wid == cur: ob.selected = ob.item_count - 1
         var idx = i; ob.custom_minimum_size.x = 290
         ob.item_selected.connect(func(j): plan[idx] = ob.get_item_metadata(j); refit_sel = idx; _render_port())
@@ -1963,20 +1965,42 @@ func _refit(box: Control) -> void:
         rows.add_child(UI.row([l, ob, info]))
     body.add_child(_weapon_card(s, plan, refit_sel))
     box.add_child(body)
+    var ld: Dictionary = BattleSim.loading(d, plan, s.get("up", {}))
+    _weights(box, d, ld)
     # what the plan costs, and the buttons to act on it
     var changes := 0
     for i in d.slots.size(): if (s.fit[i] if s.fit[i] != null else "") != (plan[i] if plan[i] != null else ""): changes += 1
     var rc := refit_cost(s, plan); var buy: int = rc[0]; var refund: int = rc[1]
     var net: int = buy - refund
     if changes: _p(box, "%d mount%s changed · new weapons %s · sold back %s · %s %s" % [changes, "" if changes == 1 else "s", Campaign.fmt(buy), Campaign.fmt(refund), "net cost" if net >= 0 else "net refund", Campaign.fmt(absi(net))], UI.INK, 14)
-    var can: bool = changes > 0 and G.credits >= net
+    var can: bool = changes > 0 and G.credits >= net and ld.ok
     var confirm = UI.button(("Confirm refit · " + Campaign.fmt(net)) if net > 0 else "Confirm refit", func():
         apply_refit(s, plan); refit_plan.erase(s.id); _toast("%s refitted." % s.name); _render_port(), true, not can)
     var undo = UI.button("Undo changes", func(): refit_plan.erase(s.id); _render_port(), false, changes == 0)
     var std = UI.button("Standard fit", func(): refit_plan[s.id] = BattleSim.default_fit(d, G.tech); _render_port())
     box.add_child(UI.row([confirm, undo, std]))
     if changes and G.credits < net: _p(box, "You need %s more for this refit." % Campaign.fmt(net - G.credits), UI.RED, 14)
+    if changes and not ld.ok: _p(box, "The yard will not pass this fit: %s. Land something, or choose lighter weapons." % ("she would be %d tons over what her hull can carry" % int(ld.over_t - ld.limit) if ld.over_t > ld.limit else "she would be dangerously top-heavy"), UI.RED, 14)
     _systems(box, s)
+
+## The weight ledger of a planned fit: what she carries by kind, against her standard fit and margin, and what it
+## does to her (BattleSim.loading).
+func _weights(box: Control, d: Dictionary, ld: Dictionary) -> void:
+    box.add_child(UI.label("WEIGHTS", UI.DIM, 12))
+    var parts := []
+    for k in ld.parts: if float(ld.parts[k]) > 0.0: parts.append("%s %s t" % [k, Campaign.fmt(int(ld.parts[k]))])
+    _p(box, " · ".join(parts) + ".", UI.DIM, 13)
+    var room: float = -float(ld.over_t)
+    var col: Color = UI.GREEN if room >= 0.0 else (UI.GOLD if ld.ok else UI.RED)
+    var wl := UI.label("Weight", UI.INK, 14); wl.custom_minimum_size.x = 90
+    var cap: float = float(ld.std) + float(ld.margin) + float(ld.limit)
+    box.add_child(UI.row([wl, UI.bar(clampf(float(ld.tons) / maxf(1.0, cap), 0.0, 1.0), 260.0, col), UI.label("%s t carried · designed for %s t with %s t to spare · %s" % [Campaign.fmt(int(ld.tons)), Campaign.fmt(int(ld.std)), Campaign.fmt(int(ld.margin)),
+        ("%d t in hand" % int(room)) if room >= 0.0 else ("%d t over: %d%% slower, %d%% slower on the helm" % [int(-room), int(round((1.0 - float(ld.speed)) * 100)), int(round((1.0 - float(ld.turn)) * 100))])], col, 13)]))
+    var tcol: Color = UI.GREEN if float(ld.top) <= BattleSim.TOP_SLACK else (UI.GOLD if float(ld.top) <= BattleSim.TOP_LIMIT else UI.RED)
+    var tl := UI.label("Topweight", UI.INK, 14); tl.custom_minimum_size.x = 90
+    box.add_child(UI.row([tl, UI.bar(clampf(float(ld.top) / BattleSim.TOP_LIMIT, 0.0, 1.0), 260.0, tcol), UI.label("%d%% of her designed topweight · %s" % [int(round(float(ld.top) * 100)),
+        "she rides easily" if float(ld.top) <= BattleSim.TOP_SLACK else ("she rolls: salvos spread %d%% wider, worse in a sea" % int(round((float(ld.spread) - 1.0) * 100)))], tcol, 13)]))
+    if float(ld.speed) > 1.001: _p(box, "Lighter than designed: %d%% faster." % int(round((float(ld.speed) - 1.0) * 100)), UI.GREEN, 13)
 
 ## Ship systems: machinery, hull, magazine protection, fire control, radar and sonar, each fitted in two marks.
 func _systems(box: Control, s: Dictionary) -> void:
@@ -1989,14 +2013,17 @@ func _systems(box: Control, s: Dictionary) -> void:
         if u.get("needs_sonar", false) and not d.get("sonar", false): continue
         var name_l := UI.label(u.name, UI.INK, 14); name_l.custom_minimum_size.x = 170
         var mk := UI.label(["standard", "Mk I", "Mk II"][lvl], UI.GREEN if lvl > 0 else UI.DIM, 13); mk.custom_minimum_size.x = 70
-        var eff := UI.label(u.per + " per mark", UI.DIM, 12); eff.custom_minimum_size.x = 300
+        var eff := UI.label(u.per + " per mark · %d t" % int(BattleSim.system_tons(d, k)), UI.DIM, 12); eff.custom_minimum_size.x = 330
         if lvl >= 2: box.add_child(UI.row([name_l, mk, eff, UI.label("fully fitted", UI.DIM, 12)])); continue
         var cost := int(round(float(d.price) * float(u.cost) * (1.0 if lvl == 0 else 1.8) / 100.0) * 100)
         var needs: String = u.get("mk2", "") if lvl == 1 else ""
         var locked: bool = needs != "" and not G.tech.has(needs)
+        var up2: Dictionary = s.up.duplicate(); up2[k] = lvl + 1
+        var heavy: bool = not BattleSim.loading(d, s.fit, up2).ok and BattleSim.system_tons(d, k) > 0.0
         var b := UI.button("Fit Mk %s · %s" % ["I" if lvl == 0 else "II", Campaign.fmt(cost)], func():
-            G.credits -= cost; s.up[k] = lvl + 1; _toast("%s: %s Mk %s fitted." % [s.name, u.name, "I" if lvl == 0 else "II"]); _render_port(), false, locked or G.credits < cost)
+            G.credits -= cost; s.up[k] = lvl + 1; _toast("%s: %s Mk %s fitted." % [s.name, u.name, "I" if lvl == 0 else "II"]); _render_port(), false, locked or heavy or G.credits < cost)
         if locked: b.tooltip_text = "Mk II needs the research: " + needs
+        elif heavy: b.tooltip_text = "She cannot carry it as she is fitted: land some weight first."
         box.add_child(UI.row([name_l, mk, eff, b]))
 
 ## A card for the weapon planned in one mount: its picture in the builder's style, its figures, and how it compares

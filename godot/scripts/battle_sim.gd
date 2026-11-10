@@ -96,6 +96,9 @@ class CShip:
     var eng = 1.0          # machinery: scales top speed
     var eng_out = 0.0      # engines stopped for this long
     var jam = 0.0          # rudder jammed for this long
+    var ld_speed = 1.0     # her loading (see loading): speed, helm and the spread of her salvos
+    var ld_turn = 1.0
+    var ld_spread = 1.0
     var steer = 1.0        # steering gear: scales how hard she can turn (hits right aft wear it down)
     var list = 0.0         # -1 to 1: flooded to port or starboard; she is slower, turns worse and pulls to her low side
     var smoke_on = false   # laying a smoke screen
@@ -270,6 +273,8 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.up = rec.get("up", {}) if side == 0 else {}
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
+    if side == 0:   # what you have loaded her with tells at sea (other navies' ships sail as designed)
+        var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
     for i in d.slots.size():
         var wid: String = rec.fit[i]
         if wid == "" or not GameData.weapons.has(wid): continue
@@ -540,13 +545,58 @@ func nearest_any(from: Vector2, side: int) -> CShip:
     return best
 
 ## System upgrades (bought in port, Refit tab): what each does per mark, and what it costs as a share of the hull's price.
+# ------------------------------------------------------------------ the weight a ship carries (docs/REFIT.md)
+## Refits are ruled by weight, as real ones were (owner's direction: Rule the Waves 3 and Ultimate Admiral:
+## Dreadnoughts). Every weapon and every mark of a system weighs so many tons; a hull was designed round her
+## standard fit and has a small margin beyond it. Past the margin she is slower and slow on the helm; a little
+## further and no yard will send her to sea. What is carried high (AA, directors, radar) counts more towards
+## topweight: a top-heavy ship rolls, and her salvos spread, worst in a sea.
+const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
+    "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500,
+    "aa20": 1, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}
+const HEIGHT := {"A": 1.5, "V": 0.8, "T": 0.9}        # how high a mount sits, guns on the deck being 1
+const TOP_SLACK := 1.10                                # topweight a hull bears before it tells
+const TOP_LIMIT := 1.30
+static func weapon_tons(wid) -> float: return float(TONS.get(wid, 0)) if wid != null else 0.0
+static func system_tons(d: Dictionary, k: String) -> float: return float(UPGRADES[k].get("tons", 0.0)) * maxf(float(d.t), 300.0)
+## The weight ledger of a ship with this fit and these systems: tons carried against her standard fit and margin,
+## topweight against standard, and what follows for her speed, helm and gunnery. `ok` is false if no yard would
+## pass her.
+static func loading(d: Dictionary, fit: Array, up: Dictionary) -> Dictionary:
+    var std := 0.0; var std_top := 0.0; var now := 0.0; var top := 0.0
+    var parts := {"Heavy guns": 0.0, "Medium and light guns": 0.0, "Anti-aircraft": 0.0, "Torpedoes": 0.0, "Missiles": 0.0, "Systems": 0.0}
+    for i in d.slots.size():
+        var sl: Dictionary = d.slots[i]; var h := float(HEIGHT.get(sl.s, 1.0))
+        var w0 := weapon_tons(sl.def); std += w0; std_top += w0 * h
+        var wid = fit[i] if i < fit.size() else ""
+        var w1 := weapon_tons(wid); now += w1; top += w1 * h
+        if w1 > 0.0 and GameData.weapons.has(wid):
+            var w: Dictionary = GameData.weapons[wid]
+            var g: String = "Anti-aircraft" if w.kind == "aa" else ("Torpedoes" if w.kind == "torp" else ("Missiles" if w.kind == "ssm" or w.kind == "sam" else ("Heavy guns" if w.size == "H" or w.size == "L" else "Medium and light guns")))
+            parts[g] += w1
+    for k in up:
+        if not UPGRADES.has(k): continue
+        var t := system_tons(d, k) * int(up[k]); now += t; top += t * float(UPGRADES[k].get("top", 0.3)); parts["Systems"] += t
+    var disp := maxf(maxf(float(d.t), std * 6.0), 300.0)   # (boats too small for these shares are reckoned as larger)
+    var margin := maxf(8.0, 0.012 * disp); var limit := 0.03 * disp
+    var over_t := now - std - margin; var over := maxf(0.0, over_t) / disp
+    var ratio := (top + 0.01 * disp) / (std_top + 0.01 * disp)   # her masts, bridge and boats are topweight too, whatever her guns
+    var speed := 1.0 - 2.0 * over
+    if now < std: speed = minf(1.03, 1.0 + 0.7 * (std - now) / disp)    # landed weight gives a little back
+    return {"tons": now, "std": std, "margin": margin, "limit": limit, "over_t": over_t, "top": ratio, "parts": parts,
+        "speed": clampf(speed, 0.85, 1.03), "turn": clampf(1.0 - 1.5 * over, 0.85, 1.0), "spread": 1.0 + 2.0 * maxf(0.0, ratio - TOP_SLACK),
+        "ok": over_t <= limit and ratio <= TOP_LIMIT}
+
 const UPGRADES := {
-    "eng": {"name": "Machinery", "per": "+4% speed", "cost": 0.10},
-    "hull": {"name": "Hull and armour", "per": "+8% hull strength, +10% armour", "cost": 0.12},
-    "mag": {"name": "Magazine protection", "per": "fewer magazine fires, and longer to flood them", "cost": 0.06},
-    "fc": {"name": "Fire control", "per": "salvos 12% tighter", "cost": 0.08},
-    "radar": {"name": "Radar", "per": "+6% gun range", "cost": 0.07, "mk2": "radar"},
-    "sonar": {"name": "Sonar", "per": "+30% sonar range", "cost": 0.05, "mk2": "sonar", "needs_sonar": true},
+    # `tons`: weight of one mark as a share of displacement; `top`: how high it sits (see loading)
+    "eng": {"name": "Machinery", "per": "+4% speed", "cost": 0.10, "tons": 0.008, "top": 0.2},
+    "hull": {"name": "Hull and armour", "per": "+8% hull strength, +10% armour", "cost": 0.12, "tons": 0.022, "top": 0.4},
+    "tds": {"name": "Torpedo protection", "per": "torpedo damage -15%, a third less flooding", "cost": 0.09, "tons": 0.018, "top": 0.1},
+    "mag": {"name": "Magazine protection", "per": "fewer magazine fires, and longer to flood them", "cost": 0.06, "tons": 0.006, "top": 0.3},
+    "turret": {"name": "Turret machinery", "per": "guns reload 6% faster", "cost": 0.07, "tons": 0.004, "top": 1.0},
+    "fc": {"name": "Fire control", "per": "salvos 12% tighter", "cost": 0.08, "tons": 0.002, "top": 2.5},
+    "radar": {"name": "Radar", "per": "+6% gun range", "cost": 0.07, "mk2": "radar", "tons": 0.0015, "top": 3.0},
+    "sonar": {"name": "Sonar", "per": "+30% sonar range", "cost": 0.05, "mk2": "sonar", "needs_sonar": true, "tons": 0.001, "top": 0.0},
 }
 static func upg(s: CShip, k: String) -> int: return int(s.up.get(k, 0))
 
@@ -716,7 +766,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     var ang = s.a + m.ta; var off: float = (i - (n - 1) / 2.0) * float(w.get("gap", 0.0))
     var p = world_pt(s, m.slot.x, m.slot.y) + Vector2.from_angle(ang + PI / 2) * off
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
-    var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.15 if s.side == 1 else 1.0) * (0.85 if s.tech.has("datalink") else 1.0)
+    var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.0 + (s.ld_spread - 1.0) * (1.0 + 0.5 * int(wx.sea))) * (1.15 if s.side == 1 else 1.0) * (0.85 if s.tech.has("datalink") else 1.0)
     fc *= 1.0 + 0.1 * int(wx.sea)                                         # a moving platform
     if wx.night and not has_radar(s): fc *= 1.35                           # spotting the fall of shot by eye in the dark
     s.lit_t = 0.0
@@ -757,7 +807,7 @@ func fire_sam(s: CShip, m: Mount, tg) -> void:
 
 func reload_mult(s: CShip, w: Dictionary) -> float:
     var r = 0.5 + 0.5 * s.cf
-    if w.kind == "gun": r *= 1 + 0.08 * s.sk.gun
+    if w.kind == "gun": r *= (1 + 0.08 * s.sk.gun) * (1 + 0.06 * upg(s, "turret"))
     if w.kind == "torp" or w.kind == "ssm": r *= 1 + 0.12 * s.sk.ord
     return r
 
@@ -981,7 +1031,7 @@ func damage(s: CShip, dmg: float, type: String) -> void:
         "resolved": hd = dmg   # already weighed against the armour (shell_result)
         "shell":
             var eff = dmg / (dmg + s.armor); hd = dmg * maxf(0.03, eff); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.25 * eff)
-        "torp": hd = dmg * (1 - minf(0.45, s.d.armor / 700.0))
+        "torp": hd = dmg * (1 - minf(0.45, s.d.armor / 700.0)) * (1.0 - 0.15 * upg(s, "tds"))
         "missile": hd = dmg * (1 - minf(0.55, s.armor / 550.0))
         "bomb": hd = dmg * dmg / (dmg + s.armor * 0.7); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.15)
         _: hd = dmg
@@ -1041,7 +1091,7 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
     # flooding: a torpedo, or a heavy hit in a hull already half gone, lets the sea in on that side and she lists
     if kind == "torp" or (s.hull / s.max_hull < 0.55 and pen > 0.4 and randf() < 0.5):
         var side_: float = signf(l.y) if absf(l.y) > 0.5 else (1.0 if randf() < 0.5 else -1.0)
-        var was: float = absf(s.list); s.list = clampf(s.list + side_ * (0.3 if kind == "torp" else 0.07 * heavy), -1.0, 1.0)
+        var was: float = absf(s.list); s.list = clampf(s.list + side_ * (0.3 if kind == "torp" else 0.07 * heavy) * (1.0 - 0.33 * upg(s, "tds")), -1.0, 1.0)
         if was < 0.35 and absf(s.list) >= 0.35: say(("The %s is listing to %s: she is slow to answer her helm." if ours else "The %s takes a list to %s.") % [nm, "starboard" if s.list > 0 else "port"], 2.5); _log("listing")
     if l.x < -L * 0.38 and s.jam <= 0 and randf() < (0.6 if kind == "torp" else 0.3 * pen):
         _log("rudder jammed"); s.jam = 20.0 + randf() * 50.0; s.jam_r = clampf(s.rud + (randf() - 0.5) * 0.6, -1.0, 1.0)
@@ -1329,7 +1379,7 @@ func step(dtv: float) -> void:
         var sm = submerged(s)
         # engines: way builds slowly in a big ship and bleeds off slower still; a hard turn scrubs off up to a third
         var top: float = (s.d.get("subKn", s.d.kn * 0.4) if sm else s.d.kn) * KN * speed_mult(s)
-        top *= 1.0 - 0.25 * absf(s.list)
+        top *= (1.0 - 0.25 * absf(s.list)) * s.ld_speed
         var want: float = top * TELEGRAPH[s.throttle] * (1 - 0.3 * absf(s.rud) * minf(1.0, s.v / maxf(1.0, top)))
         if s.v_cmd >= 0.0 and s != flag: want = minf(want, s.v_cmd)
         var t_acc: float = 40.0 + s.d.L * 0.6
@@ -1340,7 +1390,7 @@ func step(dtv: float) -> void:
         else: s.rud += clampf(s.rudder - s.rud, -dt / 10.0, dt / 10.0)
         systems_tick(s, dt)
         # a listing ship pulls to her low side; worn steering gear and a list both cut how hard she can turn
-        var w_target: float = (s.rud + 0.22 * s.list) * s.v / (s.d.td / 2) * (1 + 0.1 * s.sk.helm) * (0.8 if sm else 1.0) * s.steer * (1.0 - 0.3 * absf(s.list))
+        var w_target: float = (s.rud + 0.22 * s.list) * s.v / (s.d.td / 2) * (1 + 0.1 * s.sk.helm) * (0.8 if sm else 1.0) * s.steer * (1.0 - 0.3 * absf(s.list)) * s.ld_turn
         s.w += (w_target - s.w) * minf(1.0, dt / yaw_lag(s))
         s.a += s.w * dt
         s.pos += Vector2.from_angle(s.a) * s.v * dt

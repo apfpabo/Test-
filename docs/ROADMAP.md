@@ -218,6 +218,7 @@ How the current build lines up with [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION
   - The Command tabs open a drawer above the tab bar instead of a centred panel: the chart stays usable and the clock runs behind it; it closes with its ✕, its tab or Esc, not by a click outside; it slides open and shut.
   - Victory screen: the hull bar was a thin bar along the top of a dark box (every bar in a row of taller things stretched so); bars keep their height now and the squadron list lines up.
   - Weather on the chart: systems were smeared into long diagonal streaks (the noise folded latitude into the east-west wrap), and fog banks were drawn as flat hard-edged slabs that looked like a second, more solid kind of cloud. Systems are rounded now and fog is soft and wispy. The yearly mix of sea states is unchanged.
+  - The Corvo Canal was drawn as a ruled dark bar across the isthmus (it looked like a structure): narrow cuts are now drawn as waterways, with shallows along the banks and a slight wander, and only where the coastline is too coarse to show the cut. The standing and powers lists show each power's name in its chart colour.
 - **Builds for the owner:** Windows 11. Send a zipped `.exe` from the Godot export.
 - **Chart usability (done):** time acceleration, a draggable chart with recentre, deep zoom to ship level, one-click intercept lock, slower map pace.
 

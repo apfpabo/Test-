@@ -20,7 +20,8 @@ func _process(_d: float) -> void:
     if f == 20: get_viewport().get_texture().get_image().save_png(out + "/m_world.png"); map.zoom = 8.0
     if f == 28: get_viewport().get_texture().get_image().save_png(out + "/m_close.png"); _strait("Tarsene Gate", 2.5)
     if f == 31: get_viewport().get_texture().get_image().save_png(out + "/m_strait.png"); _strait("Kessel Canal", 8.0)
-    if f == 34: get_viewport().get_texture().get_image().save_png(out + "/m_canal.png"); map.free_cam = false; map.zoom = 0.9; map.open_port(Campaign.G.ports[0])
+    if f == 34: get_viewport().get_texture().get_image().save_png(out + "/m_canal.png"); _strait("Corvo Canal", 3.0)
+    if f == 37: get_viewport().get_texture().get_image().save_png(out + "/m_corvo.png"); map.free_cam = false; map.zoom = 0.9; map.open_port(Campaign.G.ports[0])
     if f == 40: get_viewport().get_texture().get_image().save_png(out + "/m_port.png"); Campaign.G.rp = 200; map.port_tab = "yard"; map._render_port()
     var tabs = {48: "refit", 56: "officers", 64: "research", 72: "admiralty"}
     if tabs.has(f): get_viewport().get_texture().get_image().save_png(out + "/m_tab_%d.png" % f); map.port_tab = tabs[f]; map._render_port()

@@ -121,9 +121,29 @@ func _prepare_land() -> void:
         terrain = load("res://data/terrain.png"); land_mat = ShaderMaterial.new(); land_mat.shader = load("res://shaders/chart_land.gdshader")
     if terrain != null: for pv in land_tris: land_uvs.append(_uvs(pv))
     for ch in Campaign.C.channels:
-        var pv = PackedVector2Array()
-        for q in ch: pv.append(Vector2(q[0], q[1]))
-        chan_lines.append(pv)
+        # a canal or narrow strait is drawn as a waterway, not a ruled bar: its line is broken into short reaches that
+        # wander a little either side of the true channel (well inside the water cut for it), ends left where they are
+        # only where the cut is too narrow for the coastline to show it (land close on both sides): a wide strait is
+        # already drawn as sea, and a line over it, or running out past the shore, looked like a strip laid on the water
+        var pv = PackedVector2Array(); var total := 0.0; var narrow := []
+        for i in ch.size() - 1: total += Vector2(ch[i][0], ch[i][1]).distance_to(Vector2(ch[i + 1][0], ch[i + 1][1]))
+        var run := 0.0
+        for i in ch.size() - 1:
+            var a := Vector2(ch[i][0], ch[i][1]); var b := Vector2(ch[i + 1][0], ch[i + 1][1]); var seg := a.distance_to(b)
+            var n := maxi(1, int(seg / 5.0)); var nor := (b - a).orthogonal().normalized()
+            for k in n:
+                var d: float = run + seg * k / n; var edge: float = clampf(minf(d, total - d) / 14.0, 0.0, 1.0)
+                var q: Vector2 = a.lerp(b, float(k) / n)
+                pv.append(q + nor * (sin(d * 0.21 + a.x) * 0.45 + sin(d * 0.53 + a.y) * 0.25) * edge)
+                narrow.append(Campaign.on_land(q.x + nor.x * 3.4, q.y + nor.y * 3.4) and Campaign.on_land(q.x - nor.x * 3.4, q.y - nor.y * 3.4))
+            run += seg
+        var piece := PackedVector2Array()
+        for i in pv.size():
+            if narrow[i] or (i > 0 and narrow[i - 1]) or (i + 1 < pv.size() and narrow[i + 1]): piece.append(pv[i])
+            else:
+                if piece.size() >= 2: chan_lines.append(piece)
+                piece = PackedVector2Array()
+        if piece.size() >= 2: chan_lines.append(piece)
 
 var coast := 0.0
 var coast_t := 0.0
@@ -265,7 +285,10 @@ class LandCopy extends Node2D:    # one copy of the world's land; three side by 
     func _draw() -> void:
         var z: float = map.zoom
         for pl in map.coast_lines: draw_polyline(pl, Color("#7e6e4a"), maxf(1.0 / z, 0.4))
-        for pl in map.chan_lines: draw_polyline(pl, Color("#183039"), maxf(2.5, 1.6 / z))
+        # the channel's water with pale shallows along both banks, as along every coast
+        var cw: float = maxf(1.7, 1.5 / z)
+        for pl in map.chan_lines: draw_polyline(pl, Color(0.3, 0.45, 0.48, 0.5), cw + maxf(1.3, 1.2 / z), true)
+        for pl in map.chan_lines: draw_polyline(pl, Color("#21424d"), cw, true)
 
 class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
     var map
@@ -2035,7 +2058,7 @@ func _powers(box: Control) -> void:
             var a: String = P[i]; var b: String = P[j]; var bd: String = Diplomacy.band(a, b)
             if bd == "neutral" or bd == "cool": continue
             var col: Color = UI.RED if bd == "war" else (Color(0.9, 0.55, 0.35) if bd in ["armistice", "hostile"] else UI.GREEN)
-            box.add_child(UI.row([UI.label("%s and %s" % [GameData.fac[a].short, GameData.fac[b].short], UI.INK, 14), UI.label(Diplomacy.BAND_TEXT[bd] + " (%d)" % int(round(Diplomacy.rel(a, b))), col, 13)]))
+            box.add_child(UI.row([UI.label(GameData.fac[a].short, Color(GameData.fac[a].map).lightened(0.15), 14), UI.label("and", UI.DIM, 14), UI.label(GameData.fac[b].short, Color(GameData.fac[b].map).lightened(0.15), 14), UI.label(Diplomacy.BAND_TEXT[bd] + " (%d)" % int(round(Diplomacy.rel(a, b))), col, 13)]))
     if not G.get("news", []).is_empty():
         box.add_child(UI.label("NEWS", UI.DIM, 12))
         var nw: Array = G.news.slice(-8); nw.reverse()
@@ -2075,6 +2098,7 @@ func _missions(box: Control, at_admiralty: bool, by := "") -> void:
         var nl := UI.label(GameData.fac[f].name); nl.tooltip_text = GameData.fac[f].get("desc", ""); nl.mouse_filter = Control.MOUSE_FILTER_PASS
         var stt: String = ("at war · engages on sight" + (" (incident, %d days)" % Campaign.incident_days(f) if Campaign.incident_days(f) > 0 else "")) if Campaign.at_war(f) else ("ports closed" if Campaign.hostile(f) else ("favoured" if r >= 30 else "neutral"))
         var sc: Color = UI.RED if Campaign.at_war(f) else (UI.GOLD if Campaign.hostile(f) else (UI.GREEN if r >= 30 else UI.DIM))
+        nl.add_theme_color_override("font_color", Color(GameData.fac[f].map).lightened(0.15))   # each power in its own colour, as on the chart
         box.add_child(UI.row([nl, UI.label(("+" if r > 0 else "") + str(r), UI.INK), UI.label(stt, sc, 13)]))
     if not at_admiralty: _powers(box)
     if G.log.size():

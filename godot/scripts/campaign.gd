@@ -1374,7 +1374,11 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     var had: int = f.ships.size() if f != null else 0
     var enemy_left = false
     for s in sim.ships: if s.side == 1 and sim.engageable(s): enemy_left = true
-    r.victory = not enemy_left and G.fleet.size() > 0; r.retreated = not r.victory and G.fleet.size() > 0
+    # victory as the battle screen counts it: the enemy beaten and a ship of yours still afloat in the action (a ship
+    # held in reserve does not win a battle in which your last fighting ship went down with the last of theirs)
+    var mine_left := false
+    for s in sim.ships: if s.side == 0 and s.alive: mine_left = true
+    r.victory = not enemy_left and mine_left and G.fleet.size() > 0; r.retreated = not r.victory and G.fleet.size() > 0
     if not r.victory: r.prizes = []   # a ship that struck is yours only if you hold the field: break off, and she rejoins her squadron
     if f != null: f.ships = f.ships.filter(func(s): return not r.sunk.has(s) and not r.prizes.has(s))
     G.kills += r.sunk.size()
@@ -1412,6 +1416,13 @@ func apply_battle(sim: BattleSim) -> Dictionary:
         for o in G.officers.duplicate():
             if o.get("lastShip") == s.id: G.officers.erase(o); r.notes.append("%s went down with the %s." % [o.name, s.name])
     var gone: bool = f == null or f.ships.is_empty()
+    # a landing force beaten at sea gives the landing up: what is left of it turns for home as an ordinary patrol
+    # (its troopships used to run, "escape", and bring the same force back the next day, again and again)
+    if f != null and not gone and r.victory and (Structures._is_assault(f) or Flag.is_relief(f)):
+        r.notes.append("The %s gives up the landing and turns for home." % fname(f))
+        for k in ["assault", "portAssault", "tgt", "warned"]: f.erase(k)
+        f.kind = "patrol"; f.name = GameData.fac[f.fac].short + " patrol"; f.route = null
+        if f.has("home"): set_course(f, f.home.x, f.home.y)
     if f != null:
         if gone:
             G.fleets.erase(f)

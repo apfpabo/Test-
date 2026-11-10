@@ -421,4 +421,35 @@ func _decisions() -> void:
 	map._sell_ship(G.fleet[1])
 	ok(Campaign.cargo_used() <= Campaign.cargo_cap() and float(G.credits) > money + map.sell_value(Campaign.new_ship("freighter", null, "player", [])) * 0.5, "selling a freighter lands the cargo her holds carried and sells it (hold %d of %d)" % [Campaign.cargo_used(), Campaign.cargo_cap()])
 	map.cur_port = {}; map.queue_free()
+	# a landing force beaten at sea gives the landing up, even if its troopships got away
+	G.fleet = [Campaign.new_ship("ca", "Guard", "player", [])]; G.fleets.clear()
+	var lf: Dictionary = Structures.launch_assault(st, "directorate")
+	ok(not lf.is_empty() and Structures._is_assault(lf), "an assault force sails for a structure of yours")
+	GameData.pending = Campaign.battle_setup(lf)
+	var sim := BattleSim.new(); sim.setup(GameData.pending.player_recs, GameData.pending.enemy_recs, [], [], 0); sim.flag = null
+	for x in sim.ships: if x.side == 1: x.escaped = true
+	sim.finished = true; var res: Dictionary = Campaign.apply_battle(sim)
+	ok(res.victory and G.fleets.has(lf) and not Structures._is_assault(lf) and lf.kind == "patrol" and not Campaign.hostile_fleet(lf) == (not Campaign.at_war("directorate")), "driven off, it gives the landing up and goes home as a patrol (%s)" % lf.name)
+	# the last ships of both sides lost together is no victory, reserve or not
+	G.fleet = [Campaign.new_ship("dd", "Last", "player", []), Campaign.new_ship("dd", "Spare", "player", [])]; G.fleet[1].reserve = true
+	var rf := _fleet("raiders", "raiders", P.x + 5.0, P.y, ["dd"])
+	GameData.pending = Campaign.battle_setup(rf)
+	sim = BattleSim.new(); sim.setup(GameData.pending.player_recs, GameData.pending.enemy_recs, [], [], 0); sim.flag = null
+	for x in sim.ships: x.alive = false; x.hull = 0.0
+	sim.finished = true; res = Campaign.apply_battle(sim)
+	ok(not res.victory and G.fleet.size() == 1, "both sides' last ships lost together is not a victory, though a ship in reserve survives")
+	# line ahead: ships astern of a stopped leader stop on their stations
+	sim = BattleSim.new(); var recs := []
+	for i in 3: recs.append(Campaign.new_ship("dd_fletcher", "L%d" % i, "player", []))
+	sim.setup(recs, [Campaign.new_ship("dd_narvik", null, "directorate", [])], [], [], 0)
+	sim.order = "line"; sim.hold_fire = true
+	for x in sim.ships: if x.side == 1: x.pos = sim.flag.pos + Vector2(9000, 9000)
+	sim.flag.throttle = 0; sim.flag.v = 0.0
+	var close := INF
+	for i in 9000:
+		sim.flag.throttle = 0; sim.step(0.02)
+		if i > 6000: for x in sim.ships: if x.side == 0 and x != sim.flag: close = minf(close, x.pos.distance_to(sim.flag.pos))
+	var moving := 0.0
+	for x in sim.ships: if x.side == 0 and x != sim.flag: moving = maxf(moving, x.v)
+	ok(close > sim.flag.d.L * 0.8 and moving < 1.0, "astern of a stopped flagship the line stops clear of her (nearest %d m, fastest %.1f m/s)" % [int(close), moving])
 	sections += 1

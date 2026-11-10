@@ -1085,7 +1085,11 @@ func ai_ship(s: CShip, dt: float) -> void:
                 if run >= gap * 0.75: goal = tp; break
             var dd := s.pos.distance_to(goal)
             s.rudder = helm(s, steer_avoid(s, (goal - s.pos).angle() if dd > 120.0 else lead.a))
-            s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
+            # a leader who has stopped (ordered, or her engines out): close up to station slowly and stop there,
+            # instead of creeping on into her stern
+            var halted: bool = lead.throttle == 0 or lead.eng_out > 0 or lead.v < 2.5
+            if halted: s.throttle = 3 if dd > 900.0 else (1 if dd > 250.0 else 0)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
+            else: s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
             return
     if s.side == 0 and order == "escort" and flag != null and flag != s:
         var close = nearest_enemy(s.pos, s.side, 3000.0)

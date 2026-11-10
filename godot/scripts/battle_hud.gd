@@ -152,7 +152,8 @@ func _draw() -> void:
         var groups = {}
         for m in f.mounts: if not groups.has(m.w.name): groups[m.w.name] = []
         for m in f.mounts: groups[m.w.name].append(m)
-        var gx = x + 10; var gy = y + 98
+        var many: bool = groups.size() > 4   # five weapon groups (Yamato, the missile ships): three closer rows, so none goes unshown
+        var gx = x + 10; var gy = y + (93 if many else 98)
         for n in groups:
             var ms: Array = groups[n]; var ready = 0; var dead = 0; var left = 0; var cap = 0
             var prog := 0.0; var live := 0; var secs := 0.0   # reload progress over the working mounts, and the longest wait
@@ -167,11 +168,11 @@ func _draw() -> void:
             var am: String = (" · empty" if left == 0 else (" · %d%%" % int(100.0 * left / cap) if unit == "bursts" else (" · %s %s" % [("%.1fk" % (left / 1000.0)) if left >= 1000 else str(left), unit]))) if cap > 0 else ""
             _text(Vector2(gx, gy), str(ms.size()) + "× " + n + ((" (" + str(dead) + " out)") if dead else "") + am, RED if cap > 0 and left == 0 else (GOLD if cap > 0 and left < cap * 0.2 else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_LEFT, 196)
             var fill := prog / maxf(1.0, float(live))
-            _bar(Vector2(gx, gy + 4), 130, 3, fill, GREEN if ready == live and live > 0 else GOLD)
+            _bar(Vector2(gx, gy + (3 if many else 4)), 130, 2 if many else 3, fill, GREEN if ready == live and live > 0 else GOLD)
             if live > 0 and ms[0].w.kind != "aa" and cap > 0 and left > 0:
-                _text(Vector2(gx + 134, gy + 8), "ready" if ready == live else ("%d s" % ceili(secs)), GREEN if ready == live else GOLD, 10, HORIZONTAL_ALIGNMENT_LEFT, 60)
+                _text(Vector2(gx + 134, gy + (6 if many else 8)), "ready" if ready == live else ("%d s" % ceili(secs)), GREEN if ready == live else GOLD, 9 if many else 10, HORIZONTAL_ALIGNMENT_LEFT, 60)
             gx += 200
-            if gx > x + 330: gx = x + 10; gy += 22
+            if gx > x + 330: gx = x + 10; gy += 16 if many else 22
             if gy > y + h - 6: break
         if f.d.get("sonar", false) and not f.sub: # depth charges: patterns left and the racks reloading (Z drops a pattern)
             var dct: float = f.dc_t if f.dc_t > 0 else 0.0

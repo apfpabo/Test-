@@ -109,6 +109,9 @@ class CShip:
     var ord_pt := Vector2.ZERO   # where "goto" sends her
     var ord_tgt: CShip = null    # whom a torpedo attack is made on (or the nearest enemy)
     var hold = false       # her own hold-fire
+    var ai_off = false     # (editor) she keeps her helm and engines as set: her captain does nothing
+    var force_tgt: CShip = null   # (editor) the ship she is to fire on, whatever its flag
+    var god = false        # (editor) takes no damage
     var star_t = 0.0       # seconds until she can fire star shell again
     var sol: Dictionary = {}   # her gunnery solutions, one for each ship she is firing on (see solution)
     var cq = 1             # how good her crew is: 0 green, 1 trained, 2 seasoned, 3 veteran, 4 crack (see CREW)
@@ -162,7 +165,7 @@ var order = "engage"
 ## destroyers told to form line abreast do so by themselves. "goto" sends her to a point to hold there; "torp" is a
 ## torpedo attack: run in, turn and fire, then take the squadron's order again.
 func ord_of(s: CShip) -> String: return s.ord if s.side == 0 and s.ord != "" else order
-func holding(s: CShip) -> bool: return s.side == 0 and (hold_fire or s.hold)
+func holding(s: CShip) -> bool: return (s.side == 0 and hold_fire) or s.hold
 func has_torps(s: CShip) -> bool:
     for m in s.mounts: if m.w.kind == "torp" and m.ammo != 0: return true
     return false
@@ -285,6 +288,46 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
         out.append(w)
     return out
 
+## Her mounts from her record's fit (at the start, and again when the editor refits her in mid-action).
+func fit_mounts(s: CShip) -> void:
+    var d: Dictionary = s.d; var rec: Dictionary = s.rec
+    s.mounts.clear()
+    for i in d.slots.size():
+        var wid: String = rec.fit[i] if rec.fit[i] != null else ""
+        if wid == "" or not GameData.weapons.has(wid): continue
+        var m = Mount.new(); m.slot = d.slots[i]; m.wid = wid; m.w = GameData.weapons[wid]; m.ta = m.slot.arcs[0][0]; m.cd = randf() * m.w.rel * 0.5
+        m.ammo_max = full_ammo(wid, m.w); m.ammo = int(round(m.ammo_max * float(rec.get("ammo", 1.0)))) if m.ammo_max > 0 else -1
+        s.mounts.append(m)
+    var best := -1
+    for m in s.mounts: if m.w.kind == "gun": best = maxi(best, GUN_SIZES.find(m.w.size))
+    s.main_sz = GUN_SIZES[maxi(best, 0)]
+    var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
+# ------------------------------------------------------------------ the editor (owner's request: a mode to stage and record actions)
+## In editor mode the action never ends by itself, every ship is in sight unless `reveal` is put off, and ships can
+## be put on the sea, taken off it, refitted, commanded and set on one another whatever their flags.
+var editor := false
+var reveal := true
+func spawn(type: String, side: int, at: Vector2, heading: float, tech: Array) -> CShip:
+    var names: Array = GameData.names.get("player" if side == 0 else "directorate", GameData.names.player)
+    var rec := {"id": str(randi()), "type": type, "name": names.pick_random(), "hullFrac": 1.0, "fit": default_fit(GameData.hulls[type], tech), "pal": "player" if side == 0 else "directorate"}
+    var s := make_ship(rec, side, at, heading, tech); ships.append(s)
+    if flag == null and side == 0: flag = s
+    return s
+func despawn(s: CShip) -> void:
+    ships.erase(s)
+    for x in ships:
+        if x.force_tgt == s: x.force_tgt = null
+        if x.target == s: x.target = null
+        if x.ord_tgt == s: x.ord_tgt = null
+        for m in x.mounts: if m.tgt == s: m.tgt = null
+    if lock == s: lock = null
+    if flag == s:
+        flag = null
+        for x in ships: if x.side == 0 and active(x): flag = x; break
+func set_side(s: CShip, side: int) -> void:
+    s.side = side; s.pal = "player" if side == 0 else str(s.rec.get("pal", "directorate")); s.target = null; s.flee = false
+    for m in s.mounts: m.tgt = null
+
 func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) -> CShip:
     var s = CShip.new(); var d: Dictionary = GameData.hulls[rec.type]
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
@@ -293,13 +336,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     s.cq = crew_level(float(rec.get("xp", 1.0)))
     # what she is loaded with tells at sea, whoever's she is (owner's decision: other navies are held to the same rules)
-    var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
-    for i in d.slots.size():
-        var wid: String = rec.fit[i]
-        if wid == "" or not GameData.weapons.has(wid): continue
-        var m = Mount.new(); m.slot = d.slots[i]; m.wid = wid; m.w = GameData.weapons[wid]; m.ta = m.slot.arcs[0][0]; m.cd = randf() * m.w.rel * 0.5
-        m.ammo_max = full_ammo(wid, m.w); m.ammo = int(round(m.ammo_max * float(rec.get("ammo", 1.0)))) if m.ammo_max > 0 else -1
-        s.mounts.append(m)
+    fit_mounts(s)
     if d.get("sonar", false) and d.kind != "sub": s.dc_left = int(round(6 * float(rec.get("ammo", 1.0))))
     # aircraft aboard: a campaign carrier may be short of planes lost in earlier strikes (rec.air)
     var aboard: int = int(rec.get("air", int(d.get("hangar", 0)) * 6))
@@ -307,9 +344,6 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
         var n := clampi(aboard - i * 6, 0, 6)
         s.squads.append({"state": "ready" if n > 0 else "lost", "t": 0.0, "n": n})
     if side == 1 and d.kind == "merchant": s.flee = true
-    var best = -1
-    for m in s.mounts: if m.w.kind == "gun": best = maxi(best, GUN_SIZES.find(m.w.size))
-    s.main_sz = GUN_SIZES[maxi(best, 0)]
     superfiring(s)
     for m in s.mounts: if m.w.kind == "gun": m.clear = clear_bearings(s, m)
     return s
@@ -571,7 +605,7 @@ func smoke_blocks(a: Vector2, b: Vector2) -> bool:
         if (a + ab * t).distance_squared_to(c.p) < r * r: return true
     return false
 func visible_to(s: CShip, side: int) -> bool:
-    if s.side == side: return true
+    if s.side == side or (editor and reveal): return true
     if s.sub and not detected_by(s, side): return false
     var lim := limited()
     if not lim and screens.is_empty(): return true
@@ -1009,7 +1043,9 @@ func update_weapons(s: CShip, dt: float) -> void:
                     else: aim = mouse_world
                 else:
                     m.tgt_t -= dt
-                    if m.tgt_t <= 0 or m.tgt == null or not engageable(m.tgt) or not visible_to(m.tgt, s.side):
+                    if s.force_tgt != null and engageable(s.force_tgt):   # (editor) set on one ship, whatever her flag
+                        m.tgt = s.force_tgt if (p.distance_to(s.force_tgt.pos) < rng and mount_arc(m, ang_diff((s.force_tgt.pos - p).angle(), s.a)).x > 0) else null; m.tgt_t = 1.0
+                    elif m.tgt_t <= 0 or m.tgt == null or not engageable(m.tgt) or not visible_to(m.tgt, s.side):
                         m.tgt_t = 3.0; m.tgt = null
                         var pri: CShip = null
                         if s.target != null and engageable(s.target) and visible_to(s.target, s.side) and p.distance_to(s.target.pos) < rng and mount_arc(m, ang_diff((s.target.pos - p).angle(), s.a)).x > 0: pri = s.target
@@ -1163,7 +1199,7 @@ func shell_result(tg: CShip, sh: Dictionary) -> Dictionary:
 
 # ------------------------------------------------------------------ damage
 func damage(s: CShip, dmg: float, type: String) -> void:
-    if not s.alive: return
+    if not s.alive or s.god: return
     var hd = 0.0
     match type:
         "resolved": hd = dmg   # already weighed against the armour (shell_result)
@@ -1399,6 +1435,7 @@ func ai_ship(s: CShip, dt: float) -> void:
         var goal = away if absf(ang_diff(away, home)) < 1.4 else home + clampf(ang_diff(away, home), -0.9, 0.9)
         s.rudder = helm(s, steer_avoid(s, goal)); s.throttle = 4; return
     s.tgt_t -= dt
+    if s.force_tgt != null and engageable(s.force_tgt): s.target = s.force_tgt; s.tgt_t = 1.0
     if s.tgt_t <= 0 or s.target == null or not engageable(s.target) or not visible_to(s.target, s.side):
         s.tgt_t = 10.0; s.target = best_target(s.pos, s.side, INF, Callable(), true) if heavy_guns(s) else nearest_enemy(s.pos, s.side)
     var tg = s.target
@@ -1419,7 +1456,7 @@ func ai_ship(s: CShip, dt: float) -> void:
             if td > reach * 0.6: s.rudder = helm(s, steer_avoid(s, bearing)); s.throttle = 4
             else: s.rudder = helm(s, steer_avoid(s, bearing - s.pref_side * PI / 2)); s.throttle = 3   # beam on: the tubes bear
             return
-    if s.side == 0 and o == "line" and flag != null and flag != s:
+    if s.side == 0 and o == "line" and flag != null and flag != s and flag.side == 0:
         # line ahead: each ship follows in the wake of the one ahead of her, the flagship leading; guns fire as they bear
         var col: Array = []
         for x in ships: if x.side == 0 and x != flag and active(x) and ord_of(x) == "line" and x.d.kind != "carrier" and x.d.kind != "merchant" and not x.sub: col.append(x)
@@ -1440,7 +1477,7 @@ func ai_ship(s: CShip, dt: float) -> void:
             if halted: s.throttle = 0 if (dd < 250.0 or s.pos.distance_to(lead.pos) < gap + 200.0) else (3 if dd > 900.0 else 1)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
             else: s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
             return
-    if s.side == 0 and flag != null and flag != s and (o == "escort" or o == "abreast" or o == "screen"):
+    if s.side == 0 and flag != null and flag != s and flag.side == 0 and (o == "escort" or o == "abreast" or o == "screen"):
         # formations: every ship has a station on the flagship and keeps it, turning and changing speed with her.
         # "Form on flag" breaks off to fight what comes within 3 km; line abreast and the screen hold station and
         # fire as their guns bear.
@@ -1549,7 +1586,9 @@ func step(dtv: float) -> void:
             s.rudder = player_rudder if waypoints.is_empty() else helm(s, steer_avoid(s, (waypoints[0] - s.pos).angle()))
         else:
             s.ai_acc += dt
-            if s.ai_acc >= 0.25: ai_ship(s, s.ai_acc); s.ai_acc = 0.0
+            if s.ai_acc >= 0.25:
+                if not s.ai_off: ai_ship(s, s.ai_acc)
+                s.ai_acc = 0.0
         if s.sub: s.dive = clampf(s.dive + (dt / 30.0 if s.want_dive else -dt / 30.0), 0.0, 1.0)
         s.wpn_acc += dt
         if s == flag or s.wpn_acc >= 0.1: update_weapons(s, s.wpn_acc); s.wpn_acc = 0.0
@@ -1640,7 +1679,7 @@ func step(dtv: float) -> void:
         shells.remove_at(i)
         var hit: CShip = null
         for s in ships:
-            if s.side == sh.side or not active(s) or submerged(s): continue
+            if (s.side == sh.side and sh.get("tgt") != s) or s == sh.who or not active(s) or submerged(s): continue   # (a shell aimed at a ship of her own flag, in the editor, can hit her)
             var l: Vector2 = (sh.pos - s.pos).rotated(-s.a)
             if absf(l.x) < s.d.L / 2 + 3 and absf(l.y) < s.d.B / 2 + 3: hit = s; break
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
@@ -1746,7 +1785,7 @@ func step(dtv: float) -> void:
             if s.side == 0: mine += 1
             else: theirs += 1
     var quiet = t - last_hit > 900 and shells.is_empty() and torps.is_empty() and missiles.is_empty() and air.is_empty()
-    if mine == 0 or theirs == 0 or quiet:
+    if (mine == 0 or theirs == 0 or quiet) and not editor:
         end_t += dtv / BT
         if not end_msg:
             end_msg = true; say("The enemy is beaten!" if theirs == 0 else ("Contact lost." if mine and theirs else "Action over."), 3.0)

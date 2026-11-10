@@ -50,6 +50,9 @@ func _home() -> void:
             if Campaign.load_game(): get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true, not can_go),
         UI.button("New campaign", func(): go(_new_campaign), not can_go),
         UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")),
+        UI.button("Editor", func():   # a sea to stage and record actions on: nothing to do with a campaign or a quick battle
+            GameData.pending = {"editor": true, "player": ["dd_fletcher"], "enemy": ["dd_narvik"], "enemy_fac": "directorate", "player_tech": [], "enemy_tech": [], "islands": 2}
+            get_tree().change_scene_to_file("res://scenes/battle.tscn")),
         UI.button("The world", func(): go(func(): _codex(pc, home))),
         UI.button("Settings", func(): go(func(): _settings(pc, home)))]
     for b in btns: b.custom_minimum_size = Vector2(0, 42); b.add_theme_font_size_override("font_size", 17); box.add_child(b)

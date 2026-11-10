@@ -69,21 +69,12 @@ func _ready() -> void:
     camera.zoom = Vector2.ONE * clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) / 3200.0, 0.14, 0.4)
     camera.position = sim.flag.pos
     # the light of the hour and the weather over the scene: night and storm darken it, and a veil hides what is out of sight
-    var w: Dictionary = sim.wx
-    if w.night or int(w.sea) >= 2 or w.fog:
-        var cm := CanvasModulate.new()
-        var day_col: Color = Color(0.9, 0.92, 0.94) if w.fog else (Color(0.72, 0.75, 0.79) if int(w.sea) >= 3 else Color(0.86, 0.88, 0.9))
-        cm.color = day_col.lerp(Color(0.38, 0.44, 0.6).lerp(Color(0.52, 0.58, 0.74), float(w.moon)), 1.0 if w.night else 0.0); add_child(cm)
+    cmod = CanvasModulate.new(); add_child(cmod)
     var vl = CanvasLayer.new(); vl.layer = 4; add_child(vl)
     veil = ColorRect.new(); veil.set_anchors_preset(Control.PRESET_FULL_RECT); veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
     veil_mat = ShaderMaterial.new(); veil_mat.shader = preload("res://shaders/veil.gdshader"); veil.material = veil_mat; vl.add_child(veil)
-    veil.visible = sim.limited() or w.fog or int(w.sea) >= 2
-    veil_mat.set_shader_parameter("murk_a", (0.74 if w.night else 0.62) if sim.limited() else 0.0)
-    veil_mat.set_shader_parameter("murk", Color(0.015, 0.025, 0.05) if w.night else (Color(0.5, 0.54, 0.57) if w.fog else Color(0.2, 0.24, 0.27)))
-    veil_mat.set_shader_parameter("fog", (0.3 if w.night else 0.42) if w.fog else 0.0)
-    veil_mat.set_shader_parameter("fog_col", Color(0.16, 0.19, 0.25) if w.night else Color(0.66, 0.7, 0.72))
-    veil_mat.set_shader_parameter("rain", [0.0, 0.0, 0.45, 1.0][int(w.sea)])
-    water_mat.set_shader_parameter("sea_state", float(w.sea)); water_mat.set_shader_parameter("night", 1.0 if w.night else 0.0); water_mat.set_shader_parameter("moon", float(w.moon))
+    apply_weather()
+    var w: Dictionary = sim.wx
     if sim.limited() or w.night or int(w.sea) >= 2 or w.fog:
         sim.say("%s. %s" % [w.text, ("Lookouts see about %.1f km%s." % [float(w.vis) / 1000.0, "; radar ships see farther" if sim.ships.any(func(x): return x.side == 0 and sim.has_radar(x)) else ""]) if sim.limited() else "Gunnery suffers in this sea."], 6.0)
     # bloom over the finished picture (modern effects only), under the HUD
@@ -92,7 +83,37 @@ func _ready() -> void:
     var bm := ShaderMaterial.new(); bm.shader = preload("res://shaders/bloom.gdshader"); bloom.material = bm; bl.add_child(bloom)
     var hl = CanvasLayer.new(); hl.layer = 10; add_child(hl)
     hud = HUD.new(); hud.battle = self; hud.set_anchors_preset(Control.PRESET_FULL_RECT); hud.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.add_child(hud)
+    if cfg.get("editor", false):   # the editor: a panel for staging actions, more paces of time, and an action that never ends by itself
+        sim.editor = true; speeds = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0]; speed_i = 3
+        editor = Editor.new(); editor.battle = self; hl.add_child(editor)
 
+const Editor = preload("res://scripts/battle_editor.gd")
+var editor = null           # the editor's panel, in editor mode
+var clean := false          # H: nothing on the screen but the picture (for recording)
+## Hide or show everything that is not the picture: the HUD, the rings and aiming lines, the editor's panel.
+func set_clean(on: bool) -> void:
+    clean = on; hud.visible = not on
+    if layers.has("overlay"): layers["overlay"].visible = not on
+    if editor != null: editor.visible = not on
+func remove_view(s: BattleSim.CShip) -> void:
+    var v = s.view
+    if v != null and is_instance_valid(v): views.erase(v); v.queue_free()
+    s.view = null
+func rebuild_view(s: BattleSim.CShip) -> void:
+    remove_view(s); _add_view(s)
+var cmod: CanvasModulate
+## The look of the hour and the weather, from sim.wx (set once at the start; the editor changes it in mid-action).
+func apply_weather() -> void:
+    var w: Dictionary = sim.wx
+    var day_col: Color = Color(0.9, 0.92, 0.94) if w.fog else (Color(0.72, 0.75, 0.79) if int(w.sea) >= 3 else (Color(0.86, 0.88, 0.9) if int(w.sea) >= 2 else Color.WHITE))
+    cmod.color = day_col.lerp(Color(0.38, 0.44, 0.6).lerp(Color(0.52, 0.58, 0.74), float(w.moon)), 1.0 if w.night else 0.0)
+    veil.visible = sim.limited() or w.fog or int(w.sea) >= 2
+    veil_mat.set_shader_parameter("murk_a", (0.74 if w.night else 0.62) if sim.limited() else 0.0)
+    veil_mat.set_shader_parameter("murk", Color(0.015, 0.025, 0.05) if w.night else (Color(0.5, 0.54, 0.57) if w.fog else Color(0.2, 0.24, 0.27)))
+    veil_mat.set_shader_parameter("fog", (0.3 if w.night else 0.42) if w.fog else 0.0)
+    veil_mat.set_shader_parameter("fog_col", Color(0.16, 0.19, 0.25) if w.night else Color(0.66, 0.7, 0.72))
+    veil_mat.set_shader_parameter("rain", [0.0, 0.0, 0.45, 1.0][int(w.sea)])
+    water_mat.set_shader_parameter("sea_state", float(w.sea)); water_mat.set_shader_parameter("night", 1.0 if w.night else 0.0); water_mat.set_shader_parameter("moon", float(w.moon))
 var bloom: ColorRect
 var burst_mat: ShaderMaterial
 var wash_mat: ShaderMaterial
@@ -216,6 +237,8 @@ func _unhandled_input(e: InputEvent) -> void:
         return
     if e is InputEventMouseButton:
         var mb = e as InputEventMouseButton
+        if editor != null and editor.over(mb.position): sim.mouse_down = false; return   # the panel takes its own clicks
+        if editor != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and editor.click(world.get_global_mouse_position(), mb.alt_pressed): return
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
             if mb.pressed:
                 var before = world.get_global_mouse_position()
@@ -287,7 +310,7 @@ func _order(o: String, all_msg: String, what: String) -> void:
 func _lock_at_mouse() -> bool:
     var m = world.get_global_mouse_position(); var best: BattleSim.CShip = null; var bd = INF
     for o in sim.ships:
-        if o.side != 1 or not sim.engageable(o) or not sim.visible_to(o, 0): continue
+        if (o.side != 1 and not sim.editor) or o == sim.flag or not sim.engageable(o) or not sim.visible_to(o, 0): continue   # (in the editor any ship can be locked)
         var d = o.pos.distance_to(m)
         if d < maxf(30.0 / zoom(), o.d.L * 0.6) and d < bd: bd = d; best = o
     if best != null: sim.lock = best; sim.autofire = true; sim.say("Main battery: engage " + best.rec.name + "!", 1.6)
@@ -358,6 +381,8 @@ func _key(k: int) -> void:
         KEY_J:
             if s and sim.counter_flood(s): sim.say("Counter-flooding: she comes upright, and sits deeper for it.", 2.2)
             elif s: sim.say("She has no list worth righting.", 1.0)
+        KEY_H: set_clean(not clean)
+        KEY_F9: if editor != null: editor.panel.visible = not editor.panel.visible
         KEY_K:
             if s == null or not sim.can_smoke(s): sim.say("This ship cannot make smoke.", 1.2)
             elif s.smoke_on: sim.make_smoke(s, false); sim.say("Stop making smoke.", 1.2)
@@ -380,8 +405,11 @@ func _key(k: int) -> void:
         KEY_MINUS, KEY_KP_SUBTRACT, KEY_COMMA: speed_i = maxi(0, speed_i - 1); sim.say("Time ×" + str(int(combat_speed() * BattleSim.BT)) + (" (real time)" if combat_speed() < 1 else ""), 1.0)
         KEY_TAB:
             var mine: Array = []
-            for x in sim.ships: if x.side == 0 and sim.engageable(x): mine.append(x)
-            if mine.size() > 1: sim.waypoints.clear(); sim.flag.shell_mode = "auto"; sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
+            for x in sim.ships: if (x.side == 0 or sim.editor) and sim.engageable(x): mine.append(x)   # (in the editor: every ship in turn)
+            if mine.size() > 1 or (sim.flag == null and mine.size() > 0):
+                sim.waypoints.clear()
+                if sim.flag != null: sim.flag.shell_mode = "auto"
+                sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
         KEY_M: Sfx.muted = not Sfx.muted
         KEY_R: Settings.sensors = not Settings.sensors; Settings.save(); sim.say("Sensor ranges and radar sweep " + ("shown." if Settings.sensors else "hidden."), 1.5)
 

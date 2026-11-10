@@ -42,8 +42,8 @@ func _build_menu() -> void:
         b.call("Break off the action", func(): battle.sim.order = "retreat"; battle.sim.say("All ships withdraw! Open the range and break contact.", 2.5); toggle_menu())
         b.call("Quit to main menu", func(): _confirm("Quit to the main menu? This battle and anything since your last save will be lost.", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")))
     else:
-        b.call("Restart battle", func(): get_tree().reload_current_scene())
-        b.call("Battle setup", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn"))
+        b.call("Start again" if battle.sim.editor else "Restart battle", func(): get_tree().reload_current_scene())
+        if not battle.sim.editor: b.call("Battle setup", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn"))
         b.call("Main menu", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
     b.call("Settings", func(): _menu_settings(box))
     box.add_child(UI.label("Esc resumes · P pauses without this menu", UI.DIM, 12))
@@ -130,7 +130,7 @@ func _draw() -> void:
     _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "abreast": "Ships hold station abeam of the flagship, turning and changing speed with her; guns fire as they bear.", "screen": "Light ships hold an arc ahead of the flagship, the heavier ones follow her in column.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
-    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
         _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)

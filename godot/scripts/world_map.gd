@@ -901,6 +901,8 @@ func _unhandled_input(e: InputEvent) -> void:
     elif e is InputEventKey and e.pressed and not e.echo:
         match e.keycode:
             KEY_SPACE: Campaign.paused = not Campaign.paused; _user_pause = Campaign.paused
+            KEY_H:   # nothing on the screen but the chart, for recording (H again brings it back)
+                ui.visible = not ui.visible
             KEY_R: Settings.sensors = not Settings.sensors; Settings.save(); _toast("Sensor ranges " + ("shown: how far you see, and how far off you are found." if Settings.sensors else "hidden.") + " (R)")
             KEY_Q, KEY_E:   # the telegraph: Q slower, E faster
                 var i: int = Campaign.SPEED_ORDER.find(Campaign.speed_order()) + (1 if e.keycode == KEY_E else -1)

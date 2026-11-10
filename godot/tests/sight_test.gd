@@ -9,11 +9,12 @@ func ok(c: bool, what: String) -> void:
 func _ready() -> void:
 	seed(4); Campaign.new_game("commission"); var G: Dictionary = Campaign.G; var P: Dictionary = G.player
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}; Campaign._wx = {}
-	# ---- sighting
+	# ---- sighting (under an average captain: how far you see follows the captain of your flagship)
+	for o in G.officers: o.lvl = 3
 	Campaign._sighting()
 	var seen: int = G.fleets.filter(func(f): return f.get("vis", true)).size()
 	print("at the start you see %d of %d fleets" % [seen, G.fleets.size()])
-	ok(seen > 0 and seen < G.fleets.size(), "some fleets are in sight, most are not")
+	ok(seen < G.fleets.size() / 2, "most fleets are out of sight at the start (the next check puts one in sight)")
 	var cm: String = G.commission.fac if G.get("commission") != null else ""
 	if cm != "": ok(G.fleets.filter(func(f): return f.fac == cm).all(func(f): return f.vis), "the fleets of the flag you serve are always shown")
 	var foe: Dictionary = Campaign.spawn_fleet("raiders", "raiders"); foe.x = Campaign.wrap_x(P.x + 60.0); foe.y = P.y

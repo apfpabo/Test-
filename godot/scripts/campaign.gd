@@ -1086,7 +1086,7 @@ func always_seen(f: Dictionary) -> bool:
 ## day, a carrier's search aircraft three times as far as her strike reaches, all cut by weather and darkness.
 func sight_radius() -> float:
     var wx: Dictionary = weather_here()
-    return maxf(SIGHT, strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ck_you(wx) * your_watch()
+    return maxf(SIGHT * your_watch(), strike_reach(G.fleet, Weather.air_ok(wx, has_tech("jets"))) * 3.0) * ck_you(wx)   # the captain's watch is his lookouts; search aircraft reach as far as they fly
 ## How far off a hostile force notices you and gives chase (map units): with lookouts alone, or with radar; under the
 ## captain given (a fleet), or an average one.
 func found_radius(radar: bool, f = null) -> float:

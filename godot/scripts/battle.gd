@@ -50,7 +50,7 @@ func _ready() -> void:
     water_mat = ShaderMaterial.new(); water_mat.shader = preload("res://shaders/water.gdshader"); water.material = water_mat; bg.add_child(water)
     # world layers, bottom to top
     world = Node2D.new(); world.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS; add_child(world)
-    for n in ["islands", "below", "shadows", "ships", "above", "light", "overlay"]:
+    for n in ["islands", "below", "bursts", "shadows", "ships", "above", "light", "overlay"]:
         var node: Node2D
         if n == "ships": node = Node2D.new()
         else: node = Drawer.new(); node.battle = self; node.kind = n; node.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
@@ -59,6 +59,7 @@ func _ready() -> void:
             var ll := CanvasLayer.new(); ll.layer = 1; ll.follow_viewport_enabled = true; add_child(ll); ll.add_child(node); layers[n] = node; continue
         if n == "overlay":   # range rings and aiming lines stay readable at night too
             var ol := CanvasLayer.new(); ol.layer = 2; ol.follow_viewport_enabled = true; add_child(ol); ol.add_child(node); layers[n] = node; continue
+        if n == "bursts": burst_mat = ShaderMaterial.new(); burst_mat.shader = preload("res://shaders/burst.gdshader"); burst_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = burst_mat
         world.add_child(node); layers[n] = node
     for is_ in sim.islands: _add_island(is_)
     for s in sim.ships: _add_view(s)
@@ -91,6 +92,7 @@ func _ready() -> void:
     hud = HUD.new(); hud.battle = self; hud.set_anchors_preset(Control.PRESET_FULL_RECT); hud.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.add_child(hud)
 
 var bloom: ColorRect
+var burst_mat: ShaderMaterial
 var veil: ColorRect
 var veil_mat: ShaderMaterial
 ## Each frame: the pools of sight round your ships (and round enemies that are seen), in screen pixels, for the veil.
@@ -438,6 +440,7 @@ class Drawer extends Node2D:
         match kind:
             "islands": _islands()
             "below": _wakes(); _parts(0); _torpedoes()
+            "bursts": _bursts()
             "shadows": _shadows()
             "above": _parts(1)
             "light": _parts(2)
@@ -564,6 +567,17 @@ class Drawer extends Node2D:
         draw_line(q.pos, q.pos - dir * len, col, maxf(q.size * 0.6, mn * 1.1))
         if glow: _puff(GameData.glow_tex(), q.pos, maxf(q.size * 2.5, 2.0 * mn), Color(col, col.a * 0.6))
 
+    ## Columns of water thrown up by shells and depth charges: one quad each, drawn by shaders/burst.gdshader (the
+    ## progress, a seed and whether it is a depth charge ride in the quad's colour).
+    func _bursts() -> void:
+        var sim: BattleSim = battle.sim
+        if not sim.modern: return
+        var vr: Rect2 = battle.view_rect().grow(300); var mn: float = 1.0 / battle.zoom()
+        for q in sim.parts:
+            if q.life < 0 or (q.t != P.SPLASH and q.t != P.GEYSER and q.t != P.DC) or not vr.has_point(q.pos): continue
+            var deep: bool = q.t == P.DC; var R: float = maxf(q.size * (1.5 if deep else 1.0), 2.0 * mn)
+            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, 1.0))
+
     func _parts(layer: int) -> void:
         if battle.sim.modern: _parts_modern(layer)
         else: _parts_classic(layer)
@@ -584,11 +598,6 @@ class Drawer extends Node2D:
                 match q.t:
                     P.FOAM: if z >= 0.12: _rpuff(cl, q.pos, q.size * (1 + k), q.a, Color(0.88, 0.94, 0.94, 0.34 * (1 - k) * (0.85 + 0.15 * sin(tn * 1.7 + q.pos.x * 0.05))))
                     P.CHURN: _rpuff(cl, q.pos, q.size * (1 + k * 1.6), q.a, Color(0.9, 0.95, 0.95, 0.22 * (1 - k) * minf(1.0, q.life * 3.0)))
-                    P.SPLASH, P.GEYSER:
-                        var r = maxf(q.size, 2 * mn)
-                        if k < 0.25: _puff(puff, q.pos, r * 0.6, Color(0.06, 0.16, 0.2, 0.4 * (1.0 - k * 4.0)))   # the hole punched in the sea
-                        _rpuff(cl, q.pos, r * (0.45 + 1.2 * sqrt(k)), q.v * 1.7, Color(0.97, 0.99, 0.99, 0.95 * (1 - k) * (1 - k)))
-                        _puff(puff, q.pos, r * (0.35 + 0.5 * k), Color(1, 1, 1, 0.9 * (1 - k) * (1 - k)))
                     P.SPRAY:   # a cloud of droplets thrown out, drawn out along its flight
                         var v: Vector2 = q.vel; var st := 1.0 + clampf(v.length() * 0.02, 0.0, 1.4)
                         draw_set_transform(q.pos, v.angle(), Vector2(st, 1.0))
@@ -596,7 +605,7 @@ class Drawer extends Node2D:
                         draw_set_transform(Vector2.ZERO)
                     P.WRING: _puff(ring, q.pos, maxf(q.size * (0.12 + sqrt(k)), 2 * mn), Color(0.9, 0.96, 0.96, 0.32 * (1 - k) * (1 - k)))
                     _: pass
-                if q.t in [P.OIL, P.SWAKE, P.TWAKE, P.BLAST, P.DC]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)
+                if q.t in [P.OIL, P.SWAKE, P.TWAKE, P.BLAST]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)
             elif layer == 1:
                 match q.t:
                     P.SMOKE, P.GUNSMOKE, P.FUNNEL:

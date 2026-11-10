@@ -1295,6 +1295,10 @@ func step(dtv: float) -> void:
         var q = dcs[i]; q.t -= dt
         if q.t > 0: continue
         dcs.remove_at(i); sound("depth", q.pos, 0.3)
+        if modern:   # spray flung out of the dome, a ring across the water, and the foam it leaves
+            for j in 9:
+                var sp = part(P.SPRAY, q.pos + rdir() * 8.0, 0.8 + randf() * 0.9, 7.0 + randf() * 6.0, rdir() * (40.0 + randf() * 110.0)); sp.drag = 0.2
+            part(P.WRING, q.pos, 2.2, 90.0); var fm = part(P.FOAM, q.pos, 18.0, 55.0); fm.a = randf() * TAU; fm.spin = (randf() - 0.5) * 0.08
         for s in ships:
             if s.sub and active(s) and s.side != q.side and s.pos.distance_to(q.pos) < 60: damage(s, 160, "dc"); s.reveal_t = 30.0
     # end of the action: one side gone, or fifteen battle minutes without a hit and nothing in flight

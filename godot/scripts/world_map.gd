@@ -133,7 +133,9 @@ func _face(o: Dictionary, h := 64.0) -> Control:
     if t == null: return null
     var tr := TextureRect.new(); tr.texture = t; tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
     tr.custom_minimum_size = Vector2(h * 0.8, h); tr.clip_contents = true; tr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-    return tr
+    var sb := StyleBoxFlat.new(); sb.bg_color = Color(0, 0, 0, 0); sb.border_color = Color(UI.GOLD, 0.85); sb.set_border_width_all(1); sb.set_content_margin_all(1)   # a thin gold frame (owner's request)
+    var fr := PanelContainer.new(); fr.add_theme_stylebox_override("panel", sb); fr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN; fr.add_child(tr)
+    return fr
 func _prepare_land() -> void:
     for poly in Campaign.C.land:
         var pv = PackedVector2Array()

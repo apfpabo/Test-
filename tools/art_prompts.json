@@ -3,145 +3,145 @@
  "negative": "text, letters, watermark, signature, real national flags, real insignia, swastika, modern ships, photograph, 3d render, anime",
  "portraits": [
   {
-   "file": "godot/assets/portraits/p01.png",
+   "file": "godot/assets/portraits/p01.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: weathered man in his fifties, grey moustache, peaked cap, dark blue greatcoat with the collar up; expression stern. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p02.png",
+   "file": "godot/assets/portraits/p02.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her thirties, dark hair pinned under a naval cap, navy reefer jacket; expression calm and watchful. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p03.png",
+   "file": "godot/assets/portraits/p03.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: young man in his twenties, clean-shaven, fair hair, white polo-neck jersey under an oilskin; expression eager. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p04.png",
+   "file": "godot/assets/portraits/p04.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: heavy-set man in his forties, black beard, knitted watch cap, duffel coat; expression amused. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p05.png",
+   "file": "godot/assets/portraits/p05.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: lean man in his sixties, white hair, deep-lined face, old-fashioned frock uniform; expression tired and proud. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p06.png",
+   "file": "godot/assets/portraits/p06.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her forties, short grey-streaked hair, binoculars on a strap, bridge coat; expression appraising. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p07.png",
+   "file": "godot/assets/portraits/p07.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his thirties, East Asian features, neat dark uniform with a high collar, peaked cap; expression composed. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p08.png",
+   "file": "godot/assets/portraits/p08.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his forties, South Asian features, trimmed beard, white tropical uniform, cap under his arm; expression courteous. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p09.png",
+   "file": "godot/assets/portraits/p09.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her twenties, West African features, cropped hair, engineer's boiler suit with rolled sleeves, grease on one cheek; expression confident. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p10.png",
+   "file": "godot/assets/portraits/p10.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his fifties, Mediterranean features, olive skin, unshaven, open-necked shirt and battered cap; expression sardonic. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p11.png",
+   "file": "godot/assets/portraits/p11.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his thirties, scar across one eyebrow, leather jerkin over a jersey, no cap, wind-blown hair; expression hard. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p12.png",
+   "file": "godot/assets/portraits/p12.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her fifties, silver hair in a bun, immaculate dark uniform, reading glasses pushed up; expression severe. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p13.png",
+   "file": "godot/assets/portraits/p13.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his twenties, freckled, red hair, signalman's cap, scarf; expression nervous. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p14.png",
+   "file": "godot/assets/portraits/p14.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his forties, Pacific islander features, broad shoulders, plain khaki uniform; expression steady. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p15.png",
+   "file": "godot/assets/portraits/p15.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: old man, bald, hooded eyes, heavy fur-collared coat, pipe; expression unreadable. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p16.png",
+   "file": "godot/assets/portraits/p16.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her thirties, East Asian features, flying jacket with a sheepskin collar, goggles pushed up; expression bold. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p17.png",
+   "file": "godot/assets/portraits/p17.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his thirties, dark skin, wire-rimmed glasses, gunnery officer's duffel coat, notebook in hand; expression exact. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p18.png",
+   "file": "godot/assets/portraits/p18.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his fifties, grey stubble, eye patch, merchant captain's shabby blue jacket; expression wary. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p19.png",
+   "file": "godot/assets/portraits/p19.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her forties, Nordic features, blonde plait, white roll-neck and oilskin; expression cold. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p20.png",
+   "file": "godot/assets/portraits/p20.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: young man, Latin features, thin moustache, dress uniform slightly too large; expression vain. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p21.png",
+   "file": "godot/assets/portraits/p21.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his forties, Central Asian features, fur hat, greatcoat, cigarette; expression patient. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p22.png",
+   "file": "godot/assets/portraits/p22.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: woman in her sixties, lined brown face, headscarf under a pilot's cap, heavy cardigan; expression shrewd. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p23.png",
+   "file": "godot/assets/portraits/p23.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his thirties, bandaged hand, torn collar, smoke-stained face; expression grim. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/portraits/p24.png",
+   "file": "godot/assets/portraits/p24.jpg",
    "width": 768,
    "height": 960,
    "prompt": "Head-and-shoulders portrait of a fictional sea officer of 1946: man in his fifties, round spectacles, academic's tweed under a naval coat, slide rule in the pocket; expression absent-minded. Three-quarter view, plain dark teal background with a faint wash, light from one side. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
@@ -149,73 +149,73 @@
  ],
  "scenes": [
   {
-   "file": "godot/assets/scenes/victory.png",
+   "file": "godot/assets/scenes/victory.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A squadron of grey warships steaming away in line at dusk, a pall of black smoke and an oil slick astern where an enemy ship has gone down, signal flags going up, gulls. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/defeat.png",
+   "file": "godot/assets/scenes/defeat.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A warship sinking by the stern at dawn, crew in boats and on rafts in a grey swell, smoke drifting low, the horizon empty. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/disengaged.png",
+   "file": "godot/assets/scenes/disengaged.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A damaged destroyer making smoke and turning away at speed, shell splashes falling short astern, heavy sky. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/port.png",
+   "file": "godot/assets/scenes/port.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A small working harbour seen from the mole: cranes, sheds, a coaster and two destroyers alongside, fishing boats, wet cobbles, lamps coming on at dusk. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/capital.png",
+   "file": "godot/assets/scenes/capital.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A great naval harbour seen from a hill: a battleship and cruisers at anchor in the roads, dockyard cranes, a city of stone and smoke behind, low sun through cloud. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/contact.png",
+   "file": "godot/assets/scenes/contact.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "Seen from a ship's bridge wing in poor light: dark shapes of unknown warships on the horizon, lookouts with binoculars, a signal lamp flashing. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/storm.png",
+   "file": "godot/assets/scenes/storm.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A destroyer burying her bow in a huge grey sea, spray over the bridge, sky nearly black, one gull. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/landing.png",
+   "file": "godot/assets/scenes/landing.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "Landing craft running in to a beach under a headland, troopships offshore, smoke on the shore, grey morning. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/survey.png",
+   "file": "godot/assets/scenes/survey.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "Divers' boats moored over a half-sunken wreck on a reef, rusted upperworks above the water, calm green shallows, an abandoned pier. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/flag.png",
+   "file": "godot/assets/scenes/flag.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A new ensign being run up over a harbour fort at sunrise, a small crowd on the quay, warships dressed overall in the roads. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/bomb.png",
+   "file": "godot/assets/scenes/bomb.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A towering mushroom cloud over a distant coast seen from the sea, a submarine's conning tower in the foreground, the sea glassy and lit orange. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."
   },
   {
-   "file": "godot/assets/scenes/title.png",
+   "file": "godot/assets/scenes/title.jpg",
    "width": 1536,
    "height": 640,
    "prompt": "A lone destroyer under a vast overcast sky on a slate sea, a distant coast and a thin line of light on the horizon, wide and empty. Wide panoramic composition. Painted naval illustration in muted gouache and ink wash, in the manner of 1940s war artists' sketchbooks: visible brushwork, soft edges, restrained detail. Palette of slate blue, dark teal, grey and bone white with small accents of brass gold and signal red. Overcast northern light. No text, no lettering, no numbers, no flags or insignia of any real country or navy, no photographic realism, no modern objects."

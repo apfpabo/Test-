@@ -1,11 +1,11 @@
 # Painted art: portraits and scenes
 
-Part of the art pass the owner put first (10 Nov 2026). The game draws its ships, flags, structures and harbour towns in code; faces and scenes are painted images dropped into the project. The owner chose to generate them with his own Qwen image skill, which runs on his machine, and left the style to the agent.
+Part of the art pass the owner put first (10 Nov 2026). The game draws its ships, flags, structures and harbour towns in code; faces and scenes are painted images dropped into the project. The owner first chose his own Qwen image skill, which runs on his machine; as it cannot be reached from a cloud session he then asked for Canva's image generator, and left the style to the agent. The 24 portraits and 12 scenes in the project were made that way on 10 Nov 2026 from the prompts below, exported through a holder design ("Game art export sheet" in his Canva account) and saved as JPEG; the ensign in `flag.jpg` was recoloured by hand because it came out as a red cross on white.
 
 ## How it works
 
-- `godot/assets/portraits/*.png` (any number): each officer is given one at random and keeps it (`face` on the officer, saved). Shown beside officers in Command and in port. With no files there are no portraits.
-- `godot/assets/scenes/<key>.png`: a banner across the top of a panel when the file exists. Wired now: `victory`, `defeat`, `disengaged` (the aftermath), `port` and `capital` (a harbour's panel), `bomb` (after a nuclear strike). Prepared for later: `contact`, `storm`, `landing`, `survey`, `flag`, `title`.
+- `godot/assets/portraits/*.jpg` (any number): each officer is given one at random and keeps it (`face` on the officer, saved). Shown beside officers in Command and in port. With no files there are no portraits.
+- `godot/assets/scenes/<key>.jpg`: a banner across the top of a panel when the file exists. Wired now: `victory`, `defeat`, `disengaged` (the aftermath), `port` and `capital` (a harbour's panel), `bomb` (after a nuclear strike). Prepared for later: `contact`, `storm`, `landing`, `survey`, `flag`, `title`.
 - Code: `godot/scripts/art.gd` (finds the files), `world_map._banner` and `_face` (show them). PNG, JPG or WebP.
 - After adding files: `godot --headless --path godot --editor --quit` to import them, then export as usual. Commit the images (and Godot's `.import` files beside them).
 
@@ -21,30 +21,30 @@ Every prompt, with its file name and size, is in `tools/art_prompts.json` (`port
 
 | File | Subject |
 | --- | --- |
-| `p01.png` | weathered man in his fifties, grey moustache, peaked cap, dark blue greatcoat with the collar up; stern |
-| `p02.png` | woman in her thirties, dark hair pinned under a naval cap, navy reefer jacket; calm and watchful |
-| `p03.png` | young man in his twenties, clean-shaven, fair hair, white polo-neck jersey under an oilskin; eager |
-| `p04.png` | heavy-set man in his forties, black beard, knitted watch cap, duffel coat; amused |
-| `p05.png` | lean man in his sixties, white hair, deep-lined face, old-fashioned frock uniform; tired and proud |
-| `p06.png` | woman in her forties, short grey-streaked hair, binoculars on a strap, bridge coat; appraising |
-| `p07.png` | man in his thirties, East Asian features, neat dark uniform with a high collar, peaked cap; composed |
-| `p08.png` | man in his forties, South Asian features, trimmed beard, white tropical uniform, cap under his arm; courteous |
-| `p09.png` | woman in her twenties, West African features, cropped hair, engineer's boiler suit with rolled sleeves, grease on one cheek; confident |
-| `p10.png` | man in his fifties, Mediterranean features, olive skin, unshaven, open-necked shirt and battered cap; sardonic |
-| `p11.png` | man in his thirties, scar across one eyebrow, leather jerkin over a jersey, no cap, wind-blown hair; hard |
-| `p12.png` | woman in her fifties, silver hair in a bun, immaculate dark uniform, reading glasses pushed up; severe |
-| `p13.png` | man in his twenties, freckled, red hair, signalman's cap, scarf; nervous |
-| `p14.png` | man in his forties, Pacific islander features, broad shoulders, plain khaki uniform; steady |
-| `p15.png` | old man, bald, hooded eyes, heavy fur-collared coat, pipe; unreadable |
-| `p16.png` | woman in her thirties, East Asian features, flying jacket with a sheepskin collar, goggles pushed up; bold |
-| `p17.png` | man in his thirties, dark skin, wire-rimmed glasses, gunnery officer's duffel coat, notebook in hand; exact |
-| `p18.png` | man in his fifties, grey stubble, eye patch, merchant captain's shabby blue jacket; wary |
-| `p19.png` | woman in her forties, Nordic features, blonde plait, white roll-neck and oilskin; cold |
-| `p20.png` | young man, Latin features, thin moustache, dress uniform slightly too large; vain |
-| `p21.png` | man in his forties, Central Asian features, fur hat, greatcoat, cigarette; patient |
-| `p22.png` | woman in her sixties, lined brown face, headscarf under a pilot's cap, heavy cardigan; shrewd |
-| `p23.png` | man in his thirties, bandaged hand, torn collar, smoke-stained face; grim |
-| `p24.png` | man in his fifties, round spectacles, academic's tweed under a naval coat, slide rule in the pocket; absent-minded |
+| `p01.jpg` | weathered man in his fifties, grey moustache, peaked cap, dark blue greatcoat with the collar up; stern |
+| `p02.jpg` | woman in her thirties, dark hair pinned under a naval cap, navy reefer jacket; calm and watchful |
+| `p03.jpg` | young man in his twenties, clean-shaven, fair hair, white polo-neck jersey under an oilskin; eager |
+| `p04.jpg` | heavy-set man in his forties, black beard, knitted watch cap, duffel coat; amused |
+| `p05.jpg` | lean man in his sixties, white hair, deep-lined face, old-fashioned frock uniform; tired and proud |
+| `p06.jpg` | woman in her forties, short grey-streaked hair, binoculars on a strap, bridge coat; appraising |
+| `p07.jpg` | man in his thirties, East Asian features, neat dark uniform with a high collar, peaked cap; composed |
+| `p08.jpg` | man in his forties, South Asian features, trimmed beard, white tropical uniform, cap under his arm; courteous |
+| `p09.jpg` | woman in her twenties, West African features, cropped hair, engineer's boiler suit with rolled sleeves, grease on one cheek; confident |
+| `p10.jpg` | man in his fifties, Mediterranean features, olive skin, unshaven, open-necked shirt and battered cap; sardonic |
+| `p11.jpg` | man in his thirties, scar across one eyebrow, leather jerkin over a jersey, no cap, wind-blown hair; hard |
+| `p12.jpg` | woman in her fifties, silver hair in a bun, immaculate dark uniform, reading glasses pushed up; severe |
+| `p13.jpg` | man in his twenties, freckled, red hair, signalman's cap, scarf; nervous |
+| `p14.jpg` | man in his forties, Pacific islander features, broad shoulders, plain khaki uniform; steady |
+| `p15.jpg` | old man, bald, hooded eyes, heavy fur-collared coat, pipe; unreadable |
+| `p16.jpg` | woman in her thirties, East Asian features, flying jacket with a sheepskin collar, goggles pushed up; bold |
+| `p17.jpg` | man in his thirties, dark skin, wire-rimmed glasses, gunnery officer's duffel coat, notebook in hand; exact |
+| `p18.jpg` | man in his fifties, grey stubble, eye patch, merchant captain's shabby blue jacket; wary |
+| `p19.jpg` | woman in her forties, Nordic features, blonde plait, white roll-neck and oilskin; cold |
+| `p20.jpg` | young man, Latin features, thin moustache, dress uniform slightly too large; vain |
+| `p21.jpg` | man in his forties, Central Asian features, fur hat, greatcoat, cigarette; patient |
+| `p22.jpg` | woman in her sixties, lined brown face, headscarf under a pilot's cap, heavy cardigan; shrewd |
+| `p23.jpg` | man in his thirties, bandaged hand, torn collar, smoke-stained face; grim |
+| `p24.jpg` | man in his fifties, round spectacles, academic's tweed under a naval coat, slide rule in the pocket; absent-minded |
 | `scenes/victory.png` | A squadron of grey warships steaming away in line at dusk, a pall of black smoke and an oil slick astern where an enemy ship has gone down, signal flags going up, gulls |
 | `scenes/defeat.png` | A warship sinking by the stern at dawn, crew in boats and on rafts in a grey swell, smoke drifting low, the horizon empty |
 | `scenes/disengaged.png` | A damaged destroyer making smoke and turning away at speed, shell splashes falling short astern, heavy sky |

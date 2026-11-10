@@ -9,7 +9,10 @@ uniform float t = 0.0;                  // battle seconds
 uniform float rt = 0.0;                 // real seconds: the swell keeps rolling at its own pace whatever the battle clock
 uniform vec3 deep : source_color = vec3(0.075, 0.235, 0.275);
 uniform vec3 shallow : source_color = vec3(0.14, 0.34, 0.37);
-uniform vec2 sun_dir = vec2(-0.55, -0.85); // direction the light comes from, on the chart
+uniform vec2 sun_dir = vec2(-0.55, -0.85);
+uniform float sea_state = 0.0;          // 0 calm to 3 storm: steeper swell, whitecaps
+uniform float night = 0.0;              // 0 day to 1 night
+uniform float moon = 0.5; // direction the light comes from, on the chart
 
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float noise(vec2 p) {
@@ -57,6 +60,22 @@ void fragment() {
 	col *= 1.0 - 0.16 * cloud;
 	col *= 0.82 + 0.3 * diff;
 	col += vec3(0.75, 0.8, 0.78) * spec * 0.12 * clamp(zoom * 2.0, 0.2, 1.0);
+	// weather: a grey, steep sea with whitecaps running down-wind as it rises
+	float ss = clamp(sea_state / 3.0, 0.0, 1.0);
+	col = mix(col, vec3(dot(col, vec3(0.33))) * vec3(0.92, 1.0, 1.02), ss * 0.45);
+	col *= 1.0 + (sw.x * 0.05 * fade + (hs - 0.5) * 0.25) * ss;
+	if (ss > 0.2) {
+		// whitecaps: streaks of foam lying along the crests, in patches where the sea breaks
+		vec2 wd = vec2(0.86, 0.5); vec2 wn = vec2(-wd.y, wd.x);
+		vec2 wc = vec2(dot(w, wd) / 26.0 + rt * 0.3, dot(w, wn) / 90.0);
+		float patch_ = smoothstep(0.5, 0.75, fbm(w / 420.0 + vec2(rt * 0.01, 0.0)));
+		float caps = smoothstep(0.72 - 0.08 * ss, 0.9, fbm(wc)) * (0.35 + 0.65 * patch_);
+		col = mix(col, vec3(0.8, 0.85, 0.86), caps * ss * 0.55 * clamp(zoom * 3.0, 0.2, 1.0));
+	}
+	// night: the sea goes to blue-black, with the moon's path on the swell
+	vec3 dark = col * vec3(0.26, 0.33, 0.48) + vec3(0.0, 0.006, 0.016);
+	dark += vec3(0.5, 0.56, 0.66) * spec * 0.22 * moon;
+	col = mix(col, dark, night);
 	vec2 v = SCREEN_UV - 0.5; col *= 1.0 - dot(v, v) * 0.75;
 	COLOR = vec4(col, 1.0);
 }

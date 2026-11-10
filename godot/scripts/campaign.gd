@@ -739,7 +739,7 @@ func new_day(moved: bool) -> void:
     var P: Dictionary = G.player
     if not G.has("reserve"): G.reserve = reserve_cap()
     if moved and P.get("towed") == null:
-        var burn: float = fuel_burn() * (1.5 if in_ice(P.x, P.y) else 1.0)
+        var burn: float = fuel_burn() * (1.5 if in_ice(P.x, P.y) else 1.0) * Weather.fuel_mult(weather_here())
         if G.cargo.fuel > 0: G.cargo.fuel -= burn
         else:
             G.reserve = maxf(0.0, float(G.reserve) - burn / 3.0)
@@ -757,6 +757,7 @@ func new_day(moved: bool) -> void:
             for s in G.fleet: s.hullFrac = maxf(0.05, s.hullFrac - 0.015)
             if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
         else: G.iceWarned = false
+    _storm_day(moved)
     G.cargo.food -= (G.crew + Structures.troops()) * 0.004
     if G.cargo.food < 0:
         G.cargo.food = 0; var lost = int(ceil(G.crew * 0.03)); G.crew -= lost
@@ -774,6 +775,20 @@ func new_day(moved: bool) -> void:
     if G.get("test", false): _test_topup()
     if G.day % 3 == 0: save()   # autosave every few days at sea
     _research_day()
+
+## A day in a storm at sea knocks small ships about; the first day of one is announced, and so is its passing.
+func _storm_day(moved: bool) -> void:
+    var wx: Dictionary = weather_here(); var s: int = int(wx.sea)
+    if s >= 3 and not G.get("docked", false):
+        var hurt := []
+        for sh in G.fleet:
+            var h: Dictionary = hull(sh)
+            if float(h.t) < 2500.0 and h.kind != "sub" and moved: sh.hullFrac = maxf(0.05, float(sh.hullFrac) - randf_range(0.01, 0.03)); hurt.append(sh.name)
+        if not G.get("stormWarned", false):
+            G.stormWarned = true
+            toast.emit("A storm. Speed is cut, fuel burn rises, aircraft cannot fly and nobody sees far%s. Heave to, or run for the edge of it." % ((". Your small ships are taking damage: " + ", ".join(hurt)) if not hurt.is_empty() else ""))
+    elif G.get("stormWarned", false):
+        G.stormWarned = false; toast.emit("The storm has blown itself out: %s." % String(Weather.SEA[s]))
 
 ## One tick of the chart: the calendar, your task force, and every other fleet. Emits encounter() on contact.
 func update(dt: float) -> void:
@@ -803,9 +818,11 @@ func update(dt: float) -> void:
             if mdist(P.x, P.y, st.x, st.y) < 1.5: P.route = null
             elif not set_course(P, st.x, st.y): set_course(P, esc.x, esc.y)
     var ice = in_ice(P.x, P.y)
+    var wx: Dictionary = weather_here()
     if P.get("route") != null:
         var no_fuel: bool = G.cargo.fuel <= 0 and fuel_use() > 0
         var sp = (fleet_map_speed(G.fleet) * 0.2 if no_fuel else player_speed()) * (0.4 if ice else 1.0)
+        sp *= Weather.speed_mult(wx, G.fleet)   # a head sea
         sp *= 0.35 + 0.65 * crew_frac()   # short-handed in the stokeholds: less steam
         if dead_in_water(): sp = 0.0
         if int(G.crew) <= 0 and not G.get("nocrewWarned", false):
@@ -824,7 +841,7 @@ func update(dt: float) -> void:
     Diplomacy.clash_tick(dt)
     Structures.tick(dt)
     var ps = strength(G.fleet)
-    var pr := strike_reach(G.fleet)
+    var pr := strike_reach(G.fleet, Weather.air_ok(weather_here(), has_tech("jets")))
     for f in G.fleets.duplicate():
         f.cool = maxf(0.0, f.cool - dt)
         if P.get("towed") != null and f.id == P.towed:   # the towing ship keeps station ahead of you on the hawser
@@ -834,7 +851,7 @@ func update(dt: float) -> void:
         var merchant = true
         for s in f.ships: if hull(s).kind != "merchant": merchant = false
         var rate = 0.6
-        if hos and f.cool <= 0 and P.cool <= 0 and dP < 160 and not merchant:
+        if hos and f.cool <= 0 and P.cool <= 0 and dP < 160.0 * ck_them(f, wx) and not merchant:   # a hunter that cannot see you does not chase
             var chase: bool = strength(f.ships) > ps * 0.5 or f.get("mission", false)
             f.chaseT = f.get("chaseT", 0.0) - dt; rate = 1.0 if chase else 0.95
             if f.chaseT <= 0 or f.get("route") == null:
@@ -872,7 +889,7 @@ func update(dt: float) -> void:
                 else:
                     var w = water_point(6, Vector2(f.home.x, f.home.y), 120.0 if (f.get("mission", false) or f.kind == "bounty") else 320.0)
                     if not set_course(f, w.x, w.y): f.route = null
-        var fsp = fleet_map_speed(f.ships) * rate * (0.4 if in_ice(f.x, f.y) else 1.0)
+        var fsp = fleet_map_speed(f.ships) * rate * (0.4 if in_ice(f.x, f.y) else 1.0) * Weather.speed_mult(wx if dP < 400.0 else Weather.CLEAR, f.ships)   # the same sea slows those near you
         if int(f.get("escort", 0)) > 0 and dP > 45.0: fsp = 0.0   # an escorted convoy waits for its escort
         if f.get("route") != null:
             var was := Vector2(f.x, f.y)
@@ -886,22 +903,37 @@ func update(dt: float) -> void:
             else: f.stuckT = 0.0
         # contact: hostile forces engage at the longer of the two sides' reach; an intercept closes to gun range.
         # A force that has been met stays quiet until the range opens past its reach again.
-        var reach := maxf(strike_reach(f.ships), pr) if hos else 0.0
+        # Weather and darkness: each side finds the other only as far as it can see (or its radar reaches), and
+        # carriers reach out only when their aircraft can fly.
+        var kt := ck_them(f, wx); var ky := ck_you(wx)
+        var their_reach := strike_reach(f.ships, Weather.air_ok(wx, fac_era(f.fac) >= 2)) * kt; var your_reach := pr * ky
+        var reach := maxf(their_reach, your_reach) if hos else 0.0
         if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
-        var close_in: bool = (P.follow == f.id or hos or f.get("answering", false)) and dP < CONTACT   # inside gun range there is always contact
+        var close_in: bool = ((P.follow == f.id or f.get("answering", false)) and dP < CONTACT * maxf(ky, 0.35)) or (hos and dP < CONTACT * maxf(kt, ky))   # inside gun range, whoever sees the other brings on the action
         if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
             f.met = true; f.contactKm = int(round(dP * KM_PER_UNIT / 5.0) * 5); paused = true; encounter.emit(f); return
+
+## The weather where your squadron is (cached for the tick), and how far each side sees in it as a share of clear
+## daylight: lookouts, or radar for a side that has it (you: the Fire-control radar research; a power: Era II).
+var _wx := {}
+var _wx_t := -1.0
+func weather_here() -> Dictionary:
+    var t := Weather.now()
+    if _wx.is_empty() or absf(t - _wx_t) > 0.01: _wx = Weather.at(G.player.x, G.player.y, t); _wx_t = t
+    return _wx
+func ck_you(wx: Dictionary) -> float: return Weather.contact_mult(wx, has_tech("radar"))
+func ck_them(f: Dictionary, wx: Dictionary) -> float: return Weather.contact_mult(wx, f.fac != "raiders" and fac_era(f.fac) >= 2)
 
 ## How far a force can reach out and start a fight, in map units (1 unit = 0.05°, about 5.5 km). Guns need contact,
 ## about 90 km, close enough to bring the lines together; anti-ship missiles about 120 km; a carrier's strike group
 ## 250 km from an escort carrier and 350 km from a fleet carrier.
 const CONTACT := 16.0
 const KM_PER_UNIT := 5.55
-func strike_reach(ships: Array) -> float:
+func strike_reach(ships: Array, air := true) -> float:
     var r := CONTACT
     for s in ships:
         var h: Dictionary = hull(s)
-        if h.kind == "carrier": r = maxf(r, 350.0 / KM_PER_UNIT if h.klass == "cv" else 250.0 / KM_PER_UNIT)
+        if h.kind == "carrier" and air: r = maxf(r, 350.0 / KM_PER_UNIT if h.klass == "cv" else 250.0 / KM_PER_UNIT)
         for w in s.get("fit", []):
             if w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm": r = maxf(r, 120.0 / KM_PER_UNIT)
     return r
@@ -1003,7 +1035,7 @@ func battle_setup(f: Dictionary) -> Dictionary:
     for o in G.officers: o.lastShip = o.ship
     return {"player_recs": recs, "enemy_recs": f.ships, "enemy_fac": f.fac, "player_tech": G.tech, "enemy_tech": enemy_tech(fac_era(f.fac)),
         "islands": _islands_here(), "fleet_id": f.id, "campaign": true, "crew_frac": crew_frac(), "officers": G.officers, "no_fuel": G.cargo.fuel <= 0,
-        "range_km": int(f.get("contactKm", 0))}
+        "range_km": int(f.get("contactKm", 0)), "weather": Weather.battle(weather_here())}
 
 func _islands_here() -> int:
     var dens = land_density(G.player.x, G.player.y, 25)

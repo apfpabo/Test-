@@ -30,6 +30,7 @@ func _ready() -> void:
     var pt: Array = cfg.get("player_tech", []); var et: Array = cfg.get("enemy_tech", [])
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])
     var efac: String = cfg.get("enemy_fac", "directorate")
+    sim.wx = cfg.get("weather", Weather.CLEAR)
     if cfg.has("player_recs"): # a campaign action: your own ships, officers and crew against the fleet you met
         # contact made at missile or carrier reach opens the action at longer range (chart km to battle metres, 1:10)
         sim.sep = clampf(float(cfg.get("range_km", 90)) * 100.0, 9000.0, 18000.0)
@@ -53,13 +54,35 @@ func _ready() -> void:
         var node: Node2D
         if n == "ships": node = Node2D.new()
         else: node = Drawer.new(); node.battle = self; node.kind = n; node.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-        if n == "light": var mat = CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; node.material = mat
+        if n == "light":   # fire and flashes: their own canvas layer, following the camera, so the darkness of night (CanvasModulate) does not dim them
+            var mat = CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; node.material = mat
+            var ll := CanvasLayer.new(); ll.layer = 1; ll.follow_viewport_enabled = true; add_child(ll); ll.add_child(node); layers[n] = node; continue
+        if n == "overlay":   # range rings and aiming lines stay readable at night too
+            var ol := CanvasLayer.new(); ol.layer = 2; ol.follow_viewport_enabled = true; add_child(ol); ol.add_child(node); layers[n] = node; continue
         world.add_child(node); layers[n] = node
     for is_ in sim.islands: _add_island(is_)
     for s in sim.ships: _add_view(s)
     camera = Camera2D.new(); world.add_child(camera); camera.make_current()
     camera.zoom = Vector2.ONE * clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) / 3200.0, 0.14, 0.4)
     camera.position = sim.flag.pos
+    # the light of the hour and the weather over the scene: night and storm darken it, and a veil hides what is out of sight
+    var w: Dictionary = sim.wx
+    if w.night or int(w.sea) >= 2 or w.fog:
+        var cm := CanvasModulate.new()
+        var day_col: Color = Color(0.9, 0.92, 0.94) if w.fog else (Color(0.72, 0.75, 0.79) if int(w.sea) >= 3 else Color(0.86, 0.88, 0.9))
+        cm.color = day_col.lerp(Color(0.38, 0.44, 0.6).lerp(Color(0.52, 0.58, 0.74), float(w.moon)), 1.0 if w.night else 0.0); add_child(cm)
+    var vl = CanvasLayer.new(); vl.layer = 4; add_child(vl)
+    veil = ColorRect.new(); veil.set_anchors_preset(Control.PRESET_FULL_RECT); veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    veil_mat = ShaderMaterial.new(); veil_mat.shader = preload("res://shaders/veil.gdshader"); veil.material = veil_mat; vl.add_child(veil)
+    veil.visible = sim.limited() or w.fog or int(w.sea) >= 2
+    veil_mat.set_shader_parameter("murk_a", (0.74 if w.night else 0.62) if sim.limited() else 0.0)
+    veil_mat.set_shader_parameter("murk", Color(0.015, 0.025, 0.05) if w.night else (Color(0.5, 0.54, 0.57) if w.fog else Color(0.2, 0.24, 0.27)))
+    veil_mat.set_shader_parameter("fog", (0.3 if w.night else 0.42) if w.fog else 0.0)
+    veil_mat.set_shader_parameter("fog_col", Color(0.16, 0.19, 0.25) if w.night else Color(0.66, 0.7, 0.72))
+    veil_mat.set_shader_parameter("rain", [0.0, 0.0, 0.45, 1.0][int(w.sea)])
+    water_mat.set_shader_parameter("sea_state", float(w.sea)); water_mat.set_shader_parameter("night", 1.0 if w.night else 0.0); water_mat.set_shader_parameter("moon", float(w.moon))
+    if sim.limited() or w.night or int(w.sea) >= 2 or w.fog:
+        sim.say("%s. %s" % [w.text, ("Lookouts see about %.1f km%s." % [float(w.vis) / 1000.0, "; radar ships see farther" if sim.ships.any(func(x): return x.side == 0 and sim.has_radar(x)) else ""]) if sim.limited() else "Gunnery suffers in this sea."], 6.0)
     # bloom over the finished picture (modern effects only), under the HUD
     var bl = CanvasLayer.new(); bl.layer = 5; add_child(bl)
     bloom = ColorRect.new(); bloom.set_anchors_preset(Control.PRESET_FULL_RECT); bloom.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -68,6 +91,24 @@ func _ready() -> void:
     hud = HUD.new(); hud.battle = self; hud.set_anchors_preset(Control.PRESET_FULL_RECT); hud.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.add_child(hud)
 
 var bloom: ColorRect
+var veil: ColorRect
+var veil_mat: ShaderMaterial
+## Each frame: the pools of sight round your ships (and round enemies that are seen), in screen pixels, for the veil.
+func _veil_spots() -> void:
+    if veil == null or not veil.visible: return
+    var vs := get_viewport_rect().size; var z := zoom(); var arr := []; var ct := get_viewport().get_canvas_transform()
+    for s in sim.ships:
+        if not sim.active(s) or arr.size() >= 24: continue
+        var r := 0.0
+        if s.side == 0: r = maxf(float(sim.wx.vis), 1200.0) if sim.limited() else 1e6
+        elif sim.visible_to(s, 0): r = 420.0
+        else: continue
+        var sp: Vector2 = ct * s.pos
+        arr.append(Vector4(sp.x, sp.y, r * z, 0.0))
+    var n := arr.size()
+    while arr.size() < 24: arr.append(Vector4(0, 0, 0, 0))
+    veil_mat.set_shader_parameter("spots", arr); veil_mat.set_shader_parameter("n_spots", n)
+    veil_mat.set_shader_parameter("screen", vs); veil_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
 func _recs(ids: Array, pal: String, tech: Array) -> Array:
     var out = []; var pool: Array = GameData.names.get(pal, GameData.names.player).duplicate(); pool.shuffle()
     for i in ids.size():
@@ -145,6 +186,7 @@ func _process(delta: float) -> void:
     water_mat.set_shader_parameter("cam", camera.position); water_mat.set_shader_parameter("zoom", zoom())
     water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t); water_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
     for m in island_mats: m.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
+    _veil_spots()
     for v in views: v.refresh()
     for n in layers: if layers[n] is Drawer: layers[n].queue_redraw()
     hud.queue_redraw()
@@ -285,6 +327,7 @@ class ShipView extends Node2D:
         if not s.alive: k = minf(1.0, s.sink / 4.0); alpha = 1.0 - k
         elif sm > 0: alpha = 1.0 - 0.65 * sm
         visible = alpha > 0.02 and not s.escaped and (s.side == 0 or not s.sub or s.dive < 0.3 or battle.sim.detected_by(s, 0) or not s.alive)
+        if visible and s.side == 1 and s.alive and battle.sim.limited() and not battle.sim.visible_to(s, 0): visible = false   # lost in the dark or the murk
         position = s.pos; rotation = s.a + k * 0.25; scale = Vector2.ONE * (1.0 - 0.2 * k); modulate.a = alpha
         var sun_local = BattleSim.SUN.rotated(-s.a)
         var soot = clampf((1.0 - s.hull / s.max_hull - 0.25) * 1.4, 0.0, 1.0)
@@ -415,6 +458,7 @@ class Drawer extends Node2D:
         for s in sim.ships:
             if s.trail.size() < 2: continue
             if s.sub and s.side == 1 and not sim.detected_by(s, 0): continue
+            if s.side == 1 and sim.limited() and not sim.visible_to(s, 0): continue
             var pts: Array = []
             if sim.active(s): pts.append(sim.trail_point(s))
             for i in range(s.trail.size() - 1, -1, -1): pts.append(s.trail[i])

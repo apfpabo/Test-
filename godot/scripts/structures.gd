@@ -176,6 +176,8 @@ func can_strike(s: Dictionary) -> String:
 	var car: Array = G.fleet.filter(func(r): return Campaign.hull(r).kind == "carrier")
 	if car.is_empty(): return "You need a carrier to strike from the air."
 	if air_group() < 4: return "Your carriers have too few aircraft left. Replace them in port."
+	var wx: Dictionary = Campaign.weather_here()
+	if not Weather.air_ok(wx, jets()): return "Your aircraft cannot fly: %s." % ("a storm" if int(wx.sea) >= 3 else ("fog" if wx.fog else "it is night, and only jets fly by night"))
 	var reach := Campaign.strike_reach(G.fleet); var d := Campaign.mdist(P.x, P.y, s.x, s.y)
 	if d > reach: return "Out of reach: %d km away, and your strike reach is %d km." % [int(d * Campaign.KM_PER_UNIT), int(reach * Campaign.KM_PER_UNIT)]
 	if strike_wait() > 0.0: return "The air groups are rearming: ready in %d hours." % int(ceil(strike_wait() * 24.0))

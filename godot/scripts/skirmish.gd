@@ -18,6 +18,8 @@ var theirs: Array = []
 var design_pick: OptionButton
 var fac_pick: OptionButton
 var era_pick: OptionButton
+var wx_pick: OptionButton
+var hour_pick: OptionButton
 var mine_list: ItemList
 var theirs_list: ItemList
 var ids: Array = []
@@ -53,6 +55,12 @@ func _ready() -> void:
     row2.add_child(fac_pick)
     var l2 = Label.new(); l2.text = "   Technology"; row2.add_child(l2)
     era_pick = OptionButton.new(); era_pick.add_item("Era I · late war"); era_pick.add_item("Era II · early Cold War"); era_pick.add_item("Era III · late Cold War"); row2.add_child(era_pick)
+    var l3 = Label.new(); l3.text = "   Weather"; row2.add_child(l3)
+    wx_pick = OptionButton.new(); for n in ["Calm", "Moderate sea", "Rough sea", "Storm", "Fog"]: wx_pick.add_item(n)
+    row2.add_child(wx_pick)
+    var l4 = Label.new(); l4.text = "   Hour"; row2.add_child(l4)
+    hour_pick = OptionButton.new(); for n in ["Day", "Night, full moon", "Night, no moon"]: hour_pick.add_item(n)
+    row2.add_child(hour_pick)
     var lists = HBoxContainer.new(); lists.add_theme_constant_override("separation", 12); col.add_child(lists)
     mine_list = _list(lists, "My squadron (click to remove)", mine); theirs_list = _list(lists, "Enemy (click to remove)", theirs)
     var go = Button.new(); go.text = "Battle stations"; go.custom_minimum_size = Vector2(220, 44)
@@ -76,5 +84,6 @@ func _refresh() -> void:
         for id in pair[1]: pair[0].add_item(GameData.hulls[id].name + " · " + GameData.hulls[id].dn + " class")
 
 func _start(p: Array, e: Array, fac: String, era: int) -> void:
-    GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "enemy_fac": fac, "player_tech": ERA_TECH[era], "enemy_tech": ERA_TECH[era], "islands": randi_range(0, 4)}
+    var w := {"sea": mini(wx_pick.selected, 3) if wx_pick.selected < 4 else 0, "fog": wx_pick.selected == 4, "night": hour_pick.selected > 0, "moon": 1.0 if hour_pick.selected == 1 else 0.1}
+    GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "enemy_fac": fac, "player_tech": ERA_TECH[era], "enemy_tech": ERA_TECH[era], "islands": randi_range(0, 4), "weather": Weather.battle(w)}
     get_tree().change_scene_to_file("res://scenes/battle.tscn")

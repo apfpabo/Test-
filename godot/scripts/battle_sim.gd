@@ -77,6 +77,7 @@ class CShip:
     var dive = 0.0
     var want_dive = false
     var reveal_t = 0.0
+    var lit_t = 99.0       # seconds since her own guns last fired: gun flashes give a ship away in the dark
     var torp_run_t = 0.0
     var ai_acc = 0.0
     var wpn_acc = 0.0
@@ -130,6 +131,7 @@ var air: Array = []
 var parts: Array[Part] = []
 var modern := true                 # the modern effects: layered explosions, light, spray (Settings.fx_modern); false = classic
 var flash := 0.0                   # a magazine going up lights the whole sky for a moment
+var wx: Dictionary = Weather.CLEAR  # the weather and light the battle is fought in (Weather.battle): sea, fog, night, moon, vis, radar
 var tracers: Array = []
 var hit_marks: Array = []        # floating hit results for the HUD: {pos, text, col, t, ours}
 var islands: Array = []
@@ -411,8 +413,34 @@ func detected_by(sb: CShip, side: int) -> bool:
         if dd < 500.0 or (o.d.get("sonar", false) and dd < sonar_r * (1.0 + 0.3 * upg(o, "sonar"))) or (o.sub and dd < sonar_r * 1.4): return true  # a boat's passive sonar hears another
     return false
 
+## Whether a side can see a ship. Submarines as before (sonar). In bad visibility or at night a surface ship is seen
+## only within sight of some ship of that side: the eye's reach in this weather, or the radar's for a ship that has
+## one. A ship that has just fired, or is burning, shows at twice the distance: she lights herself up.
+func has_radar(s: CShip) -> bool: return s.tech.has("radar") or upg(s, "radar") > 0
+func sight(o: CShip) -> float:
+    var v: float = float(wx.vis)
+    if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 if o.tech.has("datalink") else 1.0))
+    return v
+func limited() -> bool: return float(wx.vis) > 0.0
 func visible_to(s: CShip, side: int) -> bool:
-    return s.side == side or not s.sub or detected_by(s, side)
+    if s.side == side: return true
+    if s.sub and not detected_by(s, side): return false
+    if not limited(): return true
+    var show: float = 2.0 if (s.lit_t < 6.0 or not s.fires.is_empty() or s.mag_fire > 0) else 1.0
+    for o in ships:
+        if o.side != side or not active(o): continue
+        var r: float = float(wx.vis) * show
+        if has_radar(o) and not submerged(o): r = maxf(r, sight(o))
+        if o.pos.distance_squared_to(s.pos) < r * r: return true
+    return false
+## The nearest enemy whether seen or not: where a side that has lost sight of the enemy steers to find him again.
+func nearest_any(from: Vector2, side: int) -> CShip:
+    var best: CShip = null; var bd := INF
+    for o in ships:
+        if o.side == side or not engageable(o): continue
+        var dd := from.distance_to(o.pos)
+        if dd < bd: bd = dd; best = o
+    return best
 
 ## System upgrades (bought in port, Refit tab): what each does per mark, and what it costs as a share of the hull's price.
 const UPGRADES := {
@@ -426,7 +454,7 @@ const UPGRADES := {
 static func upg(s: CShip, k: String) -> int: return int(s.up.get(k, 0))
 
 func speed_mult(s: CShip) -> float:
-    return (1.2 if s.sub and s.tech.has("snorkel") and submerged(s) else 1.0) * s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
+    return (1.0 - (0.05 * int(wx.sea) if s.d.t < 3000.0 and not submerged(s) else 0.015 * int(wx.sea))) * (1.2 if s.sub and s.tech.has("snorkel") and submerged(s) else 1.0) * s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
 
 func gun_range(s: CShip, w: Dictionary) -> float:
     return w.range * ((1.15 if s.tech.has("radar") else 1.0) * (1.0 + 0.06 * upg(s, "radar")) if w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0) * (1.15 if w.kind == "ssm" and s.tech.has("datalink") else 1.0)
@@ -586,6 +614,9 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     var p = world_pt(s, m.slot.x, m.slot.y) + Vector2.from_angle(ang + PI / 2) * off
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
     var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.15 if s.side == 1 else 1.0) * (0.85 if s.tech.has("datalink") else 1.0)
+    fc *= 1.0 + 0.1 * int(wx.sea)                                         # a moving platform
+    if wx.night and not has_radar(s): fc *= 1.35                           # spotting the fall of shot by eye in the dark
+    s.lit_t = 0.0
     var spread: float = w.spread * fc / maxf(0.3, s.fc)
     var a = ang + (randf() - 0.5) * 2 * spread
     var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
@@ -999,7 +1030,10 @@ func ai_ship(s: CShip, dt: float) -> void:
             s.throttle = 4 if dd > 900 else (maxi(2, flag.throttle) if dd > 250 else flag.throttle)
             return
         tg = close
-    if tg == null: s.throttle = 2; s.rudder = helm(s, s.a); return
+    if tg == null:
+        var lost: CShip = nearest_any(s.pos, s.side) if limited() else null   # out of sight: close the enemy's last reported position
+        if lost != null and s.d.kind != "merchant" and s.d.kind != "carrier": s.throttle = 3; s.rudder = helm(s, steer_avoid(s, (lost.pos - s.pos).angle())); return
+        s.throttle = 2; s.rudder = helm(s, s.a); return
     var d = s.pos.distance_to(tg.pos); var to = (tg.pos - s.pos).angle()
     var pref = 0.0
     if s.d.kind == "carrier": pref = 15000.0
@@ -1027,6 +1061,9 @@ func ai_ship(s: CShip, dt: float) -> void:
 
 func launch_strike(s: CShip, tg: CShip) -> bool:
     if tg == null or s.sub: return false
+    if int(wx.sea) >= 3 or wx.fog or (wx.night and not s.tech.has("jets")):   # no flying in a storm or fog, and only jets by night
+        if s.side == 0 and s == flag: say("Aircraft cannot fly: " + ("a storm." if int(wx.sea) >= 3 else ("fog." if wx.fog else "it is night, and only jets fly by night.")), 2.5)
+        return false
     var launched = 0
     for q in s.squads:
         if q.state != "ready" or q.n <= 0: continue
@@ -1082,7 +1119,7 @@ func step(dtv: float) -> void:
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue
-        s.reveal_t = maxf(0.0, s.reveal_t - dt); s.ram_t = maxf(0.0, s.ram_t - dt)
+        s.reveal_t = maxf(0.0, s.reveal_t - dt); s.ram_t = maxf(0.0, s.ram_t - dt); s.lit_t += dt
         # AI ships think four times a battle second and work their weapons ten times; your flagship every step
         if s == flag:
             if player_rudder != 0.0: waypoints.clear()   # taking the helm yourself cancels the waypoints

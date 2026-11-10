@@ -101,7 +101,10 @@ func _draw() -> void:
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
     _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
-    var ry = 128.0
+    if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
+        var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
+        _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
+    var ry = 136.0 if (sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog) else 128.0
     for side in [0, 1]:
         _text(Vector2(16, ry), "Enemy" if side else "Task force", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
         for s in sim.ships:

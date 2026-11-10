@@ -15,6 +15,7 @@ Campaign="*res://scripts/campaign.gd"
 Diplomacy="*res://scripts/diplomacy.gd"
 Structures="*res://scripts/structures.gd"
 Flag="*res://scripts/flag.gd"
+Weather="*res://scripts/weather.gd"
 
 [display]
 window/size/viewport_width=1400

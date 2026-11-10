@@ -56,6 +56,13 @@ func _ready() -> void:
                 var ln = Line2D.new(); ln.points = pl; ln.width = g[0]; ln.default_color = Color(0.5, 0.69, 0.75)
                 ln.joint_mode = Line2D.LINE_JOINT_ROUND; ln.begin_cap_mode = Line2D.LINE_CAP_ROUND; ln.end_cap_mode = Line2D.LINE_CAP_ROUND
                 ln.position.x = k * Campaign.MW; grp.add_child(ln)
+    # weather and the night side of the world, over land and sea and under the fleets and ports
+    wx_img = Image.create(180, 80, false, Image.FORMAT_RGB8); wx_tex = ImageTexture.create_from_image(Image.create(720, 320, false, Image.FORMAT_RGB8))
+    wx_mat = ShaderMaterial.new(); wx_mat.shader = preload("res://shaders/chart_weather.gdshader"); wx_mat.set_shader_parameter("wx", wx_tex)
+    for k in [-1, 0, 1]:
+        var wp := Polygon2D.new(); wp.polygon = PackedVector2Array([Vector2(0, 0), Vector2(Campaign.MW, 0), Vector2(Campaign.MW, Campaign.MH), Vector2(0, Campaign.MH)])
+        wp.uv = PackedVector2Array([Vector2(0, 0), Vector2(720, 0), Vector2(720, 320), Vector2(0, 320)]); wp.texture = wx_tex; wp.material = wx_mat; wp.position.x = k * Campaign.MW; world.add_child(wp)
+    _weather_grid()
     marks = Marks.new(); marks.map = self; world.add_child(marks)
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
     ui = Control.new(); ui.set_anchors_preset(Control.PRESET_FULL_RECT); ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.theme = UI.theme(); cl.add_child(ui)
@@ -70,6 +77,27 @@ func _ready() -> void:
     if Campaign.show_origin: Campaign.show_origin = false; Campaign.paused = true; _show_origin()
     elif Campaign.show_aftermath: Campaign.show_aftermath = false; _show_aftermath(Campaign.last_result)
     else: Campaign.paused = false
+
+var wx_img: Image
+var wx_tex: ImageTexture
+var wx_mat: ShaderMaterial
+var _wx_key := -1
+var _wx_rt := 0.0
+## The weather grid for the chart: storminess and fog on a 40-unit grid, refreshed every eighth of a day (and not more
+## than about once a second, however fast the clock runs).
+func _weather_grid() -> void:
+    var t := Weather.now(); var key := int(t * 8.0); var rt := Time.get_ticks_msec() / 1000.0
+    if key == _wx_key or (rt - _wx_rt < 1.0 and _wx_key >= 0): return
+    _wx_key = key; _wx_rt = rt
+    for j in 80:
+        for i in 180:
+            var x := (i + 0.5) * 40.0; var y := (j + 0.5) * 40.0
+            wx_img.set_pixel(i, j, Color(Weather.storm(x, y, t), Weather.fog_v(x, y, t), 0.0))
+    var big: Image = wx_img.duplicate(); big.resize(720, 320, Image.INTERPOLATE_CUBIC); wx_tex.update(big)   # smoothed here, so the chart shows no grid
+func _weather_frame() -> void:
+    _weather_grid()
+    var t := Weather.now()
+    wx_mat.set_shader_parameter("day_frac", fposmod(t, 1.0)); wx_mat.set_shader_parameter("winter_n", Weather.winter(0.0, t)); wx_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
 
 ## Texture coordinates for a land polygon: map units to terrain texels, wrapping east-west and held inside the
 ## texture at the poles (polar coasts run off the chart).
@@ -119,6 +147,7 @@ func boost() -> float: return pow(zoom, 0.75) if zoom > 1 else 1.0
 func _process(delta: float) -> void:
     var dt = minf(delta, 0.05); tnow += dt
     var G: Dictionary = Campaign.G
+    _weather_frame()
     if not panel_open:
         var pan = Vector2((1 if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D) else 0) - (1 if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A) else 0),
             (1 if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S) else 0) - (1 if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W) else 0))
@@ -274,7 +303,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
                 draw_colored_polygon(PackedVector2Array([Vector2(x, f.y) + Vector2.from_angle(f.h) * 7 / z, Vector2(x, f.y) + Vector2.from_angle(f.h + 2.5) * 4 / z, Vector2(x, f.y) + Vector2.from_angle(f.h - 2.5) * 4 / z]), col)
                 continue
             if f.get("chasing", false): draw_arc(Vector2(x, f.y), 160, 0, TAU, 64, Color(0.85, 0.38, 0.29, 0.28), 1.0 / z)
-            if hos: _reach_ring(Vector2(x, f.y), Campaign.strike_reach(f.ships), Color(0.85, 0.38, 0.29, 0.35))
+            if hos: _reach_ring(Vector2(x, f.y), Campaign.strike_reach(f.ships, Weather.air_ok(Campaign.weather_here(), Campaign.fac_era(f.fac) >= 2)) * Campaign.ck_them(f, Campaign.weather_here()), Color(0.85, 0.38, 0.29, 0.35))
             if P.get("escort") == f.id: draw_arc(Vector2(x, f.y), 19 * b / z, 0, TAU, 32, Color(0.55, 0.8, 0.6, 0.8), 1.5 / z)
             if hos or f.get("mission", false) or P.follow == f.id: draw_arc(Vector2(x, f.y), 16 * b / z, 0, TAU, 32, Color(Color("#e3b23c") if P.follow == f.id else col, 0.7), 1.5 / z)
             _fleet(f.ships, f.fac, Vector2(x, f.y), f.h, f.id)
@@ -282,7 +311,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         var ring_r: float = 17 * b / z
         if G.fleet.size(): ring_r = minf(ring_r, maxf(14.0 / z, _layout(G.fleet)[0][3] * 0.75))   # close in, the ring hugs the ship
         draw_arc(Vector2(P.x, P.y), ring_r, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
-        if z >= 0.32: _reach_ring(Vector2(P.x, P.y), Campaign.strike_reach(G.fleet), Color(0.89, 0.7, 0.24, 0.4))
+        if z >= 0.32: _reach_ring(Vector2(P.x, P.y), Campaign.strike_reach(G.fleet, Weather.air_ok(Campaign.weather_here(), Campaign.has_tech("jets"))) * Campaign.ck_you(Campaign.weather_here()), Color(0.89, 0.7, 0.24, 0.4))
         if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h, "player")
 
     ## Land structures: map symbols at normal zoom, drawn installations close in, and the reach of batteries that
@@ -490,7 +519,7 @@ func _build_top() -> void:
     bg.add_theme_stylebox_override("panel", sb); ui.add_child(bg)
     top = HBoxContainer.new(); top.add_theme_constant_override("separation", 22); bg.add_child(top)
     # stats as two-line chips: a small condensed key over its value
-    for k in ["DATE", "FUNDS", "FUEL", "CREW", "HOLD", "RESEARCH", "SERVING"]:
+    for k in ["DATE", "FUNDS", "FUEL", "CREW", "HOLD", "RESEARCH", "WEATHER", "SERVING"]:
         var box = VBoxContainer.new(); box.add_theme_constant_override("separation", -3)
         var key := Label.new(); key.text = k; key.add_theme_font_override("font", UI.font("cond")); key.add_theme_font_size_override("font_size", 11); key.add_theme_color_override("font_color", Color(UI.DIM, 0.8))
         var v := Label.new(); v.add_theme_font_override("font", UI.font("semi")); v.add_theme_font_size_override("font_size", 15); v.add_theme_color_override("font_color", UI.INK)
@@ -532,6 +561,17 @@ func _update_top() -> void:
         stats.SERVING.text = "Independent"; stats.SERVING.add_theme_color_override("font_color", UI.DIM)
         stats.SERVING.tooltip_text = "You fly no flag but your own. Powers offer commissions and letters of marque at their capitals once your standing reaches 20."
     stats.SERVING.mouse_filter = Control.MOUSE_FILTER_PASS; stats.SERVING.get_parent().tooltip_text = stats.SERVING.tooltip_text
+    var wx: Dictionary = Campaign.weather_here()
+    stats.WEATHER.text = "%s · %02dh" % [wx.text, int(wx.hour)]
+    stats.WEATHER.add_theme_color_override("font_color", UI.RED if int(wx.sea) >= 3 else (UI.GOLD if int(wx.sea) == 2 or wx.fog or wx.night else UI.INK))
+    var wl := []
+    if int(wx.sea) >= 2: wl.append("speed %d%%, fuel burn +%d%%" % [int(Weather.speed_mult(wx, G.fleet) * 100), int((Weather.fuel_mult(wx) - 1.0) * 100)])
+    if int(wx.sea) >= 3: wl.append("ships under 2,500 tons take damage each day under way")
+    wl.append("you make contact at %d%% of the clear-day distance%s" % [int(Campaign.ck_you(wx) * 100), " (radar)" if Campaign.has_tech("radar") and float(wx.vis_km) < 60.0 else ""])
+    wl.append("a force without radar finds you at %d%%" % int(Weather.contact_mult(wx, false) * 100))
+    if not Weather.air_ok(wx, Campaign.has_tech("jets")): wl.append("aircraft cannot fly")
+    stats.WEATHER.get_parent().tooltip_text = "Weather and light where you are: %s, local time %02d:00, lookouts see about %d km.\n%s.\nA battle is fought in the weather and light of the place where contact is made." % [wx.text, int(wx.hour), int(wx.vis_km), "; ".join(wl)]
+    stats.WEATHER.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()] + ((" · %s troops" % Campaign.fmt(Structures.troops())) if Structures.troops() > 0 else ""); stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)

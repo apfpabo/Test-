@@ -692,5 +692,31 @@ func _weights() -> void:
 	plan[ti] = ""
 	var c: Array = map.refit_cost(rec, plan)
 	ok(int(c[0]) == int(BattleSim.weapon_tons(rec.fit[ti]) * map.YARD_PER_TON), "the yard charges by the ton for landing a mount (%d)" % int(c[0]))
+	# a refit is done at once and paid for in readiness
+	rec.up = {}; rec.rdy = 1.0; Campaign.ship_refitted(rec); Campaign.G.credits = 100000
+	var v_std: float = Campaign.fleet_map_speed([rec])
+	map.apply_refit(rec, plan)
+	ok(Campaign.readiness(rec) < 0.95 and Campaign.readiness(rec) >= 0.7, "landing a bank of torpedo tubes costs a destroyer some readiness, at once (%d%%)" % int(Campaign.readiness(rec) * 100))
+	ok(Campaign.refit_readiness(rec, 2.0) <= 0.03 and Campaign.refit_readiness(rec, 5000.0) == 0.3, "a small job costs a few per cent, the biggest thirty")
+	# chart speed follows loading
+	ok(Campaign.fleet_map_speed([rec]) > v_std, "lightened, she is faster on the chart too (%.2f against %.2f)" % [Campaign.fleet_map_speed([rec]), v_std])
+	rec.fit = fit.duplicate(); rec.up = {"hull": 2}; Campaign.ship_refitted(rec)
+	ok(Campaign.fleet_map_speed([rec]) < v_std, "overloaded with armour, slower (%.2f)" % Campaign.fleet_map_speed([rec]))
+	# other navies refit their ships, within the same rules
+	seed(3); var n_var := 0; var broke := []; var landed_t := 0
+	for i in 400:
+		var id: String = ["dd_narvik", "ca_hipper", "bb_bismarck", "cl_cleveland", "co_flower", "cv_essex"][i % 6]
+		var e: Dictionary = Campaign.new_ship(id, null, "directorate", [])
+		Campaign.make_variant(e, 1 + i % 3)
+		if e.has("up"):
+			n_var += 1
+			var le: Dictionary = BattleSim.loading(GameData.hulls[id], e.fit, e.up)
+			if float(le.over_t) > 0.0 or float(le.top) > BattleSim.TOP_SLACK: broke.append(id)
+			if e.fit.has("") and not BattleSim.default_fit(GameData.hulls[id], []).has(""): landed_t += 1
+	ok(n_var > 300 and broke.is_empty(), "refitted ships of other navies stay within their weight and topweight (%d refitted, %d out of bounds; %d landed torpedoes for it)" % [n_var, broke.size(), landed_t])
+	var e2: Dictionary = Campaign.new_ship("ca_hipper", null, "directorate", []); e2.up = {"hull": 1, "fc": 1}
+	var sim3 := BattleSim.new(); sim3.wx = Weather.CLEAR; sim3.setup([Campaign.new_ship("dd_fletcher", null, "player", [])], [e2], [], [], 0)
+	ok(sim3.ships[1].max_hull > GameData.hulls["ca_hipper"].hull * 1.05 and Campaign.refit_text([e2]).contains("fire control"), "an enemy's refit counts in battle and shows in the contact panel: %s" % Campaign.refit_text([e2]))
+	ok(Campaign.ship_value(e2) > Campaign.ship_value(Campaign.new_ship("ca_hipper", null, "directorate", [])), "and in what she is reckoned to be worth")
 	map.queue_free()
 	sections += 1

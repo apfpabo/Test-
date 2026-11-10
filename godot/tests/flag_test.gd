@@ -110,6 +110,7 @@ func _ready() -> void:
 	var c1: int = G.credits; Flag.convoy_arrived(cv); G.fleets.erase(cv)
 	ok(int(G.credits) > c1 and int(G.flag.trade) > 0, "and pays %d on arrival" % (int(G.credits) - c1))
 	# fleets of your flag and the powers' fleets: at war they fight, otherwise they pass
+	if Flag.guard(port2) == null: Flag.raise_guard(port2)   # (the landings above may have sunk it)
 	var foe: Dictionary = Campaign.spawn_fleet("patrol", "directorate"); var gf: Dictionary = Flag.guard(port2)
 	foe.x = gf.x; foe.y = gf.y; foe.cool = 0.0; gf.cool = 0.0; var n0: int = foe.ships.size() + gf.ships.size()
 	Diplomacy._clash_t = 0.0; Diplomacy.clash_tick(1.0)

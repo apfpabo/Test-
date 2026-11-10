@@ -35,10 +35,19 @@ So armour on a destroyer eats her whole margin and more, and the way to pay for 
 
 Weapons cost what they did and sell back for half; on top the yard charges 12 for every ton landed or shipped.
 
+## Done at once, paid for in readiness
+
+The owner did not want to wait on a yard (10 Nov 2026), so a refit is done on the spot, as in Starsector, and the ship pays in readiness while her crew work up what has changed: moving a twentieth of her displacement costs 30% (the most any one job costs), a small job two or three per cent. Readiness comes back with rest in port, as ever. The refit screen shows the readiness she will be left with before you confirm.
+
+## On the chart
+
+A squadron's speed on passage follows loading too: an overloaded ship holds the rest back, a lightened one does not (`Campaign.load_speed`, kept on the ship as `ldv`; call `Campaign.ship_refitted(s)` whenever a fit or a system changes).
+
+## Other navies
+
+They are held to the same rules, and they refit: about three patrol ships in ten, half a mission force, eight in ten of a bounty hunter's ships, and a few raiders and convoy escorts carry one to three system upgrades, chosen so that the ship stays within her weight and topweight; cruisers and battleships may land torpedoes to pay for them (`Campaign.make_variant`). Their refits count in battle and in what a force is reckoned to be worth, and the contact panel says what the glasses show ("2 of them have been refitted (hull and armour, fire control).").
+
 ## What it does not do yet
 
-- Refits are still done at once: no time in the yard.
-- Armour is one figure, not set by belt, deck and turrets; there is no choice of machinery for a design speed, and no trim fore and aft.
-- Other navies' ships are held to the same rules (owner's decision), but they sail in their designers' standard fits, which are all within weight, so today it changes nothing for them. It will once they carry variant fits or system upgrades.
-- The chart speed of a squadron ignores loading; it tells in battle only.
+- Armour by place (belt, deck, turrets), machinery chosen for a design speed, and trim fore and aft: left open by the owner, who is not sure how far into realism to go.
 - No new construction to your own design.

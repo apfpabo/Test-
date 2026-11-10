@@ -270,7 +270,7 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
 func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) -> CShip:
     var s = CShip.new(); var d: Dictionary = GameData.hulls[rec.type]
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
-    s.up = rec.get("up", {}) if side == 0 else {}
+    s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     # what she is loaded with tells at sea, whoever's she is (owner's decision: other navies are held to the same rules)

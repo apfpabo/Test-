@@ -1209,7 +1209,7 @@ func _deal(f: Dictionary, gid: String, n: int, price: int, buying: bool) -> void
     if gid == "fuel" and buying: G.deadWarned = false
     _trade(f)
 
-func _contact_line(f: Dictionary) -> String: return _contact_range(f) + " They sail under a %s: their lookouts see %d%% as far as an average captain's; yours %d%%." % [Campaign.capt_text(f), int(round(Campaign.fleet_watch(f) / Campaign.watch(3) * 100)), int(round(Campaign.your_watch() / Campaign.watch(3) * 100))]
+func _contact_line(f: Dictionary) -> String: return _contact_range(f) + (" " + Campaign.refit_text(f.ships) if Campaign.refit_text(f.ships) != "" else "") + " They sail under a %s: their lookouts see %d%% as far as an average captain's; yours %d%%." % [Campaign.capt_text(f), int(round(Campaign.fleet_watch(f) / Campaign.watch(3) * 100)), int(round(Campaign.your_watch() / Campaign.watch(3) * 100))]
 func _contact_range(f: Dictionary) -> String:
     var km := int(f.get("contactKm", 0)); var er := Campaign.strike_reach(f.ships); var pr := Campaign.strike_reach(Campaign.G.fleet)
     var by := func(r: float) -> String: return "search planes" if r * Campaign.KM_PER_UNIT >= 240.0 else "missile ships"
@@ -1400,6 +1400,13 @@ func buy_ship(t: String, pr: int) -> Dictionary:
 ## What a refit plan costs: [new weapons, sold back]. Weapons taken off go back at half price, but a ship you bought
 ## cannot return more than half of what you have put into her (her standard weapons came with the yard's price).
 const YARD_PER_TON := 12
+## Tons landed and shipped by a planned refit.
+func refit_tons(s: Dictionary, plan: Array) -> float:
+    var t := 0.0
+    for i in s.fit.size():
+        var a: String = s.fit[i] if s.fit[i] != null else ""; var b: String = plan[i] if plan[i] != null else ""
+        if a != b: t += BattleSim.weapon_tons(a) + BattleSim.weapon_tons(b)
+    return t
 func refit_cost(s: Dictionary, plan: Array) -> Array:
     var buy := 0; var refund := 0
     for i in s.fit.size():
@@ -1412,7 +1419,7 @@ func refit_cost(s: Dictionary, plan: Array) -> Array:
     return [buy, refund]
 func apply_refit(s: Dictionary, plan: Array) -> void:
     var c := refit_cost(s, plan)
-    Campaign.G.credits -= c[0] - c[1]; s.fit = plan.duplicate()
+    Campaign.G.credits -= c[0] - c[1]; var moved := refit_tons(s, plan); s.fit = plan.duplicate(); Campaign.refit_done(s, moved)
     if s.has("paid"): s.paid = maxf(0.0, float(s.paid) + c[0] - c[1])
 func port_price(p: Dictionary, gid: String) -> int:
     var base = 1.0
@@ -1972,7 +1979,7 @@ func _refit(box: Control) -> void:
     for i in d.slots.size(): if (s.fit[i] if s.fit[i] != null else "") != (plan[i] if plan[i] != null else ""): changes += 1
     var rc := refit_cost(s, plan); var buy: int = rc[0]; var refund: int = rc[1]
     var net: int = buy - refund
-    if changes: _p(box, "%d mount%s changed · new weapons %s · sold back %s · %s %s" % [changes, "" if changes == 1 else "s", Campaign.fmt(buy), Campaign.fmt(refund), "net cost" if net >= 0 else "net refund", Campaign.fmt(absi(net))], UI.INK, 14)
+    if changes: _p(box, "%d mount%s changed · new weapons and yard labour %s · sold back %s · %s %s · done at once, but her crew must work it up: readiness %d%% → %d%%" % [changes, "" if changes == 1 else "s", Campaign.fmt(buy), Campaign.fmt(refund), "net cost" if net >= 0 else "net refund", Campaign.fmt(absi(net)), int(round(Campaign.readiness(s) * 100)), int(round(maxf(Campaign.RDY_MIN, Campaign.readiness(s) - Campaign.refit_readiness(s, refit_tons(s, plan))) * 100))], UI.INK, 14)
     var can: bool = changes > 0 and G.credits >= net and ld.ok
     var confirm = UI.button(("Confirm refit · " + Campaign.fmt(net)) if net > 0 else "Confirm refit", func():
         apply_refit(s, plan); refit_plan.erase(s.id); _toast("%s refitted." % s.name); _render_port(), true, not can)
@@ -2007,7 +2014,7 @@ func _systems(box: Control, s: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var d: Dictionary = GameData.hulls[s.type]
     if not s.has("up"): s.up = {}
     box.add_child(UI.label("SHIP SYSTEMS", UI.DIM, 12))
-    _p(box, "Yard work on the %s herself: fitted at once, paid now, and kept for the life of the ship." % s.name, UI.DIM, 13)
+    _p(box, "Yard work on the %s herself: fitted at once, paid now, and kept for the life of the ship. Each job costs her some readiness while the crew learn it (now %d%%)." % [s.name, int(round(Campaign.readiness(s) * 100))], UI.DIM, 13)
     for k in BattleSim.UPGRADES:
         var u: Dictionary = BattleSim.UPGRADES[k]; var lvl: int = int(s.up.get(k, 0))
         if u.get("needs_sonar", false) and not d.get("sonar", false): continue
@@ -2021,7 +2028,7 @@ func _systems(box: Control, s: Dictionary) -> void:
         var up2: Dictionary = s.up.duplicate(); up2[k] = lvl + 1
         var heavy: bool = not BattleSim.loading(d, s.fit, up2).ok and BattleSim.system_tons(d, k) > 0.0
         var b := UI.button("Fit Mk %s · %s" % ["I" if lvl == 0 else "II", Campaign.fmt(cost)], func():
-            G.credits -= cost; s.up[k] = lvl + 1; _toast("%s: %s Mk %s fitted." % [s.name, u.name, "I" if lvl == 0 else "II"]); _render_port(), false, locked or heavy or G.credits < cost)
+            G.credits -= cost; s.up[k] = lvl + 1; Campaign.refit_done(s, BattleSim.system_tons(d, k)); _toast("%s: %s Mk %s fitted. Readiness %d%%." % [s.name, u.name, "I" if lvl == 0 else "II", int(round(Campaign.readiness(s) * 100))]); _render_port(), false, locked or heavy or G.credits < cost)
         if locked: b.tooltip_text = "Mk II needs the research: " + needs
         elif heavy: b.tooltip_text = "She cannot carry it as she is fitted: land some weight first."
         box.add_child(UI.row([name_l, mk, eff, b]))

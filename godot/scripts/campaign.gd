@@ -301,7 +301,52 @@ func new_ship(type: String, ship_name = null, pal := "player", tech: Array = [])
 func ship_value(s: Dictionary) -> float:
     var v: float = hull(s).price
     for w in s.fit: if w != "" and GameData.weapons.has(w): v += GameData.weapons[w].price
+    var up = s.get("up")
+    if up != null: for k in up: if BattleSim.UPGRADES.has(k): v += float(hull(s).price) * float(BattleSim.UPGRADES[k].cost) * int(up[k])   # yard work counts in what she is worth
     return v
+## A ship's speed for her loading (BattleSim.loading), kept on her record (`ldv`) so the chart does not work the
+## ledger out every tick. Call ship_refitted(s) whenever her weapons or systems change.
+func load_speed(s: Dictionary) -> float:
+    var v = s.get("ldv")
+    if v == null: v = float(BattleSim.loading(hull(s), s.fit, s.get("up", {})).speed); s.ldv = v
+    return float(v)
+func ship_refitted(s: Dictionary) -> void: s.erase("ldv")
+## How much of her readiness a refit costs: the crew must work up what has been changed. Moving a twentieth of her
+## displacement costs 30%; small jobs a few per cent (owner's decision: refits are done at once and paid for in
+## readiness, not in waiting).
+func refit_readiness(s: Dictionary, tons_moved: float) -> float:
+    if tons_moved <= 0.0: return 0.0
+    return clampf(0.3 * tons_moved / (0.05 * maxf(float(hull(s).t), 300.0)), 0.02, 0.3)
+func refit_done(s: Dictionary, tons_moved: float) -> void:
+    s.rdy = maxf(RDY_MIN, readiness(s) - refit_readiness(s, tons_moved)); ship_refitted(s)
+## Other navies refit their ships too (owner's decision): a ship may carry up to `marks` system upgrades, chosen so
+## that she stays within her weight and topweight; a cruiser or a battleship may land torpedoes to pay for them.
+func make_variant(s: Dictionary, marks: int) -> void:
+    var d: Dictionary = hull(s); var up := {}; var opts: Array = ["hull", "fc", "eng", "tds", "turret", "mag", "radar"]; opts.shuffle()
+    if d.kind == "merchant" or d.kind == "sub": return
+    for k in opts:
+        if up.size() >= marks: break
+        var up2: Dictionary = up.duplicate(); up2[k] = 1
+        var ld: Dictionary = BattleSim.loading(d, s.fit, up2)
+        if float(ld.top) > BattleSim.TOP_SLACK: continue
+        if float(ld.over_t) > 0.0:
+            if not ["cl", "ca", "bb"].has(d.klass): continue
+            var fit2: Array = s.fit.duplicate(); var landed := false
+            for i in d.slots.size(): if d.slots[i].s == "T" and fit2[i] != "" and not landed: fit2[i] = ""; landed = true
+            if not landed or float(BattleSim.loading(d, fit2, up2).over_t) > 0.0: continue
+            s.fit = fit2
+        up = up2
+    if not up.is_empty(): s.up = up; ship_refitted(s)
+## What a look through the glasses tells of a force's refits, for the contact panel ("" if none).
+func refit_text(ships: Array) -> String:
+    var n := 0; var kinds := {}
+    for s in ships:
+        var up = s.get("up")
+        if up == null or up.is_empty(): continue
+        n += 1
+        for k in up: if BattleSim.UPGRADES.has(k): kinds[String(BattleSim.UPGRADES[k].name).to_lower()] = true
+    if n == 0: return ""
+    return "%d of them %s been refitted (%s)." % [n, "has" if n == 1 else "have", ", ".join(kinds.keys())]
 func strength(ships: Array) -> float:
     var t = 0.0
     for s in ships: t += ship_value(s) * (0.3 + 0.7 * s.hullFrac)
@@ -469,7 +514,7 @@ func fleet_map_speed(ships: Array) -> float:
     var m = INF
     for s in ships:
         var up = s.get("up")
-        m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)))
+        m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)) * load_speed(s))   # an overloaded ship holds the squadron back on passage too
     return m * 0.576
 ## The engine-room telegraph on the chart: speed as a share of cruising speed, and fuel burned a day as a share of
 ## the cruising burn (it rises steeply with speed, so slow steaming stretches the bunkers and flank speed drains them).
@@ -775,6 +820,9 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         f.reward = round(strength(f.ships) * 0.35 / 500.0) * 500
     if f.ships.is_empty(): f.ships.append(new_ship("pt" if fac == "raiders" else "corvette", null, f.fac, tl))
     f.capt = {"patrol": randi_range(1, 5), "convoy": randi_range(1, 3), "raiders": randi_range(1, 4), "bounty": randi_range(4, 7), "mission": randi_range(3, 6)}.get(f.kind, randi_range(1, 4))
+    # some ships have been through a yard since they were built: a bounty hunter's most of all, a raider's seldom
+    var vp: float = {"patrol": 0.3, "bounty": 0.8, "mission": 0.5, "raiders": 0.12, "convoy": 0.1}.get(f.kind, 0.25)
+    for sh in f.ships: if randf() < vp: make_variant(sh, 3 if f.kind == "bounty" else randi_range(1, 2))
     G.fleets.append(f)
     return f
 

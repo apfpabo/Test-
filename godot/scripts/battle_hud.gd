@@ -270,7 +270,8 @@ func show_results() -> void:
         for x in afloat:
             var hp: float = clampf(x.hull / x.max_hull, 0.0, 1.0)
             var nm := UI.label(x.rec.name, UI.INK, 14); nm.custom_minimum_size.x = 170
-            box.add_child(UI.row([nm, UI.label(x.d.name, UI.DIM, 13), UI.bar(hp, 120.0, UI.GREEN if hp > 0.5 else (UI.GOLD if hp > 0.25 else UI.RED)), UI.label("hull %d%% · magazines %d%%%s" % [int(hp * 100), int(sim.ammo_frac(x) * 100), " · withdrew" if x.escaped else ""], UI.DIM, 13)]))
+            var cl := UI.label(x.d.name, UI.DIM, 13); cl.custom_minimum_size.x = 150   # one column for the class, so the bars line up
+            box.add_child(UI.row([nm, cl, UI.bar(hp, 120.0, UI.GREEN if hp > 0.5 else (UI.GOLD if hp > 0.25 else UI.RED)), UI.label("hull %d%% · magazines %d%%%s" % [int(hp * 100), int(sim.ammo_frac(x) * 100), " · withdrew" if x.escaped else ""], UI.DIM, 13)]))
     if GameData.pending.get("campaign", false): # back to the chart, where prizes, prize money and losses are settled
         box.add_child(UI.label("Prizes, prize money, casualties and research are settled on the chart.", UI.DIM, 13))
         box.add_child(UI.row([UI.button("Return to the chart", func(): Campaign.apply_battle(battle.sim); Campaign.show_aftermath = true; get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true)]))

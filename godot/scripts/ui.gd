@@ -165,6 +165,7 @@ static func row(children: Array) -> HBoxContainer:
 
 static func bar(f: float, w := 80.0, col := GREEN) -> Control:
 	var c := Panel.new(); c.custom_minimum_size = Vector2(w, 6)
+	c.size_flags_vertical = Control.SIZE_SHRINK_CENTER   # a bar stays a bar: in a row it used to stretch to the row's height, a dark box with the bar along its top
 	c.add_theme_stylebox_override("panel", _flat(Color(0.03, 0.06, 0.07), Color(LINE, 0.6), 1, 2, 0, 0))
 	var i := Panel.new(); i.size = Vector2(maxf(2.0, (w - 2) * clampf(f, 0, 1)), 4); i.position = Vector2(1, 1)
 	i.add_theme_stylebox_override("panel", _flat(col if f >= 0.4 else RED, Color(0, 0, 0, 0), 0, 2, 0, 0)); c.add_child(i)

@@ -113,7 +113,7 @@ func _ready() -> void:
 	var foe: Dictionary = Campaign.spawn_fleet("patrol", "directorate"); var gf: Dictionary = Flag.guard(port2)
 	foe.x = gf.x; foe.y = gf.y; foe.cool = 0.0; gf.cool = 0.0; var n0: int = foe.ships.size() + gf.ships.size()
 	Diplomacy._clash_t = 0.0; Diplomacy.clash_tick(1.0)
-	ok(foe.cool > 0.0 and (foe.ships.size() + gf.ships.size() < n0 or not G.fleets.has(foe) or not G.fleets.has(gf)), "your guard squadron fights a Directorate patrol (at war)")
+	ok(float(foe.get("cc", 0.0)) > 0.0 and (foe.ships.size() + gf.ships.size() < n0 or not G.fleets.has(foe) or not G.fleets.has(gf)), "your guard squadron fights a Directorate patrol (at war)")
 	# the chancery
 	ok(Flag.stance("directorate") == "war" and Flag.stance("concord") == "unrecognised", "stances: war with the Directorate, unrecognised by the Concord")
 	G.rep.concord = 5; ok(Flag.can_recognise("concord") != "", "recognition needs standing: " + Flag.can_recognise("concord"))

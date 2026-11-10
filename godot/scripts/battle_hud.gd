@@ -115,16 +115,18 @@ func _draw() -> void:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
         _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
     var ry = 136.0 if (sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog) else 128.0
+    # ten ships a side must fit above the shell panel on a small window: the rows close up rather than drop ships
+    var step := 16.0; var room: float = (H - 396.0) - ry - 52.0
+    if sim.ships.size() * step > room: step = maxf(11.0, room / sim.ships.size())
     for side in [0, 1]:
         _text(Vector2(16, ry), "Enemy" if side else "Task force", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
         for s in sim.ships:
             if s.side != side: continue
-            if side == 1 and sim.active(s) and not sim.visible_to(s, 0): _text(Vector2(16, ry), "? contact lost", Color(INK, 0.35)); ry += 16; continue
+            if side == 1 and sim.active(s) and not sim.visible_to(s, 0): _text(Vector2(16, ry), "? contact lost", Color(INK, 0.35)); ry += step; continue
             var col = Color(INK, 0.3) if not s.alive else (Color(INK, 0.45) if s.escaped else (GOLD if s == sim.flag else INK))
             _text(Vector2(16, ry), ("★ " if s == sim.flag else "") + s.rec.name + " · " + s.d.name + (" · sunk" if not s.alive else (" · withdrew" if s.escaped else (" · struck" if s.struck else ""))), col)
             if sim.active(s): _bar(Vector2(240, ry - 9), 60, 5, s.hull / s.max_hull, RED if side else GREEN)
-            ry += 16
-            if ry > H - 410: break
+            ry += step
         ry += 8
     # flagship panel
     var f = sim.flag
@@ -146,7 +148,7 @@ func _draw() -> void:
         elif f.eng < 0.95: sysl.append("power %d%%" % int(f.eng * 100))
         if f.jam > 0: sysl.append("rudder jammed %d s" % int(f.jam))
         if f.fc < 0.95: sysl.append("director %d%%" % int(f.fc * 100))
-        if sysl.size(): _text(Vector2(x + 10, y - 4), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 12, HORIZONTAL_ALIGNMENT_LEFT, w - 10)
+        if sysl.size(): _text(Vector2(x + 10, y - 3), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 12, HORIZONTAL_ALIGNMENT_LEFT, w - 10)
         var groups = {}
         for m in f.mounts: if not groups.has(m.w.name): groups[m.w.name] = []
         for m in f.mounts: groups[m.w.name].append(m)

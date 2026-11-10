@@ -19,6 +19,7 @@ var navy := "concord"
 var day0 := 0                     # days of earlier campaigns in this run
 var last_day := -1
 var help_day := -1
+var chase_day := 0
 var adrift := 0
 
 func ok(c: bool, what: String) -> void:
@@ -49,6 +50,7 @@ func _ready() -> void:
 		if Campaign.dead_in_water() and P.get("towed") == null:   # adrift: call for help once a day, and after ten days a passing oiler obliges
 			if int(G.day) != help_day: help_day = int(G.day); adrift += 1; Campaign.distress()
 			if adrift > 10: G.cargo.fuel = float(Campaign.bunker_cap()) * 0.5; G.crew = maxi(int(G.crew), Campaign.crew_need()); adrift = 0
+		elif P.get("follow") != null and int(G.day) - chase_day > 4: P.follow = null; P.route = null   # a stern chase is a long chase: give it up
 		elif P.get("route") == null and P.get("follow") == null and P.get("towed") == null: adrift = 0; _pick_course()
 		var t1 := Time.get_ticks_usec()
 		Campaign.update(0.05)
@@ -71,7 +73,7 @@ func _pick_course() -> void:
 		for f in G.fleets:
 			if not f.get("vis", true) or not Campaign.hostile_fleet(f) or Campaign.mdist(f.x, f.y, P.x, P.y) > 500.0: continue
 			if prey == null or Campaign.mdist(f.x, f.y, P.x, P.y) < Campaign.mdist(prey.x, prey.y, P.x, P.y): prey = f
-		if prey != null: P.follow = int(prey.id); P.repathT = 0.0; P.destPort = null; return
+		if prey != null: P.follow = int(prey.id); P.repathT = 0.0; P.destPort = null; chase_day = int(G.day); return
 	var open: Array = G.ports.filter(func(p): return not Campaign.hostile(p.fac) and Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	if open.is_empty(): open = G.ports.filter(func(p): return Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	open.sort_custom(func(x, y): return Campaign.mdist(x.sx, x.sy, P.x, P.y) < Campaign.mdist(y.sx, y.sy, P.x, P.y))

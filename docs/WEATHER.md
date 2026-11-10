@@ -25,6 +25,7 @@
 A battle is fought in the weather and light of the place where contact was made (`Weather.battle`, passed as `weather` in the battle's setup and kept in `BattleSim.wx`).
 
 - **Sight.** By day in a calm or moderate sea there is no limit. Rough 9 km, storm 5 km, fog 2.5 km; at night 3 km (no moon) to 5.2 km (full), less in bad weather. A ship is seen by a side only within that distance of one of its ships, or within radar range (9.5 km) of one that has radar. A ship that has fired in the last six seconds, or is on fire, shows at twice the distance.
+- **Radar contacts** (see [`SENSORS.md`](SENSORS.md)): a ship inside radar range but beyond the eye's reach is a contact on the plot. A rotating set (the first two eras) shows her as its beam passes, once every ten battle seconds, and she fades between; a phased array (Aegis) holds her. Submarines carry no radar. R shows the reach of lookouts, radar and sonar.
 - **Unseen ships** are not drawn, cannot be targeted, and drop off the lists and the minimap. A side with nothing in sight steers for the enemy's last position (`nearest_any`).
 - **Gunnery.** Spread +10% for each step of sea state, and +35% at night for a ship without radar.
 - **Speed.** Ships under 3,000 tons lose 5% for each step of sea state.

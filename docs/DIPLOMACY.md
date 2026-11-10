@@ -21,6 +21,7 @@ Step 3 of the owner's plan (after the world map and the foundational lore). Rule
   - *Survey*: survey the named site; the report goes by wireless.
   - *War patrol* (only while the issuer is at war): sink or take three of the enemy's ships. Signing makes you a combatant to that enemy until the deadline.
   - Pay and standing on completion; failing or abandoning costs 8 standing. Targets are marked in gold on the chart.
+  - A delivery or smuggling consignment is the shipper's: if the contract fails, what is still in the hold goes back and what is missing is charged at one and a half times its base price. A failed escort's convoy sails on by itself. No board will sign you on against the flag you serve.
 - **Commissions** at a power's capital, from standing 20, one at a time:
   - Concord reserve commission (4,000 a month), Directorate auxiliary warrant (3,500), Federation scouting charter (3,000), Combine security contract (5,000), Tarsene letter of marque against the Directorate (2,000), Syndicate letter of marque against the Concord (1,500).
   - Your flag's wars become yours; a letter of marque makes you a combatant to its target. Double standing for sinking your flag's enemies.

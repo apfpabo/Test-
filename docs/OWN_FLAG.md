@@ -13,7 +13,7 @@ Step 5 of the owner's plan: found your own flag and claim ports and territory. T
 | A port of yours | Market, yard (the old owner's designs and anything you have captured and measured, 15% cheaper), refit, repairs, officers, and a Governor tab. No contract board. Every structure of the port comes with it. |
 | Garrison and dues | A port wants 250 men times its weight. Dues are 3,500 a month times its weight, paid on the 30th, less if the garrison is under strength. Garrisons draw wages like the men in your structures. |
 | Relief forces | The old owner sends escorts and two or three troopships, the first after about a month, then now and again. They show in the orders box. Sink the transports, or the landing is fought against your garrison and the port's batteries. |
-| Giving it up | The Governor tab hands the port back to the flag you took it from. |
+| Giving it up | The Governor tab hands the port back to the flag you took it from (a port ceded to you by treaty goes back to its 1946 owner). Its guard squadron is paid off, as it is when the port is lost. The militia of the structures that came with a stormed port stays ashore: it cannot be embarked as crew. |
 
 ## How it is stored
 

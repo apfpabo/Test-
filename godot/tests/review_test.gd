@@ -119,6 +119,15 @@ func _world() -> void:
 	ok(not Diplomacy._free(a), "the ship towing you keeps out of other fights")
 	P.towed = null; a.answering = true
 	ok(not Diplomacy._free(a), "and so does one answering your call")
+	# a tow interrupted on the way resumes for its harbour, and ends if the tug is lost
+	G.fleets.clear(); P.x = w.x; P.y = w.y; a = _fleet("patrol", "concord", P.x + 2.0, P.y, ["dd"])
+	G.cargo.fuel = 0.0; G.reserve = 0.0; G.credits = 50000.0
+	var tow_msg := Campaign.take_tow(a); P.route = null   # as a contact on the way leaves it
+	Campaign.update(0.05); Campaign.paused = false
+	ok(P.get("towed") != null and P.get("route") != null, "a tow whose course was lost picks it up again (%s; towed %s, route %s)" % [tow_msg, P.get("towed"), P.get("route") != null])
+	G.fleets.erase(a); Campaign.update(0.05); Campaign.paused = false
+	ok(P.get("towed") == null, "and a tow whose tug is gone is over")
+	G.cargo.fuel = 200.0; P.route = null; P.destPort = null
 	G.fleets.clear()
 	# a delivery consignment is the shipper's: abandon the contract and it goes back, or is paid for
 	G.fleet = [Campaign.new_ship("freighter", "Carrier", "player", [])]; G.credits = 50000.0; G.cargo.electronics = 0.0

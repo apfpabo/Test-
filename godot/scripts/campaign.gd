@@ -857,6 +857,14 @@ func update(dt: float) -> void:
             if on_land(st.x, st.y): st = Vector2(esc.x, esc.y)
             if mdist(P.x, P.y, st.x, st.y) < 1.5: P.route = null
             elif not set_course(P, st.x, st.y): set_course(P, esc.x, esc.y)
+    # under tow: if the tug is gone the hawser is too; if the course was lost (a contact on the way cleared it), the tow
+    # resumes for its harbour. (You used to lie there for ever, towed by nobody to nowhere, with no distress button.)
+    if P.get("towed") != null:
+        if _fleet(P.towed) == null: P.towed = null; toast.emit("The ship towing you is gone. You are adrift again.")
+        elif P.get("route") == null:
+            var hp = G.ports[int(P.destPort)] if P.get("destPort") != null else nearest_open_port()
+            if hp == null or not set_course(P, hp.sx, hp.sy): P.towed = null
+            else: P.destPort = int(hp.id)
     var ice = in_ice(P.x, P.y)
     var wx: Dictionary = weather_here()
     if P.get("route") != null:

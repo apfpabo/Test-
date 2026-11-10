@@ -475,26 +475,30 @@ class Drawer extends Node2D:
     # hugs the forward hull and runs on into the Kelvin arms, which open at about 19.5 degrees to the track.
     func _wakes() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var foam = GameData.fx_tex("foam"); var now = sim.vt
-        var min_step = 2.2 / z
+        var min_step = 2.2 / z; var view: Rect2 = battle.view_rect()
         for s in sim.ships:
             if s.trail.size() < 2: continue
             if s.sub and s.side == 1 and not sim.detected_by(s, 0): continue
             if s.side == 1 and sim.limited() and (s.radar_only or not sim.visible_to(s, 0)): continue   # radar shows a ship, not her wake
+            # nothing of this wake on the screen: leave it (the trail runs some hundreds of metres astern)
+            if not view.grow(900.0 + s.d.L).has_point(s.pos) and not view.grow(200.0).has_point(s.trail[0].p): continue
             var pts: Array = []
             if sim.active(s): pts.append(sim.trail_point(s))
-            for i in range(s.trail.size() - 1, -1, -1): pts.append(s.trail[i])
-            pts = pts.filter(func(q): return not q.sm)
+            # far out, every second or fourth point of the trail is plenty
+            var stride: int = 1 if z > 0.3 else (2 if z > 0.14 else 4); var last_i: int = s.trail.size() - 1
+            for i in range(last_i, -1, -1):
+                var q: Dictionary = s.trail[i]
+                if not q.sm and ((last_i - i) % stride == 0 or i == 0): pts.append(q)
             if pts.size() < 2: continue
             var B: float = s.d.B; var strength = clampf(pts[0].v / 10.0, 0.1, 1.0)
             if sim.modern:
                 # the churned track astern: a broad mottled ribbon, bright at the screws, greening and fading as it widens
-                _ribbon(pts, func(q): return q.p, func(age): return B * (0.5 + age * 0.085), func(age): return 0.62 * strength * pow(maxf(0.0, 1.0 - age / 18.0), 1.25) * minf(1.0, 0.35 + age * 0.5), now, B * 5.0, Color(0.9, 0.97, 0.96))
-                _ribbon(pts, func(q): return q.p, func(age): return B * (0.22 + age * 0.03), func(age): return 0.55 * strength * pow(maxf(0.0, 1.0 - age / 7.0), 1.5), now, B * 2.2, Color(1, 1, 1))
-                # the bow waves: two feathered crests opening astern at the Kelvin angle
-                for side in ["l", "r"]:
-                    var sd = -1.0 if side == "l" else 1.0
-                    _ribbon(pts, func(q): return q[side] + Vector2(-sin(q.a), cos(q.a)) * sd * (now - q.t) * q.v * BattleSim.BT * 0.354, func(age): return B * 0.16 + age * 1.5, func(age): return 0.5 * strength * pow(maxf(0.0, 1.0 - age / 14.0), 1.6), now, B * 3.0, Color(0.93, 0.98, 0.98))
-                _glints(pts, B, now, foam)
+                _ribbon(pts, 0, B, strength, now, B * 5.0, Color(0.9, 0.97, 0.96))
+                if B * z > 0.8:   # the bright core, the bow waves and the glints are finer than a pixel when the whole action is in view
+                    _ribbon(pts, 1, B, strength, now, B * 2.2, Color(1, 1, 1))
+                    # the bow waves: two feathered crests opening astern at the Kelvin angle
+                    _ribbon(pts, 2, B, strength, now, B * 3.0, Color(0.93, 0.98, 0.98)); _ribbon(pts, 3, B, strength, now, B * 3.0, Color(0.93, 0.98, 0.98))
+                    _glints(pts, B, now, foam)
             else:
                 _walk(pts, func(q): return q.p, func(age): return B * (0.42 + age * 0.06), 0.3 * strength, foam, now, min_step)
                 for side in ["l", "r"]:
@@ -524,30 +528,47 @@ class Drawer extends Node2D:
                 _puff(foam, q.p + off, r * (1.0 + tw), Color(1, 1, 1, 0.9 * tw))
 
     ## A ribbon of foam along a track: feathered at both edges, textured with churned water that stays put on the sea.
-    ## One triangle array for the whole ribbon.
-    func _ribbon(pts: Array, get: Callable, half: Callable, alpha: Callable, now: float, tile: float, col: Color) -> void:
+    ## One triangle array for the whole ribbon. `mode`: 0 the broad churned track, 1 its bright core at the screws,
+    ## 2 and 3 the port and starboard bow waves opening astern at the Kelvin angle. (The shapes are written out here
+    ## rather than passed in as functions: with twenty ships this runs for some seven thousand points a frame, and
+    ## calling back for each cost more than everything else the battle draws put together.)
+    const RIB_F := [-1.0, -0.42, 0.42, 1.0]
+    func _ribbon(pts: Array, mode: int, B: float, strength: float, now: float, tile: float, col: Color) -> void:
         var n := pts.size()
         if n < 2: return
+        var X := PackedVector2Array(); X.resize(n)
+        if mode < 2:
+            for i in n: X[i] = pts[i].p
+        else:
+            var sd: float = -1.0 if mode == 2 else 1.0; var key: String = "l" if mode == 2 else "r"
+            for i in n:
+                var q: Dictionary = pts[i]; var qa: float = q.a
+                X[i] = q[key] + Vector2(-sin(qa), cos(qa)) * (sd * (now - q.t) * q.v * BattleSim.BT * 0.354)
         var V := PackedVector2Array(); var C := PackedColorArray(); var U := PackedVector2Array(); var I := PackedInt32Array()
-        var rows := 0
+        V.resize(n * 4); C.resize(n * 4); U.resize(n * 4); I.resize((n - 1) * 18)
+        var clear := Color(col, 0.0)
         for i in n:
-            var x: Vector2 = get.call(pts[i]); var age: float = now - pts[i].t
-            var nx: Vector2 = get.call(pts[mini(i + 1, n - 1)]); var px: Vector2 = get.call(pts[maxi(i - 1, 0)])
-            var dir: Vector2 = px - nx
-            if dir.length_squared() < 0.0001: dir = Vector2.from_angle(pts[i].a)
+            var q: Dictionary = pts[i]; var age: float = now - q.t
+            var dir: Vector2 = X[maxi(i - 1, 0)] - X[mini(i + 1, n - 1)]
+            if dir.length_squared() < 0.0001: dir = Vector2.from_angle(q.a)
             dir = dir.normalized(); var nor := Vector2(-dir.y, dir.x)
-            var w: float = half.call(age); var a: float = alpha.call(age)
+            var w: float; var a: float
+            match mode:
+                0: w = B * (0.5 + age * 0.085); a = 0.62 * strength * pow(maxf(0.0, 1.0 - age / 18.0), 1.25) * minf(1.0, 0.35 + age * 0.5)
+                1: w = B * (0.22 + age * 0.03); a = 0.55 * strength * pow(maxf(0.0, 1.0 - age / 7.0), 1.5)
+                _: w = B * 0.16 + age * 1.5; a = 0.5 * strength * pow(maxf(0.0, 1.0 - age / 14.0), 1.6)
             if i == 0: a = 0.0   # the ribbon grows out of the hull
             a *= clampf(float(n - 1 - i) / 7.0, 0.0, 1.0)   # and thins away at its far end, where the track begins
-            var u: float = pts[i].t * 9.0 / tile   # by the time each point was laid, so the foam stays put on the sea
+            var u: float = q.t * 9.0 / tile   # by the time each point was laid, so the foam stays put on the sea
+            var x: Vector2 = X[i]; var o := i * 4; var lit := Color(col, a)
             for k in 4:
-                var f: float = [-1.0, -0.42, 0.42, 1.0][k]
-                V.append(x + nor * w * f); U.append(Vector2(u, 0.5 + f * 0.5)); C.append(Color(col, a if k == 1 or k == 2 else 0.0))
-            if rows > 0:
-                var b := (rows - 1) * 4
-                for k in 3: I.append_array([b + k, b + k + 1, b + k + 4, b + k + 1, b + k + 5, b + k + 4])
-            rows += 1
-        if I.is_empty(): return
+                var f: float = RIB_F[k]
+                V[o + k] = x + nor * (w * f); U[o + k] = Vector2(u, 0.5 + f * 0.5); C[o + k] = lit if k == 1 or k == 2 else clear
+            if i > 0:
+                var bb := (i - 1) * 4; var io := (i - 1) * 18
+                for k in 3:
+                    var j := io + k * 6; var v0 := bb + k
+                    I[j] = v0; I[j + 1] = v0 + 1; I[j + 2] = v0 + 4; I[j + 3] = v0 + 1; I[j + 4] = v0 + 5; I[j + 5] = v0 + 4
         RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), I, V, C, U, PackedInt32Array(), PackedFloat32Array(), GameData.wake_tex().get_rid())
 
     func _walk(pts: Array, get: Callable, rad: Callable, alp: float, foam: Texture2D, now: float, min_step: float) -> void:

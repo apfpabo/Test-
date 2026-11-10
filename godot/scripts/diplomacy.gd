@@ -240,6 +240,9 @@ func clash_tick(dt: float) -> void:
 			if raid and (a.kind == "patrol" or b.kind == "patrol" or a.kind == "convoy" or b.kind == "convoy"):
 				_fight(a, b, ""); return
 			if a.fac == "raiders" or b.fac == "raiders": continue
+			if a.fac == "player" or b.fac == "player":   # ships of your own flag: they fight the powers you are at war with, and pass the rest
+				if Campaign.at_war(b.fac if a.fac == "player" else a.fac): _fight(a, b, ""); return
+				a.cool = 25.0; b.cool = 25.0; continue
 			if at_war(a.fac, b.fac): _fight(a, b, ""); return
 			a.cool = 25.0; b.cool = 25.0   # they have met: whatever happens, not again for a while
 			if band(a.fac, b.fac) in ["armistice", "hostile"] and (a.kind == "patrol" or b.kind == "patrol") and randf() < 0.05:

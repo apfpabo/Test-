@@ -22,10 +22,26 @@ Step 5 of the owner's plan: found your own flag and claim ports and territory. T
 - A relief force is a fleet of kind `assault` with `portAssault = <port id>` and `tgt`; `Campaign.update` lands it through `Flag.relief_lands`.
 - Loops over `GameData.fac` that mean "the powers" skip `"player"` (`maintain_fleets`, the standing list).
 
+## Second part (done)
+
+| | |
+| --- | --- |
+| The Chancery | Command, Holdings. Every power takes one of four stances toward your flag: at war, unrecognised, recognised, or bound by treaty. Your standing with each is the standing you always had. |
+| Recognition | Standing 10, a port, no port of theirs in your hands, 20,000. Their merchants use your harbours (dues up a tenth for each recognising power, to five) and your convoys are paid half as much again in their ports. Withdrawn if they go to war with you. |
+| Treaty of non-aggression | Recognition, standing 25, 40,000. A year: your growth does not alarm that power and it sends nothing against your ports. Broken by war (standing -20). |
+| Peace | From a power at war with you: 30,000, plus 40,000 for each port of theirs you keep. They cede those ports (no more relief forces), recall any force at sea, and the armistice holds again. A power your origin made your enemy will not treat. |
+| Alarm | Past two small ports' worth, every power not bound by treaty loses standing with you each month (up to 4). Enough of it closes their ports. |
+| Other powers' attacks | Any power at war with you with a harbour within reach may send a force against a port of yours, not only its old owner. |
+| Works | Governor tab. Harbour battery (up to three), barracks (the garrison recruits 15 a week), customs house (dues up three tenths), building slip (the yard lays down battleships and fleet carriers). Each costs money and takes 20 to 45 days. |
+| Guard squadron | Governor tab. Warships of your own, built in the port's yard, cruising off it; 60 a day. It meets a relief force before it lands (stronger, it sinks half the transports; weaker, it loses a ship) and fights raiders and enemies that come near. |
+| Convoys | Each port sends merchants to the nearest harbour that will have them and is paid on arrival. Raiders and enemies can sink them; you can meet and trade with them like any convoy. |
+| Men and ships drawn to you | Mid-month an officer may offer his sword, and now and then a ship comes over with her crew and lies in one of your ports until you commission her for a bounty (Governor tab) or send her away. |
+
+Fleets of your flag have `fac == "player"`, `guardOf` or `convoyOf` (the port's id). `Diplomacy.clash_tick` makes them fight the powers you are at war with and pass the rest. `G.flag.recog`, `G.flag.treaty` (the day it ends), `G.flag.trade`; a port's `works` (days each is ready) and `volunteers`.
+
 ## Not yet
 
-- Your flag as a power in diplomacy: relations, treaties, recognition, the powers reacting to how large you grow.
-- Patrols and convoys of your own from your ports, and a contract board you post work on.
-- Officers and ships drawn to a rising flag.
-- Building in a port: batteries, a bigger yard, a garrison that recruits by itself.
-- The powers taking your ports in their own sieges (today only the old owner comes back for it).
+- A contract board you post work on, and bounties of your own on raiders.
+- Alliances and wars declared between your flag and the powers as a tenth power in their coalitions.
+- A capital of your own, a flag device on the chart and in the paint of your ships.
+- Garrisons and works for the structures you hold (today only ports have works).

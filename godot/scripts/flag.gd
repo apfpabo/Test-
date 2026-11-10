@@ -52,6 +52,7 @@ func weight(p: Dictionary) -> float: return float(p.get("garrison", 1)) * (2.0 i
 func hold_need(p: Dictionary) -> int: return int(HOLD_MEN * weight(p))
 func tax(p: Dictionary) -> int:
 	var k: float = clampf(float(p.get("men", 0)) / maxf(1.0, hold_need(p)), 0.3, 1.0)   # an under-garrisoned port pays less: smuggling, unrest
+	k *= 1.0 + 0.3 * works(p, "customs") + minf(0.5, 0.1 * recognisers())               # a customs house; trade with the powers that recognise you
 	return int(round(TAX * weight(p) * k / 100.0) * 100)
 func garrison_total() -> int:
 	var n := 0
@@ -127,7 +128,9 @@ func _lose(p: Dictionary, to: String) -> void:
 # ------------------------------------------------------------------ the calendar
 func new_day() -> void:
 	var G := g()
+	if founded(): _chancery_day()
 	if ports().is_empty(): return
+	_works_day(); _convoys(); _volunteers()
 	if G.day % 30 == 0:
 		var total := 0
 		for p in ports(): total += tax(p)
@@ -141,6 +144,12 @@ func new_day() -> void:
 		var age: int = G.day - int(p.get("took", G.day))
 		if age < 25: continue
 		if randf() < (0.035 if age < 160 else 0.012): launch(p, by)
+	# and any power at war with you whose harbours lie near enough may try for a port of yours
+	for p in ports():
+		if G.fleets.any(func(f): return int(f.get("portAssault", -1)) == int(p.id)): continue
+		for o in Diplomacy.POWERS:
+			if o == p.get("from", "") or not Campaign.at_war(o) or treaty(o): continue
+			if Campaign.ports_of(o).any(func(q): return Campaign.mdist(q.sx, q.sy, p.sx, p.sy) < 1800.0) and randf() < 0.006: launch(p, o); break
 
 ## A relief force sails from the old owner's nearest port.
 func launch(p: Dictionary, by: String) -> Dictionary:
@@ -171,10 +180,22 @@ func relief_lands(f: Dictionary) -> void:
 		if sh.get("troops", false): troops += 1
 		else: esc.append(sh)
 	if troops == 0: Campaign.toast.emit("The %s reaches %s without its troopships and turns back." % [f.name, p.name]); return
-	var A: float = troops * 450.0 + Campaign.strength(esc) / 250.0
+	var A: float = troops * 450.0 + Campaign.strength(esc) / 400.0
 	var guns := 0.0
 	for s in Structures.all(): if int(s.port) == int(p.id) and s.fac == "player" and s.kind == "battery" and not Structures.silenced(s): guns += 250.0
-	var Dv: float = float(p.get("men", 0)) * 2.0 + guns
+	guns += 450.0 * works(p, "battery")
+	# the guard squadron meets them off the harbour first: if it is the stronger, half the transports never arrive
+	var gd = guard(p)
+	if gd != null and Campaign.mdist(gd.x, gd.y, p.sx, p.sy) < 120.0:
+		if Campaign.strength(gd.ships) * randf_range(0.6, 1.4) > Campaign.strength(esc):
+			var sunk := int(ceil(troops / 2.0)); troops -= sunk; A = troops * 450.0 + Campaign.strength(esc) / 800.0
+			Campaign.toast.emit("Your guard squadron at %s falls on the %s and sinks %d of its transports." % [p.name, f.name.to_lower(), sunk])
+		else:
+			if gd.ships.size() > 1: gd.ships.pop_back()
+			Campaign.toast.emit("Your guard squadron at %s is driven off by the escort of the %s." % [p.name, f.name.to_lower()])
+		for sh in gd.ships: sh.hullFrac = maxf(0.2, float(sh.hullFrac) - randf_range(0.05, 0.3))
+		if troops <= 0: Campaign.toast.emit("The %s turns back from %s with nothing left to land." % [f.name, p.name]); return
+	var Dv: float = float(p.get("men", 0)) * 3.0 + guns   # men behind walls and on their own quays
 	if randf() < Dv / maxf(1.0, A + Dv):
 		var lost := int(round(float(p.men) * randf_range(0.1, 0.3))); p.men = maxi(1, int(p.men) - lost)
 		Campaign.toast.emit("%s holds. The %s landing is beaten off the quays; %d of your garrison are killed or wounded." % [p.name, GameData.fac[f.fac].short, lost])
@@ -183,3 +204,213 @@ func relief_lands(f: Dictionary) -> void:
 		Campaign.toast.emit("FALLEN. %s troops retake %s. Your garrison of %d is lost, and your flag comes down." % [GameData.fac[f.fac].short, p.name, int(p.get("men", 0))])
 		Campaign.log_ev("Lost %s" % p.name)
 		_lose(p, f.fac)
+
+# ------------------------------------------------------------------ your flag among the powers
+## Each power takes one of four stances toward your flag: at war with it, unrecognised (the default: a band of
+## adventurers), recognised (its merchants use your ports, yours use its), or bound by a treaty of non-aggression.
+## Your standing with each power is the same standing you always had (G.rep).
+const RECOG_COST := 20000
+const TREATY_COST := 40000
+const TREATY_DAYS := 360
+const PEACE_COST := 30000        # an indemnity, plus CEDE_COST for each port of theirs you keep
+const CEDE_COST := 40000
+func recognised(fac: String) -> bool: return founded() and g().flag.get("recog", {}).has(fac)
+func treaty(fac: String) -> bool: return founded() and int(g().flag.get("treaty", {}).get(fac, 0)) > int(g().day)
+func recognisers() -> int: return g().flag.get("recog", {}).size() if founded() else 0
+func stance(fac: String) -> String:
+	if Campaign.at_war(fac): return "war"
+	if treaty(fac): return "treaty"
+	return "recognised" if recognised(fac) else "unrecognised"
+func stance_text(fac: String) -> String:
+	match stance(fac):
+		"war": return "at war with you"
+		"treaty": return "treaty of non-aggression, %d days left" % (int(g().flag.treaty[fac]) - int(g().day))
+		"recognised": return "recognises your flag"
+	return "does not recognise your flag"
+func held_from(fac: String) -> Array: return ports().filter(func(p): return p.get("from", "") == fac)
+
+func can_recognise(fac: String) -> String:
+	var G := g()
+	if recognised(fac): return "Already recognised."
+	if Campaign.at_war(fac): return "They are at war with you. Make peace first."
+	if ports().is_empty(): return "No power recognises a flag without a port."
+	if int(G.rep.get(fac, 0)) < 10: return "Needs standing 10 with them (now %d)." % int(G.rep.get(fac, 0))
+	if not held_from(fac).is_empty(): return "Not while you hold a port taken from them. Settle that first (peace terms)."
+	if int(G.credits) < RECOG_COST: return "The envoy's gifts and the legation cost %s." % Campaign.fmt(RECOG_COST)
+	return ""
+func seek_recognition(fac: String) -> String:
+	var G := g(); G.credits -= RECOG_COST
+	if not G.flag.has("recog"): G.flag.recog = {}
+	G.flag.recog[fac] = G.day; G.rep[fac] = G.rep.get(fac, 0) + 5
+	Diplomacy.news("RECOGNITION. The %s receives the envoy of %s and recognises its flag. Its merchants may use your harbours, and yours its own." % [GameData.fac[fac].name, flag_name()], true)
+	Campaign.log_ev("Recognised by the " + GameData.fac[fac].short); Campaign.save()
+	return "The %s recognises %s." % [GameData.fac[fac].name, flag_name()]
+
+func can_treaty(fac: String) -> String:
+	var G := g()
+	if treaty(fac): return "A treaty is in force."
+	if not recognised(fac): return "Only a power that recognises you will treat with you."
+	if Campaign.at_war(fac): return "They are at war with you."
+	if int(G.rep.get(fac, 0)) < 25: return "Needs standing 25 with them (now %d)." % int(G.rep.get(fac, 0))
+	if int(G.credits) < TREATY_COST: return "The negotiations cost %s." % Campaign.fmt(TREATY_COST)
+	return ""
+func sign_treaty(fac: String) -> String:
+	var G := g(); G.credits -= TREATY_COST
+	if not G.flag.has("treaty"): G.flag.treaty = {}
+	G.flag.treaty[fac] = int(G.day) + TREATY_DAYS
+	Diplomacy.news("TREATY. %s and the %s sign a treaty of non-aggression for a year." % [flag_name(), GameData.fac[fac].name], true)
+	Campaign.log_ev("Treaty with the " + GameData.fac[fac].short); Campaign.save()
+	return "Treaty signed with the %s: for a year your growth does not alarm them, and they send no force against your ports." % GameData.fac[fac].name
+
+## Peace with a power at war with you: an indemnity, and for each port of theirs you keep, its price. They cede those
+## ports (no more relief forces), call off any force at sea, and the armistice holds again.
+func peace_cost(fac: String) -> int: return PEACE_COST + CEDE_COST * held_from(fac).size()
+func can_peace(fac: String) -> String:
+	var G := g()
+	if not Campaign.at_war(fac): return "You are not at war with them."
+	if (Campaign.perk("outlaw", []) as Array).has(fac): return "They will not treat with you: your quarrel with them is older than your flag."
+	if int(G.credits) < peace_cost(fac): return "Their terms: %s." % Campaign.fmt(peace_cost(fac))
+	return ""
+func make_peace(fac: String) -> String:
+	var G := g(); var ceded: Array = held_from(fac); G.credits -= peace_cost(fac)
+	G.rep[fac] = maxi(int(G.rep.get(fac, 0)), -9); if G.has("incidents"): G.incidents.erase(fac)
+	for p in ceded: p.from = ""
+	for s in Structures.held(): if s.from == fac: s.from = ""
+	for f in G.fleets.duplicate(): if (is_relief(f) or Structures._is_assault(f)) and f.fac == fac: G.fleets.erase(f)
+	Diplomacy.news("PEACE. %s and the %s come to terms%s." % [flag_name(), GameData.fac[fac].name, (": " + ", ".join(ceded.map(func(p): return p.name)) + " ceded") if not ceded.is_empty() else ""], true)
+	Campaign.log_ev("Peace with the " + GameData.fac[fac].short); Campaign.save()
+	return "Peace with the %s. Their ports open to you again once your standing recovers." % GameData.fac[fac].name
+
+## Daily: a treaty broken by war is void; once a month the powers weigh how large you have grown.
+func _chancery_day() -> void:
+	var G := g()
+	for fac in G.flag.get("treaty", {}).keys():
+		if int(G.flag.treaty[fac]) > int(G.day) and Campaign.at_war(fac):
+			G.flag.treaty.erase(fac); G.rep[fac] = G.rep.get(fac, 0) - 20
+			Diplomacy.news("TREATY BROKEN. The %s denounces its treaty with %s." % [GameData.fac[fac].name, flag_name()], true)
+	for fac in G.flag.get("recog", {}).keys():
+		if Campaign.at_war(fac): G.flag.recog.erase(fac); Campaign.toast.emit("The %s withdraws its recognition of your flag." % GameData.fac[fac].name)
+	if int(G.day) % 30 != 0: return
+	var size := 0.0
+	for p in ports(): size += weight(p)
+	var alarm := int(floor((size - 2.0) / 2.0))   # two small ports alarm nobody; an empire in the making does
+	if alarm <= 0: return
+	var wary := []
+	for fac in Diplomacy.POWERS:
+		if treaty(fac) or Campaign.at_war(fac): continue
+		var before: int = G.rep.get(fac, 0); G.rep[fac] = before - mini(4, alarm)
+		if before >= -10 and int(G.rep[fac]) < -10: wary.append(GameData.fac[fac].short)
+	if not wary.is_empty(): Diplomacy.news("ALARM. Your flag has grown too large for the liking of: %s. Their ports close to you." % ", ".join(wary), true)
+	else: Campaign.toast.emit("The powers watch your flag grow: standing -%d with every power not bound to you by treaty." % mini(4, alarm))
+
+# ------------------------------------------------------------------ works in your ports
+## What you can build in a port. Each takes its days to finish; `max` of each.
+const WORKS := {
+	"battery": {"name": "Harbour battery", "cost": 30000, "days": 30, "max": 3, "text": "Heavy guns on the moles: each adds as much to the defence against a landing as 180 men."},
+	"barracks": {"name": "Barracks and depot", "cost": 20000, "days": 20, "max": 1, "text": "The garrison recruits for itself: 15 men a week until it is up to strength."},
+	"customs": {"name": "Customs house", "cost": 25000, "days": 20, "max": 1, "text": "Harbour dues up by three tenths."},
+	"yard": {"name": "Building slip", "cost": 45000, "days": 45, "max": 1, "text": "The yard can lay down battleships and fleet carriers, as a capital's can."}}
+func works(p: Dictionary, k: String) -> int:   # finished
+	var n := 0
+	for d in p.get("works", {}).get(k, []): if int(d) <= int(g().day): n += 1
+	return n
+func works_building(p: Dictionary, k: String) -> int:   # days left on the one under way, or 0
+	for d in p.get("works", {}).get(k, []): if int(d) > int(g().day): return int(d) - int(g().day)
+	return 0
+func can_build(p: Dictionary, k: String) -> String:
+	var w: Dictionary = WORKS[k]
+	if p.get("works", {}).get(k, []).size() >= int(w.max): return "Built." if works_building(p, k) == 0 else "Building: %d days left." % works_building(p, k)
+	if works_building(p, k) > 0: return "Building: %d days left." % works_building(p, k)
+	if int(g().credits) < int(w.cost): return "Costs %s." % Campaign.fmt(int(w.cost))
+	return ""
+func build(p: Dictionary, k: String) -> String:
+	var G := g(); var w: Dictionary = WORKS[k]; G.credits -= int(w.cost)
+	if not p.has("works"): p.works = {}
+	if not p.works.has(k): p.works[k] = []
+	p.works[k].append(int(G.day) + int(w.days))
+	return "%s laid down at %s: ready in %d days." % [w.name, p.name, int(w.days)]
+func _works_day() -> void:
+	var G := g()
+	for p in ports():
+		for k in p.get("works", {}): for d in p.works[k]: if int(d) == int(G.day): Campaign.toast.emit("%s: the %s is finished." % [p.name, String(WORKS[k].name).to_lower()])
+		if works(p, "barracks") > 0 and int(G.day) % 7 == 0 and int(p.get("men", 0)) < hold_need(p): p.men = mini(hold_need(p), int(p.get("men", 0)) + 15)
+
+# ------------------------------------------------------------------ guard squadrons and trade
+## A guard squadron: warships of your own that cruise off one port. It meets a relief force before it lands, and it
+## fights raiders and the ships of powers at war with you that come near (Diplomacy.clash_tick). Paid by the day.
+const GUARD_COST := 30000
+const GUARD_PAY := 60.0
+func guard(p: Dictionary):
+	for f in g().fleets: if int(f.get("guardOf", -1)) == int(p.id): return f
+	return null
+func guards() -> int: return g().fleets.filter(func(f): return int(f.get("guardOf", -1)) >= 0).size()
+func can_guard(p: Dictionary) -> String:
+	if guard(p) != null: return "A guard squadron is on station."
+	if int(g().credits) < int(GUARD_COST * weight(p)): return "Costs %s." % Campaign.fmt(int(GUARD_COST * weight(p)))
+	return ""
+func yard_flag(p: Dictionary) -> String: return p.get("from", "") if p.get("from", "") != "" else Campaign.C.ports[int(p.id)].fac
+func raise_guard(p: Dictionary) -> Dictionary:
+	var G := g(); G.credits -= int(GUARD_COST * weight(p)); var yf := yard_flag(p)
+	var f := {"id": G.nextId, "kind": "patrol", "fac": "player", "h": randf() * TAU, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {},
+		"x": p.sx, "y": p.sy, "home": {"x": p.sx, "y": p.sy}, "guardOf": int(p.id), "name": "%s guard squadron" % p.name}
+	G.nextId += 1
+	f.ships = Campaign.build_by_budget(Campaign.C.PATROL_POOL[yf], 50000.0 * weight(p) * (1.0 + G.day / 250.0), 4, yf, G.tech)   # it grows with the times, as the forces sent against it do
+	if f.ships.is_empty(): f.ships.append(Campaign.new_ship("corvette", null, yf, G.tech))
+	for sh in f.ships: sh.pal = "player"; sh.name = GameData.names.player.pick_random()
+	G.fleets.append(f)
+	return f
+func disband_guard(p: Dictionary) -> void:
+	var f = guard(p)
+	if f != null: g().fleets.erase(f)
+
+## Merchants under your flag: each port sends a convoy to the nearest harbour that will have it and is paid when it
+## arrives (half as much again where your flag is recognised). Raiders and enemies can sink it on the way.
+func _convoys() -> void:
+	var G := g()
+	for p in ports():
+		if G.fleets.any(func(f): return int(f.get("convoyOf", -1)) == int(p.id)) or randf() > 0.12: continue
+		var dest = null; var bd := 2600.0
+		for q in G.ports:
+			if q.fac == "player" and q != p: pass
+			elif q == p or Campaign.hostile(q.fac): continue
+			var d := Campaign.mdist(q.sx, q.sy, p.sx, p.sy)
+			if d > 150.0 and d < bd: bd = d; dest = q
+		if dest == null: continue
+		var f := {"id": G.nextId, "kind": "convoy", "fac": "player", "h": 0.0, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {},
+			"x": p.sx, "y": p.sy, "home": {"x": p.sx, "y": p.sy}, "dest": int(dest.id), "from": int(p.id), "convoyOf": int(p.id), "name": "%s convoy" % G.flag.short, "cash": randi_range(6, 16) * 1000}
+		G.nextId += 1
+		for i in randi_range(1, 2): var sh: Dictionary = Campaign.new_ship("freighter", null, "player", G.tech); f.ships.append(sh)
+		for gd in Campaign.C.GOODS: if randf() < 0.5: f.cargo[gd.id] = randi_range(15, 50)
+		f.cargo.fuel = int(f.cargo.get("fuel", 0)) + randi_range(40, 100)
+		G.fleets.append(f)
+func convoy_pay(f: Dictionary) -> int:
+	var G := g(); var d: Dictionary = G.ports[int(f.dest)]; var p: Dictionary = G.ports[int(f.from)]
+	return int(round(900.0 * f.ships.size() * weight(p) * (1.5 if d.fac == "player" or recognised(d.fac) else 1.0) / 100.0) * 100)
+func convoy_arrived(f: Dictionary) -> void:
+	var G := g(); var pay := convoy_pay(f); G.credits += pay; G.flag.trade = int(G.flag.get("trade", 0)) + pay
+	Campaign.log_ev("Convoy to %s: +%s" % [G.ports[int(f.dest)].name, Campaign.fmt(pay)])
+
+# ------------------------------------------------------------------ a rising flag draws men and ships
+## Mid-month: an officer may offer his sword, and now and then a ship comes over with her crew and lies in one of your
+## ports until you commission her (a bounty to her crew) or send her away.
+func _volunteers() -> void:
+	var G := g()
+	if int(G.day) % 30 != 15: return
+	var ps: Array = ports(); var n := ps.size()
+	if randf() < minf(0.6, 0.2 * n) and G.officers.size() < 12:
+		var o: Dictionary = Campaign.new_officer(randi_range(2, 4)); G.officers.append(o)
+		Campaign.toast.emit("%s, an officer of some name, offers his sword to %s (level %d). Give him a ship in Command, under Officers." % [o.name, flag_name(), int(o.lvl)])
+	if randf() < minf(0.45, 0.12 * n):
+		var p: Dictionary = ps.pick_random()
+		if p.get("volunteers", []).size() >= 2: return
+		var from: String = Diplomacy.POWERS.filter(func(o): return not Campaign.ports_of(o).is_empty()).pick_random()
+		var sh: Dictionary = Campaign.new_ship(["corvette", "dd", "dd", "ss", "cl"].pick_random(), null, from, Campaign.enemy_tech(Campaign.fac_era(from)))
+		sh.pal = "player"; sh.name = GameData.names.player.pick_random(); sh.hullFrac = randf_range(0.55, 0.9); sh.cameFrom = from
+		if not p.has("volunteers"): p.volunteers = []
+		p.volunteers.append(sh)
+		Diplomacy.news("DEFECTION. The %s %s, late of the %s, runs into %s and asks to serve under your flag." % [String(Campaign.hull(sh).name).to_lower(), sh.name, GameData.fac[from].name, p.name], true)
+func bounty(sh: Dictionary) -> int: return int(round(Campaign.ship_value(sh) * 0.25 / 500.0) * 500)
+func commission(p: Dictionary, sh: Dictionary) -> String:
+	var G := g(); G.credits -= bounty(sh); p.volunteers.erase(sh); sh.erase("cameFrom"); G.fleet.append(sh)
+	var note := Campaign.study_prize(sh)
+	return "The %s joins your squadron. She needs %d crew.%s" % [sh.name, int(Campaign.hull(sh).crew), (" " + note) if note != "" else ""]

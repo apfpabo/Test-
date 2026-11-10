@@ -374,6 +374,7 @@ func wages() -> float:
     var t: float = G.crew * 0.15
     for o in G.officers: t += 40 * o.lvl
     t += (Structures.garrison_total() + Flag.garrison_total()) * 0.15   # the men holding your structures and ports ashore
+    t += Flag.guards() * Flag.GUARD_PAY                                # guard squadrons on station
     t += Structures.troops() * Structures.TROOP_WAGE   # soldiers embarked in troopships
     return t
 var show_origin := false   # the chart opens with the origin's story once, at the start of a campaign
@@ -858,6 +859,7 @@ func update(dt: float) -> void:
                     if not set_course(f, tg.x, tg.y): Structures.assault_lands(f); continue
                 elif f.has("dest") and f.get("started", false):
                     if int(f.get("escort", 0)) > 0: Diplomacy.on_convoy_arrived(f)
+                    if f.fac == "player": Flag.convoy_arrived(f)
                     G.fleets.erase(f); continue
                 if Structures._is_assault(f) or Flag.is_relief(f): pass
                 elif f.has("dest"):

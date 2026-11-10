@@ -1157,6 +1157,34 @@ func _governor(box: Control, p: Dictionary) -> void:
         UI.button("Land all (%s)" % Campaign.fmt(Structures.troops()), func(): Flag.reinforce(p, Structures.troops()); _render_port(), false, Structures.troops() <= 0),
         UI.button("Take 100 off", func(): Flag.take_off(p, 100); _render_port(), false, men <= 0 or Structures.troop_capacity() <= Structures.troops())]))
     _p(box, "Soldiers are raised here like anywhere (Repairs & crew) and landed from your transports. The yard still builds its old owner's designs, and anything you have captured and measured.", UI.DIM, 13)
+    # the guard squadron
+    box.add_child(UI.label("GUARD SQUADRON", UI.DIM, 12))
+    var gd = Flag.guard(p)
+    if gd != null:
+        _p(box, "On station: %s (%s a day). It meets a relief force before it lands and fights raiders and enemies that come near." % [_counts(gd.ships), Campaign.fmt(Flag.GUARD_PAY)], UI.INK, 14)
+        box.add_child(UI.button("Pay the squadron off", func(): Flag.disband_guard(p); _render_port()))
+    else:
+        var wg := Flag.can_guard(p)
+        _p(box, "Warships of your own to cruise off the harbour, built in this yard: they meet a relief force before it lands. %s a day to keep." % Campaign.fmt(Flag.GUARD_PAY), UI.DIM, 13)
+        box.add_child(UI.button("Raise a guard squadron · " + Campaign.fmt(int(Flag.GUARD_COST * Flag.weight(p))), func(): Flag.raise_guard(p); _toast("A guard squadron puts out from %s." % p.name); _render_port(), false, wg != ""))
+    # works
+    box.add_child(UI.label("WORKS", UI.DIM, 12))
+    for k in Flag.WORKS:
+        var w: Dictionary = Flag.WORKS[k]; var why := Flag.can_build(p, k); var have := Flag.works(p, k); var left := Flag.works_building(p, k)
+        var st: String = ("building, %d days left" % left) if left > 0 else (("built" + ((" ×%d" % have) if int(w.max) > 1 else "")) if have > 0 else "not built")
+        var nm := UI.label(w.name, UI.GOLD if have > 0 else UI.INK, 14); nm.custom_minimum_size.x = 170
+        box.add_child(UI.row([nm, UI.label(st, UI.GREEN if have > 0 and left == 0 else UI.DIM, 13),
+            UI.button("Build · " + Campaign.fmt(int(w.cost)), func(): _toast(Flag.build(p, k)); _render_port(), false, why != "")]))
+        _p(box, w.text, UI.DIM, 12)
+    # ships that have come over
+    var vol: Array = p.get("volunteers", [])
+    if not vol.is_empty():
+        box.add_child(UI.label("SHIPS ASKING TO SERVE", UI.DIM, 12))
+        for sh in vol:
+            var h: Dictionary = Campaign.hull(sh); var b := Flag.bounty(sh)
+            box.add_child(UI.row([UI.label(sh.name, UI.INK, 14), UI.label("%s · %s class · hull %d%% · late of the %s" % [h.name, h.dn, int(float(sh.hullFrac) * 100), GameData.fac[sh.get("cameFrom", "freeport")].short], UI.DIM, 13),
+                UI.button("Commission her · bounty " + Campaign.fmt(b), func(): _toast(Flag.commission(p, sh)); _render_port(), true, G.credits < b or G.fleet.size() >= 10),
+                UI.button("Send her away", func(): p.volunteers.erase(sh); _render_port())]))
     box.add_child(UI.button("Give the port up", func(): var t := Flag.abandon(p); cur_port = {}; close_panel(); _toast(t)))
 
 func _rerender() -> void:
@@ -1343,7 +1371,7 @@ func yard_of(p: Dictionary) -> Array:
     var out = []
     if p.fac == "player": for id in Campaign.G.get("studied", []): out.append(id)
     for c in Campaign.C.YARDS[yf]:
-        if (c == "bb" or c == "cv") and not p.capital: continue
+        if (c == "bb" or c == "cv") and not p.capital and not (p.fac == "player" and Flag.works(p, "yard") > 0): continue
         for id in Campaign.C.DESIGNS_OF.get(c, []):
             if makers.has(GameData.hulls[id].yard) and Campaign.design_ok(id, Campaign.G.tech) and not out.has(id): out.append(id)
     if yf == "freeport":   # the Syndicate's improvised carriers: escort carriers bought second-hand from any yard and refitted
@@ -1790,11 +1818,35 @@ func _flag_section(box: Control) -> void:
         return
     var ps: Array = Flag.ports(); var dues := 0
     for p in ps: dues += Flag.tax(p)
-    _p(box, "%s, founded %s. %d ports fly it, held by %s men; dues %s a month." % [G.flag.name, Campaign.date_str(int(G.flag.day)), ps.size(), Campaign.fmt(Flag.garrison_total()), Campaign.fmt(dues)], UI.GOLD, 14)
+    _p(box, "%s, founded %s. %s, held by %s men; dues %s a month." % [G.flag.name, Campaign.date_str(int(G.flag.day)), "One port flies it" if ps.size() == 1 else "%d ports fly it" % ps.size(), Campaign.fmt(Flag.garrison_total()), Campaign.fmt(dues)], UI.GOLD, 14)
     if ps.is_empty(): _p(box, "No port flies it yet. Embark troops, lie off a harbour and storm it: closed harbours offer it as you close them, open ones under Repairs & crew.", UI.DIM, 13)
+    if int(G.flag.get("trade", 0)) > 0: _p(box, "Your convoys have earned %s so far." % Campaign.fmt(int(G.flag.trade)), UI.DIM, 13)
     for p in ps:
         box.add_child(UI.row([UI.label(p.name, UI.GOLD, 14), UI.label("garrison %s of %s · dues %s%s" % [Campaign.fmt(int(p.get("men", 0))), Campaign.fmt(Flag.hold_need(p)), Campaign.fmt(Flag.tax(p)), (" · taken from the " + GameData.fac[p.from].short) if p.get("from", "") != "" else ""], UI.DIM, 13),
             UI.button("Plot a course", func(): if Campaign.set_course(G.player, p.sx, p.sy): free_cam = false; close_panel())]))
+    _chancery(box)
+
+## The chancery: how each power stands toward your flag, and what your envoys can do about it.
+func _chancery(box: Control) -> void:
+    var G: Dictionary = Campaign.G
+    box.add_child(UI.label("CHANCERY · THE POWERS AND YOUR FLAG", UI.DIM, 12))
+    _p(box, "A power that recognises you lets its merchants use your harbours (dues up a tenth each, to five) and pays your convoys better. A treaty of non-aggression lasts a year: your growth does not alarm that power, and it sends nothing against your ports. As your flag grows past two small ports, every power not bound by treaty thinks worse of you each month.", UI.DIM, 13)
+    for f in Diplomacy.POWERS:
+        if Campaign.ports_of(f).is_empty(): continue
+        var st := Flag.stance(f); var col: Color = UI.RED if st == "war" else (UI.GREEN if st == "treaty" else (UI.INK if st == "recognised" else UI.DIM))
+        var nm := UI.label(GameData.fac[f].short, Color(GameData.fac[f].map), 14); nm.custom_minimum_size.x = 120
+        var row := [nm, UI.label("standing %d · %s" % [int(G.rep.get(f, 0)), Flag.stance_text(f)], col, 13)]
+        if st == "war":
+            var why := Flag.can_peace(f)
+            var b := UI.button("Sue for peace · " + Campaign.fmt(Flag.peace_cost(f)), func(): _toast(Flag.make_peace(f)); _rerender(), false, why != ""); b.tooltip_text = why if why != "" else "An indemnity of %s%s. They call off their forces and the armistice holds again." % [Campaign.fmt(Flag.PEACE_COST), (", and %s for each port of theirs you keep (they cede it)" % Campaign.fmt(Flag.CEDE_COST)) if not Flag.held_from(f).is_empty() else ""]
+            row.append(b)
+        elif st == "unrecognised":
+            var why := Flag.can_recognise(f)
+            var b := UI.button("Seek recognition · " + Campaign.fmt(Flag.RECOG_COST), func(): _toast(Flag.seek_recognition(f)); _rerender(), false, why != ""); b.tooltip_text = why; row.append(b)
+        elif st == "recognised":
+            var why := Flag.can_treaty(f)
+            var b := UI.button("Treaty of non-aggression · " + Campaign.fmt(Flag.TREATY_COST), func(): _toast(Flag.sign_treaty(f)); _rerender(), false, why != ""); b.tooltip_text = why; row.append(b)
+        box.add_child(UI.row(row))
 
 ## A structure's panel: what it is, who holds it, its defences and output, and what you can do about it from here.
 func open_struct(s: Dictionary) -> void:

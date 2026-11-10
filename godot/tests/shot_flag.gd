@@ -28,7 +28,13 @@ func _process(_d: float) -> void:
         while not r.won: Campaign.G.troops = 2600; r = Flag.assault(port)
         map._storm_report(port, r)
     if f == 44: _shot("flag_report")
-    if f == 46: map.open_port(port); map.port_tab = "governor"; map._render_port()
+    if f == 46:
+        Flag.build(port, "battery"); Campaign.G.day = int(Campaign.G.day) + 31; Flag.build(port, "customs"); Flag.raise_guard(port)
+        var sh: Dictionary = Campaign.new_ship("dd_narvik", "Sturmvogel", "directorate", []); sh.pal = "player"; sh.cameFrom = "directorate"; sh.hullFrac = 0.7; port.volunteers = [sh]
+        Campaign.G.rep.concord = 14
+        map.open_port(port); map.port_tab = "governor"; map._render_port()
     if f == 56: _shot("flag_governor")
     if f == 58: map.close_panel(); map.cur_port = {}
-    if f == 70: _shot("flag_chart"); get_tree().quit()
+    if f == 64: map._cmd_tab("holdings")
+    if f == 74: _shot("flag_chancery"); map.close_panel()
+    if f == 84: _shot("flag_chart"); get_tree().quit()

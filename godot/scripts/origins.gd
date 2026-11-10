@@ -36,7 +36,7 @@ const INFO := {
 	"privateer": {"label": "The Privateer", "navy": false, "short": "A letter of marque from the Tarsene Free Republic against Directorate shipping.",
 		"start": "A fast Corvo destroyer, the Republic's favour and better prize money against the Directorate. The Directorate treats you as a combatant; neutrals are wary."},
 	"defector": {"label": "The Defector", "navy": true, "short": "You came over to the enemy with a valuable ship and what you know.",
-		"start": "A cruiser from your old navy and intelligence worth research points. Your old flag hunts you; your new patrons are interested but don't fully trust you."},
+		"start": "A cruiser from your old navy and intelligence worth research points. Your old flag hunts you; your new patrons are interested but do not fully trust you."},
 	"smuggler": {"label": "The Smuggler", "navy": false, "short": "Fast, discreet and lightly armed: restricted goods through blockades.",
 		"start": "A fast destroyer stripped of her torpedoes, contraband in the hold, a better chance to slip away, good trading. Navies see a nuisance; freeports a customer."},
 	"academy": {"label": "The Academy Cast-Off", "navy": true, "short": "A green junior officer handed a minor command as a favour or a punishment.",

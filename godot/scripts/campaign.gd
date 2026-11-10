@@ -257,7 +257,7 @@ func _research_day() -> void:
         G.facRp[f] = fac_rp(f) + float(RESEARCH_PACE[f]) * (1.3 if at_war else 1.0) * randf_range(0.8, 1.2)
         var now := fac_era(f)
         if now > before and GameData.fac.has(f):
-            toast.emit("Intelligence: %s yards are fielding %s." % [GameData.fac[f].short, C.ERA_NAME[str(now)].split("· ")[1].to_lower()])
+            toast.emit("Intelligence: %s yards are fielding %s designs." % [GameData.fac[f].short, C.ERA_NAME[str(now)].split("· ")[1].to_lower()])
 ## What a power fielding this era has researched (enough to open it, as for you).
 func enemy_tech(era: int) -> Array:
     var t = []
@@ -846,7 +846,7 @@ func new_day(moved: bool) -> void:
                 toast.emit("The reserve is gone. Your squadron is dead in the water. Send a distress call (the red button below) and the nearest warship will come and tow you to port; or right-click the sea to call a merchant convoy, which can sell you fuel.")
         if G.cargo.fuel < 0:
             G.cargo.fuel = 0
-            if not G.get("noFuelWarned", false): toast.emit("Bunkers are dry. The fleet crawls on its reserve, about %d days of it. Buy fuel oil at a port, or from a merchant convoy." % int(ceil(reserve() / maxf(0.1, fuel_use() / 3.0)))); G.noFuelWarned = true
+            if not G.get("noFuelWarned", false): toast.emit("Bunkers are dry. The squadron crawls on its reserve, about %d days of it. Buy fuel oil at a port, or from a merchant convoy." % int(ceil(reserve() / maxf(0.1, fuel_use() / 3.0)))); G.noFuelWarned = true
         elif G.cargo.fuel > 0: G.noFuelWarned = false
     # the reserve fills again from the bunkers
     if G.cargo.fuel > 0 and reserve() < reserve_cap():
@@ -1517,7 +1517,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
         var m: Dictionary = mission_def()
         if m.goal == "destroy" and gone: _complete_mission(r)
         elif m.goal == "capture" and r.sunk.any(func(s): return s.name == m.target):
-            r.notes.append("The %s went down with her codebook. The mission has failed. Return to the Admiralty for new orders." % m.target)
+            r.notes.append("The %s went down, and what she carried went with her. The mission has failed. Report back for new orders." % m.target)
             G.mission = null; log_ev("Mission failed: " + m.title)
     G.player.cool = 5.0
     last_result = r
@@ -1549,7 +1549,7 @@ func _complete_mission(r: Dictionary) -> void:
     if by == "concord": G.story = G.stories[by]
     log_ev("Completed: " + m.title); G.mission = null
     if story_idx(by) >= story_chain(by).size():
-        if by == "concord": r.notes.append("Iron Will is gone, and with her the Directorate's hopes of breaking out this year. The armistice holds a little firmer. Your fleet, and the Quiet Race, go on.")
+        if by == "concord": r.notes.append("Iron Will is gone, and with her the Directorate's hopes of breaking out. The armistice holds a little firmer. Your fleet, and the Quiet Race, go on.")
         else: r.notes.append(S.chains[by].end)
 
 # ------------------------------------------------------------------ saves

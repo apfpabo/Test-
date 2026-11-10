@@ -246,7 +246,7 @@ func seek_recognition(fac: String) -> String:
 	if not G.flag.has("recog"): G.flag.recog = {}
 	G.flag.recog[fac] = G.day; G.rep[fac] = G.rep.get(fac, 0) + 5
 	Campaign.rep_note("Recognition of your flag")
-	Diplomacy.news("RECOGNITION. The %s receives the envoy of %s and recognises its flag. Its merchants may use your harbours, and yours its own." % [GameData.fac[fac].name, flag_name()], true)
+	Diplomacy.news("RECOGNITION. The %s receives the envoy of %s and recognises its flag. Its merchants may use your harbours, and yours may use its." % [GameData.fac[fac].name, flag_name()], true)
 	Campaign.log_ev("Recognised by the " + GameData.fac[fac].short); Campaign.save()
 	return "The %s recognises %s." % [GameData.fac[fac].name, flag_name()]
 

@@ -17,7 +17,7 @@
       "end": "The Council thanks you, in writing, and asks you to forget what you saw in the archive ship's hold.",
       "missions": [
         { "title": "Reef Raiders", "brief": "Raiders working out of the Lantern Isles have burned two Federation coaling hulks. Their leader sails the destroyer Sea Ghost. Find her and sink her.", "fac": "raiders", "ships": [["dd", "Sea Ghost"], ["pt"], ["corvette"]], "near": "Lumaya", "goal": "destroy", "reward": { "credits": 20000, "rp": 20, "rep": 10 } },
-        { "title": "The Occupied Isle", "brief": "The Directorate garrison on a \"temporarily\" occupied island in the reefs is supplied by a single squadron. The Council cannot be seen to act. You can. Its ships will fly no colours; neither will yours.", "fac": "directorate", "ships": [["cl", "Admiral Brask"], ["dd"], ["dd"]], "near": "Senkai Station", "goal": "destroy", "reward": { "credits": 45000, "rp": 50, "rep": 15 } },
+        { "title": "The Occupied Isle", "brief": "The Directorate garrison on a \"temporarily\" occupied island in the Stepping Stones is supplied by a single squadron. The Council cannot be seen to act. You can. Its ships will fly no colours; neither will yours.", "fac": "directorate", "ships": [["cl", "Admiral Brask"], ["dd"], ["dd"]], "near": "Senkai Station", "goal": "destroy", "reward": { "credits": 45000, "rp": 50, "rep": 15 } },
         { "title": "The Archive Ship", "brief": "An archivist has fled Amakura aboard the freighter Quiet Lantern with copies of the Black Archives, and a Combine security squadron is escorting her to Kotaraya. Make her strike and bring her back.", "fac": "combine", "ships": [["freighter", "Quiet Lantern"], ["dd"], ["dd"], ["corvette"]], "near": "Sanpo", "goal": "capture", "target": "Quiet Lantern", "reward": { "credits": 70000, "rp": 80, "rep": 20 } }
       ]
     },
@@ -38,7 +38,7 @@
       ]
     },
     "freeport": {
-      "end": "The Brokers raise a glass to you. Port Saffron is home, for as long as you don't become a liability.",
+      "end": "The Brokers raise a glass to you. Port Saffron is home, for as long as you do not become a liability.",
       "missions": [
         { "title": "Competition", "brief": "A bounty-hunting crew calling itself the Free Company has been taking Syndicate captains for Concord rewards. The Brokers want its leader, the destroyer Writ, at the bottom of the sea.", "fac": "raiders", "ships": [["dd", "Writ"], ["corvette"], ["pt"]], "near": "Mbaraka", "goal": "destroy", "reward": { "credits": 20000, "rp": 15, "rep": 10 } },
         { "title": "The Customs Cutter", "brief": "The Concord customs cutter Diligence has a list of every Syndicate captain who has bunkered at St. Aldric. The Brokers want the cutter and the list. She flies Concord colours; on the night, you will fly none. Make her strike.", "fac": "concord", "ships": [["corvette", "Diligence"], ["dd"]], "near": "St. Aldric", "goal": "capture", "target": "Diligence", "reward": { "credits": 40000, "rp": 30, "rep": 15 } },

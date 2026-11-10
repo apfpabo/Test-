@@ -33,7 +33,7 @@ func _ready() -> void:
     scroll.add_child(margin)
     var col = VBoxContainer.new(); col.add_theme_constant_override("separation", 10); margin.add_child(col)
     var title = Label.new(); title.text = "IRON MERIDIAN · BATTLE"; title.add_theme_font_size_override("font_size", 34); title.add_theme_color_override("font_color", Color(0.89, 0.7, 0.24)); col.add_child(title)
-    var sub = Label.new(); sub.text = "Godot build, battle first. Pick an engagement, or build both squadrons below. Fight any engagement you like; the campaign is on the title screen."; sub.add_theme_color_override("font_color", Color(0.62, 0.67, 0.67)); col.add_child(sub)
+    var sub = Label.new(); sub.text = "Pick an engagement, or build both squadrons below. The campaign is on the title screen."; sub.add_theme_color_override("font_color", Color(0.62, 0.67, 0.67)); col.add_child(sub)
     var grid = GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 10); grid.add_theme_constant_override("v_separation", 10); col.add_child(grid)
     for pr in PRESETS:
         var b = Button.new(); b.text = pr.name + "\n" + pr.desc; b.custom_minimum_size = Vector2(320, 92); b.autowrap_mode = TextServer.AUTOWRAP_WORD; b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -54,7 +54,7 @@ func _ready() -> void:
     fac_pick = OptionButton.new(); for f in ["directorate", "pacific", "concord", "combine", "republic", "freeport", "raiders"]: fac_pick.add_item(GameData.fac[f].name); fac_pick.set_item_metadata(fac_pick.item_count - 1, f)
     row2.add_child(fac_pick)
     var l2 = Label.new(); l2.text = "   Technology"; row2.add_child(l2)
-    era_pick = OptionButton.new(); era_pick.add_item("Era I · late war"); era_pick.add_item("Era II · early Cold War"); era_pick.add_item("Era III · late Cold War"); row2.add_child(era_pick)
+    era_pick = OptionButton.new(); era_pick.add_item("Era I · Late war"); era_pick.add_item("Era II · Early Cold War"); era_pick.add_item("Era III · Late Cold War"); row2.add_child(era_pick)
     var l3 = Label.new(); l3.text = "   Weather"; row2.add_child(l3)
     wx_pick = OptionButton.new(); for n in ["Calm", "Moderate sea", "Rough sea", "Storm", "Fog"]: wx_pick.add_item(n)
     row2.add_child(wx_pick)

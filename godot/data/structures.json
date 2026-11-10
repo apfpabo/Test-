@@ -91,7 +91,7 @@
    "garrison": 40,
    "hard": 0.9,
    "military": true,
-   "text": "Aerial masts and a plotting room on high ground. Its warning makes the flak and fighters of every structure of its flag within 300 km a quarter more effective, and warns of attack."
+   "text": "Aerial masts and a plotting room on high ground. Its plot makes the flak and fighters of every structure of its flag within 300 km a quarter more effective, and it gives warning of attack."
   },
   "navalbase": {
    "name": "Naval base",

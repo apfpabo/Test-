@@ -119,7 +119,7 @@ func _draw() -> void:
     var step := 16.0; var room: float = (H - 396.0) - ry - 52.0
     if sim.ships.size() * step > room: step = maxf(11.0, room / sim.ships.size())
     for side in [0, 1]:
-        _text(Vector2(16, ry), "Enemy" if side else "Task force", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
+        _text(Vector2(16, ry), "Enemy" if side else "Your squadron", Color(0.95, 0.75, 0.71) if side else INK); ry += 18
         for s in sim.ships:
             if s.side != side: continue
             if side == 1 and sim.active(s) and not sim.visible_to(s, 0): _text(Vector2(16, ry), "? contact lost", Color(INK, 0.35)); ry += step; continue

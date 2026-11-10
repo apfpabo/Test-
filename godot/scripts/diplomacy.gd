@@ -399,19 +399,19 @@ func _make(p: Dictionary) -> Dictionary:
 			var d: Dictionary = targets.pick_random(); var good: String = ["medicine", "electronics", "munitions"].pick_random(); var qty := randi_range(2, 5) * 5
 			var dist := Campaign.mdist(p.sx, p.sy, d.sx, d.sy)
 			c.merge({"dest": int(d.id), "good": good, "qty": qty, "days": int(dist / speed * 1.8) + 10, "reward": int(round((5000.0 + dist * 6.0 + qty * 150.0) / 100.0) * 100), "rep": 6, "title": "Run %d %s into %s" % [qty, good, d.name]})
-			c.text = "Contraband for %s, a %s harbour, landed quietly past the customs launches. Get caught and the cargo is seized and the %s remembers. The fewer ships you bring in, the better your chances." % [d.name, GameData.fac[d.fac].short, GameData.fac[d.fac].short]
+			c.text = "Contraband for %s, a %s harbour, landed quietly past the customs launches. If you are caught, the cargo is seized and the %s remembers. The fewer ships you bring in, the better your chances." % [d.name, GameData.fac[d.fac].short, GameData.fac[d.fac].short]
 		"strike":   # silence an enemy installation from the air
 			var tg: Array = Structures.all().filter(func(s): return foes.has(s.fac) and Campaign.mdist(p.sx, p.sy, s.x, s.y) < 2400.0 and not Structures.silenced(s))
 			if tg.is_empty(): return {}
 			var s: Dictionary = tg.pick_random()
 			c.merge({"struct": int(s.id), "target": s.fac, "days": 50, "reward": int(round((9000.0 + 5000.0 * float(Structures.kind(s).military) + randf() * 4000.0) / 500.0) * 500), "rep": 8,
 				"title": "Strike the %s" % s.name})
-			c.text = "The %s is at war with the %s. Knock out at least 70%% of the defences of the %s, from the air or with your guns from the sea. Taking this makes you a combatant to the %s." % [GameData.fac[fac].name, GameData.fac[s.fac].name, s.name, GameData.fac[s.fac].short]
+			c.text = "The %s is at war with the %s. Knock out at least 70%% of the defences of the %s, from the air or with your guns from the sea. Signing makes you a combatant in the eyes of the %s." % [GameData.fac[fac].name, GameData.fac[s.fac].name, s.name, GameData.fac[s.fac].short]
 		"war":
 			var foe: String = foes.pick_random()
 			c.merge({"target": foe, "need": 3, "got": 0, "days": 60, "reward": int(round((14000.0 + randf() * 8000.0) / 500.0) * 500), "rep": 10,
 				"title": "Sink %s shipping" % GameData.fac[foe].short})
-			c.text = "The %s is at war with the %s. Sink or take three of their ships within two months. Taking this makes you a combatant to them." % [GameData.fac[fac].name, GameData.fac[foe].name]
+			c.text = "The %s is at war with the %s. Sink or take three of their ships within two months. Signing makes you a combatant in their eyes." % [GameData.fac[fac].name, GameData.fac[foe].name]
 	c.deadline = 0
 	return c
 

@@ -40,10 +40,10 @@ func _ready() -> void:
 func _home() -> void:
     for c in pc.get_children(): c.queue_free()
     var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box); home = box
-    var intro := UI.label("The Great War of the 1940s ended in an armistice nobody honours. Legacy empires, successor states, corporations and pirates contest the world's oceans, and sea control is the only currency that counts. You are a free captain with one tired ship.", UI.DIM, 15, true)
+    var intro := UI.label("The Meridian War ended in an armistice nobody honours. Legacy empires, successor states, corporations and pirates contest the world's oceans, and sea control is the only currency that counts. You are a free captain with one tired ship.", UI.DIM, 15, true)
     intro.custom_minimum_size.x = 500; box.add_child(intro)
     if Campaign.has_save() and Campaign.save_version() < Campaign.SAVE_VERSION:
-        box.add_child(UI.label("The world has been redrawn: your saved campaign was played on the old chart of the real Earth and can't be continued. A new campaign replaces the old save.", UI.GOLD, 14, true))
+        box.add_child(UI.label("The world has been redrawn: your saved campaign was played on the old chart of the real Earth and cannot be continued. A new campaign replaces the old save.", UI.GOLD, 14, true))
     var can_go: bool = Campaign.has_save() and Campaign.save_version() >= Campaign.SAVE_VERSION
     var btns := [
         UI.button("Continue campaign", func():

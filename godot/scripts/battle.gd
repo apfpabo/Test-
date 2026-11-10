@@ -369,7 +369,7 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
         for m in s.mounts:
             if not _visible_mount(s, m): continue
             var info: Dictionary = GameData.sprites.mounts[m.wid]
-            var sc: float = (1.0 + 0.035 * lvl) / info.spr
+            var sc: float = (1.0 + 0.035 * lvl) / info.spr * GameData.mount_scale(s.rec.type, m.wid)
             var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
             var split: bool = info.get("split", false)
             var bt: Texture2D = GameData.mount_img(m.wid, style, true) if split else null

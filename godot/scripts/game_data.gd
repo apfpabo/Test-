@@ -49,6 +49,9 @@ func ship_tex(id: String, p: String, layer: String) -> Texture2D:
 	return tex("res://assets/ships/%s/%s_%s.webp" % [id, ship_pal(id, p), layer])
 
 ## Turret style follows the ship's builder (American, British, German, Soviet, Japanese, Italian).
+## Torpedo tubes on a motor torpedo boat are single tubes by the rail, not a destroyer's revolving bank: drawn small.
+func mount_scale(hull_id: String, wid: String) -> float:
+	return 0.42 if hulls[hull_id].klass == "pt" and weapons.has(wid) and weapons[wid].kind == "torp" else 1.0
 func style_of(id: String) -> String:
 	return sprites.get("yard_style", {}).get(hulls[id].yard, "us")
 

@@ -223,7 +223,28 @@ const landOf = k => {
   for (const p of pts) { const d = Math.hypot(wdx(p.x, x), p.y - y); if (d < bd) { bd = d; best = p; } }
   return best.name;
 };
-// distance inland in cells (up to 40), by breadth-first search from the sea
+// The world ocean: the largest body of connected water. Enclosed water (a lake left by the hand edits, a basin behind a
+// carved channel that does not reach the sea) is not the sea: a fleet cannot lie off it.
+const ocean = new Uint8Array(CW * CH); {
+  const comp = new Int32Array(CW * CH).fill(-1); let best = -1, bestN = 0, nc = 0;
+  for (let k0 = 0; k0 < mask.length; k0++) { if (mask[k0] || comp[k0] >= 0) continue;
+    let n = 0; const st = [k0]; comp[k0] = nc;
+    while (st.length) { const k = st.pop(); n++; const i = k % CW, j = (k / CW) | 0;
+      for (const q of [j * CW + (i + 1) % CW, j * CW + (i - 1 + CW) % CW, j > 0 ? k - CW : -1, j < CH - 1 ? k + CW : -1]) if (q >= 0 && !mask[q] && comp[q] < 0) { comp[q] = nc; st.push(q); } }
+    if (n > bestN) { bestN = n; best = nc; } nc++; }
+  let enclosed = 0; for (let k = 0; k < mask.length; k++) if (!mask[k]) { if (comp[k] === best) ocean[k] = 1; else enclosed++; }
+  console.log('ocean: ' + nc + ' bodies of water, ' + enclosed + ' cells enclosed');
+}
+// distance to the open sea in cells (up to 250, about 2,700 km): what a structure's "km inland" reports
+const seaDist = new Uint8Array(CW * CH).fill(255); {
+  let front = []; for (let k = 0; k < mask.length; k++) if (ocean[k]) { seaDist[k] = 0; front.push(k); }
+  for (let d = 1; d <= 250 && front.length; d++) { const next = [];
+    for (const k of front) { const i = k % CW, j = (k / CW) | 0;
+      for (const q of [j * CW + (i + 1) % CW, j * CW + (i - 1 + CW) % CW, j > 0 ? k - CW : -1, j < CH - 1 ? k + CW : -1]) if (q >= 0 && seaDist[q] === 255) { seaDist[q] = d; next.push(q); } }
+    front = next; }
+}
+// distance from any water in cells (up to 40): used to choose where sites go (kept as it was, so the world's sites
+// stay where they are)
 const inland = new Uint8Array(CW * CH).fill(255); {
   let front = []; for (let k = 0; k < mask.length; k++) if (!mask[k]) { inland[k] = 0; front.push(k); }
   for (let d = 1; d <= 40 && front.length; d++) { const next = [];
@@ -243,7 +264,7 @@ const landSites = []; {
     const lat = LAT0 - y / DEG, al = Math.abs(lat), f = field[k];
     const kind = f > 0.38 ? 'mine' : (al > 15 && al < 34) ? 'oil' : (inland[k] < 10 && landSites.length % 3 === 0) ? 'industry' : 'farm';
     let port = -1, pd = 1e9; for (const p of ports) { const d = Math.hypot(wdx(p.x, x), p.y - y); if (d < pd) { pd = d; port = p.id; } }
-    landSites.push({ id: landSites.length, kind, yields: { farm: 'food', mine: 'steel', oil: 'money', industry: 'money' }[kind], x: r2(x), y: r2(y), land: landOf(k), port, coastKm: Math.round(inland[k] * 0.1 * 111) });
+    landSites.push({ id: landSites.length, kind, yields: { farm: 'food', mine: 'steel', oil: 'money', industry: 'money' }[kind], x: r2(x), y: r2(y), land: landOf(k), port, coastKm: Math.round(seaDist[k] * 0.1 * 111) });
   }
 }
 for (const q of landSites) if (q.land === 'unnamed land') console.log('  unnamed land at', (q.x / DEG - 180).toFixed(1), (LAT0 - q.y / DEG).toFixed(1));
@@ -276,7 +297,7 @@ const installations = []; {
   const add = (kind, at, extra = {}) => {
     if (!at) return;
     taken.push([at.x, at.y]);
-    installations.push({ id: installations.length, kind, x: r2(at.x), y: r2(at.y), land: landOf(at.k), port: extra.port ?? nearestPort(at.x, at.y), coastKm: Math.round(inland[at.k] * 0.1 * 111), ...(extra.strait ? { strait: extra.strait } : {}) });
+    installations.push({ id: installations.length, kind, x: r2(at.x), y: r2(at.y), land: landOf(at.k), port: extra.port ?? nearestPort(at.x, at.y), coastKm: Math.round(seaDist[at.k] * 0.1 * 111), ...(extra.strait ? { strait: extra.strait } : {}) });
   };
   for (const p of ports) {
     const fortified = p.fac === 'directorate' || (p.garrison || 1) > 1;   // the Directorate's fortified harbours

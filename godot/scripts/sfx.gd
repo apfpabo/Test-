@@ -202,7 +202,7 @@ func _play(stream: AudioStream, vol: float, rate: float) -> void:
 ## and out rather than starting or stopping dead. Called every frame by the battle and the chart.
 ## Engines and the sea play at this share of their level: the output level went up by half for the guns' sake, and
 ## the owner wanted engines and sea a tenth quieter than they were (1.5 x 0.6 = 0.9).
-const BED := 0.6
+const BED := 0.49
 var _eng_level := 0.0
 func engine(level: float) -> void: _eng_level = clampf(level, 0.0, 1.0)
 

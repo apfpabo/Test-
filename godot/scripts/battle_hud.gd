@@ -228,25 +228,41 @@ func _reticle() -> void:
 
 func show_results() -> void:
     results_shown = true
-    var r: Dictionary = battle.sim.result
-    var panel = PanelContainer.new(); panel.set_anchors_preset(Control.PRESET_CENTER); panel.custom_minimum_size = Vector2(460, 0)
-    panel.mouse_filter = Control.MOUSE_FILTER_STOP; add_child(panel); panel.position = size / 2 - Vector2(230, 150)
-    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 8); panel.add_child(box)
-    var title = Label.new(); title.text = "Victory" if r.victory else ("Disengaged" if r.lost.size() < battle.sim.ships.filter(func(s): return s.side == 0).size() else "Defeat")
-    title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", GOLD); box.add_child(title)
-    var txt = "Battle time %d:%02d\n" % [int(r.time / 60), int(fmod(r.time, 60))]
-    if r.sunk.size(): txt += "Sunk: " + ", ".join(r.sunk) + "\n"
-    if r.struck.size(): txt += "Struck their colours: " + ", ".join(r.struck) + "\n"
-    if r.escaped.size(): txt += "Escaped: " + ", ".join(r.escaped) + "\n"
-    if r.lost.size(): txt += "Lost: " + ", ".join(r.lost) + "\n"
-    var body = Label.new(); body.text = txt; body.autowrap_mode = TextServer.AUTOWRAP_WORD; body.custom_minimum_size = Vector2(440, 0); box.add_child(body)
-    var row = HBoxContainer.new(); box.add_child(row)
+    var sim: BattleSim = battle.sim; var r: Dictionary = sim.result
+    var mine_n: int = sim.ships.filter(func(x): return x.side == 0).size()
+    var kind: String = "victory" if r.victory else ("disengaged" if r.lost.size() < mine_n else "defeat")
+    # the chart's panel: a dimmed scene, a flat panel with a gold rule under a condensed title, sections and buttons
+    var shade := ColorRect.new(); shade.color = Color(0.016, 0.047, 0.063, 0.55); shade.set_anchors_preset(Control.PRESET_FULL_RECT); shade.mouse_filter = Control.MOUSE_FILTER_STOP; shade.theme = UI.theme(); add_child(shade)
+    var center := CenterContainer.new(); center.set_anchors_preset(Control.PRESET_FULL_RECT); shade.add_child(center)
+    var panel := PanelContainer.new(); panel.custom_minimum_size = Vector2(620, 0); center.add_child(panel)
+    var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 8); panel.add_child(box)
+    var title := UI.title({"victory": "Victory", "disengaged": "Action broken off", "defeat": "Defeat"}[kind])
+    if kind == "defeat": title.add_theme_color_override("font_color", UI.RED)
+    box.add_child(title)
+    var lead: String = {"victory": "The enemy is sunk, struck or driven off, and the sea is yours.", "disengaged": "You have broken off the action. The enemy holds the water.", "defeat": "Your squadron is lost."}[kind]
+    box.add_child(UI.label(lead, UI.INK, 15, true))
+    box.add_child(UI.label("%s · the action lasted %d:%02d" % [str(sim.wx.text), int(r.time / 60), int(fmod(r.time, 60))], UI.DIM, 13))
+    var section := func(head: String, names: Array, col: Color) -> void:
+        if names.is_empty(): return
+        box.add_child(UI.label(head, UI.DIM, 12))
+        for nm in names: box.add_child(UI.label(str(nm), col, 14))
+    section.call("ENEMY SUNK", r.sunk, UI.GREEN)
+    section.call("STRUCK THEIR COLOURS", r.struck, UI.GOLD)
+    section.call("ESCAPED", r.escaped, UI.DIM)
+    section.call("YOUR LOSSES", r.lost, UI.RED)
+    # your squadron as it stands
+    var afloat: Array = sim.ships.filter(func(x): return x.side == 0 and x.alive)
+    if not afloat.is_empty():
+        box.add_child(UI.label("YOUR SQUADRON", UI.DIM, 12))
+        for x in afloat:
+            var hp: float = clampf(x.hull / x.max_hull, 0.0, 1.0)
+            var nm := UI.label(x.rec.name, UI.INK, 14); nm.custom_minimum_size.x = 170
+            box.add_child(UI.row([nm, UI.label(x.d.name, UI.DIM, 13), UI.bar(hp, 120.0, UI.GREEN if hp > 0.5 else (UI.GOLD if hp > 0.25 else UI.RED)), UI.label("hull %d%% · magazines %d%%%s" % [int(hp * 100), int(sim.ammo_frac(x) * 100), " · withdrew" if x.escaped else ""], UI.DIM, 13)]))
     if GameData.pending.get("campaign", false): # back to the chart, where prizes, prize money and losses are settled
-        var go = Button.new(); go.text = "Return to the chart"; row.add_child(go)
-        go.pressed.connect(func(): Campaign.apply_battle(battle.sim); Campaign.show_aftermath = true; get_tree().change_scene_to_file("res://scenes/world_map.tscn"))
+        box.add_child(UI.label("Prizes, prize money, casualties and research are settled on the chart.", UI.DIM, 13))
+        box.add_child(UI.row([UI.button("Return to the chart", func(): Campaign.apply_battle(battle.sim); Campaign.show_aftermath = true; get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true)]))
         return
-    var again = Button.new(); again.text = "Fight again"; again.pressed.connect(func(): get_tree().reload_current_scene()); row.add_child(again)
-    var back = Button.new(); back.text = "Back to battle setup"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")); row.add_child(back)
+    box.add_child(UI.row([UI.button("Fight again", func(): get_tree().reload_current_scene(), true), UI.button("Back to battle setup", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn"))]))
 
 ## Damage display for the flagship, in the manner of War Thunder's: the ship's own plan as a grey silhouette where
 ## only damage shows (parts going red as they are hurt, black when destroyed, fires flickering orange, magazines
@@ -346,7 +362,7 @@ func _schematic(f, r: Rect2) -> void:
 var _layers: Array = []
 func _mirror(f, c: Vector2, k: float) -> void:
     if _layers.is_empty():
-        for kind in ["mounts0", "top", "mounts1", "damage"]:
+        for kind in ["top", "mounts0", "mounts1", "damage"]:   # as in the battle view: every mount stands above the superstructure layer
             var l := MirrorLayer.new(); l.kind = kind; l.mouse_filter = Control.MOUSE_FILTER_IGNORE; l.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(l); _layers.append(l)
     for l in _layers:
         if l.kind.begins_with("mounts") and l.pal != f.pal: l.material = GameData.mount_material(f.pal); l.pal = f.pal
@@ -372,7 +388,7 @@ class MirrorLayer extends Control:
                 for m in f.mounts:
                     if (m.lvl > 0) != (kind == "mounts1") or not GameData.sprites.mounts.has(m.wid) or m.w.kind == "ssm" or m.w.kind == "sam": continue
                     if d.kind == "sub" and m.w.kind == "torp": continue
-                    var mi: Dictionary = GameData.sprites.mounts[m.wid]; var sc: float = k / mi.spr
+                    var mi: Dictionary = GameData.sprites.mounts[m.wid]; var sc: float = k / mi.spr * GameData.mount_scale(f.rec.type, m.wid)
                     draw_set_transform(at.call(float(m.slot.x), float(m.slot.y)), m.ta, Vector2(sc, sc))
                     var o = -Vector2(mi.ox, mi.oy) * mi.spr; var code := GameData.mount_code(Vector2(0.55, 0.85).rotated(-m.ta), m.lvl, m.dead)
                     if mi.get("split", false): draw_texture(GameData.mount_img(m.wid, style, true), o, code)

@@ -325,7 +325,21 @@ func coast_point(s: Dictionary) -> Vector2:
 			var nx := w + out * 0.5
 			if Campaign.on_land(nx.x, nx.y): break
 			w = Vector2(Campaign.wrap_x(nx.x), nx.y)
-	if Campaign.on_land(w.x, w.y) or (not Campaign.sight_line(p.sx, p.sy, w.x, w.y) and Campaign.find_path(Vector2(p.sx, p.sy), w).is_empty()): w = Vector2(p.sx, p.sy)
+	var ok := func(q: Vector2) -> bool: return not Campaign.on_land(q.x, q.y) and (Campaign.sight_line(p.sx, p.sy, q.x, q.y) or not Campaign.find_path(Vector2(p.sx, p.sy), q).is_empty())
+	if not ok.call(w):
+		# the nearest water is a lake, or cut off: look outwards in rings for open sea a fleet can reach, as far as the
+		# structure is said to lie inland; only then fall back to its port
+		var found := false; var far: float = float(s.coastKm) / Campaign.KM_PER_UNIT + 12.0; var r := 6.0
+		while r <= far and not found:
+			var n := int(clampf(r * 0.5, 12.0, 48.0)); var tries := 0
+			for i in n:
+				var q := Vector2(Campaign.wrap_x(s.x + cos(i * TAU / n) * r), s.y + sin(i * TAU / n) * r)
+				if q.y < 10.0 or q.y > Campaign.MH - 10.0 or Campaign.on_land(q.x, q.y) or Campaign.land_near(q.x, q.y, 2.0): continue
+				tries += 1
+				if tries > 6: break   # a few candidates a ring: route finding is not free
+				if ok.call(q): w = q; found = true; break
+			r += maxf(4.0, r * 0.15)
+		if not found: w = Vector2(p.sx, p.sy)
 	s.ox = w.x; s.oy = w.y
 	return w
 

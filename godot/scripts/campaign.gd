@@ -304,6 +304,9 @@ func fuel_use() -> float:
 ## The reserve: the last few days of fuel kept back in the bunkers, burned at a third of the normal rate at a
 ## crawl once the bunkers are dry. When it is gone the squadron is dead in the water: call a friendly fleet by
 ## wireless for a tow or a merchant convoy for fuel. It fills again from the bunkers once you have fuel.
+## Food eaten a day: a ton feeds about 400 men (the owner found the old rate, 250 men, too fast).
+const FOOD_PER_MAN := 0.0025
+func food_use() -> float: return (float(G.crew) + Structures.troops()) * FOOD_PER_MAN
 func reserve_cap() -> float: return fuel_use() * 4.0
 ## Fuel oil the squadron can carry: forty days' steaming in the ships' own bunkers, plus the cargo tanks of its oilers.
 func tank_cap() -> int:
@@ -758,7 +761,7 @@ func new_day(moved: bool) -> void:
             if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
         else: G.iceWarned = false
     _storm_day(moved)
-    G.cargo.food -= (G.crew + Structures.troops()) * 0.004
+    G.cargo.food -= food_use()
     if G.cargo.food < 0:
         G.cargo.food = 0; var lost = int(ceil(G.crew * 0.03)); G.crew -= lost
         if lost: toast.emit("No food aboard. %d sailors deserted." % lost)

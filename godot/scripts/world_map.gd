@@ -572,6 +572,10 @@ func _update_top() -> void:
     if not Weather.air_ok(wx, Campaign.has_tech("jets")): wl.append("aircraft cannot fly")
     stats.WEATHER.get_parent().tooltip_text = "Weather and light where you are: %s, local time %02d:00, lookouts see about %d km.\n%s.\nA battle is fought in the weather and light of the place where contact is made." % [wx.text, int(wx.hour), int(wx.vis_km), "; ".join(wl)]
     stats.WEATHER.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
+    var eat := Campaign.food_use()
+    stats.HOLD.get_parent().tooltip_text = "Cargo aboard against the room in your holds (fuel is in the bunkers and does not count).\nFood: %d tons, eaten at %.1f a day by %s men: %s." % [int(G.cargo.food), eat, Campaign.fmt(int(G.crew) + Structures.troops()), ("%d days left" % int(G.cargo.food / eat)) if eat > 0.0 else "nobody to feed"]
+    stats.HOLD.get_parent().mouse_filter = Control.MOUSE_FILTER_PASS
+    stats.HOLD.add_theme_color_override("font_color", UI.RED if eat > 0.0 and G.cargo.food / eat < 5.0 else UI.INK)
     stats.CREW.text = "%d/%d" % [G.crew, Campaign.crew_need()] + ((" · %s troops" % Campaign.fmt(Structures.troops())) if Structures.troops() > 0 else ""); stats.HOLD.text = "%d/%d" % [Campaign.cargo_used(), Campaign.cargo_cap()]; stats.RESEARCH.text = "%d RP" % G.rp
     for pair in speed_btns:
         var on: bool = (pair[0] == 0 and Campaign.paused) or (pair[0] == Campaign.map_speed and not Campaign.paused)
@@ -1488,7 +1492,7 @@ class ThumbMounts extends Control:
             var sl: Dictionary = d.slots[i]; var wid = fit[i] if fit != null else sl.def
             if wid == null or wid == "" or not GameData.sprites.mounts.has(wid): continue
             if d.kind == "sub" and sl.s == "T": continue
-            var mi: Dictionary = GameData.sprites.mounts[wid]; var sc: float = k / mi.spr; var ta: float = sl.arcs[0][0]
+            var mi: Dictionary = GameData.sprites.mounts[wid]; var sc: float = k / mi.spr * GameData.mount_scale(id, wid); var ta: float = sl.arcs[0][0]
             draw_set_transform(c + Vector2(sl.x, sl.y) * k, ta, Vector2(sc, sc))
             var o = -Vector2(mi.ox, mi.oy) * mi.spr; var code := GameData.mount_code(Vector2(0.55, 0.85).rotated(-ta), 0)
             if mi.get("split", false): draw_texture(GameData.mount_img(wid, style, true), o, code)

@@ -27,35 +27,78 @@ static func _box(ci: CanvasItem, c: Vector2, w: float, h: float, a: float) -> Pa
 	var u := Vector2.from_angle(a); var v := Vector2(-u.y, u.x)
 	return PackedVector2Array([c - u * w / 2 - v * h / 2, c + u * w / 2 - v * h / 2, c + u * w / 2 + v * h / 2, c - u * w / 2 + v * h / 2])
 
-## A building: its shadow to the lower right, then the roof, a lit edge and a ridge.
-static func building(ci: CanvasItem, c: Vector2, w: float, h: float, a: float, col: Color, ht: float, ridge := true) -> void:
+## The light comes from the upper left, as on the ships: surfaces that face it are lighter, those turned away darker,
+## and everything throws a shadow to the lower right, soft at its edge.
+const SUN_DIR := Vector2(-0.7071, -0.7071)
+static func _lit(col: Color, normal: Vector2, k := 0.22) -> Color:
+	var d := normal.dot(SUN_DIR)
+	return col.lightened(k * d) if d > 0.0 else col.darkened(-k * 1.1 * d)
+static func _shadow(ci: CanvasItem, c: Vector2, w: float, h: float, a: float, ht: float) -> void:
 	var sh := Vector2(1, 1) * ht
-	_poly(ci, _box(ci, c + sh, w, h, a), SHADOW)
-	_poly(ci, _box(ci, c, w, h, a), col)
+	_poly(ci, _box(ci, c + sh * 1.15, w * 1.06, h * 1.06, a), Color(SHADOW, SHADOW.a * 0.35))   # the soft edge
+	_poly(ci, _box(ci, c + sh * 0.5, w, h, a), Color(SHADOW, SHADOW.a * 0.8)); _poly(ci, _box(ci, c + sh, w, h, a), SHADOW)
+
+## A building: its shadow to the lower right, a dark foot where it meets the ground, then a pitched roof whose two
+## slopes take the light differently (or a flat roof with a parapet), and a few things on it.
+static func building(ci: CanvasItem, c: Vector2, w: float, h: float, a: float, col: Color, ht: float, ridge := true) -> void:
 	var u := Vector2.from_angle(a); var v := Vector2(-u.y, u.x)
-	if ridge: ci.draw_line(c - u * w * 0.48, c + u * w * 0.48, col.lightened(0.18), maxf(h * 0.08, 0.01))
-	_poly(ci, _box(ci, c - v * h * 0.4, w, h * 0.2, a), col.lightened(0.1))
+	_shadow(ci, c, w, h, a, ht)
+	_poly(ci, _box(ci, c, w * 1.04, h * 1.08, a), Color(0.05, 0.05, 0.04, 0.35))   # the foot
+	if ridge:
+		_poly(ci, _box(ci, c - v * h * 0.25, w, h * 0.5, a), _lit(col, -v))        # one slope
+		_poly(ci, _box(ci, c + v * h * 0.25, w, h * 0.5, a), _lit(col, v))         # the other
+		ci.draw_line(c - u * w * 0.5, c + u * w * 0.5, col.lightened(0.22), maxf(h * 0.05, 0.01))   # the ridge
+		for e in [-1.0, 1.0]: ci.draw_line(c - u * w * 0.5 + v * h * 0.5 * e, c + u * w * 0.5 + v * h * 0.5 * e, col.darkened(0.3), maxf(h * 0.03, 0.008))   # eaves
+		for i in maxi(1, int(w / maxf(h, 0.001))):   # purlin lines across the slopes
+			var x := (i + 0.5) / maxf(1.0, float(maxi(1, int(w / maxf(h, 0.001))))) - 0.5
+			ci.draw_line(c + u * w * x - v * h * 0.48, c + u * w * x + v * h * 0.48, Color(0, 0, 0, 0.1), maxf(h * 0.02, 0.006))
+	else:
+		_poly(ci, _box(ci, c, w, h, a), col.darkened(0.12))                         # the parapet
+		_poly(ci, _box(ci, c, w * 0.9, h * 0.86, a), col)                           # the roof inside it
+		_poly(ci, _box(ci, c - v * h * 0.43 - u * 0.0, w, h * 0.07, a), _lit(col, -v, 0.3)); _poly(ci, _box(ci, c + v * h * 0.43, w, h * 0.07, a), _lit(col, v, 0.3))
+		_poly(ci, _box(ci, c - u * w * 0.46, w * 0.05, h, a), _lit(col, -u, 0.3)); _poly(ci, _box(ci, c + u * w * 0.46, w * 0.05, h, a), _lit(col, u, 0.3))
+		_poly(ci, _box(ci, c + u * w * 0.2 + v * h * 0.15, w * 0.16, h * 0.2, a), col.darkened(0.2))   # a hatch or ventilator housing
+		_poly(ci, _box(ci, c + u * w * 0.2 + v * h * 0.15 + Vector2(1, 1) * ht * 0.15, w * 0.16, h * 0.2, a), Color(SHADOW, 0.2))
 
 static func tank(ci: CanvasItem, c: Vector2, r: float) -> void:
-	ci.draw_circle(c + Vector2(r, r) * 0.35, r, SHADOW)
-	ci.draw_circle(c, r, TANK.darkened(0.15)); ci.draw_circle(c - Vector2(r, r) * 0.12, r * 0.82, TANK)
-	ci.draw_arc(c, r * 0.5, 0, TAU, 12, TANK.darkened(0.1), r * 0.06)
+	for k in 3: ci.draw_circle(c + Vector2(r, r) * (0.3 + 0.12 * k), r * (1.0 + 0.04 * k), Color(SHADOW, SHADOW.a * (0.9 - 0.3 * k)))   # shadow, soft at the edge
+	ci.draw_circle(c, r * 1.05, Color(0.05, 0.05, 0.04, 0.35))
+	ci.draw_circle(c, r, TANK.darkened(0.28))                                   # the shaded side of the roof
+	for k in 5: ci.draw_circle(c + SUN_DIR * r * 0.07 * (k + 1), r * (0.92 - 0.14 * k), TANK.darkened(0.2 - 0.05 * k))   # a shallow cone, lighter towards the light
+	ci.draw_circle(c + SUN_DIR * r * 0.42, r * 0.16, TANK.lightened(0.25))        # the sheen
+	ci.draw_arc(c, r * 0.96, 0, TAU, 20, TANK.darkened(0.38), r * 0.05)           # the rim
+	ci.draw_arc(c, r * 0.96, PI * 0.9, PI * 1.6, 8, TANK.lightened(0.15), r * 0.05)   # the rim where the light catches it
+	ci.draw_line(c, c + Vector2(r * 0.96, 0).rotated(0.6), TANK.darkened(0.3), r * 0.03)   # the gauging walkway
+	ci.draw_circle(c, r * 0.07, TANK.darkened(0.35))
 
 static func gun_pit(ci: CanvasItem, c: Vector2, r: float, a: float, barrel: float) -> void:
-	ci.draw_circle(c, r * 1.25, EARTH.darkened(0.15)); ci.draw_circle(c, r, EARTH.lightened(0.05))
-	ci.draw_circle(c + Vector2(r, r) * 0.15, r * 0.55, SHADOW); ci.draw_circle(c, r * 0.5, STEEL.darkened(0.3))
-	ci.draw_line(c, c + Vector2.from_angle(a) * barrel, STEEL.darkened(0.45), r * 0.22)
+	ci.draw_circle(c + Vector2(r, r) * 0.2, r * 1.3, Color(SHADOW, 0.2))
+	ci.draw_circle(c, r * 1.25, EARTH.darkened(0.2))
+	for i in 10:   # the sandbag ring, each bag lit or shaded by where it lies
+		var n := Vector2.from_angle(i * TAU / 10.0)
+		ci.draw_circle(c + n * r * 1.08, r * 0.24, _lit(EARTH.lightened(0.12), n, 0.3))
+	ci.draw_circle(c, r * 0.9, EARTH.darkened(0.32))                            # the pit floor, in shadow
+	ci.draw_circle(c + Vector2(r, r) * 0.12, r * 0.5, SHADOW); ci.draw_circle(c, r * 0.46, STEEL.darkened(0.3)); ci.draw_circle(c + SUN_DIR * r * 0.12, r * 0.22, STEEL.darkened(0.1))
+	var e := c + Vector2.from_angle(a) * barrel
+	ci.draw_line(c + Vector2(1, 1) * r * 0.18, e + Vector2(1, 1) * r * 0.18, Color(SHADOW, 0.3), r * 0.22)
+	ci.draw_line(c, e, STEEL.darkened(0.5), r * 0.24); ci.draw_line(c, e, STEEL.darkened(0.25), r * 0.09)
 
 ## Bomb craters and scorch: more of them the more of the defences are knocked out.
-static func damage(ci: CanvasItem, c: Vector2, R: float, seed: int, dmg: float, ruin: float) -> void:
-	var r := _rng(seed + 991)
+## `face` and `shore` (a share of R towards the sea, or < 0): nothing is cratered beyond the shoreline.
+static func damage(ci: CanvasItem, c: Vector2, R: float, seed: int, dmg: float, ruin: float, face := 0.0, shore := -1.0) -> void:
+	var r := _rng(seed + 991); var u := Vector2.from_angle(face)
 	for i in int(ruin * 10.0):
 		var p := c + Vector2.from_angle(r.randf() * TAU) * r.randf() * R * 0.8
 		var sr := R * r.randf_range(0.08, 0.16)   # scorch: soft-edged, darkest at the middle
+		if shore >= 0.0 and (p - c).dot(u) > R * shore - sr: continue
 		for k in 5: ci.draw_circle(p, sr * (1.0 - k * 0.17), Color(0.12, 0.1, 0.08, 0.09))
 	for i in int(dmg * 22.0):
 		var p := c + Vector2.from_angle(r.randf() * TAU) * r.randf() * R * 0.9; var cr := R * r.randf_range(0.025, 0.05)
-		ci.draw_circle(p, cr * 1.5, Color(0.55, 0.5, 0.42, 0.5)); ci.draw_circle(p, cr, Color(0.16, 0.14, 0.11, 0.9))
+		if shore >= 0.0 and (p - c).dot(u) > R * shore - cr * 1.6: continue
+		ci.draw_circle(p, cr * 1.6, Color(0.55, 0.5, 0.42, 0.5))                                  # the thrown earth
+		ci.draw_circle(p, cr, Color(0.16, 0.14, 0.11, 0.9))                                      # the hole
+		ci.draw_arc(p, cr * 0.98, PI * 0.1, PI * 0.9, 8, Color(0.75, 0.7, 0.6, 0.55), cr * 0.28)    # its far lip, lit
+		ci.draw_arc(p, cr * 0.8, PI * 1.1, PI * 1.9, 8, Color(0.03, 0.03, 0.02, 0.7), cr * 0.4)      # its near wall, in shadow
 
 ## The whole installation. ground: draw the bare ground pad first (the raid view has its own terrain).
 static func draw(ci: CanvasItem, kind: String, c: Vector2, R: float, seed: int, face: float, dmg := 0.0, ruin := 0.0, ground := true, t := 0.0) -> void:
@@ -73,7 +116,7 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, R: float, seed: int, 
 		"mine": _mine(ci, c, R, r)
 		"farm": _farm(ci, c, R, r)
 		"industry": _industry(ci, c, R, r)
-	damage(ci, c, R, seed, dmg, ruin)
+	damage(ci, c, R, seed, dmg, ruin, face, {"battery": 0.5, "radar": 0.5, "navalbase": 0.6}.get(kind, -1.0))
 
 static func _airfield(ci: CanvasItem, c: Vector2, R: float, r: RandomNumberGenerator, face: float) -> void:
 	var a := r.randf() * PI

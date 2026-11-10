@@ -285,6 +285,17 @@ func _key(k: int) -> void:
         KEY_2: sim.order = "escort"; sim.say("All ships: form on the flagship.", 1.5)
         KEY_3: sim.order = "retreat"; sim.say("All ships withdraw! Open the range and break contact.", 2.5)
         KEY_4: sim.order = "line"; sim.say("Form line ahead: follow in the flagship's wake.", 2.0)
+        KEY_6: sim.order = "abreast"; sim.say("Form line abreast on the flagship.", 2.0)
+        KEY_7: sim.order = "screen"; sim.say("Form a screen: light ships ahead, the rest astern of the flagship.", 2.0)
+        KEY_8:
+            var n := 0
+            for x in sim.ships: if x.side == 0 and x != sim.flag and sim.make_smoke(x, true): n += 1
+            sim.say("Squadron: make smoke!" if n > 0 else "No ship of the squadron has smoke to make.", 2.0)
+        KEY_K:
+            if s == null or not sim.can_smoke(s): sim.say("This ship cannot make smoke.", 1.2)
+            elif s.smoke_on: sim.make_smoke(s, false); sim.say("Stop making smoke.", 1.2)
+            elif sim.make_smoke(s, true): sim.say("Make smoke! (%d s in the generators)" % int(s.smoke_left), 1.5)
+            else: sim.say("The smoke generators are recharging.", 1.2)
         KEY_5: sim.hold_fire = not sim.hold_fire; sim.say("Squadron: hold your fire." if sim.hold_fire else "Squadron: open fire.", 2.0)
         KEY_P: paused = not paused
         KEY_ESCAPE: hud.toggle_menu()
@@ -351,10 +362,10 @@ class ShipView extends Node2D:
         if not s.alive: k = minf(1.0, s.sink / 4.0); alpha = 1.0 - k
         elif sm > 0: alpha = 1.0 - 0.65 * sm
         visible = alpha > 0.02 and not s.escaped and (s.side == 0 or not s.sub or s.dive < 0.3 or battle.sim.detected_by(s, 0) or not s.alive)
-        if visible and s.side == 1 and s.alive and battle.sim.limited() and not battle.sim.visible_to(s, 0): visible = false   # lost in the dark or the murk
+        if visible and s.side == 1 and s.alive and (battle.sim.limited() or not battle.sim.screens.is_empty()) and not battle.sim.visible_to(s, 0): visible = false   # lost in the dark, the murk or behind smoke
         # held by radar alone: an echo on the plot, bright as the beam passes her and fading until it comes round again
         if s.side == 1 and s.alive and s.radar_only: alpha *= clampf(1.0 - s.paint_t / BattleSim.RADAR_PERIOD, 0.0, 1.0)
-        position = s.pos; rotation = s.a + k * 0.25; scale = Vector2.ONE * (1.0 - 0.2 * k); modulate.a = alpha
+        position = s.pos; rotation = s.a + k * 0.25; scale = Vector2(1.0, 1.0 - 0.13 * absf(s.list)) * (1.0 - 0.2 * k); modulate.a = alpha   # a listing ship shows less of her beam
         var sun_local = BattleSim.SUN.rotated(-s.a)
         var soot = clampf((1.0 - s.hull / s.max_hull - 0.25) * 1.4, 0.0, 1.0)
         for m in [lit_base, lit_top]: m.set_shader_parameter("sun_local", sun_local); m.set_shader_parameter("soot", soot)
@@ -494,7 +505,7 @@ class Drawer extends Node2D:
             "bursts": _bursts()
             "wash": _wash()
             "shadows": _shadows()
-            "above": _parts(1)
+            "above": _parts(1); _screens()
             "light": _parts(2)
             "overlay": _overlay()
 
@@ -513,7 +524,7 @@ class Drawer extends Node2D:
         for s in sim.ships:
             if s.trail.size() < 2: continue
             if s.sub and s.side == 1 and not sim.detected_by(s, 0): continue
-            if s.side == 1 and sim.limited() and (s.radar_only or not sim.visible_to(s, 0)): continue   # radar shows a ship, not her wake
+            if s.side == 1 and (sim.limited() or not sim.screens.is_empty()) and (s.radar_only or not sim.visible_to(s, 0)): continue   # radar shows a ship, not her wake
             # nothing of this wake on the screen: leave it (the trail runs some hundreds of metres astern)
             if not view.grow(900.0 + s.d.L).has_point(s.pos) and not view.grow(200.0).has_point(s.trail[0].p): continue
             var pts: Array = []
@@ -652,6 +663,20 @@ class Drawer extends Node2D:
             var deep: bool = q.t == P.DC; var R: float = maxf(q.size * (1.5 if deep else 1.0), 2.0 * mn)
             draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0137 + q.pos.y * 0.0071, 1.0), 1.0 if deep else 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
 
+    ## Smoke screens: each cell of BattleSim.screens as a bank of pale smoke over the ships (it hides what is in it).
+    func _screens() -> void:
+        var sim: BattleSim = battle.sim
+        if sim.screens.is_empty(): return
+        var vr: Rect2 = battle.view_rect().grow(400)
+        for c in sim.screens:
+            if not vr.has_point(c.p): continue
+            var tex: Texture2D = GameData.fx_tex("cloud%d" % int(c.v)); var t: float = c.t; var r: float = float(c.r) * 1.35
+            var a: float = 0.78 * minf(1.0, t / 3.0) * clampf((BattleSim.SMOKE_LIFE - t) / 18.0, 0.0, 1.0)
+            var ang: float = float(c.v) * 1.3 + t * 0.03
+            _rpuff(tex, c.p, r, ang, Color(0.5, 0.52, 0.53, a))                      # grey, below what the bloom pass picks up
+            _rpuff(tex, c.p - BattleSim.SUN * r * 0.12, r * 0.72, ang + 1.1, Color(0.66, 0.68, 0.68, a * 0.5))
+            _rpuff(tex, c.p + BattleSim.SUN * r * 0.16, r * 0.8, ang + 2.3, Color(0.3, 0.32, 0.34, a * 0.35))   # its shaded side
+
     ## What a shell leaves on the sea: a foam patch and a spreading trough, one quad each (shaders/wash.gdshader).
     func _wash() -> void:
         var sim: BattleSim = battle.sim
@@ -751,10 +776,11 @@ class Drawer extends Node2D:
                 if q.t in [P.OIL, P.SWAKE, P.TWAKE, P.BLAST]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)
             elif layer == 1:
                 match q.t:
-                    P.SMOKE, P.GUNSMOKE, P.FUNNEL:
+                    P.SMOKE, P.GUNSMOKE, P.FUNNEL, P.STEAM:
                         # shaded smoke: a body that rolls as it rises, lit on the sun's side; fresh smoke over a fire glows
                         var base: Color; var hi: Color; var a: float; var grow: float
                         if q.t == P.SMOKE: base = Color(0.2, 0.2, 0.21); hi = Color(0.5, 0.5, 0.5); a = 0.55 * (1 - k) * minf(1.0, q.life * 4); grow = 1 + k * 2.4
+                        elif q.t == P.STEAM: base = Color(0.82, 0.84, 0.85); hi = Color(1, 1, 1); a = 0.5 * minf(1.0, q.life * 5) * pow(1 - k, 1.4); grow = 1 + sqrt(k) * 2.6
                         elif q.t == P.GUNSMOKE: base = Color(0.24, 0.21, 0.17); hi = Color(0.55, 0.5, 0.42); a = 0.72 * minf(1.0, q.life * 6) * pow(1 - k, 1.3); grow = 1 + sqrt(k) * 3.4
                         else: base = Color(0.3, 0.3, 0.32); hi = Color(0.62, 0.62, 0.64); a = 0.24 * (1 - k); grow = 1 + k * 2.2
                         var warm := clampf(1.0 - q.life / 1.4, 0.0, 1.0) if q.t == P.SMOKE else 0.0

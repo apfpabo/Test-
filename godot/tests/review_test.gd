@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply()
-	ok(sections == 8, "every section ran to its end (%d of 8)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting()
+	ok(sections == 9, "every section ran to its end (%d of 9)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -592,4 +592,56 @@ func _supply() -> void:
 	ok(Campaign.can_add_ship("pt_elco") != "", "a twenty-first ship is refused whatever the supply")
 	G.commission = {"fac": "concord", "since": G.day, "marque": ""}
 	ok(Campaign.supply_cap() == 24, "a navy you serve lends its dockyards (limit %d)" % Campaign.supply_cap())
+	sections += 1
+
+## Smoke screens, damage you can see in how a ship moves, and formations that hold station.
+func _fighting() -> void:
+	# smoke: no eye sees through it, radar does, and it blows away
+	var sim := _sim(["dd_fletcher", "dd_fletcher"], ["dd_narvik"])
+	var a = sim.ships[0]; var b = sim.ships[1]; var e = sim.ships[2]; sim.flag = null
+	a.pos = Vector2(10000, 10000); a.a = 0.0; a.v = 12.0; b.pos = Vector2(9000, 10400); e.pos = Vector2(10600, 7000); e.a = 0.0
+	for x in sim.ships: x.tech = []
+	ok(sim.visible_to(e, 0) and sim.visible_to(a, 1), "on a clear day each side sees the other")
+	ok(sim.make_smoke(a, true), "a destroyer can make smoke")
+	for i in 1500: a.throttle = 4; a.rudder = 0; a.a = 0.0; b.throttle = 0; e.throttle = 0; e.v = 0.0; b.v = 0.0; sim._smoke_tick(0.02); a.pos += Vector2(12.0 * 0.02, 0)
+	var wall: int = sim.screens.size()
+	ok(wall >= 6, "thirty seconds of it leaves a wall of smoke astern (%d cells)" % wall)
+	b.pos = a.pos + Vector2(-200, 600); e.pos = a.pos + Vector2(-200, -2500)   # the second destroyer behind the wall, the enemy beyond it
+	ok(sim.smoke_blocks(b.pos, e.pos) and not sim.visible_to(b, 1), "a ship behind the smoke cannot be seen from the far side")
+	ok(not sim.smoke_blocks(e.pos, e.pos + Vector2(3000, 0)), "and smoke does not hide what it does not lie between")
+	e.tech = ["radar"]
+	ok(sim.has_radar(e) and sim.visible_to(b, 1), "radar looks through smoke")
+	e.tech = []
+	a.smoke_on = false
+	for i in int((BattleSim.SMOKE_LIFE + 2.0) / 0.1): sim._smoke_tick(0.1)
+	ok(sim.screens.is_empty() and sim.visible_to(b, 1), "a little over a minute later the smoke is gone and she is in sight again")
+	var charge: float = a.smoke_left
+	ok(charge < BattleSim.SMOKE_CHARGE, "the generators are run down by it and recharge (%d s of %d)" % [int(charge), int(BattleSim.SMOKE_CHARGE)])
+	# damage shows in how she moves
+	var turn := func(steer: float, list: float) -> float:
+		var s2 := _sim(["ca_baltimore"], ["dd_narvik"]); var c = s2.ships[0]; s2.flag = c; s2.ships[1].pos = Vector2(1000, 1000)
+		c.pos = Vector2(12000, 12000); c.a = 0.0; c.v = 10.0; c.steer = steer; c.list = list
+		for i in 3000: c.throttle = 3; s2.player_rudder = 1.0; c.rudder = 1.0; c.steer = steer; c.list = list; s2.step(0.01)
+		return c.a
+	var sound: float = turn.call(1.0, 0.0); var worn: float = turn.call(0.4, 0.0)
+	ok(worn < sound * 0.6, "a ship with her steering gear shot about turns far less in a minute (%.1f rad against %.1f)" % [worn, sound])
+	var s3 := _sim(["ca_baltimore"], ["dd_narvik"]); var c3 = s3.ships[0]; s3.flag = c3; s3.ships[1].pos = Vector2(1000, 1000)
+	c3.pos = Vector2(12000, 12000); c3.a = 0.0; c3.v = 10.0
+	var v0: float = 0.0
+	for i in 6000: c3.throttle = 4; c3.rudder = 0.0; s3.player_rudder = 0.0; s3.step(0.01)
+	v0 = c3.v; var a0: float = c3.a
+	for i in 6000: c3.throttle = 4; c3.rudder = 0.0; s3.player_rudder = 0.0; c3.list = 0.8; s3.step(0.01)
+	ok(c3.v < v0 * 0.9 and absf(c3.a - a0) > 0.15, "a listing ship is slower and pulls to her low side with the helm amidships (%.1f against %.1f m/s, %.2f rad off her course)" % [c3.v, v0, c3.a - a0])
+	# formations hold station
+	for ord in ["abreast", "screen", "escort"]:
+		var s4 := _sim(["ca_baltimore", "dd_fletcher", "dd_fletcher", "cl_cleveland", "dd_fletcher"], ["fr_liberty"])
+		var fl = s4.ships[0]; s4.flag = fl; s4.order = ord; s4.hold_fire = true
+		for x in s4.ships: if x.side == 1: x.pos = Vector2(1500, 1500)   # an unarmed merchant far off keeps the action open
+		fl.pos = Vector2(12000, 12000); fl.a = 0.0; fl.v = 9.0
+		for i in range(1, 5): s4.ships[i].pos = fl.pos + Vector2(-600 - i * 300, (i - 2.5) * 400); s4.ships[i].a = 0.0; s4.ships[i].v = 9.0
+		var worst := 0.0
+		for i in 30000:   # five minutes: straight, a turn to starboard, straight again
+			fl.throttle = 2; s4.player_rudder = 0.6 if (i > 12000 and i < 15000) else 0.0; s4.finished = false; s4.step(0.01)   # (the merchant runs off the chart: the action is kept open)
+			if i > 24000: for k in range(1, 5): worst = maxf(worst, s4.ships[k].pos.distance_to(fl.pos + s4.station(s4.ships[k]).rotated(fl.a)))
+		ok(worst < 220.0, "%s: after a turn every ship is back on her station and holds it (worst %d m off)" % [ord, int(worst)])
 	sections += 1

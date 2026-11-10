@@ -15,7 +15,7 @@ const WIND := Vector2(7.0, 3.5)  # smoke drift, metres per visual second
 const SUN := Vector2(0.55, 0.85) # direction shadows fall on the chart
 
 enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL,
-    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH }   # the modern effects (Settings.fx_modern)
+    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH, STEAM }   # the modern effects (Settings.fx_modern)
 
 class Mount:
     var slot: Dictionary
@@ -96,6 +96,12 @@ class CShip:
     var eng = 1.0          # machinery: scales top speed
     var eng_out = 0.0      # engines stopped for this long
     var jam = 0.0          # rudder jammed for this long
+    var steer = 1.0        # steering gear: scales how hard she can turn (hits right aft wear it down)
+    var list = 0.0         # -1 to 1: flooded to port or starboard; she is slower, turns worse and pulls to her low side
+    var smoke_on = false   # laying a smoke screen
+    var smoke_left = 60.0  # seconds of smoke in the generators
+    var smoke_d = 0.0
+    var v_cmd = -1.0       # a speed to hold (m/s) when keeping station, or -1 for the engine telegraph
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
@@ -447,9 +453,10 @@ func sonar_range(o: CShip) -> float:
 ## Whether the lookouts of a side have a surface ship in sight by eye alone (no radar): within sight in this weather
 ## and light of one of its ships; twice as far if she has just fired or is burning.
 func eye_sees(s: CShip, side: int) -> bool:
-    if not limited(): return true
+    var lim := limited()
+    if not lim and screens.is_empty(): return true
     var r: float = float(wx.vis) * (2.0 if (s.lit_t < 6.0 or not s.fires.is_empty() or s.mag_fire > 0) else 1.0)
-    for o in ships: if o.side == side and active(o) and o.pos.distance_squared_to(s.pos) < r * r: return true
+    for o in ships: if o.side == side and active(o) and (not lim or o.pos.distance_squared_to(s.pos) < r * r) and not smoke_blocks(o.pos, s.pos): return true
     return false
 ## Your radar plot, each step: an enemy beyond the eye's reach but inside a radar's is a contact on the plot, not a
 ## ship in sight. A rotating set paints her as its beam passes her bearing and the echo fades until the next turn; a
@@ -473,16 +480,55 @@ func sight(o: CShip) -> float:
     if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 if o.tech.has("datalink") else 1.0))
     return v
 func limited() -> bool: return float(wx.vis) > 0.0
+# ------------------------------------------------------------------ smoke screens
+## A destroyer or cruiser can lay smoke from her generators and funnels: a wall of it astern of her that hangs and
+## drifts for over a minute. Nobody sees through it by eye, from either side (a ship inside it is blind too); radar
+## does. `screens` holds the smoke as overlapping round cells.
+const SMOKE_LIFE := 80.0
+const SMOKE_CHARGE := 60.0
+var screens: Array = []     # {p, r, t}
+var scr_box := Rect2()
+func can_smoke(s: CShip) -> bool: return active(s) and not s.sub and s.d.kind != "merchant" and s.d.kind != "carrier"
+func make_smoke(s: CShip, on: bool) -> bool:
+    if on and (not can_smoke(s) or s.smoke_left < 8.0): return false
+    s.smoke_on = on; return true
+func _smoke_tick(dt: float) -> void:
+    for s in ships:
+        if not s.smoke_on: s.smoke_left = minf(SMOKE_CHARGE, s.smoke_left + dt * 0.3); continue
+        s.smoke_left -= dt
+        if s.smoke_left <= 0.0 or not can_smoke(s): s.smoke_on = false; if s.side == 0 and s.alive: say("The %s's smoke is spent." % s.rec.name, 1.5)
+        s.smoke_d += maxf(s.v, 2.0) * dt
+        if s.smoke_d >= 45.0: s.smoke_d = 0.0; screens.append({"p": s.pos - Vector2.from_angle(s.a) * s.d.L * 0.45, "r": 60.0, "t": 0.0, "v": randi() % 4})
+    if screens.is_empty(): return
+    var lo := Vector2(INF, INF); var hi := Vector2(-INF, -INF); var i := 0
+    while i < screens.size():
+        var c: Dictionary = screens[i]; c.t += dt; c.r = minf(200.0, 60.0 + c.t * 7.0); c.p += WIND * 0.25 * dt
+        if c.t > SMOKE_LIFE: screens.remove_at(i); continue
+        lo = lo.min(c.p - Vector2(c.r, c.r)); hi = hi.max(c.p + Vector2(c.r, c.r)); i += 1
+    scr_box = Rect2(lo, hi - lo) if not screens.is_empty() else Rect2()
+## Is there smoke between two points?
+func smoke_blocks(a: Vector2, b: Vector2) -> bool:
+    if screens.is_empty(): return false
+    if maxf(a.x, b.x) < scr_box.position.x or minf(a.x, b.x) > scr_box.end.x or maxf(a.y, b.y) < scr_box.position.y or minf(a.y, b.y) > scr_box.end.y: return false
+    var ab := b - a; var l2 := ab.length_squared()
+    for c in screens:
+        var r: float = float(c.r) * 0.85 * clampf((SMOKE_LIFE - float(c.t)) / 15.0, 0.0, 1.0)   # it thins in its last seconds
+        var t := clampf((c.p - a).dot(ab) / maxf(l2, 1.0), 0.0, 1.0)
+        if (a + ab * t).distance_squared_to(c.p) < r * r: return true
+    return false
 func visible_to(s: CShip, side: int) -> bool:
     if s.side == side: return true
     if s.sub and not detected_by(s, side): return false
-    if not limited(): return true
+    var lim := limited()
+    if not lim and screens.is_empty(): return true
     var show: float = 2.0 if (s.lit_t < 6.0 or not s.fires.is_empty() or s.mag_fire > 0) else 1.0
+    var eye: float = float(wx.vis) * show
     for o in ships:
         if o.side != side or not active(o): continue
-        var r: float = float(wx.vis) * show
-        if has_radar(o) and not submerged(o): r = maxf(r, sight(o))
-        if o.pos.distance_squared_to(s.pos) < r * r: return true
+        var d2: float = o.pos.distance_squared_to(s.pos)
+        if has_radar(o) and not submerged(o) and d2 < sight(o) * sight(o): return true   # radar looks through the dark and through smoke
+        if lim and d2 >= eye * eye: continue
+        if not smoke_blocks(o.pos, s.pos): return true
     return false
 ## The nearest enemy whether seen or not: where a side that has lost sight of the enemy steers to find him again.
 func nearest_any(from: Vector2, side: int) -> CShip:
@@ -990,7 +1036,13 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
         if s.eng_out <= 0 and (s.eng < 0.15 or randf() < 0.035 * pen * heavy):
             s.eng_out = 30.0 + randf() * 60.0; _log("engines stopped")
             say(("Engine room hit! The %s has lost power." if ours else "The %s loses way, her engines stopped.") % nm, 2.5)
-    # steering gear right aft
+    # steering gear right aft: every hit there wears it; a bad one jams the rudder
+    if l.x < -L * 0.3 and pen > 0.25: s.steer = maxf(0.35, s.steer - 0.18 * pen * heavy)
+    # flooding: a torpedo, or a heavy hit in a hull already half gone, lets the sea in on that side and she lists
+    if kind == "torp" or (s.hull / s.max_hull < 0.55 and pen > 0.4 and randf() < 0.5):
+        var side_: float = signf(l.y) if absf(l.y) > 0.5 else (1.0 if randf() < 0.5 else -1.0)
+        var was: float = absf(s.list); s.list = clampf(s.list + side_ * (0.3 if kind == "torp" else 0.07 * heavy), -1.0, 1.0)
+        if was < 0.35 and absf(s.list) >= 0.35: say(("The %s is listing to %s: she is slow to answer her helm." if ours else "The %s takes a list to %s.") % [nm, "starboard" if s.list > 0 else "port"], 2.5); _log("listing")
     if l.x < -L * 0.38 and s.jam <= 0 and randf() < (0.6 if kind == "torp" else 0.3 * pen):
         _log("rudder jammed"); s.jam = 20.0 + randf() * 50.0; s.jam_r = clampf(s.rud + (randf() - 0.5) * 0.6, -1.0, 1.0)
         if ours: say("Steering gear hit! The %s's rudder is jammed." % nm, 2.5)
@@ -1028,6 +1080,8 @@ func systems_tick(s: CShip, dt: float) -> void:
     if s.eng_out > 0: s.eng_out = maxf(0.0, s.eng_out - dt * dc); if s.eng_out == 0 and s.side == 0: say("The %s has steam again." % s.rec.name, 2.0)
     if s.eng < 0.8: s.eng = minf(0.8, s.eng + dt * 0.002 * dc)
     if s.jam > 0: s.jam = maxf(0.0, s.jam - dt * dc)
+    if s.steer < 0.85: s.steer = minf(0.85, s.steer + dt * 0.002 * dc)
+    if s.list != 0.0: s.list = move_toward(s.list, 0.0, dt * 0.0025 * dc)   # counter-flooding brings her upright, slowly
     if s.fc < 0.85: s.fc = minf(0.85, s.fc + dt * 0.002 * dc)
 
 ## A hit leaves a scorch (and a hole for shells) in ship space; heavier hits may start a fire or knock out a mount.
@@ -1092,8 +1146,43 @@ func yaw_lag(s: CShip) -> float: return 3.0 + s.d.L / 45.0
 func helm(s: CShip, desired: float) -> float:
     return clampf((ang_diff(desired, s.a) - s.w * (yaw_lag(s) + 4.0)) * 4.0, -1.0, 1.0)
 
+## Where a ship of yours belongs in the standing formation, in the flagship's frame (x ahead, y to starboard).
+func station(s: CShip) -> Vector2:
+    var mine: Array = []
+    for x in ships: if x.side == 0 and x != flag and active(x): mine.append(x)
+    var idx: int = maxi(0, mine.find(s)); var wing: float = 1.0 if idx % 2 else -1.0; var rank: float = floor(idx / 2.0)
+    match order:
+        "abreast": return Vector2(0.0, wing * 500.0 * (rank + 1.0))
+        "screen":
+            # the light ships fan out ahead in an arc; the heavier ones follow the flagship in column
+            var light: Array = mine.filter(func(x): return x.d.L < 150.0 and x.d.kind != "carrier" and x.d.kind != "merchant")
+            var li: int = light.find(s)
+            if li >= 0:
+                var ang: float = (1.0 if li % 2 else -1.0) * (0.35 + 0.5 * floor(li / 2.0)) if light.size() > 1 else 0.0
+                return Vector2.from_angle(ang) * 1400.0
+            var heavy_: Array = mine.filter(func(x): return not light.has(x))
+            return Vector2(-(heavy_.find(s) + 1) * 450.0, 0.0)
+    return Vector2(-300.0, wing * (600.0 + 450.0 * rank))
+## Steer and steam to hold a station on the flagship: far off, run for where the station will be; close, take her
+## course and speed, easing ahead or astern and in or out to stay on it.
+func keep_station(s: CShip, off: Vector2) -> void:
+    var fd := Vector2.from_angle(flag.a); var g: Vector2 = flag.pos + off.rotated(flag.a); var dd := s.pos.distance_to(g)
+    var along: float = (g - s.pos).dot(fd); var cross: float = (g - s.pos).dot(Vector2(-fd.y, fd.x))   # ahead of us, and to starboard of us
+    if dd > 350.0:
+        if along < -100.0 and absf(cross) < 800.0 and flag.v > 2.0:   # the station is astern of us: ease down and let it come up, edging across, rather than circling back
+            s.rudder = helm(s, steer_avoid(s, flag.a + clampf(cross / 400.0, -0.5, 0.5))); s.throttle = 4; s.v_cmd = maxf(2.0, flag.v * 0.45); return
+        var aim: Vector2 = g + fd * flag.v * clampf(dd / maxf(s.v, 8.0), 0.0, 45.0)
+        s.rudder = helm(s, steer_avoid(s, (aim - s.pos).angle())); s.throttle = 4; return
+    s.rudder = helm(s, steer_avoid(s, flag.a + clampf(cross / 260.0, -0.55, 0.55) * (1.0 if flag.v > 1.0 or dd > 60.0 else 0.0)))
+    s.throttle = 4; s.v_cmd = maxf(0.0, flag.v + clampf(along * 0.035, -5.0, 5.0))
+    if flag.v < 1.0 and dd < 120.0: s.v_cmd = 0.0   # she has stopped and we are on station: stop too
+
 func ai_ship(s: CShip, dt: float) -> void:
     if s.struck: s.throttle = 0; s.rudder = 0; return
+    s.v_cmd = -1.0
+    # smoke: a ship that is running, or badly hurt with the enemy in sight, covers herself (and those behind her)
+    if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else order == "retreat") or s.hull / s.max_hull < 0.4):
+        if nearest_enemy(s.pos, s.side, 10000.0) != null: make_smoke(s, true)
     if s.sub: s.want_dive = nearest_enemy(s.pos, s.side, 8000.0) != null
     var retreat = (order == "retreat") if s.side == 0 else s.flee
     if retreat:
@@ -1127,17 +1216,13 @@ func ai_ship(s: CShip, dt: float) -> void:
             if halted: s.throttle = 0 if (dd < 250.0 or s.pos.distance_to(lead.pos) < gap + 200.0) else (3 if dd > 900.0 else 1)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
             else: s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
             return
-    if s.side == 0 and order == "escort" and flag != null and flag != s:
-        var close = nearest_enemy(s.pos, s.side, 3000.0)
+    if s.side == 0 and flag != null and flag != s and (order == "escort" or order == "abreast" or order == "screen"):
+        # formations: every ship has a station on the flagship and keeps it, turning and changing speed with her.
+        # "Form on flag" breaks off to fight what comes within 3 km; line abreast and the screen hold station and
+        # fire as their guns bear.
+        var close = nearest_enemy(s.pos, s.side, 3000.0) if order == "escort" else null
         if close == null:
-            var mine: Array = []
-            for x in ships: if x.side == 0 and x != flag: mine.append(x)
-            var idx = mine.find(s); var off = (1 if idx % 2 else -1) * (600.0 + 450.0 * floor(idx / 2.0))
-            var g = flag.pos + Vector2.from_angle(flag.a + PI / 2) * off - Vector2.from_angle(flag.a) * 300.0
-            var dd = s.pos.distance_to(g)
-            s.rudder = helm(s, steer_avoid(s, (g - s.pos).angle() if dd > 250 else flag.a))
-            s.throttle = 4 if dd > 900 else (maxi(2, flag.throttle) if dd > 250 else flag.throttle)
-            return
+            keep_station(s, station(s)); return
         tg = close
     if tg == null:
         var lost: CShip = nearest_any(s.pos, s.side) if limited() else null   # out of sight: close the enemy's last reported position
@@ -1225,7 +1310,7 @@ func step(dtv: float) -> void:
     t += dt; vt += dtv
     small_craft = [false, false]
     for s in ships: if active(s) and (s.d.kind == "pt" or s.d.kind == "sub"): small_craft[s.side] = true
-    _radar_plot(dt)
+    _radar_plot(dt); _smoke_tick(dt)
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue
@@ -1244,7 +1329,9 @@ func step(dtv: float) -> void:
         var sm = submerged(s)
         # engines: way builds slowly in a big ship and bleeds off slower still; a hard turn scrubs off up to a third
         var top: float = (s.d.get("subKn", s.d.kn * 0.4) if sm else s.d.kn) * KN * speed_mult(s)
+        top *= 1.0 - 0.25 * absf(s.list)
         var want: float = top * TELEGRAPH[s.throttle] * (1 - 0.3 * absf(s.rud) * minf(1.0, s.v / maxf(1.0, top)))
+        if s.v_cmd >= 0.0 and s != flag: want = minf(want, s.v_cmd)
         var t_acc: float = 40.0 + s.d.L * 0.6
         if top <= 0.0: s.v = maxf(0.0, s.v - s.d.kn * KN / (t_acc * 1.4) * dt)   # engines stopped: she loses way
         else: s.v += clampf(want - s.v, -top / (t_acc * 1.4) * dt, top / t_acc * dt)
@@ -1252,7 +1339,8 @@ func step(dtv: float) -> void:
         if s.jam > 0: s.rud = s.jam_r   # steering gear out: the rudder stays where it jammed
         else: s.rud += clampf(s.rudder - s.rud, -dt / 10.0, dt / 10.0)
         systems_tick(s, dt)
-        var w_target: float = s.rud * s.v / (s.d.td / 2) * (1 + 0.1 * s.sk.helm) * (0.8 if sm else 1.0)
+        # a listing ship pulls to her low side; worn steering gear and a list both cut how hard she can turn
+        var w_target: float = (s.rud + 0.22 * s.list) * s.v / (s.d.td / 2) * (1 + 0.1 * s.sk.helm) * (0.8 if sm else 1.0) * s.steer * (1.0 - 0.3 * absf(s.list))
         s.w += (w_target - s.w) * minf(1.0, dt / yaw_lag(s))
         s.a += s.w * dt
         s.pos += Vector2.from_angle(s.a) * s.v * dt
@@ -1291,7 +1379,13 @@ func step(dtv: float) -> void:
             s.smoke_t -= dtv
             if s.smoke_t <= 0:
                 s.smoke_t = 0.2
-                for f in s.d.p.fun: part(P.FUNNEL, world_pt(s, f[0], f[3] if f.size() > 3 else 0.0), 5.0, 2.0 + s.d.B * 0.14, -Vector2.from_angle(s.a) * 3.0, true)
+                for f in s.d.p.fun:
+                    var fp: Vector2 = world_pt(s, f[0], f[3] if f.size() > 3 else 0.0)
+                    if s.eng_out > 0:   # engines stopped: no draught in the funnels, steam blowing off instead
+                        if modern and randf() < 0.5: part(P.STEAM, fp + rdir() * s.d.B * 0.2, 4.0 + randf() * 2.0, 2.5 + s.d.B * 0.2, rdir() * 3.0, true)
+                    else:
+                        part(P.FUNNEL, fp, 5.0, 2.0 + s.d.B * 0.14, -Vector2.from_angle(s.a) * 3.0, true)
+                        if s.eng < 0.75 and randf() < (0.9 - s.eng): part(P.SMOKE, fp, 6.0 + randf() * 3.0, 2.5 + s.d.B * 0.2, -Vector2.from_angle(s.a) * 3.0, true)   # damaged boilers smoke black
         # fires burn where they started, move with the ship and pour smoke downwind until damage control puts them out
         if s.hull / s.max_hull < 0.4 and s.fires.size() < 3 and randf() < dt * 0.01: mark_hit(s, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.4, 0).rotated(s.a), 2.0, false)
         for i in range(s.fires.size() - 1, -1, -1):

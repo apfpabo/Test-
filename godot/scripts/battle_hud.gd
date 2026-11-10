@@ -92,10 +92,19 @@ func _draw() -> void:
         _bar(sp + Vector2(-w / 2, -off), w, 4, s.hull / s.max_hull, RED if s.side else GREEN)
         _bar(sp + Vector2(-w / 2, -off + 5), w, 2, s.armor / maxf(1.0, s.d.armor), Color(0.62, 0.67, 0.67))
         var tag = " · STRUCK" if s.struck else (" · fleeing" if s.flee else (" · submerged" if sim.submerged(s) else ""))
+        # what is wrong with her, where anyone can see it: machinery, steering, a list, smoke
+        var ail: Array = []
+        if s.eng_out > 0: ail.append("engines stopped")
+        elif s.eng < 0.6: ail.append("engines %d%%" % int(s.eng * 100))
+        if s.jam > 0: ail.append("rudder jammed")
+        elif s.steer < 0.7: ail.append("steering damaged")
+        if absf(s.list) >= 0.3: ail.append("listing")
+        if s.smoke_on: ail.append("making smoke")
+        if ail.size(): _text(sp + Vector2(-150, -off - 18), " · ".join(ail), Color(0.93, 0.5, 0.36) if not (ail.size() == 1 and s.smoke_on) else Color(0.8, 0.82, 0.8), 11, HORIZONTAL_ALIGNMENT_CENTER, 300)
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
     # orders and help
     # squadron orders, in a row: the standing order in gold
-    var orders = [["1", "Engage", "engage"], ["2", "Form on flag", "escort"], ["4", "Line ahead", "line"], ["3", "Withdraw", "retreat"]]
+    var orders = [["1", "Engage", "engage"], ["2", "Form on flag", "escort"], ["4", "Line ahead", "line"], ["6", "Line abreast", "abreast"], ["7", "Screen", "screen"], ["3", "Withdraw", "retreat"]]
     var ox := 16.0
     _text(Vector2(ox, 28), "SQUADRON", DIM, 11); ox += 74.0
     for i in orders.size():
@@ -107,10 +116,15 @@ func _draw() -> void:
     var hw: float = font.get_string_size(hl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
     draw_rect(Rect2(ox + 10, 13, hw, 21), Color(RED, 0.2) if sim.hold_fire else Color(1, 1, 1, 0.04)); if sim.hold_fire: draw_rect(Rect2(ox + 10, 13, hw, 21), Color(RED, 0.8), false, 1)
     _text(Vector2(ox + 18, 28), hl, RED if sim.hold_fire else Color(INK, 0.6))
-    _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
+    var smk: bool = sim.ships.any(func(x): return x.side == 0 and x.smoke_on); ox += hw + 16.0
+    var sl := "8 Smoke · K yours" + (" · LAYING" if smk else "")
+    var sw: float = font.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
+    draw_rect(Rect2(ox, 13, sw, 21), Color(GOLD, 0.16) if smk else Color(1, 1, 1, 0.04)); if smk: draw_rect(Rect2(ox, 13, sw, 21), Color(GOLD, 0.7), false, 1)
+    _text(Vector2(ox + 8, 28), sl, GOLD if smk else Color(INK, 0.6))
+    _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "abreast": "Ships hold station abeam of the flagship, turning and changing speed with her; guns fire as they bear.", "screen": "Light ships hold an arc ahead of the flagship, the heavier ones follow her in column.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
-    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · K smoke · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
         _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)

@@ -32,13 +32,17 @@ func _process(_d: float) -> void:
         for i in 9: sim.mark_hit(bb, sim.world_pt(bb, -90.0 + i * 22.0, [9.0, -12.0, 3.0, 13.0, -6.0, 14.0, -13.0, 0.0, 11.0][i]), 3.0, true, 0.0)
         bb.list = 0.8; bb.hull = bb.max_hull * 0.4
         battle.camera.position = bb.pos; battle.camera.zoom = Vector2.ONE * 4.0
-    if f > 334 and f < 345: bb.list = 0.8
+    if f > 334 and f < 349: bb.list = 0.8
     if f == 340: _shot("list")
     if f == 341: battle.camera.zoom = Vector2.ONE * 6.5; battle.camera.position = sim.world_pt(bb, -40.0, 0.0)
     if f == 344: _shot("gash")
-    if f == 345:
+    if f == 345: battle.hud.visible = false; battle.camera.position = sim.world_pt(bb, 60.0, 0.0)
+    if f == 348: _shot("list_close")
+    if f >= 349 and f < 352: bb.list = -0.8; battle.camera.position = sim.world_pt(bb, -75.0, 0.0)
+    if f == 351: _shot("list_close2"); battle.hud.visible = true
+    if f == 352:
         ca.list = -0.4; sim.damage(ca, ca.hull + 1.0, "resolved"); sim.finished = false
         battle.camera.position = ca.pos; battle.camera.zoom = Vector2.ONE * 3.0
-    if f == 345 + 240: _shot("sinking_4s")
-    if f == 345 + 600: _shot("sinking_10s")
-    if f == 345 + 606: get_tree().quit()
+    if f == 352 + 240: _shot("sinking_4s")
+    if f == 352 + 600: _shot("sinking_10s")
+    if f == 352 + 606: get_tree().quit()

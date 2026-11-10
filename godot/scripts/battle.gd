@@ -491,7 +491,7 @@ class ShipView extends Node2D:
         deck_shift = ln * fb
         lean = ln; freeboard = fb
         base.position.y = deck_shift; top.position.y = deck_shift
-        lit_top.set_shader_parameter("lean", ln / (1.0 - 0.13 * absf(s.list)))   # each point of the upper works is carried over by its own height, in the shader
+        lit_top.set_shader_parameter("lean", ln)   # each point of the upper works is carried over by its own height, in the shader
         for c in get_children():
             if c is Fires: c.position.y = ln * (fb + 1.0)
             if c is Node2D and not (c is Sprite2D): c.queue_redraw()
@@ -629,17 +629,17 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
             var bt: Texture2D = GameData.mount_img(m.wid, style, true) if split else null
             # heeled, a turret is the solid it is: its foot is carried over with the deck it stands on, its roof further
             # by its own height, and between the two its side shows (the plan drawn again and again up the slope, dark)
-            var ln: float = view.lean; var foot: float = ln * (view.freeboard + 2.8 * lvl); var roof: float = foot + ln * GameData.turret_h(m.w)
-            p.y += roof if lit else foot
-            if not lit and absf(ln) > 0.03 and not m.dead:
-                var n: int = clampi(ceili(absf(roof - foot) * view.battle.zoom() / 1.2), 2, 10)
-                var wc: Color = Color(0.36, 0.38, 0.4) if ln * sun.y < 0.0 else Color(0.62, 0.64, 0.66)
-                draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04); draw_texture(GameData.mount_ao(m.wid), o, Color(1, 1, 1, 0.75))
-                for k in range(1, n + 1):
+            var ln: float = view.lean; var foot: float = ln * (view.freeboard + 2.8 * lvl); var roof: float = foot + ln * GameData.turret_h(m.w) * 1.5   # the gunhouse and the lip of its barbette
+            p.y += foot
+            if lit and absf(ln) > 0.03:
+                # (the mount shader reads the vertex colour as a code: blue between 0.26 and 0.44 is a side, flat and dark)
+                var n: int = clampi(ceili(absf(roof - foot) * view.battle.zoom() / 1.0), 2, 12)
+                var wc: Color = GameData.mount_code(sun.rotated(-m.ta), lvl, m.dead); if not m.dead: wc.b = 0.3 if ln * sun.y < 0.0 else 0.42
+                for k in n:
                     draw_set_transform(p + Vector2(0, (roof - foot) * k / n), m.ta, Vector2(sc, sc))
-                    if split and k > n / 2: _barrels(bt, m, info, o, wc)
+                    if split and k >= n / 2: _barrels(bt, m, info, o, wc)
                     draw_texture(GameData.mount_img(m.wid, style), o, wc)
-                continue
+            if lit: p.y += roof - foot
             if not lit:
                 # a soft contact shadow round the foot, then a crisp shadow cast from the roof's height (raised turrets cast further)
                 draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04)

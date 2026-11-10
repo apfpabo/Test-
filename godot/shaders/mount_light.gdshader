@@ -29,6 +29,7 @@ void fragment() {
 	float ratio = clamp(dot(n, L) / L.z, 0.3, 1.75);
 	col *= mix(1.0, ratio, 0.8);
 	if (vc.b < 0.25) col *= vec3(0.3, 0.27, 0.25);
+	else if (vc.b < 0.45) col = vec3(t.r / 0.502) * tint * mix(0.4, 0.72, (vc.b - 0.26) / 0.18);   // a turret's side, seen when the ship heels: plain plating, in light or in shade
 	else col *= 1.0 + (vc.b - 0.5) * 0.6;
 	COLOR = vec4(col, t.a * vc.a);
 }

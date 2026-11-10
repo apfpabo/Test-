@@ -330,6 +330,23 @@ log('installations:', installations.length, Object.entries(installations.reduce(
 log('land sites:', landSites.length, Object.entries(landSites.reduce((o, q) => (o[q.kind] = (o[q.kind] || 0) + 1, o), {})).map(e => e.join(' ')).join(', '));
 for (const p of ports) p.land = landOf(Math.floor(p.y / MASK_RES) * CW + Math.floor(p.x / MASK_RES));
 
+// The sites are frozen in sites.lock.json once chosen: a later change to a coastline must not move every structure in
+// the world. A frozen site that the new coast has put under water moves to the nearest land; its distance from the
+// open sea and its landmass are read again from the new map.
+{ const LOCK = path.join(__dirname, 'sites.lock.json');
+  if (fs.existsSync(LOCK)) {
+    const L = JSON.parse(fs.readFileSync(LOCK, 'utf8')); let moved = 0;
+    const fix = q => { let i = Math.floor(wrapX(q.x) / MASK_RES), j = Math.floor(q.y / MASK_RES);
+      if (!mask[j * CW + i]) { let best = null, bd = 1e9;
+        for (let dj = -40; dj <= 40; dj++) for (let di = -40; di <= 40; di++) { const jj = j + dj, ii = (i + di + CW) % CW; if (jj < 0 || jj >= CH || !mask[jj * CW + ii]) continue; const d = di * di + dj * dj; if (d < bd) { bd = d; best = [ii, jj]; } }
+        if (best) { [i, j] = best; q.x = r2((i + 0.5) * MASK_RES); q.y = r2((j + 0.5) * MASK_RES); moved++; } }
+      const k = j * CW + i; q.coastKm = Math.round(seaDist[k] * 0.1 * 111); q.land = landOf(k); return q; };
+    landSites.length = 0; installations.length = 0;
+    for (const q of L.landSites) landSites.push(fix(q)); for (const q of L.installations) installations.push(fix(q));
+    log('sites from sites.lock.json:', landSites.length, 'land sites,', installations.length, 'installations;', moved, 'moved ashore');
+  } else fs.writeFileSync(LOCK, JSON.stringify({ about: 'Frozen sites: see build.js', landSites, installations }));
+}
+
 // ------------------------------------------------------------------ campaign tables: geography in, the rest kept
 const campPath = path.join(DATA, 'campaign.json'), camp = JSON.parse(fs.readFileSync(campPath, 'utf8'));
 const names = W.channelNames || {};

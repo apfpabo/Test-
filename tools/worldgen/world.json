@@ -24,10 +24,22 @@
       { "pts": [[110, -40], [113, -43]], "r": 0.9 },
       { "note": "a weather-station rock in the Howling Seas", "pts": [[10, -55]], "r": 0.6 },
       { "note": "islands in the Strelsk Sounds", "pts": [[8.6, 61.3]], "r": 0.7 },
-      { "pts": [[9.2, 58.4]], "r": 0.6 }
+      { "pts": [[9.2, 58.4]], "r": 0.6 },
+      { "note": "capes and islets of the isle south-east of Kotaraya", "pts": [[-106.4, -1.4], [-106.9, -0.5]], "r": 0.55 },
+      { "pts": [[-98.2, -1.9], [-97.6, -2.9]], "r": 0.6 },
+      { "pts": [[-96.6, 4.3]], "r": 0.6 },
+      { "pts": [[-93.6, 1.6]], "r": 0.45 },
+      { "pts": [[-109.7, -5.4]], "r": 0.4 }
     ],
     "carve": [
-      { "note": "the Gulf of Strelsk, behind the Strelsk Sounds", "pts": [[7.5, 59.9], [3, 59.3], [-3, 58.6], [-9, 58], [-14, 57.2]], "r": [1.0, 1.9, 2.6, 2.6, 1.7] }
+      { "note": "the Gulf of Strelsk, behind the Strelsk Sounds", "pts": [[7.5, 59.9], [3, 59.3], [-3, 58.6], [-9, 58], [-14, 57.2]], "r": [1.0, 1.9, 2.6, 2.6, 1.7] },
+      { "note": "the isle south-east of Kotaraya, given bays so it is not a plain capsule", "pts": [[-103.5, -5.7], [-104.2, -4.5]], "r": 0.7 },
+      { "pts": [[-99.6, 3.7], [-99.2, 2.1]], "r": 0.65 },
+      { "pts": [[-95.2, 3.7]], "r": 0.9 },
+      { "pts": [[-94.9, -0.5]], "r": 0.9 },
+      { "pts": [[-108.7, -3.4]], "r": 0.7 },
+      { "pts": [[-108.2, -6.7]], "r": 0.8 },
+      { "pts": [[-101.6, -5.0], [-102.0, -4.0]], "r": 0.5 }
     ],
     "channels": [
       { "name": "Strelsk Sounds", "role": "strait", "pts": [[11.5, 60.1], [9.5, 60.0], [6.5, 59.8]], "w": 7 }

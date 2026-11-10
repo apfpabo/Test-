@@ -164,6 +164,7 @@ func _draw() -> void:
         var hdg = int(round(fposmod(rad_to_deg(f.a + PI / 2), 360))); var rud = int(round(f.rud * 35))
         var line = f.d.dn + " class · " + ["All stop", "Slow ahead", "Half ahead", "Full ahead", "Flank speed"][f.throttle] + " · %d kn · course %03d° · rudder " % [int(round(f.v / BattleSim.KN)), hdg] + (("%d° " % absi(rud)) + ("port" if rud < 0 else "stbd") if rud else "amidships")
         if f.sub: line += " · SUBMERGED" if sim.submerged(f) else (" · diving" if f.want_dive else " · surfaced")
+        line += " · %s crew" % String(BattleSim.CREW[f.cq].name)
         _text(Vector2(x + 10, y + 46), line, DIM, 12)
         _text(Vector2(x + 10, y + 64), "Hull", DIM, 12); _bar(Vector2(x + 60, y + 56), 350, 7, f.hull / f.max_hull, GREEN)
         _text(Vector2(x + 10, y + 78), "Armour", DIM, 12); _bar(Vector2(x + 60, y + 72), 350, 5, f.armor / maxf(1.0, f.d.armor), Color(0.62, 0.67, 0.67))
@@ -263,6 +264,8 @@ func _reticle() -> void:
     var l1 = ("Target beyond the screen edge · " if off else "") + (("Engaging " if sim.autofire else "Laid on ") + sim.lock.rec.name if lock and sim.lock != null else ("Firing at the point" if sim.mouse_down else "Aiming")) + " · %.1f of %.1f km" % [rng / 1000.0, mx / 1000.0]
     var l2 = "%d of %d turrets bearing" % [bearing, ms.size()] + (" · ready" if n.call("ready") else (" · reloading %d s" % ceili(rel) if bearing else "")) + ((" · %d turning to bear, ~%d s" % [training, ceili(train)]) if training else "") + (" · out of range" if n.call("range") else "") + ((" · %d blocked by own ship" % n.call("arc")) if n.call("arc") else "")
     var lines = [l1, l2]
+    var ss: String = sim.sol_state(sim.flag, sim.lock) if lock else ""
+    if ss != "": lines.append("Fire control: " + ("straddling her: salvos are on" if ss == "straddling" else "finding the range: watch the fall of shot"))
     if not sim.autofire and not sim.mouse_down and lock: lines.append("Click the target or press X to open fire")
     for i in lines.size():
         var tw = font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x

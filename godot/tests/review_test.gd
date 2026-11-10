@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _weights()
-	ok(sections == 12, "every section ran to its end (%d of 12)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights()
+	ok(sections == 13, "every section ran to its end (%d of 13)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -709,6 +709,59 @@ func _night_and_dc() -> void:
 	var other = s2.ships[1]; other.list = 0.75
 	s2.systems_tick(other, 0.1)
 	ok(absf(other.list) < 0.3, "other captains right a bad list themselves")
+	sections += 1
+
+## Gunnery that finds the range over salvos, and crews that learn their trade (docs/GUNNERY.md).
+func _gunnery() -> void:
+	seed(21)
+	var first := []; var later := []; var radar_first := []
+	for trial in 60:
+		var sim := _sim(["ca_baltimore"], ["ca_hipper"]); var a = sim.ships[0]; var e = sim.ships[1]
+		a.tech = ["radar"] if trial % 2 else []; a.pos = Vector2(8000, 14000); e.pos = Vector2(8000, 6000)
+		var so: Dictionary = sim.solution(a, e, 0.7, 1.0, 0.012)
+		(radar_first if trial % 2 else first).append(absf(float(so.r)))
+		if trial % 2 == 0:
+			for k in 6: sim.t += 20.0; sim.spot(a, e, 10.0)
+			later.append(absf(float(so.r)))
+	var mean := func(arr: Array) -> float:
+		var t := 0.0
+		for v in arr: t += float(v)
+		return t / maxf(1.0, arr.size())
+	var m1: float = mean.call(first); var m2: float = mean.call(later)
+	ok(m1 > 0.02 and m2 < m1 * 0.35, "the first salvo is out by %.1f%% of the range on average, the seventh by %.1f%%" % [m1 * 100, m2 * 100])
+	# every shell of a salvo carries the same error: they fall together
+	var s2 := _sim(["bb_iowa"], ["bb_bismarck"]); var b = s2.ships[0]; var tg = s2.ships[1]; b.pos = Vector2(8000, 16000); tg.pos = Vector2(8000, 5000); b.a = 0.0; b.tech = []
+	var mt = b.mounts.filter(func(m): return m.w.kind == "gun" and m.w.size == "H")[0]; mt.ta = -PI / 2
+	s2.shells.clear(); for i in 3: s2.fire_barrel(b, mt, tg.pos, i, tg)
+	var ends: Array = s2.shells.map(func(sh): return sh.e)
+	var centre: Vector2 = (ends[0] + ends[1] + ends[2]) / 3.0; var spread := 0.0
+	for p2 in ends: spread = maxf(spread, (p2 as Vector2).distance_to(centre))
+	var so2: Dictionary = b.sol[tg.get_instance_id()]
+	ok(spread < 260.0, "the three shells of a salvo fall together, whatever the error (pattern %d m across, error %d m)" % [int(spread * 2), int(absf(float(so2.r)) * 11000)])
+	s2.shells.clear(); for i in 3: s2.fire_barrel(b, mt, tg.pos, i)
+	ok(s2.shells.all(func(sh): return sh.get("tgt") == null), "fire laid by hand on a point of the sea has no solution and scatters as before")
+	ok(s2.sol_state(b, tg) == "ranging", "the gun-laying readout says she is finding the range")
+	so2.r = 0.004; so2.n = 3
+	ok(s2.sol_state(b, tg) == "straddling", "and that she is straddling once the error is inside the pattern")
+	# crews
+	ok(BattleSim.crew_level(0.0) == 0 and BattleSim.crew_level(1.0) == 1 and BattleSim.crew_level(4.0) == 2 and BattleSim.crew_level(7.0) == 3 and BattleSim.crew_level(12.0) == 4, "a crew is green, trained, seasoned, veteran or crack by the actions it has fought")
+	var rec: Dictionary = Campaign.new_ship("dd_fletcher", null, "player", [])
+	ok(Campaign.crew_name(rec) == "trained", "a new ship's crew is trained")
+	var green: Dictionary = Campaign.new_ship("dd_fletcher", null, "player", []); green.xp = 0.0
+	var vet: Dictionary = Campaign.new_ship("dd_fletcher", null, "player", []); vet.xp = 8.0
+	var s3 := BattleSim.new(); s3.wx = Weather.CLEAR; s3.setup([green, vet], [Campaign.new_ship("dd_narvik", null, "directorate", [])], [], [], 0)
+	var w: Dictionary = s3.ships[0].mounts[0].w
+	ok(s3.reload_mult(s3.ships[1], w) > s3.reload_mult(s3.ships[0], w) * 1.12 and s3.ships[0].cq == 0 and s3.ships[1].cq == 3, "a veteran crew loads faster than a green one (x%.2f against x%.2f)" % [s3.reload_mult(s3.ships[1], w), s3.reload_mult(s3.ships[0], w)])
+	Campaign.new_game("commission"); var G: Dictionary = Campaign.G
+	var foe := _fleet("patrol", "directorate", G.player.x + 3, G.player.y, ["co_flower"]); foe.capt = 7
+	var cfg: Dictionary = Campaign.battle_setup(foe); var s4 := BattleSim.new(); s4.wx = Weather.CLEAR
+	s4.setup(cfg.player_recs, cfg.enemy_recs, [], [], 0)
+	for x in s4.ships: if x.side == 1: x.hull = 0.0; x.alive = false
+	var x0: float = Campaign.crew_xp(G.fleet[0]); s4.finished = true; s4.result = {"victory": true, "sunk": [], "prizes": [], "lost": []}
+	GameData.pending = {"fleet_id": foe.id}; Campaign.apply_battle(s4)
+	ok(Campaign.crew_xp(G.fleet[0]) == x0 + 1.0, "a crew that comes through an action has learned from it (%.1f to %.1f)" % [x0, Campaign.crew_xp(G.fleet[0])])
+	var f7 := Campaign.spawn_fleet("patrol", "directorate"); f7.capt = 7
+	ok(f7.ships.all(func(sh): return sh.has("xp")), "other navies' crews are as good as their captains have made them")
 	sections += 1
 
 ## Refits are ruled by weight (docs/REFIT.md).

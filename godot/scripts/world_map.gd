@@ -1285,7 +1285,7 @@ func _show_aftermath(r: Dictionary) -> void:
 
 func _take_prize(s: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var r: Dictionary = Campaign.last_result
-    s.taken = "Taken"; var ns = s.duplicate(true); ns.erase("taken"); ns.pal = "player"; ns.id = str(randi()); G.fleet.append(ns); G.kills += 1
+    s.taken = "Taken"; var ns = s.duplicate(true); ns.erase("taken"); ns.pal = "player"; ns.id = str(randi()); ns.xp = 0.0; G.fleet.append(ns); G.kills += 1   # a prize crew is a scratch crew: green
     _toast("%s sails under your flag. She needs %d crew." % [s.name, GameData.hulls[s.type].crew])
     var study := Campaign.study_prize(ns)
     if study != "": _toast(study)
@@ -1333,7 +1333,7 @@ func _fleet_table(box: Control, at_port: bool) -> void:
         # two lines to a ship, so the buttons are never pushed off the panel by a long name
         var nm := UI.label(("★ " if i == 0 else "") + s.name, UI.GOLD if i == 0 else UI.INK); nm.custom_minimum_size.x = 190
         var rd: float = Campaign.readiness(s)
-        box.add_child(UI.row([nm, UI.label("%s · %s class (%s) · %s kn" % [h.name, h.dn, GameData.makers[h.yard].short, str(h.kn)], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
+        box.add_child(UI.row([nm, UI.label("%s · %s class (%s) · %s kn · %s crew" % [h.name, h.dn, GameData.makers[h.yard].short, str(h.kn), Campaign.crew_name(s)], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
             UI.label("Readiness %d%%" % int(rd * 100), UI.GREEN if rd > 0.8 else (UI.GOLD if rd > 0.55 else UI.RED), 13)]))
         var items = [_captain_pick(s)]
         var rb := UI.button("In reserve ✓" if s.get("reserve", false) else "Hold in reserve", func(): s.reserve = not s.get("reserve", false); _rerender()); rb.tooltip_text = "A ship in reserve stands off when the squadron fights: she takes no part and no damage. Useful for transports, oilers and cripples."

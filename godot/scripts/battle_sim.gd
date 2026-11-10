@@ -110,6 +110,8 @@ class CShip:
     var ord_tgt: CShip = null    # whom a torpedo attack is made on (or the nearest enemy)
     var hold = false       # her own hold-fire
     var star_t = 0.0       # seconds until she can fire star shell again
+    var sol: Dictionary = {}   # her gunnery solutions, one for each ship she is firing on (see solution)
+    var cq = 1             # how good her crew is: 0 green, 1 trained, 2 seasoned, 3 veteran, 4 crack (see CREW)
     var dc_pri = ""        # where her damage-control parties are sent first: "" (evenly), "fire", "flood" or "mach"
     var ballast = 0.0      # water let in to right a list: it stays aboard and slows her
     var jam_r = 0.0        # where it jammed
@@ -289,6 +291,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
+    s.cq = crew_level(float(rec.get("xp", 1.0)))
     # what she is loaded with tells at sea, whoever's she is (owner's decision: other navies are held to the same rules)
     var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
     for i in d.slots.size():
@@ -816,29 +819,80 @@ func tracer(p: Vector2, q: Vector2, w := "", side := 0) -> void:
 ## turret, then the others half a reload later, so the fall of each half-salvo can be spotted. Single guns fire whole.
 const COIL := 0.08                                          # battle seconds between barrels in a half-salvo
 const TURRET_STEP := {"S": 0.15, "M": 0.25, "L": 0.35, "H": 0.45}   # fore-to-aft ripple between turrets
-func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary) -> void:
+func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary, tgt: CShip = null) -> void:
     var n := int(w.get("barrels", 1))
     var order := 0   # this turret's place, bow to stern, among the ship's guns of its calibre
     for o in s.mounts:
         if o == m: break
         if o.w.kind == "gun" and o.w.size == w.size: order += 1
     var t0: float = order * TURRET_STEP[w.size]
-    if n == 1: m.queue.append({"i": 0, "t": t0, "aim": aim})
+    if n == 1: m.queue.append({"i": 0, "t": t0, "aim": aim, "tgt": tgt})
     else:
         m.half = 1 - m.half
         var first := []; var second := []
         for i in n: (first if i % 2 == m.half else second).append(i)
-        for k in first.size(): m.queue.append({"i": first[k], "t": t0 + k * COIL, "aim": aim})
-        for k in second.size(): m.queue.append({"i": second[k], "t": t0 + float(w.rel) * 0.5 + k * COIL, "aim": aim})
+        for k in first.size(): m.queue.append({"i": first[k], "t": t0 + k * COIL, "aim": aim, "tgt": tgt})
+        for k in second.size(): m.queue.append({"i": second[k], "t": t0 + float(w.rel) * 0.5 + k * COIL, "aim": aim, "tgt": tgt})
     if m.queue.size() > n * 2: m.queue = m.queue.slice(m.queue.size() - n)
     _ripple(s, m, 0.0)
 
 func _ripple(s: CShip, m: Mount, dt: float) -> void:
     for j in range(m.queue.size() - 1, -1, -1):
         var q: Dictionary = m.queue[j]; q.t -= dt
-        if q.t <= 0.0: m.queue.remove_at(j); fire_barrel(s, m, q.aim, int(q.i))
+        if q.t <= 0.0: m.queue.remove_at(j); fire_barrel(s, m, q.aim, int(q.i), q.get("tgt"))
 
-func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
+# ------------------------------------------------------------------ finding the range
+## Gunnery by salvos, as it was done (owner's list: "gunnery that finds the range over several salvos"). A ship
+## opening fire on a target has only an estimate of her range and of how far to lay off for her movement: the whole
+## salvo falls together, short or over, left or right, by that error (`r` a share of the range, `a` an angle). Each
+## salvo whose fall is spotted takes most of the error off; a target that turns, or a firing ship that turns, puts
+## some back. Radar ranges well from the first; by night without it, or through smoke, spotting is poor. Once the
+## error is inside the spread of the salvo she is straddling, and hits come by the pattern's share of the target.
+## Fire laid by hand on a point of the sea (no target) has no solution: it scatters as it always did.
+const SOL_STALE := 35.0
+const PATTERN := 0.45      # how tight a salvo is round its own centre, against the old scatter of single shells
+func solution(s: CShip, tg: CShip, rel_range: float, fc: float, spread: float) -> Dictionary:
+    var k: int = tg.get_instance_id()
+    if s.sol.has(k) and t - float(s.sol[k].t) < SOL_STALE: return s.sol[k]
+    # a first estimate: worse the further off she is, better with radar and a good director (fc), worst with a green crew
+    var q: float = fc * CREW[s.cq].gun * (0.45 + 0.55 * rel_range)
+    var so := {"r": (randf() * 2.0 - 1.0) * 0.085 * q, "a": (randf() * 2.0 - 1.0) * spread * 1.6, "n": 0, "t": t, "next": 0.0}
+    if s.sol.size() > 6: s.sol.clear()
+    s.sol[k] = so; return so
+## A salvo's fall has been seen: correct. Called as shells land, but counted once a salvo.
+func spot(s: CShip, tg: CShip, reload: float) -> void:
+    if s == null or tg == null or not s.alive: return
+    var so = s.sol.get(tg.get_instance_id())
+    if so == null or t < float(so.next): return
+    so.next = t + reload * 0.6; so.n = int(so.n) + 1; so.t = t
+    var keep := 0.5                                             # of the error left after one good spotting
+    if has_radar(s): keep = 0.36
+    elif wx.get("night", false) and not star_lit(tg.pos): keep = 0.78
+    if not eye_sees(tg, s.side): keep = maxf(keep, 0.7 if has_radar(s) else 0.92)   # behind smoke or beyond sight: the plot alone
+    keep = clampf(keep * CREW[s.cq].spot, 0.2, 0.95)
+    so.r = float(so.r) * keep; so.a = float(so.a) * keep
+    # the target's helm and ours spoil the reckoning a little each time
+    var stir: float = absf(tg.w) * 0.5 + absf(s.w) * 0.3
+    so.r = float(so.r) + (randf() * 2.0 - 1.0) * (0.004 + stir); so.a = float(so.a) + (randf() * 2.0 - 1.0) * (0.001 + stir * 0.25)
+## "" (no solution), "ranging" or "straddling": for the gun-laying readout.
+func sol_state(s: CShip, tg: CShip) -> String:
+    if s == null or tg == null: return ""
+    var so = s.sol.get(tg.get_instance_id())
+    if so == null or t - float(so.t) > SOL_STALE: return ""
+    return "straddling" if absf(float(so.r)) < 0.012 and int(so.n) > 0 else "ranging"
+## Crews (owner's list: "crew quality"): what a ship's company is worth at her guns, at spotting, at the loading
+## trays and in damage control, by how much action it has seen.
+const CREW := [
+    {"name": "green", "gun": 1.3, "spot": 1.15, "rel": 0.92, "dc": 0.8},
+    {"name": "trained", "gun": 1.0, "spot": 1.0, "rel": 1.0, "dc": 1.0},
+    {"name": "seasoned", "gun": 0.9, "spot": 0.92, "rel": 1.04, "dc": 1.12},
+    {"name": "veteran", "gun": 0.8, "spot": 0.85, "rel": 1.08, "dc": 1.25},
+    {"name": "crack", "gun": 0.72, "spot": 0.8, "rel": 1.12, "dc": 1.4},
+]
+## Battles a crew has fought, to its quality.
+static func crew_level(xp: float) -> int: return 0 if xp < 1.0 else (1 if xp < 3.0 else (2 if xp < 6.0 else (3 if xp < 10.0 else 4)))
+
+func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) -> void:
     if not use_round(m): return
     var w: Dictionary = m.w; var n := int(w.get("barrels", 1))
     var ang = s.a + m.ta; var off: float = (i - (n - 1) / 2.0) * float(w.get("gap", 0.0))
@@ -848,15 +902,21 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int) -> void:
     fc *= 1.0 + 0.1 * int(wx.sea)                                         # a moving platform
     if wx.night and not has_radar(s): fc *= 1.35                           # spotting the fall of shot by eye in the dark
     s.lit_t = 0.0
-    var spread: float = w.spread * fc / maxf(0.3, s.fc)
-    var a = ang + (randf() - 0.5) * 2 * spread
-    var dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
+    var spread: float = w.spread * fc / maxf(0.3, s.fc) * CREW[s.cq].gun
+    var a: float; var dd: float
+    if tgt != null and tgt.alive:   # a salvo on a target: the solution's error, shared by every shell, and a tight pattern round it
+        var so := solution(s, tgt, clampf(d / rng, 0.0, 1.0), fc / maxf(0.3, s.fc), spread)
+        a = ang + float(so.a) + (randf() - 0.5) * 2 * spread * PATTERN
+        dd = maxf(60.0, d * (1 + float(so.r) + (randf() - 0.5) * 0.06 * fc * PATTERN))
+    else:
+        a = ang + (randf() - 0.5) * 2 * spread
+        dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
     # penetration in mm of armour, from the shell's weight, falling off with range; fall: how steeply it comes down
     var pen: float = float(w.dmg) * 1.9 * (1.0 - 0.45 * clampf(dd / rng, 0.0, 1.0))
     var kind := shell_for(s, aim, pen)
     s.last_shell = kind
     pen *= SHELLS[kind].pen
-    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind})
+    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind, "tgt": tgt, "rel": float(w.rel)})
     if m.rec.size() != n: m.rec.resize(n)
     m.rec[i] = 1.0; m.recoil = 1.0
     fx_muzzle(p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl), ang, w.size, 1)
@@ -884,7 +944,7 @@ func fire_sam(s: CShip, m: Mount, tg) -> void:
     missiles.append({"pos": p, "a": (tp - p).angle(), "v": 200.0, "speed": m.w.speed, "life": gun_range(s, m.w) / m.w.speed * 1.5, "dmg": 0, "side": s.side, "target": tg, "kind": "sam", "p": m.w.pd, "delay": 0.0})
 
 func reload_mult(s: CShip, w: Dictionary) -> float:
-    var r = 0.5 + 0.5 * s.cf
+    var r = (0.5 + 0.5 * s.cf) * CREW[s.cq].rel
     if w.kind == "gun": r *= (1 + 0.08 * s.sk.gun) * (1 + 0.06 * upg(s, "turret"))
     if w.kind == "torp" or w.kind == "ssm": r *= 1 + 0.12 * s.sk.ord
     return r
@@ -986,7 +1046,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 if aligned and in_range and trigger and m.cd <= 0:
                     m.cd = w.rel
                     if aim_air != null: flak(s, m, aim_air, w.aa * 1.2)
-                    else: fire_gun(s, m, aim, w)
+                    else: fire_gun(s, m, aim, w, (lock if aim_lock else null) if manual else m.tgt)
             "aa":
                 if sm or m.cd > 0: continue
                 var done = false
@@ -1213,7 +1273,7 @@ func counter_flood(s: CShip) -> bool:
     s.ballast = minf(0.5, s.ballast + absf(s.list) * 0.35); s.list *= 0.25; _log("counter-flooded")
     return true
 func systems_tick(s: CShip, dt: float) -> void:
-    var dc: float = (1.0 + 0.3 * s.sk.dc) * (1.3 if s.tech.has("dc") else 1.0)   # damage control schools
+    var dc: float = (1.0 + 0.3 * s.sk.dc) * (1.3 if s.tech.has("dc") else 1.0) * CREW[s.cq].dc   # damage control schools, and the crew's own worth
     if s != flag and absf(s.list) > 0.6 and s.alive: counter_flood(s)   # other captains right a bad list themselves
     if s.mag_fire > 0:
         s.mag_fire -= dt
@@ -1584,6 +1644,7 @@ func step(dtv: float) -> void:
             var l: Vector2 = (sh.pos - s.pos).rotated(-s.a)
             if absf(l.x) < s.d.L / 2 + 3 and absf(l.y) < s.d.B / 2 + 3: hit = s; break
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
+        if sh.get("tgt") != null: spot(sh.who, sh.tgt, float(sh.get("rel", 6.0)))   # the fall of shot is seen and the next salvo corrected
         if hit != null:
             var res := shell_result(hit, sh); _log("shell " + res.kind)
             mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico", float(res.get("fire", 1.0)))

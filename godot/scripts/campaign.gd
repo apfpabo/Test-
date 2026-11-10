@@ -304,6 +304,10 @@ func ship_value(s: Dictionary) -> float:
     var up = s.get("up")
     if up != null: for k in up: if BattleSim.UPGRADES.has(k): v += float(hull(s).price) * float(BattleSim.UPGRADES[k].cost) * int(up[k])   # yard work counts in what she is worth
     return v
+## Crews (docs/GUNNERY.md): a ship's company learns its trade in action. `xp` on a ship is the actions she has fought
+## (a new ship's crew counts as one: trained; a prize's as none: green); heavy casualties thin what was learned.
+func crew_xp(s: Dictionary) -> float: return float(s.get("xp", 1.0))
+func crew_name(s: Dictionary) -> String: return String(BattleSim.CREW[BattleSim.crew_level(crew_xp(s))].name)
 ## A ship's speed for her loading (BattleSim.loading), kept on her record (`ldv`) so the chart does not work the
 ## ledger out every tick. Call ship_refitted(s) whenever her weapons or systems change.
 func load_speed(s: Dictionary) -> float:
@@ -823,6 +827,8 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
     # some ships have been through a yard since they were built: a bounty hunter's most of all, a raider's seldom
     var vp: float = {"patrol": 0.3, "bounty": 0.8, "mission": 0.5, "raiders": 0.12, "convoy": 0.1}.get(f.kind, 0.25)
     for sh in f.ships: if randf() < vp: make_variant(sh, 3 if f.kind == "bounty" else randi_range(1, 2))
+    # and their crews are as good as their captain has made them: a green captain's are green, a renowned one's veterans
+    for sh in f.ships: sh.xp = [0.0, 0.5, 1.5, 2.0, 4.0, 5.0, 7.0, 10.0][clampi(int(f.capt), 0, 7)]
     G.fleets.append(f)
     return f
 
@@ -1637,7 +1643,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     for s in sim.ships:
         if s.side == 0:
             if not s.alive: r.lost.append(s.rec); cas += s.d.crew * 0.5
-            else: s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = sim.planes_left(s); s.rec.rdy = maxf(RDY_MIN, readiness(s.rec) - 0.1 - 0.25 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
+            else: s.rec.xp = crew_xp(s.rec) * (1.0 - 0.5 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)) + 1.0; s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = sim.planes_left(s); s.rec.rdy = maxf(RDY_MIN, readiness(s.rec) - 0.1 - 0.25 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
         else:
             if not s.alive: r.sunk.append(s.rec)
             else:

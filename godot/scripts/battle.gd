@@ -59,7 +59,7 @@ func _ready() -> void:
             var ll := CanvasLayer.new(); ll.layer = 1; ll.follow_viewport_enabled = true; add_child(ll); ll.add_child(node); layers[n] = node; continue
         if n == "overlay":   # range rings and aiming lines stay readable at night too
             var ol := CanvasLayer.new(); ol.layer = 2; ol.follow_viewport_enabled = true; add_child(ol); ol.add_child(node); layers[n] = node; continue
-        if n == "wash": wash_mat = ShaderMaterial.new(); wash_mat.shader = preload("res://shaders/wash.gdshader"); node.material = wash_mat
+        if n == "wash": wash_mat = ShaderMaterial.new(); wash_mat.shader = preload("res://shaders/wash.gdshader"); wash_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = wash_mat
         if n == "bursts": burst_mat = ShaderMaterial.new(); burst_mat.shader = preload("res://shaders/burst.gdshader"); burst_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = burst_mat
         world.add_child(node); layers[n] = node
     for is_ in sim.islands: _add_island(is_)
@@ -683,9 +683,15 @@ class Drawer extends Node2D:
         if not sim.modern: return
         var vr: Rect2 = battle.view_rect().grow(300); var mn: float = 1.0 / battle.zoom()
         for q in sim.parts:
-            if q.t != P.WASH or q.life < 0 or not vr.has_point(q.pos): continue
+            if q.life < 0 or not vr.has_point(q.pos): continue
+            if q.t == P.BLAST:   # a gun's blast on the sea: the quad is turned to the line of fire
+                var rb: float = maxf(q.size, 2.0 * mn)
+                draw_set_transform(q.pos, q.a, Vector2.ONE)
+                draw_rect(Rect2(-Vector2(rb, rb) * 2.0, Vector2(rb, rb) * 4.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0211 + q.pos.y * 0.0133, 1.0), 1.0, clampf((q.size / mn - 2.0) / 4.0, 0.0, 1.0)))
+                draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE); continue
+            if q.t != P.WASH: continue
             var R: float = maxf(q.size, 1.5 * mn)
-            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(1.0 - q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0173 + q.pos.y * 0.0091, 1.0), 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
+            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0173 + q.pos.y * 0.0091, 1.0), 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
 
     ## An aircraft in plan, in metres (nose along +x): a shadow on the sea first, then the machine in its service
     ## paint with the light on one wing, its canopy, markings, and the propeller's disc or the jet's exhaust.
@@ -773,7 +779,7 @@ class Drawer extends Node2D:
                         draw_set_transform(Vector2.ZERO)
                     P.WRING: _puff(ring, q.pos, maxf(q.size * (0.12 + sqrt(k)), 2 * mn), Color(0.9, 0.96, 0.96, 0.32 * (1 - k) * (1 - k)))
                     _: pass
-                if q.t in [P.OIL, P.SWAKE, P.TWAKE, P.BLAST]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)
+                if q.t in [P.OIL, P.SWAKE, P.TWAKE]: _part_classic(0, q, k, cl, puff, foam_tex(), mn, z, tn)   # (a gun's blast on the sea is drawn by the wash layer)
             elif layer == 1:
                 match q.t:
                     P.SMOKE, P.GUNSMOKE, P.FUNNEL, P.STEAM:

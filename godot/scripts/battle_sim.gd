@@ -667,7 +667,7 @@ func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
     if modern:
         part(P.GLOW, p + Vector2.from_angle(ang) * S, 0.35, S * 6.0)
         var c = part(P.CORE, p + Vector2.from_angle(ang) * S * 0.4, 0.07, S * 0.9); c.a = ang
-    var bl = part(P.BLAST, p, 0.9, S * 3.0); bl.a = ang
+    var bl = part(P.BLAST, p, 1.5 if modern else 0.9, S * (3.4 if modern else 3.0)); bl.a = ang
     if size == "H" or size == "L": part(P.FOAM, p + Vector2.from_angle(ang) * S * 0.6, 2.0, S * 1.1) # the blast flattens the sea ahead of the muzzle
     for i in ceili(n / 2.0):
         var a = ang + (randf() - 0.5) * 0.9

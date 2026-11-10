@@ -66,11 +66,19 @@ func _begin() -> void:
 
 func _pick_course() -> void:
 	var G: Dictionary = Campaign.G; var P: Dictionary = G.player
+	if G.fleet.size() >= 3 and randf() < 0.4:   # a squadron goes looking for trouble: the nearest raider or enemy in sight
+		var prey = null
+		for f in G.fleets:
+			if not f.get("vis", true) or not Campaign.hostile_fleet(f) or Campaign.mdist(f.x, f.y, P.x, P.y) > 500.0: continue
+			if prey == null or Campaign.mdist(f.x, f.y, P.x, P.y) < Campaign.mdist(prey.x, prey.y, P.x, P.y): prey = f
+		if prey != null: P.follow = int(prey.id); P.repathT = 0.0; P.destPort = null; return
 	var open: Array = G.ports.filter(func(p): return not Campaign.hostile(p.fac) and Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	if open.is_empty(): open = G.ports.filter(func(p): return Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	open.sort_custom(func(x, y): return Campaign.mdist(x.sx, x.sy, P.x, P.y) < Campaign.mdist(y.sx, y.sy, P.x, P.y))
 	var p: Dictionary = open[randi() % mini(6, open.size())]   # one of the nearer harbours, so the year is spent in several seas
-	if Campaign.set_course(P, p.sx, p.sy): P.destPort = int(p.id)
+	if Campaign.set_course(P, p.sx, p.sy):
+		P.destPort = int(p.id)
+		if verbose: print("  [%d] course for %s, %d km, %d kn on the chart" % [int(G.day), p.name, int(Campaign.route_remaining(P) * Campaign.KM_PER_UNIT), int(Campaign.player_speed() / 0.576 * 0.7)])
 	else:
 		st.no_route += 1
 		ok(Campaign.on_land(P.x, P.y), "no sea route from open water at %.0f,%.0f to %s" % [P.x, P.y, p.name])
@@ -129,6 +137,7 @@ func _fight(f: Dictionary) -> void:
 func _dock(p: Dictionary) -> void:
 	var G: Dictionary = Campaign.G
 	st.docks += 1
+	if verbose: print("  [%d] in harbour at %s (%s)" % [int(G.day), p.name, p.fac])
 	if Campaign.hostile(p.fac): st.closed += 1; return
 	Diplomacy.on_dock(p)
 	G.credits = maxf(float(G.credits), 250000.0)   # the purser is never short: this run is about rules, not the economy

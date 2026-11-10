@@ -310,7 +310,7 @@ func bombard(s: Dictionary) -> Dictionary:
 func _strike_contracts(s: Dictionary, res: Dictionary) -> void:
 	var notes := []
 	for c in g().get("contracts", []).duplicate():
-		if c.kind == "strike" and int(c.struct) == int(s.id) and float(s.dmg) >= 0.7: Diplomacy.complete(c, notes)
+		if c.kind == "strike" and int(c.struct) == int(s.id) and float(s.dmg) >= 0.7 and (s.fac == c.get("target", s.fac) or s.fac == ""): Diplomacy.complete(c, notes)
 	res.notes = notes
 
 # ------------------------------------------------------------------ surrender, occupation and garrisons
@@ -374,6 +374,7 @@ func defenders(s: Dictionary) -> float:
 	return base * (1.0 - 0.75 * float(s.dmg)) * float(d.radar) + float(d.fighters) * 40.0
 
 func can_invade(s: Dictionary) -> String:
+	if s.get("nuked", false): return "A poisoned ruin. Nothing can be held here again."
 	if s.fac == "player": return "It is yours."
 	if troops() <= 0: return "You have no troops embarked. Troopships embark soldiers in port (Repairs & crew)."
 	if not off_coast(s): return "Your fleet must lie off the coast nearest it (%d km inland)." % int(s.coastKm)
@@ -422,6 +423,10 @@ func disembark() -> int:
 func trim_troops() -> int:
 	var over := troops() - troop_capacity()
 	if over > 0: g().troops = troop_capacity()
+	if g().has("nukes"):   # and warheads go down with the boats that carried them
+		var tubes := 0
+		for r in Campaign.all_ships(): if Campaign.hull(r).klass == "ssn": for w in r.fit: if w != null and w != "" and GameData.weapons.has(w) and GameData.weapons[w].kind == "ssm": tubes += 1
+		g().nukes = mini(int(g().nukes), tubes)
 	return maxi(0, over)
 
 # ------------------------------------------------------------------ nuclear weapons
@@ -459,7 +464,7 @@ func can_nuke(s: Dictionary) -> String:
 	return ""
 ## Fires one. Returns what followed, for the report.
 func nuke(s: Dictionary) -> Dictionary:
-	var G := g(); var old: String = s.fac; G.nukes = nukes() - 1
+	var G := g(); var old: String = s.fac; G.nukes = maxi(0, int(G.get("nukes", 0)) - 1)   # one warhead, not the count clamped to the boats in company
 	var res := {"name": s.name, "fac": old, "notes": [], "first": not G.get("nukeUsed", false)}
 	s.nuked = true; s.fac = ""; s.dmg = 1.0; s.ruin = 1.0; s.garrison = 0; s.from = ""; s.erase("store")
 	G.nukeUsed = true; G.nukeCount = int(G.get("nukeCount", 0)) + 1
@@ -524,7 +529,9 @@ func can_take(s: Dictionary) -> String:
 ## The garrison surrenders (or an unclaimed site is occupied): your men land and hold it.
 func take(s: Dictionary) -> String:
 	var G := g(); var old: String = s.fac; var need := garrison_need(s)
-	var from_troops := mini(troops(), need); G.troops = troops() - from_troops; G.crew -= need - from_troops; s.garrison = need; s.from = old; s.fac = "player"; s.took = G.day
+	var from_troops := mini(troops(), need); G.troops = troops() - from_troops; G.crew -= need - from_troops; s.garrison = need; s.fac = "player"; s.erase("militia")
+	if old != "": s.from = old   # an unclaimed site keeps the claim of whoever held it before you withdrew
+	elif not s.has("from"): s.from = ""; s.took = G.day
 	s.dmg = maxf(float(s.dmg), 0.5)   # what is left of the defences is yours to repair
 	var t: String
 	if old == "":
@@ -543,14 +550,15 @@ func can_hand_over(s: Dictionary) -> bool:
 func hand_over(s: Dictionary) -> String:
 	var G := g(); var cf: String = G.commission.fac
 	var reward := int(round((6000.0 + 4000.0 * float(kind(s).military)) / 500.0) * 500)
-	G.crew += int(s.garrison); s.garrison = 0; s.fac = cf; s.from = ""; G.credits += reward
+	G.crew += maxi(0, int(s.garrison) - int(s.get("militia", 0))); s.erase("militia"); s.garrison = 0; s.fac = cf; s.from = ""; G.credits += reward
 	G.rep[cf] = mini(100, G.rep.get(cf, 0) + 8)
 	Campaign.log_ev("Handed the %s to the %s" % [s.name, GameData.fac[cf].name])
 	return "You hand the %s over to the %s. %s, and standing +8." % [s.name, GameData.fac[cf].name, Campaign.fmt(reward)]
 
 ## Take the garrison off (only with the fleet off the coast): the structure is left unclaimed.
 func withdraw(s: Dictionary) -> String:
-	var G := g(); G.crew += int(s.garrison); var n := int(s.garrison)
+	var n := maxi(0, int(s.garrison) - int(s.get("militia", 0)))   # a stormed port's militia stays ashore: only your own men re-embark
+	var G := g(); G.crew += n; s.erase("militia")
 	s.garrison = 0; s.fac = ""
 	return "%d men re-embark from the %s. It is left to whoever comes next." % [n, s.name]
 
@@ -711,7 +719,8 @@ func launch_assault(s: Dictionary, by: String) -> Dictionary:
 	f.kind = "assault"; f.assault = int(s.id); f.name = "%s assault force" % GameData.fac[by].short; f.cool = 0.0
 	f.x = from.sx; f.y = from.sy; f.home = {"x": from.sx, "y": from.sy}
 	var w := coast_point(s); f.tgt = {"x": w.x, "y": w.y}
-	Campaign.set_course(f, w.x, w.y)
+	if not Campaign.set_course(f, w.x, w.y):   # no way there by sea: the expedition is called off (it used to land at once, from its home port)
+		G.fleets.erase(f); return {}
 	f.warned = radar_held(s)
 	if f.warned: Campaign.toast.emit("Your radar at the %s reports a %s assault force sailing from %s to retake the %s. Intercept it, or trust the garrison." % [radar_name(s), GameData.fac[by].short, from.name, s.name])
 	Campaign.log_ev("%s assault force sailed for the %s" % [GameData.fac[by].short, s.name])
@@ -730,7 +739,7 @@ func _warnings() -> void:
 		var s: Dictionary = all()[int(f.assault)]
 		if Campaign.mdist(f.x, f.y, s.x, s.y) < 400.0:
 			f.warned = true
-			Campaign.toast.emit("Lookouts ashore report a %s, %s, closing on the %s." % [f.name.to_lower(), Diplomacy.where(f.x, f.y), s.name])
+			Campaign.toast.emit("Lookouts ashore report a %s, %s, closing on the %s." % [Campaign.fname(f), Diplomacy.where(f.x, f.y), s.name])
 
 func _is_assault(f: Dictionary) -> bool: return f.has("assault") and int(f.assault) >= 0
 

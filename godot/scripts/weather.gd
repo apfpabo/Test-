@@ -76,6 +76,7 @@ func describe(w: Dictionary) -> String:
 # ------------------------------------------------------------------ on the chart
 ## Speed in this sea as a share of speed in a calm: small ships suffer first.
 func speed_mult(w: Dictionary, ships: Array) -> float:
+	if int(w.sea) < 2: return 1.0
 	var small := false
 	for s in ships: if float(Campaign.hull(s).t) < 2500.0 and Campaign.hull(s).kind != "sub": small = true
 	return [1.0, 1.0, 0.9 if small else 0.95, 0.65 if small else 0.8][int(w.sea)]

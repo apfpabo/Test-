@@ -93,7 +93,7 @@ func assault(p: Dictionary) -> Dictionary:
 		p.fac = "player"; p.from = old; p.men = ashore; p.took = G.day; p.officers = []; p.offDay = -99; G.offers.erase(str(int(p.id)))
 		for s in Structures.all():   # what stands round the port follows it, under its own militia
 			if int(s.port) == int(p.id) and s.fac == old:
-				s.fac = "player"; s.from = old; s.took = G.day; s.garrison = Structures.garrison_need(s); s.dmg = maxf(float(s.dmg), 0.3); res.took.append(s.name)
+				s.fac = "player"; s.from = old; s.took = G.day; s.garrison = Structures.garrison_need(s); s.militia = int(s.garrison); s.dmg = maxf(float(s.dmg), 0.3); res.took.append(s.name)
 		for o in Diplomacy.POWERS:   # the neighbours draw their conclusions
 			if o != old: G.rep[o] = G.rep.get(o, 0) + (3 if Diplomacy.at_war(o, old) else -3)
 		Diplomacy.news("FALLEN. %s falls to %s. A new ensign goes up over the harbour, and the %s swears to have it down again." % [p.name, flag_name(), GameData.fac[old].name], true)
@@ -117,7 +117,7 @@ func take_off(p: Dictionary, n: int) -> int:
 
 ## Give a port up: it goes back to the flag you took it from, with what stands round it.
 func abandon(p: Dictionary) -> String:
-	var old: String = p.get("from", Campaign.C.ports[int(p.id)].fac)
+	var old: String = yard_flag(p)   # a port ceded to you by treaty has no `from`: it goes back to whose it was in 1946
 	_lose(p, old)
 	return "%s is handed back to the %s." % [p.name, GameData.fac[old].name]
 func _lose(p: Dictionary, to: String) -> void:
@@ -167,7 +167,7 @@ func launch(p: Dictionary, by: String) -> Dictionary:
 	f.kind = "assault"; f.portAssault = int(p.id); f.name = "%s relief force" % GameData.fac[by].short; f.cool = 0.0
 	f.x = from.sx; f.y = from.sy; f.home = {"x": from.sx, "y": from.sy}; f.tgt = {"x": p.sx, "y": p.sy}
 	Campaign.set_course(f, p.sx, p.sy)
-	Campaign.toast.emit("Word from %s: a %s has sailed from %s to retake the port. Meet it at sea, or trust the garrison." % [p.name, f.name.to_lower(), from.name])
+	Campaign.toast.emit("Word from %s: a %s has sailed from %s to retake the port. Meet it at sea, or trust the garrison." % [p.name, Campaign.fname(f), from.name])
 	return f
 
 func is_relief(f: Dictionary) -> bool: return int(f.get("portAssault", -1)) >= 0
@@ -190,10 +190,10 @@ func relief_lands(f: Dictionary) -> void:
 	if gd != null and Campaign.mdist(gd.x, gd.y, p.sx, p.sy) < 120.0:
 		if Campaign.strength(gd.ships) * randf_range(0.6, 1.4) > Campaign.strength(esc):
 			var sunk := int(ceil(troops / 2.0)); troops -= sunk; A = troops * 450.0 + Campaign.strength(esc) / 800.0
-			Campaign.toast.emit("Your guard squadron at %s falls on the %s and sinks %d of its transports." % [p.name, f.name.to_lower(), sunk])
+			Campaign.toast.emit("Your guard squadron at %s falls on the %s and sinks %d of its transports." % [p.name, Campaign.fname(f), sunk])
 		else:
 			if gd.ships.size() > 1: gd.ships.pop_back()
-			Campaign.toast.emit("Your guard squadron at %s is driven off by the escort of the %s." % [p.name, f.name.to_lower()])
+			Campaign.toast.emit("Your guard squadron at %s is driven off by the escort of the %s." % [p.name, Campaign.fname(f)])
 		for sh in gd.ships: sh.hullFrac = maxf(0.2, float(sh.hullFrac) - randf_range(0.05, 0.3))
 		if troops <= 0: Campaign.toast.emit("The %s turns back from %s with nothing left to land." % [f.name, p.name]); return
 	var Dv: float = float(p.get("men", 0)) * 3.0 + guns   # men behind walls and on their own quays
@@ -413,6 +413,6 @@ func _volunteers() -> void:
 		Diplomacy.news("DEFECTION. The %s %s, late of the %s, runs into %s and asks to serve under your flag." % [String(Campaign.hull(sh).name).to_lower(), sh.name, GameData.fac[from].name, p.name], true)
 func bounty(sh: Dictionary) -> int: return int(round(Campaign.ship_value(sh) * 0.25 / 500.0) * 500)
 func commission(p: Dictionary, sh: Dictionary) -> String:
-	var G := g(); G.credits -= bounty(sh); p.volunteers.erase(sh); sh.erase("cameFrom"); G.fleet.append(sh)
+	var G := g(); G.credits -= bounty(sh); p.volunteers.erase(sh); sh.erase("cameFrom"); sh.paid = bounty(sh); G.fleet.append(sh)
 	var note := Campaign.study_prize(sh)
 	return "The %s joins your squadron. She needs %d crew.%s" % [sh.name, int(Campaign.hull(sh).crew), (" " + note) if note != "" else ""]

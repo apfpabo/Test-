@@ -97,9 +97,13 @@ func date_str(day: int) -> String:
     var d = date_of(day); return "%d %s %d" % [d.day, MONTHS[d.month - 1], d.year]
 func year() -> int: return date_of(G.day).year
 ## Pack-ice edges in degrees of latitude: Arctic ice peaks in March, Antarctic ice in September.
+var _ice_day := -1
+var _ice_e := Vector2.ZERO
 func ice_edges(day: int) -> Vector2:
+    if day == _ice_day: return _ice_e   # asked for every fleet on every tick of the chart: worked out once a day
     var d = date_of(day); var m = (d.month - 1) + d.day / 31.0
-    return Vector2(74 + 4 * sin(TAU * (m - 5.5) / 12), -60 + 4 * sin(TAU * (m - 5) / 12))
+    _ice_day = day; _ice_e = Vector2(74 + 4 * sin(TAU * (m - 5.5) / 12), -60 + 4 * sin(TAU * (m - 5) / 12))
+    return _ice_e
 ## Ocean currents bend the ice edge (campaign.json ICE_BIAS: [lon, shift in degrees, width]): a warm current keeps the
 ## Vargan north-west coast open far north; the cold northern Halcyon freezes further south.
 func ice_bias(lon: float) -> float:
@@ -108,7 +112,9 @@ func ice_bias(lon: float) -> float:
     return b
 func ice_north_at(lon: float, e: Vector2) -> float: return e.x + ice_bias(lon)
 func in_ice(x: float, y: float) -> bool:
-    var lat = y_lat(y); var e = ice_edges(G.day)
+    var lat = y_lat(y)
+    if lat < 45.0 and lat > -55.0: return false   # nowhere near either ice edge (the currents shift it by a few degrees at most)
+    var e = ice_edges(G.day)
     return lat > ice_north_at(x_lon(x), e) or lat < e.y
 
 # ------------------------------------------------------------------ loading
@@ -439,7 +445,9 @@ func new_officer(lvl: int) -> Dictionary:
 ## Cruise speed on the chart in map units a second: about 70% of the slowest ship's top speed.
 func fleet_map_speed(ships: Array) -> float:
     var m = INF
-    for s in ships: m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * int(s.get("up", {}).get("eng", 0))))
+    for s in ships:
+        var up = s.get("up")
+        m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)))
     return m * 0.576
 ## The engine-room telegraph on the chart: speed as a share of cruising speed, and fuel burned a day as a share of
 ## the cruising burn (it rises steeply with speed, so slow steaming stretches the bunkers and flank speed drains them).
@@ -787,6 +795,7 @@ func new_day(moved: bool) -> void:
         var lost = int(ceil(G.crew * 0.05)); G.crew -= lost; G.credits = 0; toast.emit("Pay is in arrears. %d sailors walked off." % lost)
     for p in G.ports:
         for g in C.GOODS: p.drift[g.id] = clampf(p.drift[g.id] * 0.93 + (randf() - 0.5) * 0.05, -0.3, 0.45)
+    for k in G.rep: G.rep[k] = clampi(int(G.rep[k]), -100, 100)   # standing has a floor and a ceiling, whatever pushed it
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()
@@ -864,12 +873,17 @@ func update(dt: float) -> void:
     Structures.tick(dt)
     var ps = strength(G.fleet)
     var pr := strike_reach(G.fleet, Weather.air_ok(weather_here(), has_tech("jets")))
+    # per tick, not per fleet: how far you see, and which flags are at war with you (this loop runs for every fleet in
+    # the world on every tick, eight times a frame at 8x, so nothing in it is worked out twice)
+    var ky := ck_you(wx); var war := {}
     for f in G.fleets.duplicate():
         f.cool = maxf(0.0, f.cool - dt)
         if P.get("towed") != null and f.id == P.towed:   # the towing ship keeps station ahead of you on the hawser
             f.x = wrap_x(P.x + cos(P.h) * 2.5); f.y = P.y + sin(P.h) * 2.5; f.h = P.h; f.v = P.v; f.route = null
             continue
-        var dP = mdist(f.x, f.y, P.x, P.y); var hos = hostile_fleet(f)
+        var dP = mdist(f.x, f.y, P.x, P.y)
+        if not war.has(f.fac): war[f.fac] = at_war(f.fac)
+        var hos: bool = war[f.fac] or f.get("hunter", false) or f.get("mission", false) or f.kind == "assault"   # as hostile_fleet()
         var merchant = true
         for s in f.ships: if hull(s).kind != "merchant": merchant = false
         var rate = 0.6
@@ -934,9 +948,8 @@ func update(dt: float) -> void:
         # A force that has been met stays quiet until the range opens past its reach again.
         # Weather and darkness: each side finds the other only as far as it can see (or its radar reaches), and
         # carriers reach out only when their aircraft can fly.
-        var kt := ck_them(f, wx); var ky := ck_you(wx)
-        var their_reach := strike_reach(f.ships, Weather.air_ok(wx, fac_era(f.fac) >= 2)) * kt; var your_reach := pr * ky
-        var reach := maxf(their_reach, your_reach) if hos else 0.0
+        var kt := ck_them(f, wx) if hos else 1.0
+        var reach := maxf(strike_reach(f.ships, Weather.air_ok(wx, fac_era(f.fac) >= 2)) * kt, pr * ky) if hos else 0.0
         if f.get("met", false) and dP > maxf(reach, CONTACT) * 1.2: f.met = false
         var close_in: bool = ((P.follow == f.id or f.get("answering", false)) and dP < CONTACT * maxf(ky, 0.35)) or (hos and dP < CONTACT * maxf(kt, ky))   # inside gun range, whoever sees the other brings on the action
         if f.cool <= 0 and P.cool <= 0 and (close_in or (hos and dP < reach and not f.get("met", false))):
@@ -1117,12 +1130,12 @@ const WIRELESS := 900.0   # map units, about 5,000 km: the long-range sets of 19
 func call_fleet(f: Dictionary) -> String:
     var d := mdist(f.x, f.y, G.player.x, G.player.y)
     if dark(): return "You are running dark: the wireless is silent. Stop running dark to call."
-    if d > WIRELESS: return "The %s is beyond the range of your wireless (%d km)." % [f.name.to_lower(), int(d * KM_PER_UNIT)]
+    if d > WIRELESS: return "The %s is beyond the range of your wireless (%d km)." % [Campaign.fname(f), int(d * KM_PER_UNIT)]
     if hostile_fleet(f) or f.kind == "raiders" or f.kind == "bounty": return "That is no friend to call on."
-    if f.fac != "player" and G.rep.get(f.fac, 0) < -10: return "The %s acknowledges your call and steams on. Your standing with the %s is too low for help." % [f.name.to_lower(), GameData.fac[f.fac].short]
+    if f.fac != "player" and G.rep.get(f.fac, 0) < -10: return "The %s acknowledges your call and steams on. Your standing with the %s is too low for help." % [Campaign.fname(f), GameData.fac[f.fac].short]
     f.answering = true; f.ansT = 0.0; f.cool = 0.0; f.met = false
     G.heardUntil = int(G.day) + 1   # every direction-finding station within a thousand miles has your bearing
-    return "The %s answers your call and alters course to close you, %d km off." % [f.name.to_lower(), int(d * KM_PER_UNIT)]
+    return "The %s answers your call and alters course to close you, %d km off." % [Campaign.fname(f), int(d * KM_PER_UNIT)]
 
 ## The nearest harbour open to you, by sea.
 func nearest_open_port():
@@ -1155,7 +1168,7 @@ func distress() -> String:
     if f == null: return "Your distress call goes unanswered: no warship that would help is within %d km. Try a merchant convoy (right-click the sea)." % int(WIRELESS * KM_PER_UNIT)
     if dark(): set_dark(false)
     f.answering = true; f.ansT = 0.0; f.cool = 0.0; f.met = false; G.heardUntil = int(G.day) + 1; G.distressDay = int(G.day)
-    return "Distress call answered: the %s alters course for you, %d km off. A tow to the nearest open port will cost about %s (your standing with the %s is %d)." % [f.name.to_lower(), int(mdist(f.x, f.y, G.player.x, G.player.y) * KM_PER_UNIT), fmt(tow_fee(f.fac)), GameData.fac[f.fac].short, int(G.rep.get(f.fac, 0))]
+    return "Distress call answered: the %s alters course for you, %d km off. A tow to the nearest open port will cost about %s (your standing with the %s is %d)." % [Campaign.fname(f), int(mdist(f.x, f.y, G.player.x, G.player.y) * KM_PER_UNIT), fmt(tow_fee(f.fac)), GameData.fac[f.fac].short, int(G.rep.get(f.fac, 0))]
 
 ## A warship takes you in tow to the nearest open port: the fee is paid now, and she stays alongside until you
 ## reach harbour.
@@ -1174,9 +1187,14 @@ func take_tow(f: Dictionary) -> String:
         else: G.credits += fee
         return "No sea route to %s." % p.name
     log_ev("Towed to %s by the %s" % [p.name, f.name])
-    if owed: return "You cannot pay, but no captain leaves a ship adrift. The %s takes you in tow for %s; the %s will remember it (standing -5)." % [f.name.to_lower(), p.name, GameData.fac[f.fac].short]
-    return "The %s passes a hawser and takes you in tow for %s (%s)." % [f.name.to_lower(), p.name, fmt(fee)]
+    if owed: return "You cannot pay, but no captain leaves a ship adrift. The %s takes you in tow for %s; the %s will remember it (standing -5)." % [Campaign.fname(f), p.name, GameData.fac[f.fac].short]
+    return "The %s passes a hawser and takes you in tow for %s (%s)." % [Campaign.fname(f), p.name, fmt(fee)]
 
+## A fleet's name inside a sentence ("the Concord patrol", "the raider flotilla"): a flag's name keeps its capital.
+func fname(f: Dictionary) -> String:
+    var n: String = f.name
+    if n.begins_with("Your "): return n.substr(5)
+    return n.to_lower() if n.begins_with("Raider") else n
 func _fleet(id):
     for f in G.fleets: if f.id == id: return f
     return null
@@ -1207,7 +1225,7 @@ func do_survey(poi: Dictionary) -> Dictionary:
         out.lines.append("The bunkers still hold %d tons of fuel oil, and the workshops yield spares worth selling." % fuel)
     else: rp = randi_range(15, 32); coin = randi_range(1, 4) * 1000; out.lines.append("Behind a welded door: filing cabinets, wiring diagrams and a crate of prototype valves.")
     G.rp += rp; G.credits += coin; out.lines.append("+%d RP, +%s in salvage." % [rp, fmt(coin)])
-    if poi.type != "site" and roll < 0.22 and G.fleet.size() < 10:
+    if poi.type != "site" and roll < 0.22 and all_ships().size() < 10:
         var hulk = new_ship(["dd", "dd", "corvette", "cl", "ss"].pick_random(), null, "raiders", [])
         hulk.pal = "player"; hulk.name = GameData.names.player.pick_random(); hulk.hullFrac = 0.22; G.fleet.append(hulk)
         out.lines.append("A %s is still afloat at her moorings. Pumped out and patched, she joins you as the %s at 22%% condition. She needs %d crew." % [hull(hulk).name.to_lower(), hulk.name, hull(hulk).crew])
@@ -1259,9 +1277,13 @@ func apply_battle(sim: BattleSim) -> Dictionary:
                 if s.struck: r.prizes.append(s.rec)
     r.casualties = mini(int(G.crew), int(round(cas))); G.crew -= r.casualties
     G.fleet = G.fleet.filter(func(s): return not r.lost.has(s))
+    if G.fleet.is_empty() and body() != null:   # the division you sailed with is gone, but your main body is afloat: it is your squadron now
+        var b = body(); r.notes.append("The division you led is lost. Your flag shifts to the main body, %d km away." % int(mdist(b.x, b.y, G.player.x, G.player.y) * KM_PER_UNIT))
+        G.fleet = b.ships; G.fleets.erase(b); G.player.x = b.x; G.player.y = b.y; G.player.route = null; G.player.follow = null
     var drowned := Structures.trim_troops()
     if drowned > 0: r.notes.append("%d soldiers were lost with their transport." % drowned)
-    for o in G.officers: if not G.fleet.any(func(s): return s.id == o.ship): o.ship = null
+    for o in G.officers: if not all_ships().any(func(s): return s.id == o.ship): o.ship = null
+    var had: int = f.ships.size() if f != null else 0
     if f != null: f.ships = f.ships.filter(func(s): return not r.sunk.has(s) and not r.prizes.has(s))
     var enemy_left = false
     for s in sim.ships: if s.side == 1 and sim.engageable(s): enemy_left = true
@@ -1278,7 +1300,9 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     if r.victory and f != null and f.cargo.size():
         var got = []; var free = cargo_cap() - cargo_used()
         for g in f.cargo:
-            var take = mini(free, int(floor(f.cargo[g] * (0.3 + randf() * 0.4))))
+            # cargo comes from the ships you sank or took, not from those that got away (a convoy that scattered
+            # untouched used to leave a third to two thirds of its cargo behind)
+            var take = mini(free, int(floor(f.cargo[g] * (0.3 + randf() * 0.4) * beaten.size() / maxf(1.0, had))))
             if take > 0:
                 G.cargo[g] += take; free -= take
                 for gd in C.GOODS: if gd.id == g: got.append("%d %s" % [take, gd.name.to_lower()])

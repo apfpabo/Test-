@@ -229,27 +229,32 @@ func clash_tick(dt: float) -> void:
 	if _clash_t > 0.0: return
 	_clash_t = 0.5
 	var fl: Array = Campaign.G.fleets
-	for i in fl.size():
-		var a: Dictionary = fl[i]
-		if not _free(a): continue
-		for j in range(i + 1, fl.size()):
-			var b: Dictionary = fl[j]
-			if not _free(b) or a.fac == b.fac: continue
+	# fleets that have met leave each other alone for a while. This is their own timer (`cc`): it used to be the
+	# `cool` that also gates contact with you, so a hostile patrol that passed a convoy could not be brought to
+	# action, nor chase you, for two and a half days.
+	for f in fl: if float(f.get("cc", 0.0)) > 0.0: f.cc = float(f.cc) - 0.5
+	var free: Array = fl.filter(_free)   # asked once for each fleet, not once for each pair
+	for i in free.size():
+		var a: Dictionary = free[i]
+		for j in range(i + 1, free.size()):
+			var b: Dictionary = free[j]
+			if a.fac == b.fac: continue
 			if Campaign.mdist(a.x, a.y, b.x, b.y) > Campaign.CONTACT: continue
-			var raid: bool = (a.fac == "raiders" and b.kind != "bounty") or (b.fac == "raiders" and a.kind != "bounty")
+			var raid: bool = (a.fac == "raiders" and a.kind != "bounty") or (b.fac == "raiders" and b.kind != "bounty")   # a posted bounty is left for you
 			if raid and (a.kind == "patrol" or b.kind == "patrol" or a.kind == "convoy" or b.kind == "convoy"):
 				_fight(a, b, ""); return
 			if a.fac == "raiders" or b.fac == "raiders": continue
 			if a.fac == "player" or b.fac == "player":   # ships of your own flag: they fight the powers you are at war with, and pass the rest
 				if Campaign.at_war(b.fac if a.fac == "player" else a.fac): _fight(a, b, ""); return
-				a.cool = 25.0; b.cool = 25.0; continue
+				a.cc = 25.0; b.cc = 25.0; continue
 			if at_war(a.fac, b.fac): _fight(a, b, ""); return
-			a.cool = 25.0; b.cool = 25.0   # they have met: whatever happens, not again for a while
+			a.cc = 25.0; b.cc = 25.0   # they have met: whatever happens, not again for a while
 			if band(a.fac, b.fac) in ["armistice", "hostile"] and (a.kind == "patrol" or b.kind == "patrol") and randf() < 0.05:
 				shift(a.fac, b.fac, -4.0); _fight(a, b, "incident"); return
 
 func _free(f: Dictionary) -> bool:
-	return f.cool <= 0 and f.kind != "assault" and not f.get("mission", false) and not f.get("hunter", false) and int(f.get("contract", 0)) == 0 and int(f.get("escort", 0)) == 0 and not f.ships.is_empty()
+	if f.get("answering", false) or (Campaign.G.player.get("towed") != null and int(Campaign.G.player.towed) == int(f.id)): return false   # busy with you
+	return f.cool <= 0 and float(f.get("cc", 0.0)) <= 0.0 and f.kind != "assault" and not f.get("mission", false) and not f.get("hunter", false) and int(f.get("contract", 0)) == 0 and int(f.get("escort", 0)) == 0 and not f.ships.is_empty()
 
 ## An action between two fleets, settled without the player: the stronger side usually wins, and the loser loses
 ## most of its ships. Within earshot of your task force, you hear of it.
@@ -262,7 +267,7 @@ func _fight(a: Dictionary, b: Dictionary, why: String) -> void:
 	for s in w.ships: s.hullFrac = maxf(0.1, s.hullFrac - randf_range(0.0, 0.3))
 	var odds := (sb / maxf(sa, 1.0)) if a_wins else (sa / maxf(sb, 1.0))
 	if w.ships.size() > 1 and randf() < 0.25 * minf(1.0, odds): w.ships.pop_back()
-	a.cool = 30.0; b.cool = 30.0
+	a.cc = 30.0; b.cc = 30.0
 	for f in [a, b]: if f.ships.is_empty(): Campaign.G.fleets.erase(f)
 	var P: Dictionary = Campaign.G.player; var d := Campaign.mdist(a.x, a.y, P.x, P.y)
 	var tell := d < 600.0 or why == "incident"
@@ -408,6 +413,8 @@ func _make(p: Dictionary) -> Dictionary:
 func can_accept(c: Dictionary) -> String:
 	var G := g()
 	if G.contracts.size() >= int(D.contracts.max_active): return "You can hold %d contracts at once." % int(D.contracts.max_active)
+	var cm = G.get("commission")
+	if cm != null and c.get("target", "") == cm.fac: return "You serve the %s: you cannot sign on against your own flag." % GameData.fac[cm.fac].short
 	if (c.kind == "delivery" or c.kind == "smuggle") and Campaign.cargo_cap() - Campaign.cargo_used() < int(c.qty): return "Not enough room in the hold (%d needed)." % int(c.qty)
 	return ""
 
@@ -442,9 +449,22 @@ func complete(c: Dictionary, notes = null) -> void:
 	else: Campaign.toast.emit(t)
 
 func fail(c: Dictionary, why: String) -> void:
-	var G := g(); G.contracts.erase(c); G.rep[c.fac] = G.rep.get(c.fac, 0) - 8
+	var G := g(); G.contracts.erase(c); G.rep[c.fac] = maxi(-100, int(G.rep.get(c.fac, 0)) - 8)
 	if c.kind == "hunt":
 		for f in G.fleets: if int(f.get("contract", 0)) == int(c.id): f.contract = 0; f.name = "Raider flotilla"
+	if c.kind == "escort":   # the convoy sails on by itself (it used to wait for its escort for ever)
+		for f in G.fleets: if int(f.get("escort", 0)) == int(c.id): f.erase("escort"); f.name = GameData.fac[f.fac].short + " convoy"
+	if (c.kind == "delivery" or c.kind == "smuggle") and c.has("good") and not c.get("seized", false):
+		# the consignment was the shipper's: what is still in the hold goes back, and what is missing is paid for
+		# (it used to stay yours: free cargo for eight points of standing)
+		var back: int = mini(int(c.qty), int(G.cargo.get(c.good, 0))); G.cargo[c.good] = float(G.cargo.get(c.good, 0)) - back
+		var short: int = int(c.qty) - back
+		if short > 0:
+			var base := 0.0
+			for gd in Campaign.C.GOODS: if gd.id == c.good: base = float(gd.base)
+			var owe := int(round(short * base * 1.5)); G.credits = maxf(0.0, float(G.credits) - owe)
+			why += " %d tons of the consignment are missing: %s charged." % [short, Campaign.fmt(owe)]
+		elif back > 0: why += " The consignment is landed again."
 	var t := "Contract failed: %s. %s %s standing -8." % [c.title, why, GameData.fac[c.fac].short]
 	Campaign.log_ev(t); Campaign.toast.emit(t)
 

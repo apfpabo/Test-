@@ -41,6 +41,20 @@ func _ready() -> void:
 	for fl in G.fleets: fl.cool = 99.0
 	for i in 30: Campaign.paused = false; Campaign.update(1.0 / 30.0)
 	ok(P.follow == null, "an intercept is dropped when the contact is lost")
+	# ---- the distress call and the price of a tow
+	G.cargo.fuel = 0.0; G.reserve = 0.0
+	ok(Campaign.dead_in_water(), "bunkers and reserve dry: dead in the water")
+	for fl in G.fleets: fl.cool = 0.0
+	var helper = Campaign.distress_ship()
+	ok(helper != null and helper.kind == "patrol" and not Campaign.hostile_fleet(helper), "a warship that is no enemy is in wireless range")
+	G.rep[helper.fac] = 60; var cheap := Campaign.tow_fee(helper.fac); G.rep[helper.fac] = 20; var plain := Campaign.tow_fee(helper.fac); G.rep[helper.fac] = -9; var dear := Campaign.tow_fee(helper.fac)
+	ok(cheap < plain and plain < dear and absf(float(cheap) / plain - 0.5) < 0.06, "the tow costs %d at standing 60, %d at 20, %d at -9" % [cheap, plain, dear])
+	Campaign.set_dark(true); var said2 := Campaign.distress(); print(said2)
+	ok(helper.get("answering", false) and not Campaign.dark() and Campaign.heard(), "the call is answered by a neutral ship too, and breaks radio silence")
+	Campaign._sighting(); ok(helper.vis, "the ship coming to you is shown on the chart")
+	map._update_dock(); ok(not map.distress_btn.visible, "the button hides while help is on its way")
+	helper.answering = false; map._update_dock(); ok(map.distress_btn.visible, "and shows when you are dead in the water with nobody coming")
+	G.cargo.fuel = 200.0; G.reserve = 50.0; map._update_dock(); ok(not map.distress_btn.visible, "not when you have fuel")
 	# ---- routes from hard against a coast (a big squadron swings wide and fetches up there)
 	var stuck := 0; var tried := 0; var worst := ""
 	for p in G.ports:

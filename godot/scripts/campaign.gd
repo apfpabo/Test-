@@ -764,7 +764,7 @@ func new_day(moved: bool) -> void:
             G.reserve = maxf(0.0, float(G.reserve) - burn / 3.0)
             if G.reserve <= 0.0 and not G.get("deadWarned", false):
                 G.deadWarned = true
-                toast.emit("The reserve is gone. Your squadron is dead in the water. Right-click the sea and call by wireless: a warship can tow you to port, a merchant convoy can sell you fuel.")
+                toast.emit("The reserve is gone. Your squadron is dead in the water. Send a distress call (the red button below) and the nearest warship will come and tow you to port; or right-click the sea to call a merchant convoy, which can sell you fuel.")
         if G.cargo.fuel < 0:
             G.cargo.fuel = 0
             if not G.get("noFuelWarned", false): toast.emit("Bunkers are dry. The fleet crawls on its reserve, about %d days of it. Buy fuel oil at a port, or from a merchant convoy." % int(ceil(reserve() / maxf(0.1, fuel_use() / 3.0)))); G.noFuelWarned = true
@@ -1133,17 +1133,36 @@ func nearest_open_port():
         if d < bd: bd = d; best = p
     return best
 
-func tow_fee() -> int:
+## The fee for a tow to the nearest open port: by the distance, and by what the flag of the ship that tows you thinks
+## of you (half price at standing 60, the plain price at 20, a quarter more at 0, double at -60).
+func tow_mult(fac: String) -> float: return clampf(1.0 - (float(G.rep.get(fac, 0)) - 20.0) / 80.0, 0.5, 2.0) if fac != "" else 1.0
+func tow_fee(fac := "") -> int:
     var p = nearest_open_port()
     if p == null: return 0
-    return int(round((1500.0 + mdist(p.sx, p.sy, G.player.x, G.player.y) * 6.0) / 100.0) * 100)
+    return int(round((1500.0 + mdist(p.sx, p.sy, G.player.x, G.player.y) * 6.0) * tow_mult(fac) / 100.0) * 100)
+
+## A distress call: the nearest warship that is not your enemy, friendly or merely neutral, turns towards you,
+## whatever her flag thinks of you (that shows in the fee). It breaks radio silence. Returns what happened.
+func distress_ship():
+    var best = null; var bd: float = WIRELESS
+    for f in G.fleets:
+        if f.fac == "player" or hostile_fleet(f) or f.kind != "patrol" or f.ships.is_empty() or Structures._is_assault(f): continue
+        var d := mdist(f.x, f.y, G.player.x, G.player.y)
+        if d < bd: bd = d; best = f
+    return best
+func distress() -> String:
+    var f = distress_ship()
+    if f == null: return "Your distress call goes unanswered: no warship that would help is within %d km. Try a merchant convoy (right-click the sea)." % int(WIRELESS * KM_PER_UNIT)
+    if dark(): set_dark(false)
+    f.answering = true; f.ansT = 0.0; f.cool = 0.0; f.met = false; G.heardUntil = int(G.day) + 1; G.distressDay = int(G.day)
+    return "Distress call answered: the %s alters course for you, %d km off. A tow to the nearest open port will cost about %s (your standing with the %s is %d)." % [f.name.to_lower(), int(mdist(f.x, f.y, G.player.x, G.player.y) * KM_PER_UNIT), fmt(tow_fee(f.fac)), GameData.fac[f.fac].short, int(G.rep.get(f.fac, 0))]
 
 ## A warship takes you in tow to the nearest open port: the fee is paid now, and she stays alongside until you
 ## reach harbour.
 func take_tow(f: Dictionary) -> String:
     var p = nearest_open_port()
     if p == null: return "There is no harbour open to you to be towed to."
-    var fee := tow_fee(); var owed: bool = G.credits < fee
+    var fee := tow_fee(f.fac); var owed: bool = G.credits < fee
     # a ship in distress is helped whether or not she can pay, as the law of the sea expects; the flag remembers it
     if owed: G.rep[f.fac] = G.rep.get(f.fac, 0) - 5
     else: G.credits -= fee

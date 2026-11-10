@@ -732,7 +732,17 @@ func _update_telegraph() -> void:
     dark_btn.add_theme_color_override("font_color", UI.GOLD if Campaign.dark() else UI.DIM)
     dark_btn.tooltip_text = "How easily you are found. Speed makes smoke and wake: Slow 70%, Half 85%, Cruise 100%, Full 115%, Flank 130%.\nRunning dark (lights out, wireless silent, no smoke) cuts it to 60% by night and 85% by day, holds the engines to Half or below, and you cannot call fleets by wireless.\nA wireless call gives your position away for a day (150%).\nThe weather and the enemy's radar still count: see the WEATHER chip."
 
+var distress_btn: Button
 func _update_dock() -> void:
+    if distress_btn == null:
+        distress_btn = UI.button("Send a distress call", func(): _toast(Campaign.distress()), true); distress_btn.focus_mode = Control.FOCUS_NONE; ui.add_child(distress_btn); ui.move_child(distress_btn, dock.get_index())
+        distress_btn.set_anchor_and_offset(SIDE_LEFT, 0.5, -130); distress_btn.set_anchor_and_offset(SIDE_RIGHT, 0.5, 130); distress_btn.set_anchor_and_offset(SIDE_TOP, 1.0, -112); distress_btn.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -74)
+        distress_btn.add_theme_color_override("font_color", Color(0.1, 0.05, 0.04)); var rs := StyleBoxFlat.new(); rs.bg_color = UI.RED; rs.set_corner_radius_all(2); rs.content_margin_left = 12; rs.content_margin_right = 12
+        for k in ["normal", "hover", "pressed", "focus"]: distress_btn.add_theme_stylebox_override(k, rs)
+        distress_btn.tooltip_text = "The nearest warship that is not your enemy comes to you and offers a tow to the nearest open port. The fee grows with the distance and falls with your standing with her flag: half at standing 60, double at -60."
+    var G0: Dictionary = Campaign.G
+    var coming: bool = G0.fleets.any(func(f): return f.get("answering", false))
+    distress_btn.visible = not panel_open and Campaign.dead_in_water() and G0.player.get("towed") == null and not coming
     if panel_open: dock.visible = false; return
     var np = Campaign.nearest_port(28.0); var poi = null if np != null else Campaign.nearest_poi(22.0)
     var base = null
@@ -791,7 +801,7 @@ func _click(sp: Vector2) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
     var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / zoom   # r in screen pixels
     if P.get("towed") != null: _toast("You are under tow. Right-click to cast off the tow."); return
-    if Campaign.dead_in_water(): _toast("Your squadron is dead in the water: no fuel, no reserve. Right-click the sea to call a warship or a convoy by wireless.")
+    if Campaign.dead_in_water(): _toast("Your squadron is dead in the water: no fuel, no reserve. Send a distress call (the red button), or right-click the sea to call a merchant convoy for fuel.")
     if Input.is_key_pressed(KEY_CTRL) and P.get("route") != null and P.get("follow") == null and P.get("escort") == null:   # another waypoint
         var tp = null
         for p in G.ports: if near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10): tp = p
@@ -1030,7 +1040,7 @@ func _hail_body(box: Control, f: Dictionary) -> void:
     var acts := [UI.button("Exchange signals and pass", func(): f.cool = 8.0; P.cool = 3.0; close_panel(), true)]
     if merchant: acts.append(UI.button("Trade", func(): _trade(f)))
     if not merchant and dry:
-        var fee := Campaign.tow_fee(); var np = Campaign.nearest_open_port()
+        var fee := Campaign.tow_fee(f.fac); var np = Campaign.nearest_open_port()
         var tow_l: String = "Request a tow to %s · %s" % [np.name if np != null else "port", Campaign.fmt(fee)] if G.credits >= fee else "Ask for a tow to %s (you cannot pay)" % (np.name if np != null else "port")
         acts.append(UI.button(tow_l, func(): f.cool = 8.0; _toast(Campaign.take_tow(f)); close_panel(), false, np == null))
     if merchant: _p(box, "Merchant ships carry spare bunker fuel and a little of everything, and will deal at sea, at worse prices than a port.", UI.DIM, 14)

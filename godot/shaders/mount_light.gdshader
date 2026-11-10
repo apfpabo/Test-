@@ -9,27 +9,51 @@ uniform vec3 tint = vec3(1.0);
 uniform float h_max = 40.0;
 uniform float px_per_m = 20.0;
 uniform float sun_k = 1.0; // shadow length per metre of height
+// A heeled ship (see ship_light.gdshader): lean is metres carried across the ship (+y in her frame) per metre of
+// height, and sun_ship the way shadows fall in her frame. The mount's own turn is found by comparing that with the
+// sun's direction in the mount's frame (the vertex colour), so the lean runs the same way for a turret trained
+// anywhere, and by the same rule as the superstructure: each point carried over by its own height.
+uniform float lean = 0.0;
+uniform vec2 sun_ship = vec2(0.0, 1.0);
 varying vec4 vc;
+float h_at(sampler2D tx, vec2 uv) { if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 0.0; vec4 q = texture(tx, uv); return q.g * q.a * h_max; }
 
 void vertex() { vc = COLOR; }
 
 
 void fragment() {
-	vec4 t = texture(TEXTURE, UV);
-	vec3 col = vec3(t.r / 0.502) * tint * 0.94;
 	vec2 sd = normalize(vc.rg * 2.0 - 1.0 + vec2(0.0001));
+	vec2 uv0 = UV; float wall = 0.0; float wlit = 0.0;
+	if (abs(lean) > 0.01) {
+		float ta = atan(sun_ship.y, sun_ship.x) - atan(sd.y, sd.x);            // how far the mount is turned from the ship's axis
+		vec2 dir = vec2(sin(ta), cos(ta)) * sign(lean);                        // the ship's low side, in the mount's frame
+		vec2 per_m = dir * TEXTURE_PIXEL_SIZE * px_per_m;                      // UV per metre that way
+		float al = abs(lean), far = al * 12.0, stp = far / 20.0, tt = 0.0; bool hit = false;
+		for (int i = 0; i < 20; i++) { float x = far - float(i) * stp; if (h_at(TEXTURE, UV - per_m * x) * al >= x) { tt = x; hit = true; break; } }
+		if (hit && tt > 0.0) {
+			float lo = tt, hi = tt + stp;
+			for (int j = 0; j < 6; j++) { float mid = 0.5 * (lo + hi); if (h_at(TEXTURE, UV - per_m * mid) * al >= mid) lo = mid; else hi = mid; }
+			tt = lo; uv0 = UV - per_m * tt;
+			wall = smoothstep(0.2, 0.6, h_at(TEXTURE, uv0) * al - tt);
+			if (wall > 0.0 && texture(TEXTURE, uv0).a < 0.5) uv0 -= per_m * 0.3;
+			wlit = clamp(sign(lean) * normalize(sun_ship + vec2(0.0001)).y * 0.5 + 0.5, 0.0, 1.0);
+		}
+	}
+	bool inside = uv0.x >= 0.0 && uv0.y >= 0.0 && uv0.x <= 1.0 && uv0.y <= 1.0;
+	vec4 t = inside ? texture(TEXTURE, uv0) : vec4(0.0);
+	vec3 col = vec3(t.r / 0.502) * tint * 0.94;
 	vec2 fw = max(fwidth(UV), vec2(1e-6));
 	vec2 mpu = 1.0 / (TEXTURE_PIXEL_SIZE * px_per_m); // metres per unit of UV
-	vec4 a = texture(TEXTURE, UV + vec2(fw.x, 0.0)), b = texture(TEXTURE, UV - vec2(fw.x, 0.0));
-	vec4 cc = texture(TEXTURE, UV + vec2(0.0, fw.y)), d = texture(TEXTURE, UV - vec2(0.0, fw.y));
+	vec4 a = texture(TEXTURE, uv0 + vec2(fw.x, 0.0)), b = texture(TEXTURE, uv0 - vec2(fw.x, 0.0));
+	vec4 cc = texture(TEXTURE, uv0 + vec2(0.0, fw.y)), d = texture(TEXTURE, uv0 - vec2(0.0, fw.y));
 	float hx = (a.g * a.a - b.g * b.a) * h_max / (2.0 * fw.x * mpu.x);
 	float hy = (cc.g * cc.a - d.g * d.a) * h_max / (2.0 * fw.y * mpu.y);
 	vec3 n = normalize(vec3(-hx, -hy, 1.0));
 	vec3 L = normalize(vec3(-sd, 1.0 / sun_k));
 	float ratio = clamp(dot(n, L) / L.z, 0.3, 1.75);
-	col *= mix(1.0, ratio, 0.8);
+	col *= mix(1.0, ratio, 0.8 * (1.0 - wall));
+	col = mix(col, vec3(t.r / 0.502) * tint * mix(0.42, 0.75, wlit), wall);   // her side: plain plating, in light or in shade
 	if (vc.b < 0.25) col *= vec3(0.3, 0.27, 0.25);
-	else if (vc.b < 0.45) col = vec3(t.r / 0.502) * tint * mix(0.4, 0.72, (vc.b - 0.26) / 0.18);   // a turret's side, seen when the ship heels: plain plating, in light or in shade
 	else col *= 1.0 + (vc.b - 0.5) * 0.6;
 	COLOR = vec4(col, t.a * vc.a);
 }

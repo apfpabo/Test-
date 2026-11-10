@@ -428,6 +428,7 @@ class ShipView extends Node2D:
     var spr = 1.0
     var size_m = Vector2.ONE
     var edge: Array = []   # Vector2(x along the ship, half beam there)
+    var mount_mat: ShaderMaterial
     var lean := 0.0        # metres carried towards her low side per metre of height
     var freeboard := 4.0
     var deck_shift := 0.0  # how far the deck is carried to her low side by the heel, metres
@@ -454,7 +455,7 @@ class ShipView extends Node2D:
         detail_top = Detail.new(); detail_top.view = self; detail_top.upper = true; detail_top.scale = Vector2(spr, spr); top.add_child(detail_top)
         top.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
         style = GameData.style_of(id)
-        var mmat = GameData.mount_material(s.pal)
+        var mmat = GameData.mount_material(s.pal); mount_mat = mmat
         for lvl in range(0, s.max_lvl + 1):
             for lit in [false, true]:
                 var ml = MountLayer.new(); ml.view = self; ml.lvl = lvl; ml.lit = lit
@@ -491,7 +492,8 @@ class ShipView extends Node2D:
         deck_shift = ln * fb
         lean = ln; freeboard = fb
         base.position.y = deck_shift; top.position.y = deck_shift
-        lit_top.set_shader_parameter("lean", ln)   # each point of the upper works is carried over by its own height, in the shader
+        lit_top.set_shader_parameter("lean", ln)
+        mount_mat.set_shader_parameter("lean", ln); mount_mat.set_shader_parameter("sun_ship", sun_local)   # each point of the upper works is carried over by its own height, in the shader
         for c in get_children():
             if c is Fires: c.position.y = ln * (fb + 1.0)
             if c is Node2D and not (c is Sprite2D): c.queue_redraw()
@@ -627,19 +629,10 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
             var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
             var split: bool = info.get("split", false)
             var bt: Texture2D = GameData.mount_img(m.wid, style, true) if split else null
-            # heeled, a turret is the solid it is: its foot is carried over with the deck it stands on, its roof further
-            # by its own height, and between the two its side shows (the plan drawn again and again up the slope, dark)
-            var ln: float = view.lean; var foot: float = ln * (view.freeboard + 2.8 * lvl); var roof: float = foot + ln * GameData.turret_h(m.w) * 1.5   # the gunhouse and the lip of its barbette
+            # heeled, a turret is the solid it is: its foot is carried over with the deck it stands on, and the mount
+            # shader carries every point of it further by its own height (the same rule as the superstructure)
+            var ln: float = view.lean; var foot: float = ln * (view.freeboard + 2.8 * lvl)
             p.y += foot
-            if lit and absf(ln) > 0.03:
-                # (the mount shader reads the vertex colour as a code: blue between 0.26 and 0.44 is a side, flat and dark)
-                var n: int = clampi(ceili(absf(roof - foot) * view.battle.zoom() / 1.0), 2, 12)
-                var wc: Color = GameData.mount_code(sun.rotated(-m.ta), lvl, m.dead); if not m.dead: wc.b = 0.3 if ln * sun.y < 0.0 else 0.42
-                for k in n:
-                    draw_set_transform(p + Vector2(0, (roof - foot) * k / n), m.ta, Vector2(sc, sc))
-                    if split and k >= n / 2: _barrels(bt, m, info, o, wc)
-                    draw_texture(GameData.mount_img(m.wid, style), o, wc)
-            if lit: p.y += roof - foot
             if not lit:
                 # a soft contact shadow round the foot, then a crisp shadow cast from the roof's height (raised turrets cast further)
                 draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04)
@@ -653,7 +646,11 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
                 var code: Color = GameData.mount_code(sun.rotated(-m.ta), lvl, m.dead)
                 draw_set_transform(p, m.ta, Vector2(sc, sc))
                 if split: _barrels(bt, m, info, o, code) # only the barrels run back on recoil, each on its own
-                draw_texture(GameData.mount_img(m.wid, style), o, code)
+                var mt: Texture2D = GameData.mount_img(m.wid, style)
+                if absf(ln) > 0.01:   # room round the plan for what leans out past its edge
+                    var pad := Vector2.ONE * 4.0 * float(info.spr)
+                    draw_texture_rect_region(mt, Rect2(o - pad, mt.get_size() + pad * 2.0), Rect2(-pad, mt.get_size() + pad * 2.0), code)
+                else: draw_texture(mt, o, code)
         draw_set_transform(Vector2.ZERO)
         if lit and lvl == s.max_lvl and s.struck: _white_flag(s)
 

@@ -320,6 +320,24 @@ func _sounds() -> void:
 		if Campaign.on_land(P.x, P.y): aground += 1
 	ok(refused == 0, "a full squadron of carriers and oilers is never refused a course about the Strelsk Sounds (%d of %d refused%s)" % [refused, tried, (", e.g. " + worst) if worst != "" else ""])
 	ok(aground == 0 and legs > 60, "and never fetches up on the land (%d times in %d legs)" % [aground, legs])
+	# the owner's report at Port Saffron: a fleet leaving harbour with her bow towards the shore wedged in a corner of
+	# the coast. From every port, on eight headings, for the two nearest ports: she gets away.
+	var wedged := []; var sailed := 0
+	for p in G.ports:
+		var near: Array = G.ports.filter(func(q): return q != p)
+		near.sort_custom(func(a, b): return Campaign.mdist(a.sx, a.sy, p.sx, p.sy) < Campaign.mdist(b.sx, b.sy, p.sx, p.sy))
+		for q in near.slice(0, 2):
+			for k in 8:
+				var o := {"x": p.sx, "y": p.sy, "h": wrapf(k * PI / 4.0, -PI, PI), "v": 0.0, "route": Campaign.build_route({"x": p.sx, "y": p.sy}, Campaign.port_route(int(p.id), int(q.id))), "ri": 0, "rx": p.sx, "ry": p.sy}
+				var last := Vector2(o.x, o.y); var idle := 0; var arrived := false
+				for i in 500:
+					if Campaign.route_move(o, 10.0, 0.3 if k % 2 == 0 else 0.15, 0.05): arrived = true; break
+					idle = idle + 1 if Vector2(o.rx, o.ry).distance_to(last) < 0.002 else 0
+					last = Vector2(o.rx, o.ry)
+					if idle > 80: break
+				sailed += 1
+				if idle > 80 and not arrived: wedged.append("%s for %s, bow %d deg" % [p.name, q.name, k * 45])
+	ok(wedged.is_empty(), "no fleet wedges against the coast leaving any harbour, whichever way she lay (%d of %d wedged%s)" % [wedged.size(), sailed, (": " + ", ".join(wedged.slice(0, 4))) if not wedged.is_empty() else ""])
 	sections += 1
 
 ## Radar and sonar (docs/SENSORS.md): submarines carry no radar; a rotating set paints a contact beyond the eye's

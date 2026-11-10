@@ -1735,7 +1735,28 @@ class ShipThumb extends Control:
     var pal = "player"
     var fit = null
     var sel := -1          # a mount to ring in gold (the one being refitted), or -1
+    var on_pick: Callable  # refit: called with a mount's index when it is clicked on the plan
+    var hover := -1
     var guns: Control
+    ## The centre and ring radius of a mount on this picture, in the box's pixels.
+    func mount_at(i: int) -> Array:
+        var d: Dictionary = GameData.hulls[id]; var sl: Dictionary = d.slots[i]; var k: float = px_per_m()
+        var wid = fit[i] if fit != null else sl.def
+        var w: Dictionary = GameData.weapons.get(wid if wid != null else "", {})
+        return [size / 2 + Vector2(sl.x, sl.y) * k, maxf(9.0, maxf(float(w.get("tw", 3.0)), float(w.get("tl", 3.0))) * 0.75 * k + 5.0)]
+    func _slot_under(p: Vector2) -> int:
+        var best := -1; var bd := INF
+        for i in GameData.hulls[id].slots.size():
+            var m: Array = mount_at(i); var dd: float = p.distance_to(m[0])
+            if dd < float(m[1]) + 4.0 and dd < bd: bd = dd; best = i
+        return best
+    func _gui_input(e: InputEvent) -> void:
+        if not on_pick.is_valid(): return
+        if e is InputEventMouseMotion:
+            hover = _slot_under(e.position); mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if hover >= 0 else Control.CURSOR_ARROW
+        elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+            var i := _slot_under(e.position)
+            if i >= 0: accept_event(); on_pick.call(i)
     func _ready() -> void:
         texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
         guns = ThumbMounts.new(); guns.thumb = self; guns.material = GameData.mount_material(pal); guns.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1762,10 +1783,14 @@ class ThumbHighlight extends Control:
     func _draw() -> void:
         var d: Dictionary = GameData.hulls[thumb.id]; var info: Dictionary = GameData.sprites.ships[thumb.id]
         if thumb.sel < 0 or thumb.sel >= d.slots.size(): return
-        var sl: Dictionary = d.slots[thumb.sel]; var k: float = thumb.px_per_m(); var c: Vector2 = size / 2 + Vector2(sl.x, sl.y) * k
-        var wid = thumb.fit[thumb.sel] if thumb.fit != null else sl.def
-        var w: Dictionary = GameData.weapons.get(wid if wid != null else "", {})
-        var r := maxf(9.0, maxf(float(w.get("tw", 3.0)), float(w.get("tl", 3.0))) * 0.75 * k + 5.0)
+        # every other mount that can be chosen: a thin pale ring (steady, unlike the gold one), brighter under the mouse
+        if thumb.on_pick.is_valid():
+            for i in d.slots.size():
+                if i == thumb.sel: continue
+                var m: Array = thumb.mount_at(i); var hot: bool = i == thumb.hover
+                var col := Color(0.62, 0.86, 0.95, 0.95 if hot else 0.5)
+                for q in 12: if q % 2 == 0 or hot: draw_arc(m[0], float(m[1]) - 1.0, q * TAU / 12.0, (q + 1) * TAU / 12.0, 4, col, 2.0 if hot else 1.2)
+        var sm: Array = thumb.mount_at(thumb.sel); var c: Vector2 = sm[0]; var r: float = sm[1]
         var pulse := 0.65 + 0.35 * sin(Time.get_ticks_msec() * 0.006)
         draw_arc(c, r + 3.0, 0, TAU, 40, Color(0.89, 0.7, 0.24, 0.25 * pulse), 6.0)
         draw_arc(c, r, 0, TAU, 40, Color(0.95, 0.78, 0.3, 0.95 * pulse), 2.0)
@@ -1829,7 +1854,8 @@ func _refit(box: Control) -> void:
         var k = i
         picks.add_child(UI.button(G.fleet[i].name, func(): refit_idx = k; refit_sel = 0; _render_port(), i == refit_idx))
     box.add_child(picks)
-    var th = _thumb(s.type, "player", 520, plan); th.sel = refit_sel; box.add_child(th)
+    var th = _thumb(s.type, "player", 520, plan); th.sel = refit_sel; th.on_pick = func(i): refit_sel = i; _render_port()
+    th.mouse_filter = Control.MOUSE_FILTER_STOP; th.tooltip_text = "Click a mount on the plan to choose it."; box.add_child(th)
     box.add_child(UI.label("%s · %s · %s class (%s) · %s t · %s kn · belt %d mm · Hull %d" % [s.name, d.name, d.dn, GameData.makers[d.yard].short, Campaign.fmt(d.t), str(d.kn), d.armor, d.hull], UI.INK, 15))
     var sizes = {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / PD", "T": "Torpedo", "V": "Launch cells"}
     var body = HBoxContainer.new(); body.add_theme_constant_override("separation", 18)

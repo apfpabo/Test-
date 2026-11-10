@@ -772,9 +772,22 @@ func route_move(o: Dictionary, max_sp: float, turn: float, dt: float) -> bool:
     var rate := maxf(o.v / R, turn * 0.5)
     o.h = wrapf(o.h + clampf(err, -rate * dt, rate * dt), -PI, PI)
     var step := Vector2.from_angle(o.h) * maxf(0.0, o.v * dt); var nxt := cur + step
-    if on_land(nxt.x, nxt.y):   # never run aground cutting a corner: fall back onto the route itself
-        var dirv := (aim - cur); nxt = cur + dirv.normalized() * minf(step.length(), dirv.length())
-        if on_land(nxt.x, nxt.y): nxt = cur
+    if on_land(nxt.x, nxt.y):
+        # never run aground cutting a corner. Land is ahead: make for the route by the first way that is open, the
+        # point steered for, the nearest point of the leg she is on, its next waypoint, then feeling round to either
+        # hand of the course. (Only the first was tried: a ship that left harbour pointing at the shore could wedge
+        # in a corner of the coast with the point she steered for across a headland, and lie there for ever.)
+        var sl := maxf(step.length(), 0.05); var found := false
+        var tries: Array = [aim - cur, proj - cur, b0 - cur]
+        for da in [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0, 2.4, -2.4, 2.8, -2.8, PI]: tries.append(Vector2.from_angle(want + da))   # right round, astern last
+        for dv in tries:
+            if dv.length_squared() < 0.000001: continue
+            var cand: Vector2 = cur + dv.normalized() * minf(sl, maxf(dv.length(), sl))
+            if not on_land(cand.x, cand.y):
+                nxt = cand; found = true
+                o.h = wrapf(o.h + clampf(ang_diff(dv.angle(), o.h), -rate * dt * 4.0, rate * dt * 4.0), -PI, PI)   # her bow comes round to the way she is going
+                break
+        if not found: nxt = cur
     o.rx = nxt.x; o.ry = nxt.y; o.x = wrap_x(nxt.x); o.y = nxt.y
     return false
 

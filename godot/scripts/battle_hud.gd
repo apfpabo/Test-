@@ -263,6 +263,7 @@ func _draw() -> void:
         _text(sp - Vector2(79, -1), hm.text, Color(0, 0, 0, a * 0.8), 14 if hm.kind == "pen" else 13, HORIZONTAL_ALIGNMENT_CENTER, 160)
         _text(sp - Vector2(80, 0), hm.text, Color(col, a), 14 if hm.kind == "pen" else 13, HORIZONTAL_ALIGNMENT_CENTER, 160)
     _reticle()
+    _ff_plate()
     # minimap
     var mw: float = Settings.minimap_width(); var mh = mw * sim.AH / sim.AW; var mx = W - mw - 16; var my = H - mh - 16; var k = mw / sim.AW
     draw_rect(Rect2(mx, my, mw, mh), PANEL); draw_rect(Rect2(mx, my, mw, mh), Color(GOLD, 0.55), false, 1)
@@ -279,6 +280,29 @@ func _draw() -> void:
     if battle.paused:
         draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.06, 0.5))
         if not menu.visible: _text(Vector2(0, H / 2), "PAUSED · P TO RESUME · ESC FOR MENU", INK, 34, HORIZONTAL_ALIGNMENT_CENTER, W)
+
+## A standing warning under the messages while the flagship's loaded tubes, laid on the cursor, would put a torpedo
+## into a friend, or a pattern dropped now would hurt one (or her): the same dark plate as the reticle's lines, in red.
+## (Torpedoes and depth charges hurt friends: the first T or Z only warns, a second fires. See BattleSim.ff_confirm.)
+var _ff_txt := ""
+var _ff_next := 0.0
+func _ff_plate() -> void:
+    var sim: BattleSim = battle.sim
+    if sim.vt >= _ff_next or sim.vt < _ff_next - 1.0:
+        _ff_next = sim.vt + 0.25; _ff_txt = ""
+        var s = sim.flag
+        if s != null and s.alive:
+            var ft = sim.player_torp_foul()
+            if ft != null: _ff_txt = "Torpedo track fouled by the %s · T twice to fire" % ft.rec.name
+            elif s.d.get("sonar", false) and not s.sub and s.dc_left > 0 and s.dc_t <= 0.0:
+                var fd = sim.dc_fouls(s)
+                if fd == s: _ff_txt = "Too slow to clear her own depth charges · Z twice to drop"
+                elif fd != null: _ff_txt = "The %s is within a pattern's burst · Z twice to drop" % fd.rec.name
+    if _ff_txt == "": return
+    var tw = font.get_string_size(_ff_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+    var p := Vector2((size.x - tw) / 2.0, 108.0)
+    draw_rect(Rect2(p - Vector2(6, 0), Vector2(tw + 12, 19)), Color(0.02, 0.06, 0.08, 0.7))
+    _text(p + Vector2(0, 14), _ff_txt, RED, 13)
 
 ## Gun-laying reticle at the point the main battery is aimed, with a plain-words state of the guns.
 func _reticle() -> void:

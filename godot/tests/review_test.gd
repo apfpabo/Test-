@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound()
-	ok(sections == 15, "every section ran to its end (%d of 15)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends()
+	ok(sections == 16, "every section ran to its end (%d of 16)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1081,4 +1081,127 @@ func _sound() -> void:
 	a.radar_on = true; b.pos = a.pos + Vector2(sim.sight(a) * 0.8, 0)
 	ok(sim.visible_to(b, 0), "inside the other's radar she is seen whatever she does")
 	ok(sim.visible_to(a, 1), "and the ship that radiates there is known to her, set off or not")
+	sections += 1
+
+## Torpedoes and depth charges hurt friends too (owner's word, 11 Nov 2026): what they strike, and the captains' and
+## the player's care with them (BattleSim.torp_fouls, dc_fouls, dc_harm, ff_confirm).
+func _still(sim: BattleSim) -> void:
+	for x in sim.ships: x.ai_off = true; x.v = 0.0; x.throttle = 0; x.rudder = 0.0
+func _friends() -> void:
+	var sim := _sim(["dd_fletcher", "dd_fletcher"], ["dd_narvik"]); _still(sim)
+	var a = sim.ships[0]; var b = sim.ships[1]; var e = sim.ships[2]
+	a.pos = Vector2(5000, 5000); a.a = 0.0; b.pos = Vector2(5800, 5000); b.a = PI / 2; e.pos = Vector2(20000, 20000)
+	# a torpedo strikes the first hull in her path, whatever its flag
+	var h0: float = b.hull
+	sim.torps.append({"pos": Vector2(5300, 5000), "a": 0.0, "speed": 23.0, "life": 100.0, "dmg": 650, "side": 0, "homing": false, "arm": 0.0, "en": 0.0, "who": a})
+	for i in 600: sim.step(0.05)
+	ok(b.hull < h0 and int(sim.sys_log.get("torpedo on a friend", 0)) == 1 and sim.ff_dmg_t > 0.0, "a torpedo running into a ship of her own side strikes her (-%.0f)" % (h0 - b.hull))
+	# a straight runner never comes back on her own ship, and passes over a dived boat of either side
+	sim = _sim(["dd_fletcher", "ss_gato"], ["dd_narvik"]); _still(sim); a = sim.ships[0]; var boat = sim.ships[1]; e = sim.ships[2]
+	a.pos = Vector2(5000, 5000); e.pos = Vector2(20000, 20000); boat.pos = Vector2(5600, 5000); boat.a = PI / 2; boat.dive = 1.0; boat.want_dive = true
+	h0 = a.hull; var bh0: float = boat.hull
+	sim.torps.append({"pos": Vector2(4900, 5000), "a": 0.0, "speed": 23.0, "life": 60.0, "dmg": 650, "side": 0, "homing": false, "arm": 0.0, "en": 0.0, "who": a})
+	for i in 600: sim.step(0.05)
+	ok(a.hull == h0 and boat.hull == bh0, "a straight-running torpedo passes through her own ship's place and under a dived friend")
+	# a homer's seeker hears the nearest ship in its cone, friend or not: a dived friend ahead of her is struck
+	boat.hull = bh0
+	sim.torps.append({"pos": Vector2(5100, 5000), "a": 0.0, "speed": 20.0, "life": 60.0, "dmg": 560, "side": 0, "homing": true, "arm": 0.0, "en": 0.0, "who": a})
+	for i in 600: sim.step(0.05)
+	ok(boat.hull < bh0, "a homing torpedo goes for a dived boat of her own side that lies nearest in her cone (-%.0f)" % (bh0 - boat.hull))
+	# but not before her enabling run: she runs straight until then
+	sim.torps.clear(); sim.torps.append({"pos": Vector2(4900, 5000), "a": 0.0, "speed": 20.0, "life": 60.0, "dmg": 560, "side": 0, "homing": true, "arm": 0.0, "en": 100.0, "who": a})
+	boat.pos = Vector2(5500, 5200); for i in 20: sim.step(0.05)
+	ok(sim.torps.size() == 1 and absf(float(sim.torps[0].a)) < 0.0001, "a homer runs straight, deaf, until her seeker comes on short of the aim point")
+	# the captain's look along the track: a friend lying across it, or steaming into it, fouls it; a clear sea does not
+	sim = _sim(["dd_fletcher", "dd_fletcher"], ["dd_narvik"]); _still(sim); a = sim.ships[0]; b = sim.ships[1]; e = sim.ships[2]
+	var w := {"speed": 23.0, "range": 4500.0, "count": 3, "kind": "torp"}
+	a.pos = Vector2(5000, 5000); e.pos = Vector2(8500, 5000); b.pos = Vector2(6500, 5000); b.a = PI / 2
+	ok(sim.torp_fouls(a, a.pos, e.pos, w, e) == b, "a friend lying across the track fouls it")
+	b.pos = Vector2(6500, 3800); b.v = 0.0
+	ok(sim.torp_fouls(a, a.pos, e.pos, w, e) == null, "the same friend lying well clear does not")
+	b.pos = Vector2(6500, 4300); b.v = 12.0
+	ok(sim.torp_fouls(a, a.pos, e.pos, w, e) == b, "but steaming towards the track at 12 m/s she will cross it, and fouls it")
+	b.pos = Vector2(6500, 7000); b.a = 0.0
+	var hw := {"speed": 20.0, "range": 5000.0, "count": 2, "kind": "torp", "homing": true}
+	b.pos = e.pos + Vector2(-200, 250); b.v = 0.0
+	var w1 := {"speed": 23.0, "range": 4500.0, "count": 1, "kind": "torp"}
+	ok(sim.torp_fouls(a, a.pos, e.pos, w1, e) == null and sim.torp_fouls(a, a.pos, e.pos, hw, e) == b, "a friend close by the target, clear of the track, fouls a homer (her seeker would hear the friend first) but not a straight runner")
+	# a captain holds his torpedoes for a friend in the track, and fires once she is clear
+	sim = _sim(["dd_fletcher", "dd_fletcher"], ["dd_narvik"]); a = sim.ships[0]; b = sim.ships[1]; e = sim.ships[2]
+	a.pos = Vector2(8000, 8000); a.a = PI / 2; e.pos = Vector2(10500, 8000); e.a = PI / 2; e.v = 0.0; e.ai_off = true; e.throttle = 0; e.hold = true
+	b.pos = Vector2(9200, 8000); b.a = PI / 2; b.ai_off = true; b.v = 0.0; b.throttle = 0; b.hold = true; a.ai_off = true; a.throttle = 0; a.v = 0.0
+	for m in a.mounts:
+		if m.w.kind == "gun" or m.w.kind == "aa": m.ammo = 0
+		if m.w.kind == "torp": m.cd = 0.0
+	for i in 200: sim.step(0.05)
+	ok(sim.torps.is_empty() and a.foul_by == b, "a captain holds his torpedoes with a friend in the track (fouled by %s)" % (a.foul_by.rec.name if a.foul_by else "nobody"))
+	b.pos = Vector2(9200, 11000)
+	for i in 200: sim.step(0.05)
+	ok(not sim.torps.is_empty(), "and fires once she has cleared it (%d torpedoes running)" % sim.torps.size())
+	# a torpedo attack ordered with a friend in the track: she holds, says why, and gives it up rather than circle for ever
+	sim = _sim(["dd_fletcher", "dd_fletcher", "dd_fletcher"], ["dd_narvik"]); a = sim.ships[1]; b = sim.ships[2]; e = sim.ships[3]; var fl = sim.ships[0]
+	sim.flag = fl; fl.pos = Vector2(3000, 3000); fl.ai_off = true
+	a.pos = Vector2(8000, 8000); a.a = 0.0; e.pos = Vector2(10500, 8000); e.ai_off = true; e.v = 0.0; e.throttle = 0; e.hold = true
+	a.ord = "torp"; a.ord_tgt = e
+	for m in a.mounts:
+		if m.w.kind == "gun" or m.w.kind == "aa": m.ammo = 0
+		if m.w.kind == "torp": m.cd = 0.0
+	var said := false; var gave := false
+	for i in 4000:
+		b.pos = a.pos.lerp(e.pos, 0.5); b.a = (e.pos - a.pos).angle() + PI / 2; b.v = 0.0; b.ai_off = true; b.hold = true   # a friend kept between her and the enemy
+		sim.step(0.05)
+		if sim.msg.contains("holds her torpedoes"): said = true
+		if sim.msg.contains("gives up her torpedo attack"): gave = true
+		if a.ord != "torp": break
+	ok(said and gave and a.ord != "torp" and sim.torps.is_empty(), "a torpedo attack with a friend in the track holds fire, says why, and is given up (said %s, gave up %s, %d torpedoes fired)" % [said, gave, sim.torps.size()])
+	# depth charges: any boat near a burst, friend or foe; a hull close over it; the dropper herself if she is too slow
+	sim = _sim(["dd_fletcher", "ss_gato", "dd_fletcher"], ["dd_narvik"]); _still(sim); a = sim.ships[0]; boat = sim.ships[1]; b = sim.ships[2]; e = sim.ships[3]
+	a.pos = Vector2(5000, 5000); a.a = 0.0; e.pos = Vector2(20000, 20000); boat.dive = 1.0; boat.want_dive = true
+	var burst: Vector2 = Vector2(6000, 6000)
+	boat.pos = burst + Vector2(20, 0); b.pos = burst + Vector2(0, b.d.B * 0.5 + 10.0); b.a = 0.0
+	ok(sim.dc_harm(boat, burst) > 100.0 and sim.dc_harm(b, burst) > 0.0 and sim.dc_harm(a, burst) == 0.0, "a burst hurts a boat of any flag close by it (%.0f) and a hull just over it (%.0f), and nothing far off" % [sim.dc_harm(boat, burst), sim.dc_harm(b, burst)])
+	boat.pos = Vector2(15000, 15000); b.pos = Vector2(15000, 5000)
+	a.v = 1.0; a.dc_t = 0.0
+	ok(sim.dc_fouls(a) == a, "a pattern dropped at a crawl would burst under the dropper herself")
+	a.v = 14.0
+	ok(sim.dc_fouls(a) == null, "at speed she is well clear of her own pattern")
+	h0 = a.hull; var dl0: int = a.dc_left; sim.drop_dcs(a); a.ai_off = true; a.throttle = 4
+	for i in 300: sim.step(0.05)
+	ok(a.hull == h0 and a.dc_left == dl0 - 1, "dropped at 14 m/s she runs clear of her own charges")
+	boat.pos = sim.dc_bursts(a)[0][0] + Vector2(10, 0); boat.v = 0.0; a.v = 14.0; a.pos = Vector2(5000, 5000); a.a = 0.0
+	boat.pos = sim.dc_bursts(a)[1][0] + Vector2(10, 0)
+	ok(sim.dc_fouls(a) == boat, "a friendly boat where the pattern would fall fouls it")
+	h0 = boat.hull; a.dc_t = 0.0; sim.drop_dcs(a)
+	for i in 120: sim.step(0.05)
+	ok(boat.hull < h0 and int(sim.sys_log.get("depth charge on a friend", 0)) > 0 and sim.ff_dmg_dc > 0.0, "dropped all the same, the pattern hurts her (-%.0f)" % (h0 - boat.hull))
+	# a captain hunting a boat does not drop where a friendly boat would be hurt
+	sim = _sim(["dd_fletcher", "ss_gato"], ["ss_gato"]); a = sim.ships[0]; boat = sim.ships[1]; var en = sim.ships[2]
+	a.pos = Vector2(5000, 5000); a.a = 0.0; a.v = 14.0; a.throttle = 4; a.ai_off = true; a.dc_t = 0.0; a.sonar_on = true
+	en.dive = 1.0; en.want_dive = true; en.ai_off = true; en.v = 0.0; en.held_t = 0.0
+	en.pos = sim.dc_pattern(a)[0]; boat.dive = 1.0; boat.want_dive = true; boat.ai_off = true; boat.v = 0.0; boat.pos = en.pos + Vector2(30, 25)
+	ok(sim.dc_on(a, en) and sim.dc_fouls(a) == boat, "the pattern would fall on the enemy boat, and on a friendly boat close by her")
+	var dl1: int = a.dc_left; a.ai_off = false
+	for i in 4: sim.step(0.05)
+	ok(a.dc_left == dl1, "so the captain holds his charges (%d patterns before, %d after)" % [dl1, a.dc_left])
+	boat.pos = Vector2(15000, 15000); en.pos = sim.dc_pattern(a)[0]; en.held_t = 0.0
+	for i in 4: sim.step(0.05)
+	ok(a.dc_left == dl1 - 1, "with the friend gone from there he drops (%d patterns left)" % a.dc_left)
+	# the player is warned and must press again: T or Z with a friend in danger
+	sim = _sim(["dd_fletcher", "dd_fletcher"], ["dd_narvik"]); _still(sim); a = sim.ships[0]; b = sim.ships[1]; e = sim.ships[2]
+	sim.flag = a; a.pos = Vector2(5000, 5000); a.a = PI / 2; e.pos = Vector2(8500, 5000); b.pos = Vector2(6500, 5000); b.a = PI / 2
+	sim.mouse_world = e.pos
+	for m in a.mounts: if m.w.kind == "torp": m.cd = 0.0
+	ok(sim.player_torp_foul() == b, "the flagship's tubes laid on the cursor would put a torpedo into the friend between")
+	ok(not sim.ff_confirm("torp") and sim.msg.contains("lies in the torpedo track"), "the first T only warns: \"%s\"" % sim.msg)
+	sim.t += 1.0
+	ok(sim.ff_confirm("torp"), "a second T within a few seconds fires all the same")
+	ok(not sim.ff_confirm("torp"), "and the next T warns again")
+	sim.t += BattleSim.FF_CONFIRM + 1.0
+	ok(not sim.ff_confirm("torp"), "as does one too late to count as the second")
+	b.pos = Vector2(5000, 9000)
+	ok(sim.ff_confirm("torp"), "with the track clear T fires at once")
+	a.v = 1.0
+	ok(not sim.ff_confirm("dc") and sim.msg.contains("own charges"), "Z at a crawl warns that her own charges would burst under her")
+	a.v = 14.0
+	ok(sim.ff_confirm("dc"), "Z at speed with no friend about drops at once")
 	sections += 1

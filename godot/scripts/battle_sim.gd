@@ -128,6 +128,10 @@ class CShip:
     var cq = 1             # how good her crew is: 0 green, 1 trained, 2 seasoned, 3 veteran, 4 crack (see CREW)
     var dc_pri = ""        # where her damage-control parties are sent first: "" (evenly), "fire", "flood" or "mach"
     var ballast = 0.0      # water let in to right a list: it stays aboard and slows her
+    var foul_by: CShip = null   # a friend lying in the track of the torpedoes she would fire (see torp_fouls)
+    var foul_at := -99.0        # when that was last found (battle seconds)
+    var foul_since := 0.0       # when her torpedoes were first held for it
+    var foul_said := false      # (a torpedo attack) she has said why she is holding
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
@@ -210,6 +214,10 @@ var on_pop: Callable     # (pos, vol, weapon id) for light AA and point-defence 
 var on_sound: Callable   # (kind, pos, vol) for recorded events: see Sfx.event
 var sys_log := {}        # subsystem events this battle, for tests and balance
 var ff_dmg := 0.0   # hull points taken off ships by their own side's shells (a measure, shown nowhere)
+var ff_dmg_t := 0.0   # ... by their own side's torpedoes
+var ff_dmg_dc := 0.0  # ... by their own side's depth charges
+var ff_care := true   # captains and pilots look for friends before torpedoes and depth charges (false only to measure what the rule saves)
+var ff_ok := {}       # the player has been warned that a friend is in danger: {"kind": "torp"|"dc", "t": battle time}; a second press within FF_CONFIRM fires
 func _log(k: String) -> void: sys_log[k] = sys_log.get(k, 0) + 1
 var small_craft = [false, false]  # whether each side still has torpedo boats or submarines afloat
 var dcs: Array = []              # depth charges sinking towards their set depth
@@ -1094,9 +1102,10 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
 func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y); var base = (aim - p).angle()
+    var en: float = maxf(150.0, p.distance_to(aim) - HOMER_SHORT) / w.speed   # a homer's seeker comes on short of the aim point
     for i in int(w.count):
         var a: float = base + (i - (w.count - 1) / 2.0) * 0.06
-        torps.append({"pos": p, "a": a, "speed": w.speed, "life": gun_range(s, w) / w.speed, "dmg": w.dmg, "side": s.side, "homing": w.get("homing", false), "arm": 150.0 / w.speed})
+        torps.append({"pos": p, "a": a, "speed": w.speed, "life": gun_range(s, w) / w.speed, "dmg": w.dmg, "side": s.side, "homing": w.get("homing", false), "arm": 150.0 / w.speed, "en": en, "who": s})
     boom(p, 0.1, 900.0)
     if s.sub: s.reveal_t = 20.0
 
@@ -1259,6 +1268,12 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var lp = lead_point(p, tg, w.speed); var want = ang_diff((lp - p).angle(), s.a)
                 var ac = arc_check(m.slot, want)
                 if ac.x == 0: m.ta += ang_diff(ac.y, m.ta) * minf(1.0, dt * 2); continue
+                if s.foul_by != null and t - s.foul_at < 1.0: continue   # held for a friend a moment ago: look again shortly
+                var fo: CShip = torp_fouls(s, p, lp, w, tg) if ff_care else null
+                if fo != null:   # a friend lies in the track or will cross it: hold the torpedoes
+                    if s.foul_by == null or t - s.foul_at > 3.0: s.foul_since = t
+                    s.foul_by = fo; s.foul_at = t; continue
+                s.foul_by = null; s.foul_said = false
                 m.ta = want; m.cd = w.rel; fire_torps(s, m, lp); s.torp_run_t = 60.0
             "ssm":
                 if m.cd > 0: continue
@@ -1276,7 +1291,7 @@ func update_weapons(s: CShip, dt: float) -> void:
         if s.dc_t <= 0:
             # a boat she holds on sonar, where a pattern dropped now would come down on her (it used to be any boat within 260 m)
             var sb = nearest_enemy(s.pos, s.side, 700.0, func(o: CShip) -> bool: return o.sub and submerged(o) and detected_by(o, s.side))
-            if sb != null and dc_on(s, sb): drop_dcs(s)
+            if sb != null and dc_on(s, sb) and (not ff_care or dc_fouls(s) == null): drop_dcs(s)   # never where a friend (or she herself) would be hurt
 
 ## A pattern of depth charges rolled and thrown off the stern; they sink and burst a few seconds later.
 ## Depth charges (reworked 11 Nov 2026 at the owner's word: she dropped whenever a boat was anywhere within 260 m, and the
@@ -1306,6 +1321,105 @@ func drop_dcs(s: CShip) -> bool:
     for sd in [-1.0, 1.0]: dcs.append({"ship": s, "rel": DC_ROLL * 1.5, "lat": sd * DC_THROW, "side": s.side, "t": -1.0})   # the throwers
     if s.side == 0 and s == flag: say("Depth charges away · %d patterns left." % s.dc_left, 1.5)
     return true
+
+## Torpedoes and depth charges hurt friends too (the owner's word, 11 Nov 2026), as shells and rams already did. A
+## torpedo strikes the first hull in her path whatever its flag (a straight runner passes under a dived boat, and never
+## turns back on the ship that fired her); a burst hurts every boat within DC_HIT and every hull within DC_SHIP of it,
+## the dropper's own included. So a captain looks before he fires or drops (torp_fouls, dc_fouls), and the player is
+## warned and must press again (FF_CONFIRM). Homing torpedoes run straight for an enabling run set to bring them up short
+## of the target (HOMER_SHORT), then hear for the nearest ship in their cone, whatever her flag: a seeker cannot tell a
+## friend's screws from an enemy's, so she is fired only where no friend will be nearer to her than the target is.
+const TORP_CLEAR := 60.0     # a captain holds his torpedoes if a friend's hull would come this near one of them (m)
+const HOMER_EAR := 1200.0    # how far a homing torpedo's seeker hears a ship ahead of her (m)
+const HOMER_CONE := 0.7      # and how wide its cone is either side of her heading (radians)
+const HOMER_SHORT := 700.0   # her seeker is switched on this far short of the point she was aimed at (m)
+const DC_SHIP := 30.0        # a burst this near a surface ship's hull hurts her (shock under the keel)
+const DC_SHIP_DMG := 110.0   # and this is the worst it does, hard under her
+const DC_MARGIN := 15.0      # a captain keeps his friends this much farther than that from a pattern
+const TORP_GIVEUP := 40.0    # a ship sent on a torpedo attack gives it up after holding this long for a friend in the track
+const FF_CONFIRM := 4.0      # battle seconds the player has to press again to fire or drop over a warning
+
+## How far a point lies from a ship's hull (0 inside it), she being at `at` on her heading.
+func hull_dist(o: CShip, at: Vector2, pt: Vector2) -> float:
+    var h: float = maxf(0.0, o.d.L * 0.5 - o.d.B * 0.5); var u := Vector2.from_angle(o.a)
+    var a := at - u * h; var b := at + u * h; var ab := b - a
+    var k: float = clampf((pt - a).dot(ab) / maxf(0.0001, ab.dot(ab)), 0.0, 1.0)
+    return maxf(0.0, pt.distance_to(a + ab * k) - o.d.B * 0.5)
+
+## Would torpedoes fired now from `p` at `aim` run into one of the firer's own side? Each friend is carried on along her
+## course and speed while the spread runs out its whole length; the spread is a fan whose width grows with the run. A
+## homer is also tested, once her seeker is on, for a friend she would hear before the target. Returns the friend, or null.
+func torp_fouls(s: CShip, p: Vector2, aim: Vector2, w: Dictionary, tgt: CShip = null) -> CShip:
+    var speed: float = float(w.speed); var homer: bool = w.get("homing", false)
+    var run: float = gun_range(s, w) if s != null and w.has("range") else float(w.get("run", 2000.0))
+    var dir := (aim - p).normalized(); var half_fan: float = (int(w.get("count", 1)) - 1) / 2.0 * 0.06 + 0.02
+    var en: float = maxf(150.0, p.distance_to(aim) - HOMER_SHORT)
+    var side: int = s.side if s != null else int(w.get("side", 0))
+    var step := 30.0
+    for o in ships:
+        if o == s or o == tgt or o.side != side or not active(o): continue
+        if submerged(o) and not homer: continue   # a straight runner passes over a dived boat
+        var ov: Vector2 = Vector2.from_angle(o.a) * o.v
+        if o.pos.distance_to(p) > run + o.v * run / speed + o.d.L + (HOMER_EAR if homer else 0.0): continue
+        var dd := 0.0
+        while dd <= run:
+            var tt: float = dd / speed; var tp: Vector2 = p + dir * dd; var op: Vector2 = o.pos + ov * tt
+            if hull_dist(o, op, tp) < TORP_CLEAR + dd * half_fan: return o
+            if homer and dd >= en:
+                var rel := op - tp
+                if rel.length() < HOMER_EAR and absf(ang_diff(rel.angle(), dir.angle())) < HOMER_CONE:
+                    var tg_d: float = (tgt.pos + Vector2.from_angle(tgt.a) * tgt.v * tt).distance_to(tp) if tgt != null else INF
+                    if rel.length() < tg_d: return o
+            dd += step
+    return null
+
+## Where each charge of a pattern dropped now would burst, and when (seconds from now): [[pos, t], ...], she holding on.
+func dc_bursts(s: CShip) -> Array:
+    var u := Vector2.from_angle(s.a); var st: Vector2 = world_pt(s, -s.d.L / 2, 0); var out := []
+    for i in 4: out.append([st + u * s.v * i * DC_ROLL, i * DC_ROLL + DC_SINK])
+    for sd in [-1.0, 1.0]: out.append([st + u * s.v * DC_ROLL * 1.5 + u.orthogonal() * sd * DC_THROW, DC_ROLL * 1.5 + DC_SINK])
+    return out
+## Would a pattern dropped now hurt a ship of her own side, or herself? Returns the ship, or null.
+func dc_fouls(s: CShip) -> CShip:
+    var bursts := dc_bursts(s)
+    for o in ships:
+        if o.side != s.side or not active(o): continue
+        if o.pos.distance_to(s.pos) > s.d.L + 600.0: continue
+        var ov: Vector2 = Vector2.from_angle(o.a) * o.v
+        for b in bursts:
+            var op: Vector2 = o.pos + ov * float(b[1])
+            if (op.distance_to(b[0]) < DC_HIT + DC_MARGIN) if o.sub else (hull_dist(o, op, b[0]) < DC_SHIP + DC_MARGIN): return o
+    return null
+## Damage a burst does to a ship or boat: boats within DC_HIT (the full blow inside DC_CLOSE), hulls within DC_SHIP.
+func dc_harm(o: CShip, burst: Vector2) -> float:
+    if o.sub:
+        var bd: float = o.pos.distance_to(burst)
+        return 160.0 * clampf((DC_HIT - bd) / (DC_HIT - DC_CLOSE), 0.15, 1.0) if bd < DC_HIT else 0.0
+    var hd: float = hull_dist(o, o.pos, burst)
+    return DC_SHIP_DMG * clampf(1.0 - hd / DC_SHIP, 0.15, 1.0) if hd < DC_SHIP else 0.0
+
+## The player's flagship: the friend her loaded tubes would endanger fired at the cursor now, or null.
+func player_torp_foul() -> CShip:
+    var s := flag
+    if s == null or not s.alive: return null
+    for m in s.mounts:
+        if m.w.kind != "torp" or m.dead or m.ammo == 0 or m.cd > 0: continue
+        if not arc_check(m.slot, ang_diff((mouse_world - s.pos).angle(), s.a)).x > 0: continue
+        return torp_fouls(s, world_pt(s, m.slot.x, m.slot.y), mouse_world, m.w, null)
+    return null
+## A warning for the player before he fires or drops with a friend in danger: "" if none; else what to say. The first
+## press only warns; a second press of the same key within FF_CONFIRM goes ahead.
+func ff_warning(kind: String) -> String:
+    var f: CShip = player_torp_foul() if kind == "torp" else (dc_fouls(flag) if flag != null and flag.alive else null)
+    if f == null: return ""
+    if kind == "torp": return "Check fire: the %s lies in the torpedo track. T again to fire." % f.rec.name
+    if f == flag: return "Too slow to clear her own charges: they would burst under her. Z again to drop."
+    return "Check fire: the %s is within the burst of a pattern. Z again to drop." % f.rec.name
+func ff_confirm(kind: String) -> bool:   # true: go ahead (no danger, or the player has been warned and pressed again)
+    var wn := ff_warning(kind)
+    if wn == "": return true
+    if ff_ok.get("kind", "") == kind and t - float(ff_ok.get("t", -99.0)) < FF_CONFIRM: ff_ok = {}; return true
+    ff_ok = {"kind": kind, "t": t}; say(wn, FF_CONFIRM); return false
 
 ## Shell types. AP: full penetration, may pass through a light ship. HE: bursts on contact: little penetration, but
 ## more blast against unarmoured ships and upper works, never over-penetrates, and starts fires. Incendiary: little
@@ -1729,7 +1843,13 @@ func ai_ship(s: CShip, dt: float) -> void:
         if tt == null or not loaded:
             s.ord = ""; s.ord_tgt = null; o = ord_of(s)
             if s.alive: say("The %s has %s and rejoins." % [s.rec.name, ("fired her torpedoes" if tubes else "lost her tubes") if tt != null else "no target for her torpedoes"], 1.8)
+        elif s.foul_by != null and t - s.foul_at < 3.0 and t - s.foul_since > TORP_GIVEUP:
+            # she has held her torpedoes this long for a friend in the track: she gives the attack up rather than circle for ever
+            if s.alive: say("The %s gives up her torpedo attack: the %s stays in the track. She rejoins." % [s.rec.name, s.foul_by.rec.name], 2.5)
+            s.ord = ""; s.ord_tgt = null; s.foul_by = null; s.foul_said = false; o = ord_of(s)
         else:
+            if s.foul_by != null and t - s.foul_at >= 3.0: s.foul_by = null; s.foul_said = false
+            if s.foul_by != null and not s.foul_said: s.foul_said = true; say("The %s holds her torpedoes: the %s is in the track." % [s.rec.name, s.foul_by.rec.name], 2.2)
             s.target = tt; var td := s.pos.distance_to(tt.pos); var bearing := (tt.pos - s.pos).angle()
             if td > reach * 0.6: s.rudder = helm(s, steer_avoid(s, bearing)); s.throttle = 4
             else: s.rudder = helm(s, steer_avoid(s, bearing - s.pref_side * PI / 2)); s.throttle = 3   # beam on: the tubes bear
@@ -1910,7 +2030,7 @@ func update_air(dt: float) -> void:
             if q.up <= 0: q.pos = world_pt(home, deck_span(home).y + 150.0, 0.0); q.a = home.a; continue
         elif q.state == "out":
             var tg: CShip = q.target; g = tg.pos; var d: float = q.pos.distance_to(tg.pos)
-            if q.type == "tb" and d < 1300 and absf(ang_diff((tg.pos - q.pos).angle(), q.a)) < 0.35:
+            if q.type == "tb" and d < 1300 and absf(ang_diff((tg.pos - q.pos).angle(), q.a)) < 0.35 and (not ff_care or torp_fouls(null, q.pos, lead_point(q.pos, tg, 18.0), {"speed": 18.0, "run": 1980.0, "count": int(q.n), "side": q.side}, tg) == null):   # not with a friend in the track
                 var lp = lead_point(q.pos, tg, 18.0)
                 for k in int(q.n): torps.append({"pos": q.pos + Vector2(randf() - 0.5, randf() - 0.5) * 150.0, "a": (lp - q.pos).angle() + (k - q.n / 2.0) * 0.05, "speed": 18.0, "life": 110.0, "dmg": 520 if q.jet else 420, "side": q.side, "homing": false, "arm": 8.0})
                 q.state = "home"; boom(q.pos, 0.1, 900.0)
@@ -2131,19 +2251,26 @@ func step(dtv: float) -> void:
         else: fx_splash(sh.pos, 6 * sz); sound("splash", sh.pos, 0.05 * sz)
     # torpedoes
     for i in range(torps.size() - 1, -1, -1):
-        var tp: Dictionary = torps[i]; tp.life -= dt; tp.arm -= dt
-        if tp.homing and tp.arm <= 0:
-            var tpa: float = tp.a; var tpp: Vector2 = tp.pos
-            var tg = nearest_enemy(tp.pos, tp.side, 1200.0, func(o: CShip) -> bool: return absf(ang_diff((o.pos - tpp).angle(), tpa)) < 0.7)  # homers hear submerged boats too
+        var tp: Dictionary = torps[i]; tp.life -= dt; tp.arm -= dt; tp.en = float(tp.get("en", 0.0)) - dt
+        if tp.homing and tp.arm <= 0 and tp.en <= 0:
+            # the seeker hears the nearest ship in her cone, dived boats too, whatever her flag (see torp_fouls)
+            var tg: CShip = null; var bd := HOMER_EAR
+            for o in ships:
+                if not active(o): continue
+                var rel: Vector2 = o.pos - tp.pos; var dd := rel.length()
+                if dd < bd and absf(ang_diff(rel.angle(), tp.a)) < HOMER_CONE: bd = dd; tg = o
             if tg != null: tp.a += clampf(ang_diff((tg.pos - tp.pos).angle(), tp.a), -0.15 * dt, 0.15 * dt)
         tp.pos += Vector2.from_angle(tp.a) * tp.speed * dt
         var gone: bool = tp.life <= 0
         if not gone and land_at(tp.pos): gone = true; fx_boom(tp.pos, 20.0)
         if not gone and tp.arm <= 0:
             for s in ships:
-                if s.side == tp.side or not active(s) or (submerged(s) and not tp.homing): continue
+                # any hull in her path, friend or foe (only a straight runner never comes back on her own ship)
+                if not active(s) or (submerged(s) and not tp.homing) or (s == tp.get("who") and not tp.homing): continue
                 var l: Vector2 = (tp.pos - s.pos).rotated(-s.a)
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
+                    if s.side == tp.side: _log("torpedo on a friend"); ff_dmg_t += tp.dmg
+                    else: _log("torpedo hit")
                     mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.WASH if modern else P.FOAM, tp.pos, 16.0 if modern else 12.0, 45.0 if modern else 60.0)
                     sound("torp_hit", tp.pos, 0.55); gone = true; break
         if not gone and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
@@ -2220,9 +2347,15 @@ func step(dtv: float) -> void:
             part(P.WRING, q.pos, 2.2, 90.0); var fm = part(P.WASH if modern else P.FOAM, q.pos, 18.0, 40.0 if modern else 55.0); fm.a = randf() * TAU; fm.spin = (randf() - 0.5) * 0.08
         for s in ships:
             # the nearer the burst the worse: the full blow inside DC_CLOSE, falling away to nothing at DC_HIT (every burst
-            # inside 60 m used to do the full damage, which mattered little while the patterns fell wide)
-            var bd: float = s.pos.distance_to(q.pos)
-            if s.sub and active(s) and s.side != q.side and bd < DC_HIT: damage(s, 160.0 * clampf((DC_HIT - bd) / (DC_HIT - DC_CLOSE), 0.15, 1.0), "dc"); s.reveal_t = 30.0
+            # inside 60 m used to do the full damage, which mattered little while the patterns fell wide). Any boat, and any
+            # hull close over the burst, whatever her flag: the dropper's own side and the dropper herself (dc_harm)
+            if not active(s): continue
+            var hd := dc_harm(s, q.pos)
+            if hd <= 0.0: continue
+            if s.side == q.side: _log("depth charge on a friend"); ff_dmg_dc += hd
+            else: _log("depth charge hit")
+            damage(s, hd, "dc")
+            if s.sub: s.reveal_t = 30.0
     # end of the action: one side gone, or fifteen battle minutes without a hit and nothing in flight
     var mine = 0; var theirs = 0
     for s in ships:

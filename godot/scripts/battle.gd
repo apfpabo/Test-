@@ -379,8 +379,8 @@ func _key(k: int) -> void:
         KEY_W, KEY_UP: if s: s.throttle = mini(4, s.throttle + 1)
         KEY_S, KEY_DOWN: if s: s.throttle = maxi(0, s.throttle - 1)
         KEY_T:
-            sim.want_torp = true
             if s and not sim.has_kind(s, "torp"): sim.say("No torpedo tubes on this ship.", 1.2)
+            elif sim.ff_confirm("torp"): sim.want_torp = true   # a friend in the track: the first press only warns
         KEY_Q:
             sim.want_msl = true
             if s and not sim.has_kind(s, "ssm"): sim.say("No missile launchers on this ship.", 1.2)
@@ -462,7 +462,8 @@ func _key(k: int) -> void:
         KEY_Z:
             if s == null or s.sub or not s.d.get("sonar", false): sim.say("This ship carries no depth charges.", 1.2)
             elif s.dc_left <= 0: sim.say("No depth charges left.", 1.2)
-            elif not sim.drop_dcs(s): sim.say("The racks are reloading.", 1.0)
+            elif s.dc_t > 0.0: sim.say("The racks are reloading.", 1.0)
+            elif sim.ff_confirm("dc"): sim.drop_dcs(s)   # a friend (or she herself) within the burst: the first press only warns
         KEY_SPACE, KEY_HOME: cam_free = false; sim.say("Camera on the " + (s.rec.name if s else "flagship") + ".", 1.0)
         KEY_EQUAL, KEY_KP_ADD, KEY_PERIOD: speed_i = mini(speeds.size() - 1, speed_i + 1); sim.say("Time ×" + str(int(combat_speed() * BattleSim.BT)), 1.0)
         KEY_MINUS, KEY_KP_SUBTRACT, KEY_COMMA: speed_i = maxi(0, speed_i - 1); sim.say("Time ×" + str(int(combat_speed() * BattleSim.BT)) + (" (real time)" if combat_speed() < 1 else ""), 1.0)

@@ -1354,7 +1354,8 @@ func _fleet_table(box: Control, at_port: bool) -> void:
         var nm := UI.label(("★ " if i == 0 else "") + s.name, UI.GOLD if i == 0 else UI.INK); nm.custom_minimum_size.x = 190
         var rd: float = Campaign.readiness(s)
         box.add_child(UI.row([nm, UI.label("%s · %s class (%s) · %s kn · %s crew" % [h.name, h.dn, GameData.makers[h.yard].short, str(h.kn), Campaign.crew_name(s)], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
-            UI.label("Readiness %d%%" % int(rd * 100), UI.GREEN if rd > 0.8 else (UI.GOLD if rd > 0.55 else UI.RED), 13)]))
+            UI.label("Readiness %d%%" % int(rd * 100), UI.GREEN if rd > 0.8 else (UI.GOLD if rd > 0.55 else UI.RED), 13),
+            _wear_label(s)]))
         var items = [_captain_pick(s)]
         var rb := UI.button("In reserve ✓" if s.get("reserve", false) else "Hold in reserve", func(): s.reserve = not s.get("reserve", false); _rerender()); rb.tooltip_text = "A ship in reserve stands off when the squadron fights: she takes no part and no damage. Useful for transports, oilers and cripples."
         items.append(rb)
@@ -1365,13 +1366,43 @@ func _fleet_table(box: Control, at_port: bool) -> void:
             var rc = repair_cost(s)
             items.append(UI.button("Repair · " + Campaign.fmt(rc), func(): G.credits -= rc; s.hullFrac = 1.0; _rerender(), false, rc == 0 or G.credits < rc))
             items.append(UI.button("Sell · " + Campaign.fmt(sell_value(s)), func(): _sell_ship(s), false, G.fleet.size() < 2))
+            var oc: int = Campaign.overhaul_cost(s)
+            var ob := UI.button("Overhaul · " + Campaign.fmt(oc), func(): Campaign.overhaul(s); _rerender(), false, oc == 0 or G.credits < oc)
+            ob.tooltip_text = "Take the wear off her machinery and fittings (down to %d%%: an old ship is never new again)." % int(Campaign.wear_floor(s) * 100); items.append(ob)
+            var lb := UI.button("Lay up here", func(): _toast(Campaign.lay_up(s, cur_port)); _rerender(), false, Campaign.can_lay_up(s, cur_port) != "")
+            lb.tooltip_text = "Pay off her crew and leave her here: no supply, %s a day for her berth. Recommission her here when you want her back." % Campaign.fmt(int(ceil(Campaign.layup_fee(s)))); items.append(lb)
         if _scuttle_id == str(s.id):
             items.append(UI.button("Confirm: scuttle the " + s.name, func(): _scuttle_id = ""; _scuttle(s), true))
             items.append(UI.button("Keep her", func(): _scuttle_id = ""; _rerender()))
         else: items.append(UI.button("Scuttle", func(): _scuttle_id = str(s.id); _rerender(), false, G.fleet.size() < 2))
         if i: items.append(UI.button("Make flagship", func(): G.fleet.erase(s); G.fleet.push_front(s); _rerender()))
         box.add_child(UI.row(items))
+    _laid_section(box, at_port)
     _division_section(box)
+
+## Age and wear for the fleet list: gold from a third worn, red from two thirds.
+func _wear_label(s: Dictionary) -> Label:
+    var w: float = Campaign.wear(s)
+    var l := UI.label("%d yr · wear %d%%" % [int(Campaign.age_years(s)), int(w * 100)], UI.RED if w > 0.66 else (UI.GOLD if w > 0.33 else UI.DIM), 13)
+    l.tooltip_text = "Wear costs her up to %d%% of her speed on passage and %d%% of her machinery in action; an overhaul in port takes it off." % [int(Campaign.WEAR_SPEED * 100), int(Campaign.WEAR_ENG * 100)]
+    l.mouse_filter = Control.MOUSE_FILTER_PASS
+    return l
+
+## Ships laid up: those in this harbour can be recommissioned here; the rest are listed where they lie.
+func _laid_section(box: Control, at_port: bool) -> void:
+    var all: Array = Campaign.laid()
+    if all.is_empty(): return
+    var G: Dictionary = Campaign.G
+    box.add_child(UI.label("LAID UP", UI.DIM, 12))
+    for e in all:
+        var sh: Dictionary = e.ship; var p: Dictionary = G.ports[int(e.port)]; var here: bool = at_port and not cur_port.is_empty() and int(cur_port.id) == int(e.port)
+        var items: Array = [UI.label(sh.name, UI.INK), UI.label("%s · at %s since %s · %s a day" % [GameData.hulls[sh.type].name, p.name, Campaign.date_str(int(e.since)), Campaign.fmt(int(ceil(Campaign.layup_fee(sh))))], UI.DIM, 13)]
+        if here:
+            var why: String = Campaign.can_recommission(e, cur_port)
+            var b := UI.button("Recommission · " + Campaign.fmt(Campaign.recommission_cost(sh)), func(): _toast(Campaign.recommission(e, cur_port)); _rerender(), false, why != "")
+            if why != "": b.tooltip_text = why
+            items.append(b)
+        box.add_child(UI.row(items))
 
 ## Under the fleet list: detaching a fast division, and the main body when it is apart.
 func _division_section(box: Control) -> void:
@@ -1415,7 +1446,7 @@ func sell_value(s: Dictionary) -> int:
 ## Commissions a new ship from a yard for the price given: she joins the squadron with her standard fit.
 func buy_ship(t: String, pr: int) -> Dictionary:
     var G: Dictionary = Campaign.G
-    G.credits -= pr; var s: Dictionary = Campaign.new_ship(t, null, "player", G.tech); s.paid = pr; G.fleet.append(s)
+    G.credits -= pr; var s: Dictionary = Campaign.new_ship(t, null, "player", G.tech); s.paid = pr; s.built = int(G.day); G.fleet.append(s)   # new from the yard: no age
     return s
 ## What a refit plan costs: [new weapons, sold back]. Weapons taken off go back at half price, but a ship you bought
 ## cannot return more than half of what you have put into her (her standard weapons came with the yard's price).

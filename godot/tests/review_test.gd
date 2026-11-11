@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace()
-	ok(sections == 17, "every section ran to its end (%d of 17)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing()
+	ok(sections == 18, "every section ran to its end (%d of 18)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1261,4 +1261,44 @@ func _grace() -> void:
 	ok(float(G.credits) > 1000.0 + 2000.0, "a Disgraced Officer's pension is paid on day 30 (purse %.0f)" % float(G.credits))
 	Campaign.new_game("defector"); G = Campaign.G
 	ok(float(G.credits) >= 30000.0 and not (Campaign.perk("pension", []) as Array).is_empty(), "a Defector starts with 30,000 and a retainer from his new patrons")
+	sections += 1
+
+## Ageing, wear and laying up (Rule the Waves; the owner's go-ahead, 11 Nov 2026).
+func _ageing() -> void:
+	Campaign.new_game("commission"); var G: Dictionary = Campaign.G
+	G.fleet = [Campaign.new_ship("dd_fletcher", "Old", "player", []), Campaign.new_ship("dd_fletcher", "New", "player", [])]
+	G.fleet[1].built = int(G.day); G.crew = Campaign.crew_need(); G.cargo.food = 900.0; G.cargo.fuel = 900.0; G.credits = 500000.0
+	var old: Dictionary = G.fleet[0]; var nw: Dictionary = G.fleet[1]
+	ok(Campaign.age_years(old) >= 3.0 and Campaign.age_years(nw) < 0.1, "a ship is as old as her design (%.1f years), one new from the yard is new" % Campaign.age_years(old))
+	var v0: float = Campaign.fleet_map_speed([old])
+	for i in 200: Campaign.new_day(true)
+	ok(Campaign.wear(old) > Campaign.wear(nw) and Campaign.wear(nw) > 0.2, "two hundred days under way wear both, the older faster (%.2f against %.2f)" % [Campaign.wear(old), Campaign.wear(nw)])
+	ok(Campaign.fleet_map_speed([old]) < v0 * 0.97, "a worn ship is slower on passage (%.2f against %.2f)" % [Campaign.fleet_map_speed([old]), v0])
+	var sim := BattleSim.new(); sim.setup([old], [Campaign.new_ship("dd_narvik", null, "directorate", [])], [], [], 0)
+	ok(sim.ships[0].eng < 0.97, "and goes into action with her machinery down (%.2f)" % sim.ships[0].eng)
+	var oc: int = Campaign.overhaul_cost(old); var c0: float = G.credits; Campaign.overhaul(old)
+	ok(oc > 0 and is_equal_approx(float(G.credits), c0 - oc) and is_equal_approx(Campaign.wear(old), Campaign.wear_floor(old)) and Campaign.wear_floor(old) > 0.0, "an overhaul costs %d and takes the wear off, down to her age's floor (%.2f)" % [oc, Campaign.wear(old)])
+	# laying up
+	var port: Dictionary = {}
+	for p in G.ports: if not Campaign.hostile(p.fac) and not Campaign.at_war(p.fac) and p.fac != "player": port = p; break
+	var need0: int = Campaign.crew_need(); var crew0: int = G.crew
+	print("  ", Campaign.lay_up(old, port))
+	ok(not G.fleet.has(old) and not Campaign.all_ships().has(old) and Campaign.laid_at(port).size() == 1, "a ship laid up leaves the squadron (and its supply and crew counts)")
+	ok(Campaign.crew_need() < need0 and int(G.crew) < crew0, "her crew is paid off (%d to %d)" % [crew0, int(G.crew)])
+	ok(Campaign.can_lay_up(nw, port) != "", "the last ship cannot be laid up")
+	c0 = G.credits; Campaign.new_day(false)
+	ok(float(G.credits) < c0 - Campaign.wages() + 0.01 and float(G.credits) > c0 - Campaign.wages() - Campaign.layup_fee(old) - 1.0, "her berth is paid each day (%.0f)" % Campaign.layup_fee(old))
+	var other: Dictionary = {}
+	for p in G.ports: if int(p.id) != int(port.id): other = p; break
+	ok(Campaign.can_recommission(Campaign.laid_at(port)[0], other) != "", "she can be recommissioned only where she lies")
+	print("  ", Campaign.recommission(Campaign.laid_at(port)[0], port))
+	ok(G.fleet.has(old) and Campaign.laid().is_empty() and Campaign.readiness(old) <= 0.5, "recommissioned there she rejoins, half worked up")
+	Campaign.lay_up(old, port); G.rep[port.fac] = -100; Campaign.new_day(false)
+	ok(Campaign.laid().is_empty() and not G.fleet.has(old), "laid up in a harbour whose flag goes to war with you, she is seized")
+	# a squadron lying in the cove by Bab Hakar's town (found by the soak: it carried on past the roads) can still put to sea
+	var P: Dictionary = G.player; var gone := 0
+	for p in G.ports:
+		P.x = 2686.0; P.y = 1408.0
+		if Campaign.set_course(P, p.sx, p.sy): gone += 1
+	ok(gone == G.ports.size(), "a squadron in a cove hard by a harbour finds a course out (%d of %d harbours)" % [gone, G.ports.size()])
 	sections += 1

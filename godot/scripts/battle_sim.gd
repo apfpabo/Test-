@@ -360,6 +360,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     var s = CShip.new(); var d: Dictionary = GameData.hulls[rec.type]
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
+    s.eng = 1.0 - 0.2 * clampf(float(rec.get("wear", 0.0)), 0.0, 1.0)   # worn machinery (Campaign.WEAR_ENG): damage control can bring it to 0.8 at best, as for a hit
     s.fp = clampi(int(rec.get("fp", d.get("p", {}).get("cat", []).size())), 0, d.get("p", {}).get("cat", []).size()); s.fp_t = 20.0 + randf() * 40.0
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"

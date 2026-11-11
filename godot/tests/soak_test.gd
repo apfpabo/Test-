@@ -279,7 +279,7 @@ func _events(day: int) -> void:
 		var by: Array = G.fleet.duplicate(); by.sort_custom(func(a, b): return float(Campaign.hull(a).kn) > float(Campaign.hull(b).kn))
 		print(Campaign.detach(by.slice(0, by.size() / 2)))
 	if _once("rejoin", day, 80) and Campaign.body() != null: Campaign.body().join = true
-	if _once("rejoined", day, 115): ok(Campaign.body() == null, "the main body has rejoined five weeks after the signal (it follows at its own speed, however far you go)")
+	if _once("rejoined", day, 122): ok(Campaign.body() == null, "the main body has rejoined six weeks after the signal (it follows at its own speed, however far you go; a slow, worn body can take five weeks and more)")
 	if _once("dark", day, 100): Campaign.set_dark(true)
 	if _once("light", day, 112): Campaign.set_dark(false)
 	if _once("reinforce2", day, 115): _add(["bb", "cv_essex", "cve", "ca", "ar_vulcan", "ar_diver"])

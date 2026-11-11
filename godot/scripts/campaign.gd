@@ -521,12 +521,74 @@ func new_officer(lvl: int) -> Dictionary:
         else: o.pts += 1
     return o
 
+# ------------------------------------------------------------------ age, wear and laying up
+## Ageing and upkeep, from Rule the Waves (the owner's go-ahead, 11 Nov 2026). A ship is as old as her design (built
+## the year her class was; a ship bought new from a yard is new). Every day under way wears her machinery and
+## fittings (WEAR_DAY, faster the older she is: AGE_WEAR a year): at full wear she has lost WEAR_SPEED of her speed on
+## passage and goes into action with her machinery WEAR_ENG down. An overhaul in port takes the wear off, down to a
+## floor that rises with her age (an old ship is never new again). A ship can be laid up in a friendly port: her crew
+## is paid off, she needs no supply and pays only a berth (LAYUP_FEE a day of her price); she is recommissioned there
+## at RECOMMISSION of her price, half worked up. If that port's flag comes to be at war with you, she is seized.
+const WEAR_DAY := 0.0012
+const AGE_WEAR := 1.0 / 15.0
+const WEAR_SPEED := 0.15
+const WEAR_ENG := 0.2
+const OVERHAUL_K := 0.1
+const LAYUP_FEE := 0.0004
+const RECOMMISSION := 0.03
+func built_day(s: Dictionary) -> int: return int(s.get("built", -maxi(0, date_of(1).year - int(hull(s).year)) * 365))
+func age_years(s: Dictionary) -> float: return maxf(0.0, float(G.get("day", 1) - built_day(s)) / 365.0)
+func wear(s: Dictionary) -> float: return clampf(float(s.get("wear", 0.0)), 0.0, 1.0)
+func wear_floor(s: Dictionary) -> float: return minf(0.3, age_years(s) * 0.012)
+func overhaul_cost(s: Dictionary) -> int: return int(ceil(float(hull(s).price) * OVERHAUL_K * maxf(0.0, wear(s) - wear_floor(s)) * (1.0 + age_years(s) / 20.0)))
+func overhaul(s: Dictionary) -> void:
+    G.credits -= overhaul_cost(s); s.wear = wear_floor(s)
+func _wear_day() -> void:
+    for s in all_ships(): s.wear = minf(1.0, wear(s) + WEAR_DAY * (1.0 + age_years(s) * AGE_WEAR))
+## Ships laid up: [{ship, port (id), since (day)}].
+func laid() -> Array:
+    if not G.has("laid"): G.laid = []
+    return G.laid
+func laid_at(p: Dictionary) -> Array: return laid().filter(func(e): return int(e.port) == int(p.id))
+func layup_fee(s: Dictionary) -> float: return float(hull(s).price) * LAYUP_FEE
+func can_lay_up(s: Dictionary, p: Dictionary) -> String:
+    if p.is_empty() or hostile(p.fac) or at_war(p.fac): return "Only in a friendly harbour."
+    if not G.fleet.has(s): return "She is not with your squadron."
+    if G.fleet.size() < 2: return "You cannot lay up your last ship."
+    return ""
+func lay_up(s: Dictionary, p: Dictionary) -> String:
+    var why := can_lay_up(s, p)
+    if why != "": return why
+    G.fleet.erase(s); s.reserve = false; s.fast = false
+    laid().append({"ship": s, "port": int(p.id), "since": int(G.day)})
+    var spare: int = maxi(0, int(G.crew) - crew_need()); var off: int = mini(spare, int(hull(s).crew)); G.crew -= off   # her crew is paid off
+    Structures.trim_troops(); trim_cargo()
+    return "The %s is laid up at %s: %d of her crew paid off, a berth at %s a day." % [s.name, p.name, off, fmt(int(ceil(layup_fee(s))))]
+func recommission_cost(s: Dictionary) -> int: return int(ceil(float(hull(s).price) * RECOMMISSION))
+func can_recommission(e: Dictionary, p: Dictionary) -> String:
+    if p.is_empty() or int(e.port) != int(p.id): return "She lies at another harbour."
+    var why := can_add_ship(e.ship.type)
+    if why != "": return why
+    if float(G.credits) < recommission_cost(e.ship): return "Not enough money."
+    return ""
+func recommission(e: Dictionary, p: Dictionary) -> String:
+    var why := can_recommission(e, p)
+    if why != "": return why
+    var s: Dictionary = e.ship; G.credits -= recommission_cost(s); laid().erase(e); s.rdy = minf(readiness(s), 0.5); G.fleet.append(s)
+    return "The %s is recommissioned. She needs %d crew, and time to work up." % [s.name, int(hull(s).crew)]
+func _laid_day() -> void:
+    for e in laid().duplicate():
+        var p: Dictionary = G.ports[int(e.port)]
+        if p.fac != "player" and at_war(p.fac):   # her harbour's flag is at war with you: she is seized
+            laid().erase(e); toast.emit("The %s, laid up at %s, has been seized: the %s is at war with you." % [e.ship.name, p.name, GameData.fac[p.fac].short]); continue
+        G.credits -= layup_fee(e.ship)
+
 ## Cruise speed on the chart in map units a second: about 70% of the slowest ship's top speed.
 func fleet_map_speed(ships: Array) -> float:
     var m = INF
     for s in ships:
         var up = s.get("up")
-        m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)) * load_speed(s))   # an overloaded ship holds the squadron back on passage too
+        m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)) * load_speed(s) * (1.0 - WEAR_SPEED * wear(s)))   # an overloaded ship holds the squadron back on passage too, and a worn one
     return m * 0.576
 ## The engine-room telegraph on the chart: speed as a share of cruising speed, and fuel burned a day as a share of
 ## the cruising burn (it rises steeply with speed, so slow steaming stretches the bunkers and flank speed drains them).
@@ -950,6 +1012,20 @@ func build_route(o: Dictionary, pts: Array) -> Array:
 
 func set_course(o: Dictionary, x: float, y: float) -> bool:
     var pts: Array = [Vector2(wrap_x(x), y)] if sight_line(o.x, o.y, x, y) else find_path(Vector2(o.x, o.y), Vector2(x, y))
+    if pts.is_empty():
+        # lying hard in a cove (4 units off Bab Hakar's own sea point, the soak found a squadron that could go nowhere):
+        # from a harbour's roads close by, or out first to a point of open water in sight, and on from there
+        var np = nearest_port(30.0) if o == G.player else null
+        if np != null and not (absf(o.x - np.sx) < 0.01 and absf(o.y - np.sy) < 0.01):
+            var rest0: Array = [Vector2(wrap_x(x), y)] if sight_line(np.sx, np.sy, x, y) else find_path(Vector2(np.sx, np.sy), Vector2(x, y))
+            if not rest0.is_empty(): o.x = np.sx; o.y = np.sy; pts = rest0
+        for r in ([] if not pts.is_empty() else [4.0, 8.0, 14.0]):
+            for k in 12:
+                var c := Vector2(wrap_x(o.x + cos(k * TAU / 12.0) * r), clampf(o.y + sin(k * TAU / 12.0) * r, 2.0, MH - 2.0))
+                if on_land(c.x, c.y) or not sight_line(o.x, o.y, c.x, c.y): continue
+                var rest: Array = find_path(c, Vector2(x, y))
+                if not rest.is_empty(): pts = [c] + rest; break
+            if not pts.is_empty(): break
     if pts.is_empty(): return false
     o.tx = wrap_x(x); o.ty = y; o.route = build_route(o, pts); o.ri = 0; o.rx = o.x; o.ry = o.y; o.wps = []
     return true
@@ -1105,6 +1181,8 @@ func new_day(moved: bool) -> void:
         if not G.get("iceWarned", false): toast.emit("Pack ice. Speed is cut, fuel burn rises and the ice grinds at your hulls."); G.iceWarned = true
     elif not in_ice(P.x, P.y): G.iceWarned = false
     _storm_day(moved)
+    if moved: _wear_day()
+    _laid_day()
     _readiness_day(moved)
     G.cargo.food -= food_use()
     if G.cargo.food < 0:
@@ -1632,7 +1710,9 @@ func _arrive() -> void:
         toast.emit("The tow is cast off in the roads. Your squadron is in harbour.")
     if P.get("destPort") != null:
         var p: Dictionary = G.ports[P.destPort]; P.destPort = null
-        if mdist(P.x, P.y, p.sx, p.sy) < 30: reached_port.emit(p)
+        if mdist(P.x, P.y, p.sx, p.sy) < 30:
+            P.x = p.sx; P.y = p.sy; P.v = 0.0   # she lies in the roads (carrying on past them, a squadron ran into a cove by Bab Hakar's town that no course leads out of)
+            reached_port.emit(p)
 
 func log_ev(t: String) -> void:
     G.log.append([G.day, t])

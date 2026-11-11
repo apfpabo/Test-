@@ -982,6 +982,22 @@ func _sound() -> void:
 	foe.sonar_on = true; foe.ping_t = 0.0
 	for i in 200: sim._sonar_tick(0.05)
 	ok(mine.pos.distance_to(foe.pos) < sim.sonar_range(foe) * BattleSim.PING_HEAR and sim.visible_to(foe, 0), "but once she pings, the boat's hydrophones have her")
+	# depth charges are dropped for where the boat will be, and burst well astern
+	sim = _sim(["dd_fletcher"], ["ss_vii"]); dd = sim.ships[0]; boat = sim.ships[1]
+	for x in sim.ships: x.ai_off = true
+	sim.hold_fire = true; boat.dive = 1.0; boat.want_dive = true; boat.v = 0.0; boat.throttle = 0; boat.held_t = 0.0
+	dd.pos = Vector2(8000, 8000); dd.a = 0.0; dd.v = 14.0; dd.throttle = 3
+	boat.pos = dd.pos + Vector2(0, 200)
+	ok(not sim.dc_on(dd, boat), "a boat 200 m on the beam is not under the pattern: she does not drop (she used to, at anything inside 260 m)")
+	var pat: Array = sim.dc_pattern(dd); boat.pos = pat[0]
+	ok(sim.dc_on(dd, boat) and sim.drop_dcs(dd), "with the boat where the pattern will fall, she drops")
+	var nearest_burst := INF; var bursts := 0; var hull0: float = boat.hull
+	for i in 400:
+		var before: Array = sim.dcs.duplicate()
+		sim.finished = false; sim.step(0.05)
+		for q in before: if not q.has("rel") and not sim.dcs.has(q): bursts += 1; nearest_burst = minf(nearest_burst, q.pos.distance_to(sim.world_pt(dd, -dd.d.L / 2, 0)))
+	ok(bursts == 6 and nearest_burst > 70.0, "six charges burst, none nearer her stern than %.0f m (the first used to go off some 45 m astern)" % nearest_burst)
+	ok(boat.hull < hull0, "and the boat under them is hurt (%.0f of %.0f)" % [boat.hull, hull0])
 	# other navies' captains choose what to send out
 	sim = _sim(["ss_gato"], ["dd_narvik", "dd_narvik", "ca_hipper"], Weather.battle(night)); mine = sim.ships[0]
 	for x in sim.ships: x.tech = ["radar"] if x.side == 1 else []; x.lit_t = 99.0

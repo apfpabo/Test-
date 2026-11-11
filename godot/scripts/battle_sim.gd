@@ -1259,15 +1259,36 @@ func update_weapons(s: CShip, dt: float) -> void:
     if s.d.get("sonar", false) and not s.sub:
         s.dc_t -= dt
         if s.dc_t <= 0:
-            var sb = nearest_enemy(s.pos, s.side, 260.0, func(o: CShip) -> bool: return o.sub and submerged(o))
-            if sb != null: drop_dcs(s)
+            # a boat she holds on sonar, where a pattern dropped now would come down on her (it used to be any boat within 260 m)
+            var sb = nearest_enemy(s.pos, s.side, 700.0, func(o: CShip) -> bool: return o.sub and submerged(o) and detected_by(o, s.side))
+            if sb != null and dc_on(s, sb): drop_dcs(s)
 
 ## A pattern of depth charges rolled and thrown off the stern; they sink and burst a few seconds later.
+## Depth charges (reworked 11 Nov 2026 at the owner's word: she dropped whenever a boat was anywhere within 260 m, and the
+## charges burst close under her stern). A pattern is six charges: four rolled off the stern rails one after another
+## as she runs on, so they lie along her track, and one thrown out on each quarter. Each sinks for DC_SINK battle seconds
+## before it bursts, by which time she is a hundred metres and more beyond it. So she must drop *ahead of time*: for
+## where the boat will be when the charges reach her depth, not where she is now.
+const DC_ROLL := 1.1      # battle seconds between one charge off the rails and the next
+const DC_SINK := 6.0      # battle seconds a charge sinks before it bursts
+const DC_THROW := 42.0    # how far a thrower puts its charge out on the quarter, metres
+const DC_HIT := 60.0      # a burst this near a boat hurts her
+const DC_CLOSE := 18.0    # and this near does its worst
+## Where the middle of a pattern dropped now would lie, and when it would burst (seconds from now).
+func dc_pattern(s: CShip) -> Array:
+    var mid_t: float = DC_ROLL * 1.5
+    return [world_pt(s, -s.d.L / 2, 0) + Vector2.from_angle(s.a) * s.v * mid_t, mid_t + DC_SINK]
+## Where a boat will be that many seconds on, if she holds her course and speed.
+func dc_lead(sb: CShip, secs: float) -> Vector2: return sb.pos + Vector2.from_angle(sb.a) * sb.v * secs
+## Would a pattern dropped now fall on this boat? (The captain's judgement: within the pattern's own spread.)
+func dc_on(s: CShip, sb: CShip) -> bool:
+    var pt: Array = dc_pattern(s)
+    return dc_lead(sb, float(pt[1])).distance_to(pt[0]) < 55.0
 func drop_dcs(s: CShip) -> bool:
     if s.dc_left <= 0 or s.dc_t > 0.0: return false   # none left, or the racks still reloading
-    s.dc_left -= 1; s.dc_t = 25.0; var st = world_pt(s, -s.d.L / 2, 0)
-    for i in 6:
-        var q = part(P.DC, st + Vector2(randf() - 0.5, randf() - 0.5) * 90.0, 1.4, 24.0); q.life = -1.5 - i * 0.4; q.side = s.side; dcs.append({"pos": q.pos, "t": (1.5 + i * 0.4) * BT, "side": s.side})
+    s.dc_left -= 1; s.dc_t = 25.0
+    for i in 4: dcs.append({"ship": s, "rel": i * DC_ROLL, "lat": (randf() - 0.5) * 8.0, "side": s.side, "t": -1.0})   # off the rails, one by one
+    for sd in [-1.0, 1.0]: dcs.append({"ship": s, "rel": DC_ROLL * 1.5, "lat": sd * DC_THROW, "side": s.side, "t": -1.0})   # the throwers
     if s.side == 0 and s == flag: say("Depth charges away · %d patterns left." % s.dc_left, 1.5)
     return true
 
@@ -1650,7 +1671,10 @@ func ai_ship(s: CShip, dt: float) -> void:
     else: desired = to - s.pref_side * PI / 2
     if (s.d.kind == "pt" or s.sub) and s.torp_run_t <= 0: desired = to
     var asw: bool = tg.sub and submerged(tg) and s.d.get("sonar", false) and not s.sub and s.dc_left > 0
-    if asw: desired = to   # a submerged contact: run in over it so the depth charges fall on it
+    if asw:   # a submerged contact: run in over where she will be when the charges get down to her, so that the pattern falls on her
+        var run_t: float = d / maxf(s.v, 4.0) + DC_ROLL * 1.5 + DC_SINK
+        var aim: Vector2 = dc_lead(tg, minf(run_t, 60.0)) + Vector2.from_angle(s.a) * (s.d.L * 0.5 - s.v * DC_ROLL * 1.5)   # it is her stern that must pass over the place
+        desired = (aim - s.pos).angle() if aim.distance_to(s.pos) > 30.0 else s.a
     var mg: float = s.d.td + 800.0
     if s.pos.x < mg or s.pos.x > AW - mg or s.pos.y < mg or s.pos.y > AH - mg: desired = (Vector2(AW, AH) / 2 - s.pos).angle()
     s.rudder = helm(s, steer_avoid(s, desired))
@@ -1662,6 +1686,16 @@ func ai_ship(s: CShip, dt: float) -> void:
         if not hunted:
             for hn in ships: if hn.side != s.side and active(hn) and not hn.sub and has_sonar(hn) and hn.pos.distance_to(s.pos) < (sonar_range(hn) * 1.3 if hn.sonar_on else 900.0): hunted = true; break
         if hunted and d > 1400.0: s.throttle = 1
+        # and when a hunter is running in on her she does not wait for the pattern: the charges take seconds to sink, so she
+        # turns hard across the hunter's track and puts on speed, to be somewhere else when they get down to her
+        var runner: CShip = null
+        for hn2 in ships:
+            if hn2.side == s.side or not active(hn2) or hn2.sub or hn2.dc_left <= 0 or not has_sonar(hn2): continue
+            var hd: float = hn2.pos.distance_to(s.pos)
+            if hd < 480.0 and absf(ang_diff((s.pos - hn2.pos).angle(), hn2.a)) < 0.6 and (runner == null or hd < runner.pos.distance_to(s.pos)): runner = hn2
+        if runner != null and s.held_t < PING_HOLD + 20.0:
+            var side_: float = signf((s.pos - runner.pos).rotated(-runner.a).y); if side_ == 0.0: side_ = float(s.pref_side)
+            s.rudder = helm(s, steer_avoid(s, runner.a + side_ * PI / 2)); s.throttle = 4
     if s.d.kind == "carrier" and not holding(s): launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
 
 ## Flying from a carrier. Aircraft leave the deck and come back to it one at a time: a squadron ordered off forms up
@@ -2059,7 +2093,17 @@ func step(dtv: float) -> void:
             missiles.remove_at(i)
     update_air(dt)
     for i in range(dcs.size() - 1, -1, -1):
-        var q = dcs[i]; q.t -= dt
+        var q = dcs[i]
+        if q.has("rel"):   # still aboard: it goes over the stern (or out from a thrower) when its turn comes
+            q.rel -= dt
+            if q.rel > 0.0: continue
+            var sh: CShip = q.ship
+            if sh == null or not sh.alive: dcs.remove_at(i); continue
+            q.pos = world_pt(sh, -sh.d.L / 2, float(q.lat)); q.t = DC_SINK * (0.92 + randf() * 0.16); q.erase("rel"); q["src"] = sh; q.erase("ship")
+            var plop = part(P.FOAM, q.pos, 3.0, 5.0)   # the small splash as it goes in
+            var b = part(P.DC, q.pos, 1.4, 24.0); b.life = -float(q.t) / BT; b.side = q.side   # the burst, drawn when it comes
+            continue
+        q.t -= dt
         if q.t > 0: continue
         dcs.remove_at(i); sound("depth", q.pos, 0.3)
         if modern:   # spray flung out of the dome, a ring across the water, and the foam it leaves
@@ -2067,7 +2111,10 @@ func step(dtv: float) -> void:
                 var sp = part(P.SPRAY, q.pos + rdir() * 8.0, 0.8 + randf() * 0.9, 7.0 + randf() * 6.0, rdir() * (40.0 + randf() * 110.0)); sp.drag = 0.2
             part(P.WRING, q.pos, 2.2, 90.0); var fm = part(P.WASH if modern else P.FOAM, q.pos, 18.0, 40.0 if modern else 55.0); fm.a = randf() * TAU; fm.spin = (randf() - 0.5) * 0.08
         for s in ships:
-            if s.sub and active(s) and s.side != q.side and s.pos.distance_to(q.pos) < 60: damage(s, 160, "dc"); s.reveal_t = 30.0
+            # the nearer the burst the worse: the full blow inside DC_CLOSE, falling away to nothing at DC_HIT (every burst
+            # inside 60 m used to do the full damage, which mattered little while the patterns fell wide)
+            var bd: float = s.pos.distance_to(q.pos)
+            if s.sub and active(s) and s.side != q.side and bd < DC_HIT: damage(s, 160.0 * clampf((DC_HIT - bd) / (DC_HIT - DC_CLOSE), 0.15, 1.0), "dc"); s.reveal_t = 30.0
     # end of the action: one side gone, or fifteen battle minutes without a hit and nothing in flight
     var mine = 0; var theirs = 0
     for s in ships:

@@ -679,6 +679,11 @@ func _divisions() -> void:
 		if sim.torps.any(func(tp): return tp.get("src") == d3 or true) and not fired and d3.ord == "": fired = true
 		if d3.ord == "": break
 	ok(d3.ord == "" and closest < 6000.0, "ordered to a torpedo attack she runs in, fires and takes the squadron's order again (closed to %d m)" % int(closest))
+	# her tubes knocked out on the way in: she gives the attack up (she used to circle the enemy for ever)
+	d1.ord = "torp"; d1.ord_tgt = foe
+	for m in d1.mounts: if m.w.kind == "torp": m.dead = true
+	for i in 50: sim.finished = false; sim.ai_ship(d1, 0.25)
+	ok(d1.ord == "", "a ship ordered to a torpedo attack whose tubes are knocked out gives it up and rejoins")
 	sections += 1
 
 ## Star shell, and the flagship's damage-control decisions.

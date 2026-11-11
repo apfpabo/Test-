@@ -105,7 +105,7 @@ def main():
     big = load(os.path.join(dl, 'ship_destroyed_short.ogg')); made['blast'] = fade(norm(seg(big, onset(big) - 0.01, onset(big) + 8.0)), 0.003, 2.5)
     ch = load(os.path.join(dl, 'chunky_explosion.mp3')); made['hit_big'] = fade(norm(seg(ch, onset(ch) - 0.01)), 0.003, 1.0)
     # missile launch: ignition and the booster's roar
-    la = load(os.path.join(dl, 'x_launch', 'launch', 'launch.wav')); made['launch'] = fade(norm(seg(la, 0.6, 5.0), 0.8), 0.01, 1.2)
+    la = load(os.path.join(dl, 'x_launch', 'launch', 'launch.wav')); made['launch'] = fade(norm(seg(la, 1.55, 5.0), 0.8), 0.12, 1.2)   # (from 1.55 s: the first second of the recording is near silence, and the missile had left before it was heard)
     # automatic weapons from recorded transients at their rate of fire
     dull = load(os.path.join(dl, 'explosion_dull.flac')); dull = seg(dull, onset(dull) - 0.002)
     crack = load(os.path.join(dl, 'x_sfx100', 'shot_02.ogg')); crack = seg(crack, onset(crack) - 0.002)
@@ -123,7 +123,11 @@ def main():
     for w in wv[1:]: k = np.linspace(0, 1, xf); bed = np.concatenate([bed[:-xf], bed[-xf:] * (1 - k) + w[:xf] * k, w[xf:]])
     made['sea_bed'] = norm(loop(bed, 1.5), 0.6)
     for i, n in enumerate([1, 2, 3, 5, 6]):
-        g = load(os.path.join(dl, 'gull_%d.wav' % n)); made['gull_%d' % (i + 1)] = fade(norm(seg(g, max(0.0, onset(g, 0.05) - 0.05)), 0.7), 0.01, 0.4)
+        g = load(os.path.join(dl, 'gull_%d.wav' % n))
+        # two of these recordings are nearly all wind rumble below 150 Hz (measured: 98% of their energy, the call itself 30 dB down):
+        # everything under 900 Hz is taken off, which leaves the gull and nothing else
+        G = np.fft.rfft(g); fr = np.fft.rfftfreq(len(g), 1.0 / RATE); G *= 1.0 / (1.0 + (900.0 / np.maximum(fr, 1.0)) ** 8); g = np.fft.irfft(G, len(g))
+        made['gull_%d' % (i + 1)] = fade(norm(seg(g, max(0.0, onset(g, 0.05) - 0.05)), 0.7), 0.01, 0.4)
     for name, x in made.items(): print('%-12s %.2f s' % (name, len(x) / RATE)); write(out, name, x)
     used = {'gun_heavy_1': ['cannon_fire.ogg', 'naval.7z'], 'gun_heavy_2': ['cannon_fire.ogg', 'naval.7z'], 'gun_medium': ['naval.7z'], 'gun_small': ['naval.7z'],
             'hit_1': ['cannon_hit_ship_short.ogg'], 'hit_2': ['naval.7z'], 'splash_1..4': ['naval.7z'], 'blast': ['ship_destroyed_short.ogg'], 'hit_big': ['chunky_explosion.mp3'],

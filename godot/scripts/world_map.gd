@@ -8,6 +8,8 @@ var cam = Vector2.ZERO         # camera centre in map units
 var free_cam = false
 var drag = {}
 var world: Node2D
+var _wx_sea := -1   # the sea state where you are, for the weather's sound
+var _wx_at := 0.0
 const Globe = preload("res://scripts/chart_globe.gd")
 var globe   # the world as a globe, shown past the chart's widest view (chart_globe.gd)
 var land_copies: Array = []
@@ -251,6 +253,9 @@ func _process(delta: float) -> void:
         for i in 12: if Campaign.on_land(G.player.x + cos(i * TAU / 12.0) * 4.0, G.player.y + sin(i * TAU / 12.0) * 4.0): n += 1
         coast = n / 12.0
     Sfx.ambience(0.4, minf(1.0, coast * 2.5))
+    if _wx_sea < 0 or tnow - _wx_at > 0.5: _wx_at = tnow; _wx_sea = int(Campaign.weather_here().get("sea", 0))   # the weather where you are, asked twice a second
+    if _wx_sea == 2: Sfx.layer("rain", 0.5)
+    elif _wx_sea >= 3: Sfx.layer("storm", 0.7); Sfx.layer("thunder", 0.6)
 
 ## Wake trails, recorded only for fleets on or near the screen. Each point ages out after a few seconds; every ship in
 ## the column draws its own wake along the trail (see Marks._wake).
@@ -838,7 +843,7 @@ var dark_btn: Button
 func _set_speed(k: String) -> void:
     if Campaign.dark() and Campaign.SPEED_ORDER.find(k) > 1: _toast("Running dark, the engines stay at Half or below: more would make smoke. Stop running dark first."); return
     Campaign.G.player.spd = k
-    _toast("Engine room: %s." % Campaign.SPEEDS[k][3].to_lower())
+    _toast("Engine room: %s." % Campaign.SPEEDS[k][3].to_lower()); Sfx.cue("gong", 0.3)   # the telegraph's bell
 
 func _update_telegraph() -> void:
     var cur := Campaign.speed_order()
@@ -1049,6 +1054,7 @@ func open_panel(build: Callable, blocking := false, width := 760.0, key := "") -
     var fresh: bool = not panel_open
     var new_page: bool = key == "" or key != _panel_key
     _panel_key = key
+    if fresh or new_page: Sfx.cue("paper", 0.5)   # a page turned
     _clear_panel(); panel_open = true; _blocking = blocking; Campaign.paused = true
     var shade = ColorRect.new(); shade.color = Color(0.016, 0.047, 0.063, 0.6); shade.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.add_child(shade); shade.mouse_filter = Control.MOUSE_FILTER_STOP
     var center = CenterContainer.new(); center.set_anchors_preset(Control.PRESET_FULL_RECT); shade.add_child(center)
@@ -1440,6 +1446,7 @@ func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p,
 func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93 * (0.9 if Campaign.restricted(p.fac) else 1.0) * (1.0 + float(Campaign.perk("trade", 0.0)))))
 
 func open_port(p: Dictionary) -> void:
+    Sfx.cue("gong", 0.4)   # the bell: alongside
     if not Campaign.hostile(p.fac) and Campaign.G.day - p.get("offDay", -99) > 20: # the officers' mess turns over every few weeks
         p.offDay = Campaign.G.day; p.officers = [Campaign.new_officer(randi_range(1, 2)), Campaign.new_officer(randi_range(1, 3))]
         if randf() < 0.4: p.officers.append(Campaign.new_officer(randi_range(2, 4)))
@@ -1656,6 +1663,7 @@ func show_command() -> void:
     if panel_open and not _blocking: close_panel()
     var keep := -1; var fresh := not drawer_open(); var new_tab: bool = drawer_tab != cmd_tab
     if not fresh and not new_tab: keep = drawer_scroll.scroll_vertical
+    else: Sfx.cue("paper", 0.45)
     if is_instance_valid(drawer): drawer.queue_free()
     drawer_tab = cmd_tab
     var vs := get_viewport_rect().size; var w := clampf(vs.x * 0.42, 560.0, 720.0)   # a drawer, not a screen: under half the chart's width

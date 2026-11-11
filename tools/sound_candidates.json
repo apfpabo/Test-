@@ -1,0 +1,26 @@
+{
+  "note": "Candidates offered to the owner on 11 Nov 2026 (listening page). Nothing here is in the game until he has chosen. Licences were read from each page on that day.",
+  "effects": [
+    {"for": "sonar ping", "title": "Sonar Ping", "author": "Spiceman", "licence": "CC0", "page": "https://opengameart.org/content/sonar-ping", "file": "https://opengameart.org/sites/default/files/sonar_ping_0.mp3"},
+    {"for": "battle stations; rain loop", "title": "30 CC0 SFX loops", "author": "rubberduck", "licence": "CC0", "page": "https://opengameart.org/content/30-cc0-sfx-loops", "file": "https://opengameart.org/sites/default/files/sfx_loops.zip"},
+    {"for": "battle stations (siren)", "title": "Sirens and Alarm Noise", "author": "aquinn", "licence": "CC0", "page": "https://opengameart.org/content/sirens-and-alarm-noise", "file": "https://opengameart.org/sites/default/files/siren_0.mp3"},
+    {"for": "ship's bell, gong, interface switches, paper", "title": "100 CC0 SFX", "author": "rubberduck", "licence": "CC0", "page": "https://opengameart.org/content/100-cc0-sfx", "file": "https://opengameart.org/sites/default/files/100-CC0-SFX_0.zip"},
+    {"for": "propeller aircraft", "title": "Airplane Prop Loop", "author": "AntumDeluge", "licence": "CC BY 3.0", "page": "https://opengameart.org/content/airplane-prop-loop", "file": "https://opengameart.org/sites/default/files/airplane_prop_0.ogg"},
+    {"for": "fire aboard", "title": "Fire Crackling", "author": "AntumDeluge", "licence": "CC0", "page": "https://opengameart.org/content/fire-crackling", "file": "https://opengameart.org/sites/default/files/fire-1_0.ogg"},
+    {"for": "rain and thunder", "title": "rain and thunders", "author": "kindland", "licence": "CC0", "page": "https://opengameart.org/content/rain-and-thunders", "file": "https://opengameart.org/sites/default/files/Dark_Rainy_Night%28ambience%29.ogg"},
+    {"for": "storm", "title": "Storm & Siren", "author": "TinyWorlds", "licence": "CC0", "page": "https://opengameart.org/content/storm-siren", "file": "https://opengameart.org/sites/default/files/storm_3_siren.ogg"},
+    {"for": "a ship going down", "title": "Bubble Sound Effects", "author": "BMacZero", "licence": "CC0", "page": "https://opengameart.org/content/bubble-sound-effects", "file": "https://opengameart.org/sites/default/files/bubbles-loop1-amp.wav"}
+  ],
+  "music": [
+    {"for": "menu", "title": "Heroic Age", "author": "Kevin MacLeod", "licence": "CC BY 4.0", "page": "https://incompetech.com/music/royalty-free/music.html"},
+    {"for": "menu", "title": "Some Militaristic Tune", "author": "Spring Spring", "licence": "CC0", "page": "https://opengameart.org/content/some-militaristic-tune"},
+    {"for": "menu", "title": "The Tread of War", "author": "InspectorJ", "licence": "CC BY 3.0", "page": "https://opengameart.org/content/the-tread-of-war-rpg-orchestral-essentials-military-music"},
+    {"for": "chart", "title": "Exploring the Ocean; Seaside Village; Stranded in the Ocean (Ocean music pack)", "author": "leohpaz", "licence": "CC BY 4.0", "page": "https://opengameart.org/content/ocean-music-pack"},
+    {"for": "chart", "title": "Ascending the Vale", "author": "Kevin MacLeod", "licence": "CC BY 4.0", "page": "https://incompetech.com/music/royalty-free/music.html"},
+    {"for": "chart", "title": "Exploration Theme", "author": "CleytonKauffman", "licence": "CC0", "page": "https://opengameart.org/content/exploration-theme"},
+    {"for": "battle", "title": "Five Armies; Prelude and Action; Crossing the Chasm; The Descent", "author": "Kevin MacLeod", "licence": "CC BY 4.0", "page": "https://incompetech.com/music/royalty-free/music.html"},
+    {"for": "battle", "title": "Determined Pursuit (epic orchestra loop)", "author": "Emma_MA", "licence": "CC0", "page": "https://opengameart.org/content/determined-pursuit-epic-orchestra-loop"},
+    {"for": "battle", "title": "Battle Theme A", "author": "cynicmusic", "licence": "CC0", "page": "https://opengameart.org/content/battle-theme-a"},
+    {"for": "battle", "title": "Ready Cannons and Fire (Ocean music pack)", "author": "leohpaz", "licence": "CC BY 4.0", "page": "https://opengameart.org/content/ocean-music-pack"}
+  ]
+}

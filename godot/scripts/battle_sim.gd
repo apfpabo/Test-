@@ -1583,10 +1583,14 @@ func ai_ship(s: CShip, dt: float) -> void:
     if s.side == 0 and o == "torp":   # a torpedo attack: run in at speed, turn beam on inside range, fire, and rejoin
         var tt: CShip = s.ord_tgt if (s.ord_tgt != null and engageable(s.ord_tgt) and visible_to(s.ord_tgt, 0)) else nearest_enemy(s.pos, 0)
         var loaded := false; var reach := 0.0
-        for m in s.mounts: if m.w.kind == "torp": reach = maxf(reach, float(m.w.range)); if m.cd <= 0 and m.ammo != 0: loaded = true
+        var tubes := false   # tubes still in action (a mount knocked out on the run in cannot fire: she used to circle there for ever)
+        for m in s.mounts:
+            if m.w.kind != "torp" or m.dead: continue
+            tubes = true; reach = maxf(reach, float(m.w.range))
+            if m.cd <= 0 and m.ammo != 0: loaded = true
         if tt == null or not loaded:
             s.ord = ""; s.ord_tgt = null; o = ord_of(s)
-            if s.alive: say("The %s has %s and rejoins." % [s.rec.name, "fired her torpedoes" if tt != null else "no target for her torpedoes"], 1.8)
+            if s.alive: say("The %s has %s and rejoins." % [s.rec.name, ("fired her torpedoes" if tubes else "lost her tubes") if tt != null else "no target for her torpedoes"], 1.8)
         else:
             s.target = tt; var td := s.pos.distance_to(tt.pos); var bearing := (tt.pos - s.pos).angle()
             if td > reach * 0.6: s.rudder = helm(s, steer_avoid(s, bearing)); s.throttle = 4

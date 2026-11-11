@@ -47,7 +47,7 @@ func _ready() -> void:
 	for i in 24:
 		var p = AudioStreamPlayer.new(); p.bus = "Effects"; add_child(p); _pool.append(p)
 	var names = {"gun_H": ["gun_heavy_1", "gun_heavy_2"], "gun_L": ["gun_heavy_1", "gun_heavy_2"], "gun_M": ["gun_medium"], "gun_S": ["gun_small"],
-		"hit": ["hit_1", "hit_2"], "hit_big": ["hit_big"], "splash": ["splash_1", "splash_2", "splash_3", "splash_4"], "blast": ["blast"], "launch": ["launch"],
+		"ping": ["ping"], "hit": ["hit_1", "hit_2"], "hit_big": ["hit_big"], "splash": ["splash_1", "splash_2", "splash_3", "splash_4"], "blast": ["blast"], "launch": ["launch"],
 		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa40": ["bofors"]}
 	for k in names:
 		var bank = []
@@ -75,8 +75,22 @@ func _ready() -> void:
 	_gull_p = AudioStreamPlayer.new(); _gull_p.bus = "Ambience"; add_child(_gull_p)
 	var comp = AudioEffectCompressor.new(); comp.threshold = -16.0; comp.ratio = 4.0; comp.attack_us = 2000.0; comp.release_ms = 250.0; comp.gain = 4.0
 	AudioServer.add_bus_effect(0, comp)
-	var lim = AudioEffectHardLimiter.new() if ClassDB.class_exists("AudioEffectHardLimiter") else AudioEffectLimiter.new()
-	AudioServer.add_bus_effect(0, lim)
+	# the level the owner chose (Settings.OUTPUT): the last of the 20 dB is made up here, ahead of a limiter that holds the peaks
+	if ClassDB.class_exists("AudioEffectHardLimiter"):
+		var lim = ClassDB.instantiate("AudioEffectHardLimiter"); lim.set("pre_gain_db", PRE_GAIN_DB); lim.set("ceiling_db", -1.0)
+		AudioServer.add_bus_effect(0, lim)
+	else:
+		var amp = AudioEffectAmplify.new(); amp.volume_db = PRE_GAIN_DB; AudioServer.add_bus_effect(0, amp)
+		AudioServer.add_bus_effect(0, AudioEffectLimiter.new())
+	# the sounds the owner chose (11 Nov 2026): one-shots (`cue`) and loops that follow what is on the screen (`layer`)
+	for n in ["siren", "gong", "paper"]:
+		var st = load("res://assets/sfx/%s.ogg" % n) if ResourceLoader.exists("res://assets/sfx/%s.ogg" % n) else null
+		if st != null: _cues[n] = st
+	for n in LAYERS:
+		var path := "res://assets/sfx/%s_loop.ogg" % n
+		if not ResourceLoader.exists(path): continue
+		var st2 = load(path); st2.loop = true
+		var pl := AudioStreamPlayer.new(); pl.stream = st2; pl.volume_db = -80.0; pl.bus = "Ambience" if LAYERS[n] else "Effects"; add_child(pl); _layers[n] = pl; _layer_want[n] = 0.0
 
 func _wav(data: PackedFloat32Array, loop := false) -> AudioStreamWAV:
 	var b = PackedByteArray(); b.resize(data.size() * 2)
@@ -139,7 +153,7 @@ func _engine_loop() -> AudioStreamWAV:
 func event(kind: String, vol: float, rate := 1.0) -> void:
 	if muted or vol < 0.01: return
 	match kind:
-		"ping": _play(_ping_wav(), vol, rate); return
+		"ping": _play(_rec.ping[0] if _rec.has("ping") else _ping_wav(), vol, rate); return   # the recorded ping (the owner's choice), else the synthesised one
 		"depth": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.55 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol * 0.6, 0.6); return
 		"torp_hit": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.7 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol, 0.8); return
 	if not _rec.has(kind):
@@ -220,6 +234,21 @@ var _eng_level := 0.0
 func engine(level: float) -> void: _eng_level = clampf(level, 0.0, 1.0)
 
 ## The open sea all round: level 0..1, and coast 0..1 for how much land is near (gulls call more often there).
+const PRE_GAIN_DB := 4.4
+var _cues := {}                  # one-shot sounds by name: siren (battle stations), gong (the bell: port and engine orders), paper (pages)
+## name: true if it belongs to the weather (Ambience bus), false if to things on the screen (Effects bus)
+const LAYERS := {"prop": false, "fire": false, "bubbles": false, "rain": true, "thunder": true, "storm": true}
+var _layers := {}
+var _layer_want := {}
+## A one-shot: "siren", "gong" or "paper".
+func cue(name: String, vol := 0.5) -> void:
+	if muted or not _cues.has(name): return
+	_play(_cues[name], vol, 1.0)
+## How loud a loop should be this frame, 0..1: "prop" (propeller aircraft near), "fire" (a ship burning near),
+## "bubbles" (a ship going down), "rain", "thunder", "storm" (the weather). Ask every frame: a loop nobody asks for fades out.
+func layer(name: String, level: float) -> void:
+	if _layer_want.has(name): _layer_want[name] = maxf(float(_layer_want[name]), clampf(level, 0.0, 1.0))
+
 func ambience(level: float, coast := 0.0) -> void: _amb = clampf(level, 0.0, 1.0); _coast = clampf(coast, 0.0, 1.0)
 
 func _fade(pl: AudioStreamPlayer, lin: float, rate: float, dt: float, pitch := 1.0) -> void:
@@ -232,6 +261,8 @@ func _fade(pl: AudioStreamPlayer, lin: float, rate: float, dt: float, pitch := 1
 	if lin <= 0.001 and pl.volume_db <= -55.0: pl.stop()
 
 func _process(dt: float) -> void:
+	for n in _layers:   # the loops asked for since the last frame; then the asking starts again
+		_fade(_layers[n], float(_layer_want[n]) * 0.5, 14.0, dt); _layer_want[n] = 0.0
 	var e := _eng_level * BED
 	_fade(_engine, e * 0.7, 18.0, dt, 0.85 + 0.25 * e)
 	_fade(_room, e * 0.35, 18.0, dt, 0.9 + 0.2 * e)

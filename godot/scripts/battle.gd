@@ -75,6 +75,7 @@ func _ready() -> void:
     veil = ColorRect.new(); veil.set_anchors_preset(Control.PRESET_FULL_RECT); veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
     veil_mat = ShaderMaterial.new(); veil_mat.shader = preload("res://shaders/veil.gdshader"); veil.material = veil_mat; vl.add_child(veil)
     apply_weather()
+    if not sim.editor and not GameData.pending.get("quiet", false): Sfx.cue("siren", 0.45)   # battle stations
     var w: Dictionary = sim.wx
     if sim.limited() or w.night or int(w.sea) >= 2 or w.fog:
         sim.say("%s. %s" % [w.text, ("Lookouts see about %.1f km%s." % [float(w.vis) / 1000.0, "; radar ships see farther" if sim.ships.any(func(x): return x.side == 0 and sim.has_radar(x)) else ""]) if sim.limited() else "Gunnery suffers in this sea."], 6.0)
@@ -213,6 +214,18 @@ func _process(delta: float) -> void:
             if x.alive and not x.escaped: eng = maxf(eng, _near(x.pos) * clampf(x.v / maxf(1.0, x.d.kn * 0.5144), 0.0, 1.0) * clampf(x.d.L / 200.0, 0.35, 1.0))
     Sfx.engine(eng)
     Sfx.ambience(0.0 if paused else 0.6, 0.35 if not sim.islands.is_empty() else 0.0)
+    if not paused:   # what is near the camera, and the weather (the owner's chosen sounds)
+        var prop := 0.0; var fire := 0.0; var bub := 0.0
+        for q in sim.air: if not q.jet and q.up > 0 and (q.side == 0 or not sim.limited()): prop = maxf(prop, _near(q.pos) * minf(1.0, 0.4 + 0.15 * q.up))
+        for x in sim.ships:
+            for op in x.deck_ops: if not op.q.jet: prop = maxf(prop, _near(op.pos) * 0.6)
+            if x.side == 1 and not sim.visible_to(x, 0): continue
+            if x.alive and not x.escaped and not x.fires.is_empty(): fire = maxf(fire, _near(x.pos) * minf(1.0, 0.4 + 0.2 * x.fires.size()))
+            if not x.alive and sim.sink_k(x) < 1.0: bub = maxf(bub, _near(x.pos))
+        Sfx.layer("prop", prop); Sfx.layer("fire", fire * 0.8); Sfx.layer("bubbles", bub * 0.9)
+        var sea: int = int(sim.wx.get("sea", 0))
+        if sea == 2: Sfx.layer("rain", 0.6)
+        elif sea >= 3: Sfx.layer("storm", 0.8); Sfx.layer("thunder", 0.7)
     var vs = get_viewport_rect().size
     water_mat.set_shader_parameter("cam", camera.position); water_mat.set_shader_parameter("zoom", zoom())
     water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t); water_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)

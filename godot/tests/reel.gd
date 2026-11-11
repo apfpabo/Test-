@@ -25,6 +25,12 @@ const CLIPS := {
 		"cuts": [[0.0, "me", 2.6, -110.0], [5.0, "deck", 4.0, 0.0], [9.5, "me", 3.2, -60.0]]},
 	"carrier_jets": {"player": ["cv_forrestal", "ddg_adams"], "enemy": ["ca_hipper"], "sep": 20000.0, "pre": 5.0, "wx": {}, "place": "ahead", "tech": ["radar", "jets", "missiles"],
 		"cuts": [[0.0, "me", 2.6, 60.0], [5.5, "deck", 3.6, 0.0], [9.5, "air", 1.6, 0.0]]},
+	# a fleet action: two battle lines with their cruisers and destroyers
+	"fleet": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_scharnhorst", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3400.0, "pre": 60.0, "wx": {},
+		"cuts": [[0.0, "me", 2.6, 20.0], [4.0, "them", 2.4, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.2, 0.0]]},
+	# destroyers hunting a dived boat: she lies ahead of them, they find her with sonar and run in over her
+	"sub_hunt": {"player": ["dd_fletcher", "dd_fletcher", "dd_fletcher"], "enemy": ["ss_vii"], "sep": 1300.0, "pre": 900.0, "until": "dc", "wx": {}, "place": "ahead",
+		"cuts": [[0.0, "dropper", 4.0, -70.0], [6.0, "dropper", 2.2, -150.0], [10.5, "sub", 3.2, 0.0]]},
 	# submarines: a torpedo attack on a convoy (a depth-charge hunt was tried and dropped: staged this way the destroyers never get over the boat)
 	"sub_attack": {"player": ["ss_gato", "ss_gato"], "enemy": ["ao_t2", "fr_liberty", "fr_liberty"], "sep": 2200.0, "pre": 900.0, "until": "torp_close", "wx": {},
 		"cuts": [[0.0, "torp", 5.0, 0.0], [3.5, "victim", 2.8, 0.0], [11.0, "sub", 6.0, 0.0]]},

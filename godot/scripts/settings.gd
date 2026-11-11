@@ -13,7 +13,11 @@ var sensors := true               # show sensor ranges and the radar sweep (R on
 const MINIMAP_W := [190.0, 280.0, 400.0]
 ## Everything plays through this fixed output level: the owner found the game far too loud, so 100% on the sliders
 ## is now what 10% used to be. Settings saved before the change are carried over at the same loudness.
-const OUTPUT := 0.165   # raised twice at the owner's request (guns and explosions were too quiet); Sfx.BED keeps engines and sea down
+## The game's output level. The owner chose 20 dB above the old level (11 Nov 2026: a recorded gun duel measured -39 LUFS,
+## peaks near -25 dB; he picked the version raised 20 dB under a limiter, about -19 LUFS). The old level was a master
+## gain of 0.165 (-15.6 dB); the new one is unity here plus Sfx.PRE_GAIN_DB (+4.4 dB) ahead of the limiter, which
+## holds the peaks. Sfx.BED keeps engines and sea down.
+const OUTPUT := 1.0
 
 func _ready() -> void:
 	UI.setup(get_tree().root)   # Barlow and the shared theme for every screen

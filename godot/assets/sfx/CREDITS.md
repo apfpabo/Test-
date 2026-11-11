@@ -25,3 +25,22 @@ Built by `tools/build_sfx.py` from these recordings (trimmed, mixed, filtered an
 | `gull_1..5` | [Solo Seagull Sound Effects](https://opengameart.org/content/solo-seagull-sound-effects) | rango-mango | CC0 |
 
 CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ · CC0: https://creativecommons.org/publicdomain/zero/1.0/
+
+## Chosen by the owner, 11 Nov 2026
+
+Built by `tools/build_sfx_chosen.py`.
+
+| File here | Source | Author | Licence |
+| --- | --- | --- | --- |
+| `ping` | [Sonar Ping](https://opengameart.org/content/sonar-ping) | Spiceman | CC0 |
+| `siren` | [Sirens and Alarm Noise](https://opengameart.org/content/sirens-and-alarm-noise) | aquinn | CC0 |
+| `gong` | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) | rubberduck | CC0 |
+| `paper` | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) | rubberduck | CC0 |
+| `rain_loop` | [30 CC0 SFX loops](https://opengameart.org/content/30-cc0-sfx-loops) | rubberduck | CC0 |
+| `prop_loop` | [Airplane Prop Loop](https://opengameart.org/content/airplane-prop-loop) | AntumDeluge | CC BY 3.0 |
+| `fire_loop` | [Fire Crackling](https://opengameart.org/content/fire-crackling) | AntumDeluge | CC0 |
+| `thunder_loop` | [rain and thunders](https://opengameart.org/content/rain-and-thunders) | kindland | CC0 |
+| `storm_loop` | [Storm & Siren](https://opengameart.org/content/storm-siren) | TinyWorlds | CC0 |
+| `bubbles_loop` | [Bubble Sound Effects](https://opengameart.org/content/bubble-sound-effects) | BMacZero | CC0 |
+
+CC BY 3.0: https://creativecommons.org/licenses/by/3.0/

@@ -57,8 +57,8 @@ func _home() -> void:
         UI.button("Settings", func(): go(func(): _settings(pc, home)))]
     for b in btns: b.custom_minimum_size = Vector2(0, 42); b.add_theme_font_size_override("font_size", 17); box.add_child(b)
     if not can_go: btns[0].visible = false
-    # required by the CC BY 4.0 licence of the engine-room recording; the other sounds are CC0 (assets/sfx/CREDITS.md)
-    var cr := UI.label("Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Other sound effects are CC0, by thimras, qubodup, Joth, rubberduck and rango-mango on OpenGameArt.", Color(UI.DIM, 0.7), 11, true)
+    # required by the CC BY licences of the engine-room recording (4.0) and the propeller loop (3.0); the other sounds are CC0 (assets/sfx/CREDITS.md)
+    var cr := UI.label("Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Propeller aircraft: 'Airplane Prop Loop' by AntumDeluge (CC BY 3.0; levelled and looped). Other sound effects are CC0, by thimras, qubodup, Joth, rubberduck, rango-mango, Spiceman, aquinn, AntumDeluge, kindland, TinyWorlds and BMacZero on OpenGameArt.", Color(UI.DIM, 0.7), 11, true)
     cr.custom_minimum_size.x = 500; box.add_child(cr)
 
 ## Who were you? The eight origins, and test mode.

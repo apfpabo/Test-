@@ -297,7 +297,7 @@ func _events(day: int) -> void:
 		if Structures.can_invade(tgt) == "": Structures.invade(tgt)
 	if _once("nuke", day, 200):
 		for t in ["nuclear", "missiles", "nukes"]: if not G.tech.has(t): G.tech.append(t)
-		if Campaign.all_ships().size() >= 10: G.fleet.pop_back()
+		if Campaign.all_ships().size() >= 10: G.fleet.pop_back(); Structures.trim_troops(); Campaign.trim_cargo()   # (the game's own rule after removing a ship: the test broke it, and reported the troops left over)
 		G.fleet.append(Campaign.new_ship("ssn_charlie", null, "player", G.tech)); G.crew = maxi(int(G.crew), Campaign.crew_need()); G.credits = 900000.0
 		var plant: Dictionary = Structures.all().filter(func(x): return x.kind == "nuclear" and not x.get("nuked", false))[0]   # a plant falls into your hands, with a warhead made
 		plant.fac = "player"; plant.from = ""; plant.dmg = 0.0; plant.garrison = Structures.garrison_need(plant); plant.took = int(G.day); G.warStock = 1

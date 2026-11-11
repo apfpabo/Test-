@@ -1703,26 +1703,46 @@ func _command_page(box: Control) -> void:
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
                 _p(box, "%d / %d used. %d enemy ships sunk or taken." % [Campaign.cargo_used(), Campaign.cargo_cap(), Campaign.G.kills], UI.DIM, 14)
 
-## Every harbour you can put into, nearest first, each under its flag and in its colours, with a search box. "Show"
-## turns the chart to it; "Set course" sails there. Naval bases you hold are docks too.
+## Every harbour you can put into, under its flag and in its colours. Filters (the owner's request): a name search, a
+## greatest distance, a flag (any power, those at war with you, or your own), and the order (nearest first or by
+## name). "Show" turns the chart (or the globe) to it; "Set course" sails there. Naval bases you hold are docks too.
 var loc_query := ""
+var loc_dist := 0      # index into LOC_DIST
+var loc_fac := ""      # "" any flag, "war" at war with you, or a flag's key
+var loc_sort := 0      # 0 nearest first, 1 by name
+const LOC_DIST := [["Any distance", 0.0], ["Within 500 km", 500.0], ["Within 1,000 km", 1000.0], ["Within 2,500 km", 2500.0], ["Within 5,000 km", 5000.0]]
 func _locations(box: Control) -> void:
-    var ed := LineEdit.new(); ed.text = loc_query; ed.placeholder_text = "Search by name, flag or land"; ed.clear_button_enabled = true; ed.custom_minimum_size.x = 320; box.add_child(ed)
+    var bar := HFlowContainer.new(); bar.add_theme_constant_override("h_separation", 8); bar.add_theme_constant_override("v_separation", 6); box.add_child(bar)
+    var ed := LineEdit.new(); ed.text = loc_query; ed.placeholder_text = "Search by name or land"; ed.clear_button_enabled = true; ed.custom_minimum_size.x = 260; bar.add_child(ed)
+    var dist := OptionButton.new(); dist.focus_mode = Control.FOCUS_NONE
+    for d in LOC_DIST: dist.add_item(d[0])
+    dist.select(loc_dist); dist.tooltip_text = "How far from your squadron"; bar.add_child(dist)
+    var facs := OptionButton.new(); facs.focus_mode = Control.FOCUS_NONE; var fkeys := ["", "war"]
+    facs.add_item("Any flag"); facs.add_item("At war with you")
+    if Flag.founded(): facs.add_item("Your own flag"); fkeys.append("player")
+    for fk in Diplomacy.POWERS: if GameData.fac.has(fk): facs.add_item(GameData.fac[fk].name); fkeys.append(fk)
+    facs.select(maxi(0, fkeys.find(loc_fac))); facs.tooltip_text = "Whose harbours"; bar.add_child(facs)
+    var srt := OptionButton.new(); srt.focus_mode = Control.FOCUS_NONE; srt.add_item("Nearest first"); srt.add_item("By name"); srt.select(loc_sort); bar.add_child(srt)
+    var count := UI.label("", UI.DIM, 13); box.add_child(count)
     var list := VBoxContainer.new(); list.add_theme_constant_override("separation", 2); box.add_child(list)
     var fill := func():
         for c in list.get_children(): c.queue_free()
         var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var rows := []
         for p in G.ports: rows.append({"name": p.name, "fac": p.fac, "x": p.sx, "y": p.sy, "cx": p.x, "cy": p.y, "tag": "capital" if p.capital else "port", "land": str(Campaign.C.ports[int(p.id)].get("land", ""))})
         for s in Structures.held(): if s.kind == "navalbase": rows.append({"name": s.name, "fac": "player", "x": s.get("sx", s.x), "y": s.get("sy", s.y), "cx": s.x, "cy": s.y, "tag": "naval base", "land": str(s.get("land", ""))})
-        var q := loc_query.strip_edges().to_lower(); var shown := 0
+        var q := loc_query.strip_edges().to_lower(); var shown := 0; var maxkm: float = float(LOC_DIST[loc_dist][1])
         for r in rows: r.d = Campaign.mdist(P.x, P.y, r.x, r.y)
-        rows.sort_custom(func(a, b): return a.d < b.d)
+        if loc_sort == 1: rows.sort_custom(func(a, b): return String(a.name).naturalnocasecmp_to(String(b.name)) < 0)
+        else: rows.sort_custom(func(a, b): return a.d < b.d)
         for r in rows:
             var fname: String = GameData.fac[r.fac].name if GameData.fac.has(r.fac) else "Your flag"
-            if q != "" and not (String(r.name).to_lower().contains(q) or fname.to_lower().contains(q) or String(r.land).to_lower().contains(q)): continue
+            var war: bool = r.fac != "player" and Campaign.at_war(r.fac)
+            if q != "" and not (String(r.name).to_lower().contains(q) or String(r.land).to_lower().contains(q)): continue
+            if maxkm > 0.0 and r.d * Campaign.KM_PER_UNIT > maxkm: continue
+            if loc_fac == "war" and not war: continue
+            if loc_fac != "" and loc_fac != "war" and r.fac != loc_fac: continue
             shown += 1
             var col: Color = UI.GOLD if r.fac == "player" else Color(GameData.fac[r.fac].map).lightened(0.25)
-            var war: bool = r.fac != "player" and Campaign.at_war(r.fac)
             var nm := UI.label(r.name, col); nm.custom_minimum_size.x = 150
             var sub := UI.label("%s · %s · %d km%s" % [fname, r.tag, int(r.d * Campaign.KM_PER_UNIT), " · at war with you" if war else ""], UI.RED if war else UI.DIM, 13); sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             var cx: float = r.cx; var cy: float = r.cy; var sx: float = r.x; var sy: float = r.y; var nmx: String = r.name
@@ -1732,8 +1752,12 @@ func _locations(box: Control) -> void:
                 else: _toast("No way to %s by sea from here." % nmx))
             for b in [show, go]: b.focus_mode = Control.FOCUS_NONE
             list.add_child(UI.row([Flags.icon(r.fac, 15.0), nm, sub, show, go]))
-        if shown == 0: list.add_child(UI.label("Nothing by that name.", UI.DIM, 13))
+        count.text = "%d of %d harbours" % [shown, rows.size()]
+        if shown == 0: list.add_child(UI.label("No harbour matches these filters.", UI.DIM, 13))
     ed.text_changed.connect(func(t): loc_query = t; fill.call())
+    dist.item_selected.connect(func(i): loc_dist = i; fill.call())
+    facs.item_selected.connect(func(i): loc_fac = fkeys[i]; fill.call())
+    srt.item_selected.connect(func(i): loc_sort = i; fill.call())
     fill.call()
 
 ## "Show" on the Locations tab: on the globe, turn the world to the place and mark it; on the chart, go there.

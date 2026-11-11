@@ -16,4 +16,6 @@ func _process(_d: float) -> void:
 	for i in TABS.size():
 		if f == 6 + i * 8: map.cmd_tab = TABS[i]; map.show_command()
 		if f == 12 + i * 8: get_viewport().get_texture().get_image().save_png("%s/drawer_%s.png" % [out, TABS[i]])
-	if f == 14 + TABS.size() * 8: get_tree().quit()
+	if f == 14 + TABS.size() * 8: map.loc_dist = 3; map.loc_fac = "concord"; map.cmd_tab = "locations"; map.show_command()   # the Locations filters: Concord harbours within 2,500 km
+	if f == 20 + TABS.size() * 8: get_viewport().get_texture().get_image().save_png("%s/drawer_locations_filtered.png" % out)
+	if f == 22 + TABS.size() * 8: get_tree().quit()

@@ -132,6 +132,7 @@ class CShip:
     var foul_at := -99.0        # when that was last found (battle seconds)
     var foul_since := 0.0       # when her torpedoes were first held for it
     var foul_said := false      # (a torpedo attack) she has said why she is holding
+    var dc_held_at := -99.0     # when she last held a pattern for a friend (a measure: see sys_log)
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
@@ -1271,7 +1272,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 if s.foul_by != null and t - s.foul_at < 1.0: continue   # held for a friend a moment ago: look again shortly
                 var fo: CShip = torp_fouls(s, p, lp, w, tg) if ff_care else null
                 if fo != null:   # a friend lies in the track or will cross it: hold the torpedoes
-                    if s.foul_by == null or t - s.foul_at > 3.0: s.foul_since = t
+                    if s.foul_by == null or t - s.foul_at > 3.0: s.foul_since = t; _log("torpedoes held for a friend")
                     s.foul_by = fo; s.foul_at = t; continue
                 s.foul_by = null; s.foul_said = false
                 m.ta = want; m.cd = w.rel; fire_torps(s, m, lp); s.torp_run_t = 60.0
@@ -1291,7 +1292,11 @@ func update_weapons(s: CShip, dt: float) -> void:
         if s.dc_t <= 0:
             # a boat she holds on sonar, where a pattern dropped now would come down on her (it used to be any boat within 260 m)
             var sb = nearest_enemy(s.pos, s.side, 700.0, func(o: CShip) -> bool: return o.sub and submerged(o) and detected_by(o, s.side))
-            if sb != null and dc_on(s, sb) and (not ff_care or dc_fouls(s) == null): drop_dcs(s)   # never where a friend (or she herself) would be hurt
+            if sb != null and dc_on(s, sb):
+                if not ff_care or dc_fouls(s) == null: drop_dcs(s)   # never where a friend (or she herself) would be hurt
+                else:
+                    if t - s.dc_held_at > 10.0: _log("pattern held for a friend")
+                    s.dc_held_at = t
 
 ## A pattern of depth charges rolled and thrown off the stern; they sink and burst a few seconds later.
 ## Depth charges (reworked 11 Nov 2026 at the owner's word: she dropped whenever a boat was anywhere within 260 m, and the

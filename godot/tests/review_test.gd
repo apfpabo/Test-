@@ -1325,4 +1325,29 @@ func _ageing() -> void:
 	ok(Campaign.fleet_map_speed([raised]) < Campaign.fleet_map_speed([plain]) * 0.95, "bent shafts make her slower on passage")
 	var rb: int = Campaign.rebuild_cost(raised); var cr: float = G.credits; Campaign.rebuild(raised)
 	ok(Campaign.defects(raised).is_empty() and is_equal_approx(float(G.credits), cr - rb) and rb > 0, "a yard rebuilds the defects away (%s)" % Campaign.fmt(rb))
+	# air raids from the land on your squadron (the owner's go-ahead): from an enemy airfield that has found you, by day
+	Campaign.new_game("commission"); G = Campaign.G; var P2: Dictionary = G.player
+	var af: Dictionary = {}
+	for x in Structures.all(): if x.kind == "airfield" and x.fac != "" and x.fac != "player": af = x; break
+	G.rep[af.fac] = -100; af.dmg = 0.0
+	var cpt := Structures.coast_point(af); P2.x = cpt.x; P2.y = cpt.y
+	G.fleet = [Campaign.new_ship("dd_fletcher", "Lone", "player", [])]
+	var shot_dd := 0; var shot_aa := 0; var hit_dd := 0
+	for i in 30: var rr := Structures.air_raid(af); shot_dd += int(rr.flak) + int(rr.fighters); hit_dd += rr.hits.size()
+	G.fleet = [Campaign.new_ship("cl_atlanta", "Flak", "player", []), Campaign.new_ship("cl_atlanta", "Flak2", "player", []), Campaign.new_ship("cv_essex", "Deck", "player", [])]
+	for i in 30: var rr := Structures.air_raid(af); shot_aa += int(rr.flak) + int(rr.fighters)
+	ok(shot_aa > shot_dd * 1.5 and hit_dd > 0, "a raid hurts a lone destroyer; flak cruisers and a carrier's fighters bring down far more (%d against %d in 30 raids)" % [shot_aa, shot_dd])
+	var fl: Dictionary = G.fleet[0]; fl.hullFrac = 1.0
+	G.spotted = {str(af.id): int(G.day)}; G.raided = {}; Weather.force = {"sea": 0, "fog": false, "night": true, "moon": 0.5}; Campaign._wx = {}
+	for i in 20: G.raided = {}; Structures._air_raids()
+	ok(G.raided.is_empty(), "no raid comes by night")
+	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}; Campaign._wx = {}
+	var came := false
+	for i in 20:
+		G.raided = {}; Structures._air_raids()
+		if not G.raided.is_empty(): came = true; break
+	ok(came, "by day, found by its search planes and within reach, it does")
+	G.spotted = {}; G.raided = {}
+	for i in 20: Structures._air_raids()
+	ok(G.raided.is_empty(), "an airfield that has not found you sends nothing")
 	sections += 1

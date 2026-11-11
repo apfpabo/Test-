@@ -697,6 +697,7 @@ func new_day() -> void:
 		s.ruin = maxf(0.0, float(s.ruin) - float(D.ruin_per_day))
 	if G.day % 30 == 0: _payday()
 	_spotting()
+	_air_raids()
 	_counterattacks()
 	_warnings()
 
@@ -713,6 +714,56 @@ func _spotting() -> void:
 			if f.fac != a.fac or f.kind != "patrol" or Campaign.mdist(f.x, f.y, P.x, P.y) > 700.0: continue
 			if Campaign.set_course(f, P.x, P.y): sent += 1
 		Campaign.toast.emit("Search planes from the %s have found you.%s" % [a.name, (" %s patrols are being vectored onto your position." % GameData.fac[a.fac].short) if sent else ""])
+
+## Air raids on your squadron from the land (the owner's go-ahead, 11 Nov 2026; it was open in the roadmap). An airfield
+## of a flag at war with you whose search planes have found you (`_spotting`, within the last day) sends a strike when
+## you are within RAID_KM, by day and in weather aircraft can fly, at most every RAID_COOL days (RAID_CHANCE a day).
+## Its size follows the flag's era. Your ships' flak (each mount's `aa`) and your carriers' fighters bring machines
+## down (radar warns the fighters: half as many again); each machine that gets through may hit a ship, a light ship
+## worse than a heavy one. As storms and batteries do on the chart, a raid cripples but does not sink: a hull goes no
+## lower than 5%. The result is in the log and a toast.
+const RAID_KM := 450.0
+const RAID_COOL := 3
+const RAID_CHANCE := 0.5
+func raid_units() -> float: return RAID_KM / Campaign.KM_PER_UNIT
+## Your squadron's flak in the air (the sum of its mounts' kill chances, as BattleSim weighs a burst).
+func fleet_flak() -> float:
+	var t := 0.0
+	for sh in g().fleet:
+		for w in sh.get("fit", []): if w != null and w != "" and GameData.weapons.has(w): t += float(GameData.weapons[w].get("aa", 0.0))
+	return t
+## One raid from an airfield on your squadron; returns what happened (also used by the tests).
+func air_raid(a: Dictionary) -> Dictionary:
+	var G := g(); var era: int = Campaign.fac_era(a.fac)
+	var n: int = 6 + 3 * era + randi_range(0, 4)
+	var flak: float = fleet_flak() * (1.35 if Campaign.has_tech("aa_prox") else 1.0)
+	var fighters: float = float(air_group()) * 0.35 * (1.5 if Campaign.has_tech("radar") else 1.0)   # (a third of a carrier's wing is fighters)
+	var by_fighters: int = mini(n, int(round(fighters * 0.25)))
+	var by_flak: int = mini(n - by_fighters, int(round(float(n - by_fighters) * (1.0 - exp(-flak * 1.2)))))
+	var left: int = n - by_fighters - by_flak
+	var hits := {}
+	for i in left:
+		if randf() > (0.16 if era >= 2 else 0.12): continue
+		var sh: Dictionary = G.fleet.pick_random(); var t: float = float(Campaign.hull(sh).t)
+		var d: float = randf_range(0.5, 1.0) * 0.22 * 3000.0 / maxf(3000.0, t)
+		sh.hullFrac = maxf(0.05, float(sh.hullFrac) - d); hits[sh.name] = int(hits.get(sh.name, 0)) + 1
+	var parts := []
+	for nm in hits: parts.append("the %s%s" % [nm, (" (%d hits)" % hits[nm]) if int(hits[nm]) > 1 else ""])
+	var txt := "Air raid from the %s: %d aircraft; %d shot down by your fighters, %d by your guns. %s" % [a.name, n, by_fighters, by_flak, ("Hit: " + ", ".join(parts) + ".") if not parts.is_empty() else "No hits."]
+	return {"n": n, "fighters": by_fighters, "flak": by_flak, "hits": hits, "text": txt}
+func _air_raids() -> void:
+	var G := g(); var P: Dictionary = G.player
+	if G.fleet.is_empty() or G.get("docked", false): return
+	var wx: Dictionary = Campaign.weather_here()
+	if wx.night or wx.fog or int(wx.sea) >= 3: return
+	if not G.has("raided"): G.raided = {}
+	for a in all():
+		if a.kind != "airfield" or a.fac == "" or a.fac == "player" or silenced(a) or not Campaign.at_war(a.fac): continue
+		if G.day - int(G.get("spotted", {}).get(str(a.id), -99)) > 1: continue   # they must have found you
+		if Campaign.mdist(a.x, a.y, P.x, P.y) > raid_units(): continue
+		if G.day - int(G.raided.get(str(a.id), -99)) < RAID_COOL or randf() > RAID_CHANCE: continue
+		G.raided[str(a.id)] = G.day
+		var r := air_raid(a); Campaign.toast.emit(r.text); Campaign.log_ev(r.text)
 
 ## Coastal batteries of flags that engage you shell your ships while you are in range. Called from Campaign.update.
 func tick(dt: float) -> void:

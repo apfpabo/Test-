@@ -163,8 +163,8 @@ func _world() -> void:
 	Campaign.detach([G.fleet[0], G.fleet[2]])
 	var tgt: Dictionary = {}
 	for x in Structures.all(): if x.fac == "directorate" and x.kind == "farm": tgt = x; break
-	P.x = tgt.x; P.y = tgt.y
-	ok(cap >= 2 and Structures.can_nuke(tgt) == "", "two missile boats carry %d warheads" % cap)
+	var cpt := Structures.coast_point(tgt); P.x = cpt.x; P.y = cpt.y   # (off the coast nearest her: an inland target can lie beyond the missiles' reach)
+	ok(cap >= 2 and Structures.can_nuke(tgt) == "", "two missile boats carry %d warheads (%s)" % [cap, Structures.can_nuke(tgt)])
 	Structures.nuke(tgt); Campaign.rejoin()
 	ok(Structures.nukes() == cap - 1, "firing one warhead with a boat detached uses one warhead (%d of %d left)" % [Structures.nukes(), cap])
 	G.fleet = G.fleet.filter(func(r): return r.name == "D"); Structures.trim_troops()
@@ -1256,4 +1256,9 @@ func _grace() -> void:
 	G.contracts.append({"id": -1, "kind": "survey", "fac": "concord", "reward": 0})
 	ok(not Campaign.half_pay() and is_equal_approx(Campaign.wages(), crew_pay + full), "with a contract in hand they are on full pay (%.0f)" % Campaign.wages())
 	G.contracts.clear()
+	# the navy origins' starting money (tuning: all three went broke): a pension for the Disgraced Officer, paid monthly
+	G.credits = 1000.0; G.cargo.food = 500.0; G.cargo.fuel = 200.0; G.day = 29; Campaign.new_day(false)
+	ok(float(G.credits) > 1000.0 + 2000.0, "a Disgraced Officer's pension is paid on day 30 (purse %.0f)" % float(G.credits))
+	Campaign.new_game("defector"); G = Campaign.G
+	ok(float(G.credits) >= 30000.0 and not (Campaign.perk("pension", []) as Array).is_empty(), "a Defector starts with 30,000 and a retainer from his new patrons")
 	sections += 1

@@ -53,7 +53,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.fleet = [[N.dd, null, {"hull": 0.7}]]; st.credits = 14000; st.officer = 3; st.port = N.second
 			st.rep = {navy: -5, en: -30}; for o in others: if o != en: st.rep[o] = 10
 			if en != "concord" and navy != "concord": st.rep["concord"] = 5
-			st.perks = {"restricted": [navy]}
+			st.perks = {"restricted": [navy], "pension": [{"name": "Half-pay pension", "pay": 2500, "days": 360}]}   # (tuning, 11 Nov 2026: pensioned off, he was broke by day 70)
 		"hijacker":
 			st.fleet = [["fr_liberty", "Ashen Wake", {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
 			st.cargo = {"fuel": 60, "food": 25, "munitions": 20}
@@ -65,8 +65,8 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.rep = {"combine": 15, "freeport": 15}
 			st.perks = {"trade": 0.06}
 		"survivor":
-			st.fleet = [[N.dd, null, {"hull": 0.45}]]; st.credits = 6000; st.officer = 3; st.port = N.neutral; st.crew = 0.7
-			st.cargo = {"fuel": 35, "food": 15}
+			st.fleet = [[N.dd, null, {"hull": 0.45}]]; st.credits = 14000; st.officer = 3; st.port = N.neutral; st.crew = 0.85   # (tuning, 11 Nov 2026: 6,000 and 70% crew left him broke within a fortnight)
+			st.cargo = {"fuel": 60, "food": 40}
 			st.rep = {navy: 0, en: -40, "freeport": 10, "enclave": 10}
 			st.perks = {"hunted": [{"fac": en, "name": GameData.fac[en].short + " hunter group", "days": 180, "max": 1, "every": 0.025, "budget": 50000}]}
 		"privateer":
@@ -75,9 +75,9 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.perks = {"prize": {"directorate": 1.3}}; st.commission = "republic"   # the Tarsene letter of marque (Diplomacy)
 		"defector":
 			var to: String = en
-			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 20000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Tarsa"
+			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 30000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Tarsa"
 			st.rep = {navy: -60, to: 5}; for o in GameData.fac: if not st.rep.has(o) and o != "raiders" and o != "freeport": st.rep[o] = -5
-			st.perks = {"rp": 40, "hunted": [{"fac": navy, "name": GameData.fac[navy].short + " intelligence squadron", "days": 300, "max": 2, "every": 0.04, "budget": 60000}]}
+			st.perks = {"rp": 40, "pension": [{"name": "Debriefing retainer", "fac": to, "pay": 4500, "days": 180}], "hunted": [{"fac": navy, "name": GameData.fac[navy].short + " intelligence squadron", "days": 300, "max": 2, "every": 0.04, "budget": 60000}]}
 		"smuggler":
 			st.fleet = [["dd_soldati", null, {"strip": ["T"]}]]; st.credits = 28000; st.officer = 2; st.port = "Port Saffron"
 			st.cargo = {"fuel": 90, "food": 20, "medicine": 15, "electronics": 10}

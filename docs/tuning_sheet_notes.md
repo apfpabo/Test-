@@ -71,9 +71,26 @@ The same 32 runs, squadron lost on day:
 
 Half pay as built helps a captain only between jobs.
 
+## The fourth change: the navy origins' starting money
+
+At the owner's word, numbers only; the origins' text is untouched:
+- **The Disgraced Officer** draws a half-pay pension of 2,500 every 30 days for his first year (perk `pension`).
+- **The Defector** starts with 30,000 instead of 20,000, and his new patrons pay a debriefing retainer of 4,500 every 30 days for his first half year.
+- **The Survivor** starts with 14,000 instead of 6,000, 85% of his crew instead of 70%, and fuel and food for about a month.
+
+The same seeds, these three origins:
+
+| Origin | Lost on day, before | After | Broke on day, before | After | Purse at the end, after (thousands) |
+|---|---|---|---|---|---|
+| The Disgraced Officer | 148, three survived | 87, three survived | 76, never, 83, 62 | never, never, never, 88 | 6, 20, 41, 15 |
+| The Survivor of the Lost Fleet | 137, 154, two survived | 227, 9, two survived | 4, 11, 9, 7 | 53, never, never, 181 | 0, 55, 13, 0 |
+| The Defector | 222, 136, 88, 66 | 183, 139, 81, survived | 91, 94, 38, 50 | never, never, never, 55 | 36, 10, 12, 0 |
+
+All 32 runs: 11 lost by day 240 (12 before this change, 20 before any). Most navy captains now stay solvent. They are still lost more often than traders, now in battle rather than to bankruptcy. The Survivor lost on day 9 was caught by raiders before his first port.
+
 ## What stands out
 
-For the owner to judge. The three changes above are the only ones made.
+For the owner to judge. The four changes above are the only ones made. (The figures below were measured before the fourth change; the table above has the navy origins after it.)
 
 - **Fewer lone starts are lost** (12 of 32 by day 240, from 20). Bounty squadrons and hunters are now fights a captain can choose. What still ends the navy origins is money.
 - **The navy origins cannot pay their way.** Per day afloat in the first 120 days:

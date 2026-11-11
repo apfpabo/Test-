@@ -1,6 +1,6 @@
 # Tuning sheet: the first hours of a campaign
 
-*A report for the owner's tuning pass (11 Nov 2026). All figures are measured, untuned, and his to judge. Three changes have been made since the first sheet, at his word: a 30-day grace from bounty squadrons, bounty squadrons and hunters sized to the captain's own squadron, and half pay with better prize money (see "The first change", "The second change" and "The third change"). The tables are measured with all three.*
+*A report for the owner's tuning pass (11 Nov 2026). All figures are measured, untuned, and his to judge. Four changes have been made since the first sheet, at his word: a 30-day grace from bounty squadrons, bounty squadrons and hunters sized to the captain's own squadron, half pay with better prize money, and more starting money for the navy origins (see the four "change" sections). The tables are measured with all four.*
 
 ## How it was measured
 
@@ -83,9 +83,26 @@ The same 32 runs, squadron lost on day:
 
 Half pay as built helps a captain only between jobs.
 
+## The fourth change: the navy origins' starting money
+
+At the owner's word, numbers only; the origins' text is untouched:
+- **The Disgraced Officer** draws a half-pay pension of 2,500 every 30 days for his first year (perk `pension`).
+- **The Defector** starts with 30,000 instead of 20,000, and his new patrons pay a debriefing retainer of 4,500 every 30 days for his first half year.
+- **The Survivor** starts with 14,000 instead of 6,000, 85% of his crew instead of 70%, and fuel and food for about a month.
+
+The same seeds, these three origins:
+
+| Origin | Lost on day, before | After | Broke on day, before | After | Purse at the end, after (thousands) |
+|---|---|---|---|---|---|
+| The Disgraced Officer | 148, three survived | 87, three survived | 76, never, 83, 62 | never, never, never, 88 | 6, 20, 41, 15 |
+| The Survivor of the Lost Fleet | 137, 154, two survived | 227, 9, two survived | 4, 11, 9, 7 | 53, never, never, 181 | 0, 55, 13, 0 |
+| The Defector | 222, 136, 88, 66 | 183, 139, 81, survived | 91, 94, 38, 50 | never, never, never, 55 | 36, 10, 12, 0 |
+
+All 32 runs: 11 lost by day 240 (12 before this change, 20 before any). Most navy captains now stay solvent. They are still lost more often than traders, now in battle rather than to bankruptcy. The Survivor lost on day 9 was caught by raiders before his first port.
+
 ## What stands out
 
-For the owner to judge. The three changes above are the only ones made.
+For the owner to judge. The four changes above are the only ones made. (The figures below were measured before the fourth change; the table above has the navy origins after it.)
 
 - **Fewer lone starts are lost** (12 of 32 by day 240, from 20). Bounty squadrons and hunters are now fights a captain can choose. What still ends the navy origins is money.
 - **The navy origins cannot pay their way.** Per day afloat in the first 120 days:
@@ -105,9 +122,9 @@ For the owner to judge. The three changes above are the only ones made.
 | The Hijacker | fr_liberty, pt_elco | 9,000 | 12,876 | 12,500 | 20,068 | 35,877 | 14.2 (0.8) · squadron lost on day 231, 178 | 94 / 126 | 96 / 145 |
 | The Smuggler | dd_soldati | 28,000 | 31,460 | 39,467 | 48,074 | 49,386 | 2.8 (0.2) · squadron lost on day 214 | 98 / 224 | 106 / – |
 | The Privateer | dd_soldati | 20,000 | 18,800 | 22,891 | 27,978 | 34,995 | 4.2 (0.8) | 115 / 205 | 120 / 212 |
-| The Disgraced Officer | dd_fletcher | 14,000 | 8,539 | 8,742 | 7,031 | 418 | 3.8 (0.5) · squadron lost on day 148 | 94 / 186 | 110 / 202 |
-| The Survivor of the Lost Fleet | dd_fletcher | 6,000 | 0 | 3,913 | 1,762 | 7,672 | 12.0 (0.0) · squadron lost on day 137, 154 | 104 / 131 | 108 / 131 |
-| The Defector | cl_cleveland | 20,000 | 10,128 | 14,657 | 0 | 0 | 4.2 (2.5) · squadron lost on day 222, 136, 88, 66 | 106 / 208 | 120 / 222 |
+| The Disgraced Officer | dd_fletcher | 14,000 | 10,414 | 14,539 | 20,047 | 25,117 | 5.0 (0.5) · squadron lost on day 87 | 72 / 157 | 75 / 179 |
+| The Survivor of the Lost Fleet | dd_fletcher | 14,000 | 12,382 | 8,679 | 16,094 | 18,490 | 9.2 (1.0) · squadron lost on day 227, 9 | 112 / 166 | 118 / 170 |
+| The Defector | cl_cleveland | 30,000 | 24,628 | 31,526 | 21,640 | 18,005 | 6.5 (4.2) · squadron lost on day 183, 139, 81 | 100 / 189 | 117 / 192 |
 | The Academy Cast-Off | co_flower | 15,000 | 14,005 | 16,915 | 21,530 | 28,560 | 6.8 (0.2) · squadron lost on day 47, 129 | 121 / 199 | 130 / 218 |
 
 ## The Merchant Captain
@@ -316,19 +333,19 @@ Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 54, destro
 
 ## The Disgraced Officer
 
-Starts at Halbrook with dd_fletcher and 14,000 credits. Two hours of play fall about day 186 with the chart at 2×, day 202 at 4×.
+Starts at Halbrook with dd_fletcher and 14,000 credits. Two hours of play fall about day 157 with the chart at 2×, day 179 at 4×.
 
 **Money** (credits in each period; mean of the seeds)
 
 | Days | Purse at end | Net a day | Trade (net)² | Contracts and orders | Commission pay | Battles (prizes, bounty, salvage) | Other¹ | Wages and tenders | Repairs and ammunition | Fuel, food, crew |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1–15 | 10,204 | -253 | 190 | 0 | 0 | 0 | -60 | −2,135 | −1,340 | −450 |
-| 16–30 | 8,539 | -112 | 1,361 | 0 | 0 | 0 | -0 | −2,456 | −28 | −542 |
-| 31–60 | 8,742 | -61 | 1,530 | 2,800 | 1,615 | 0 | -1,827 | −4,826 | −0 | −952 |
-| 61–90 | 8,891 | 6 | 1,061 | 3,200 | 1,315 | 0 | -92 | −4,656 | −0 | −679 |
-| 91–120 | 7,031 | -63 | 661 | 1,700 | 1,591 | 888 | -140 | −4,410 | −0 | −2,150 |
-| 121–180 | 2,782 | -84 | 1,536 | 0 | 2,967 | 0 | -2 | −7,236 | −89 | −1,426 |
-| 181–240 | 418 | -58 | 2,042 | 0 | 7,273 | 1,033 | -868 | −7,981 | −0 | −4,790 |
+| 16–30 | 10,414 | 13 | 1,361 | 0 | 1,875 | 0 | 0 | −2,456 | −28 | −542 |
+| 31–60 | 14,539 | 55 | 2,328 | 2,800 | 4,740 | 0 | -2,452 | −4,826 | −0 | −952 |
+| 61–90 | 15,860 | 42 | 2,110 | 3,200 | 1,875 | 0 | -254 | −4,657 | −0 | −954 |
+| 91–120 | 20,047 | 34 | 2,100 | 2,233 | 2,500 | 0 | -452 | −4,629 | −0 | −960 |
+| 121–180 | 25,086 | 90 | 3,344 | 7,533 | 5,000 | 4,517 | -466 | −9,731 | −1,993 | −3,164 |
+| 181–240 | 25,117 | 1 | 3,477 | 6,400 | 2,387 | 0 | -236 | −9,761 | −20 | −2,217 |
 
 ¹ Anything else that moved the purse: tows, fines, charges at sea. ² Sales less purchases in the period: cargo bought near the end of a period is sold in the next.
 
@@ -340,12 +357,12 @@ Starts at Halbrook with dd_fletcher and 14,000 credits. Two hours of play fall a
 | 1–15 | 4 | 1.0 (2,050) | 0.2 | 0.2 | 0.0 (0.0) | 1.0 | 1,525 (1,525) | 0.0 | 0.0 |
 | 16–30 | 4 | 1.0 (2,050) | 1.2 | 0.8 | 0.5 (0.0) | 5.0 | 1,619 (1,967) | 0.0 | 0.0 |
 | 31–60 | 4 | 1.0 (2,050) | 1.8 | 0.8 | 1.0 (0.0) | 3.9 | 2,803 (5,155) | 0.0 | 0.0 |
-| 61–90 | 4 | 1.0 (2,050) | 1.5 | 0.5 | 1.0 (0.0) | 4.0 | 2,120 (5,155) | 0.0 | 0.0 |
-| 91–120 | 4 | 1.2 (2,285) | 1.0 | 0.2 | 0.8 (0.2) | 2.8 | 1,678 (1,966) | 0.2 | 0.0 |
-| 121–180 | 4 | 1.2 (2,285) | 0.5 | 0.2 | 0.2 (0.0) | 4.5 | 3,558 (4,241) | 0.2 | 0.5 |
-| 181–240 | 3 | 1.0 (2,050) | 0.7 | 0.3 | 0.3 (0.3) | 3.5 | 2,826 (5,560) | 0.3 | 0.0 |
+| 61–90 | 4 | 1.0 (2,050) | 1.8 | 0.5 | 1.2 (0.0) | 3.6 | 2,078 (5,155) | 0.0 | 0.2 |
+| 91–120 | 3 | 1.0 (2,050) | 1.3 | 0.0 | 1.3 (0.0) | 2.5 | 2,070 (2,600) | 0.0 | 0.0 |
+| 121–180 | 3 | 1.3 (2,403) | 1.0 | 0.0 | 1.0 (0.7) | 2.3 | 1,580 (1,966) | 0.7 | 0.0 |
+| 181–240 | 3 | 1.3 (2,403) | 1.0 | 0.3 | 0.7 (0.0) | 5.0 | 4,119 (6,821) | 0.0 | 0.0 |
 
-Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 69, destroyer 23, corvette 9, submarine 3.
+Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 70, destroyer 28, corvette 10, submarine 2.
 
 **When each class becomes affordable** (first day the purse covers the cheapest design of the class with the research held; "never" = not within 240 days; one entry per seed)
 
@@ -353,13 +370,13 @@ Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 69, destro
 |---|---|---:|---|
 | Motor torpedo boat | pt_mas | 4,000 | 1, 1, 1, 1 |
 | Corvette | co_flower | 9,000 | 1, 1, 1, 1 |
-| Destroyer | dd_kclass | 17,000 | never, 32, never, never |
-| Submarine | ss_vii | 26,000 | never, 45, never, never |
-| Freighter | fr_liberty | 22,000 | never, 45, never, never |
-| Fleet oiler | ao_t2 | 24,000 | never, 45, never, never |
-| Ammunition ship | ae_hood | 38,000 | never, never, never, never |
-| Repair ship | ar_diver | 26,000 | never, 45, never, never |
-| Light cruiser | cl_agano | 36,000 | never, never, never, never |
+| Destroyer | dd_kclass | 17,000 | never, 32, 120, 165 |
+| Submarine | ss_vii | 26,000 | never, 45, 135, never |
+| Freighter | fr_liberty | 22,000 | never, 45, 135, never |
+| Fleet oiler | ao_t2 | 24,000 | never, 45, 135, never |
+| Ammunition ship | ae_hood | 38,000 | never, never, 161, never |
+| Repair ship | ar_diver | 26,000 | never, 45, 135, never |
+| Light cruiser | cl_agano | 36,000 | never, never, 161, never |
 | Escort carrier | cve_casa | 58,000 | never, never, never, never |
 | Heavy cruiser | ca_zara | 62,000 | never, never, never, never |
 | Battleship | bb_scharnhorst | 105,000 | never, never, never, never |
@@ -367,19 +384,19 @@ Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 69, destro
 
 ## The Survivor of the Lost Fleet
 
-Starts at Halvardsby with dd_fletcher and 6,000 credits. Two hours of play fall about day 131 with the chart at 2×, day 131 at 4×.
+Starts at Halvardsby with dd_fletcher and 14,000 credits. Two hours of play fall about day 166 with the chart at 2×, day 170 at 4×.
 
 **Money** (credits in each period; mean of the seeds)
 
 | Days | Purse at end | Net a day | Trade (net)² | Contracts and orders | Commission pay | Battles (prizes, bounty, salvage) | Other¹ | Wages and tenders | Repairs and ammunition | Fuel, food, crew |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1–15 | 220 | -385 | 1,392 | 0 | 1,065 | 0 | 36 | −1,806 | −2,344 | −4,124 |
-| 16–30 | 0 | -15 | 402 | 0 | 1,990 | 0 | 23 | −2,211 | −163 | −260 |
-| 31–60 | 3,913 | 130 | 46 | 6,775 | 3,265 | 0 | -132 | −3,808 | −0 | −2,233 |
-| 61–90 | 155 | -135 | 0 | 2,300 | 2,580 | 0 | -297 | −4,145 | −0 | −4,196 |
-| 91–120 | 1,762 | 57 | 1,364 | 3,425 | 2,817 | 0 | 141 | −3,728 | −62 | −2,351 |
-| 121–180 | 6,664 | 93 | 1,082 | 7,750 | 5,779 | 0 | -909 | −5,598 | −26 | −3,176 |
-| 181–240 | 7,672 | -105 | 4,232 | 0 | 2,242 | 0 | -1,074 | −7,781 | −94 | −3,180 |
+| 1–15 | 11,748 | -159 | 640 | 0 | 0 | 2,438 | -51 | −1,823 | −2,176 | −1,280 |
+| 16–30 | 12,382 | 74 | 1,733 | 2,400 | 0 | 0 | -0 | −2,540 | −0 | −480 |
+| 31–60 | 8,679 | -130 | 2,553 | 0 | 441 | 1,017 | -60 | −4,840 | −1,279 | −1,534 |
+| 61–90 | 11,370 | 96 | 1,369 | 5,367 | 1,386 | 0 | -236 | −4,537 | −0 | −658 |
+| 91–120 | 16,094 | 159 | 3,031 | 5,667 | 879 | 1,983 | 112 | −4,577 | −557 | −1,815 |
+| 121–180 | 17,014 | 20 | 3,484 | 8,933 | 2,029 | 2,233 | -1,558 | −8,668 | −16 | −5,518 |
+| 181–240 | 18,490 | 27 | 1,909 | 4,067 | 3,436 | 0 | -186 | −6,828 | −0 | −921 |
 
 ¹ Anything else that moved the purse: tows, fines, charges at sea. ² Sales less purchases in the period: cargo bought near the end of a period is sold in the next.
 
@@ -388,49 +405,49 @@ Starts at Halvardsby with dd_fletcher and 6,000 credits. Two hours of play fall 
 
 | Days | Afloat (of 4) | Own ships (tons) | Contacts | Broke off | Fought (won) | Enemy ships met, mean | Enemy tons met, mean (largest) | Enemy sunk | Own ships lost |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1–15 | 4 | 1.0 (2,050) | 0.0 | 0.0 | 0.0 (0.0) | – | – (–) | 0.0 | 0.0 |
-| 16–30 | 4 | 1.0 (2,050) | 0.0 | 0.0 | 0.0 (0.0) | – | – (–) | 0.0 | 0.0 |
-| 31–60 | 4 | 1.0 (2,050) | 0.5 | 0.2 | 0.2 (0.0) | 3.5 | 2,138 (2,385) | 0.0 | 0.0 |
-| 61–90 | 4 | 1.0 (2,050) | 2.2 | 1.5 | 0.8 (0.0) | 2.0 | 2,257 (2,692) | 0.0 | 0.0 |
-| 91–120 | 4 | 1.0 (2,050) | 8.0 | 4.8 | 3.2 (0.0) | 2.0 | 2,208 (2,876) | 0.0 | 0.0 |
-| 121–180 | 4 | 1.0 (2,050) | 10.8 | 4.5 | 6.2 (0.0) | 2.0 | 2,555 (21,784) | 0.0 | 0.5 |
-| 181–240 | 2 | 1.0 (2,050) | 4.0 | 1.5 | 2.5 (0.0) | 2.6 | 3,568 (7,160) | 0.0 | 0.0 |
+| 1–15 | 4 | 1.0 (2,050) | 0.8 | 0.2 | 0.5 (0.2) | 2.3 | 67 (100) | 0.8 | 0.2 |
+| 16–30 | 3 | 1.0 (2,050) | 0.0 | 0.0 | 0.0 (0.0) | – | – (–) | 0.0 | 0.0 |
+| 31–60 | 3 | 1.3 (2,363) | 1.0 | 0.3 | 0.7 (0.3) | 4.0 | 1,284 (1,972) | 0.3 | 0.0 |
+| 61–90 | 3 | 1.3 (2,363) | 0.3 | 0.3 | 0.0 (0.0) | 3.0 | 3,292 (3,292) | 0.0 | 0.0 |
+| 91–120 | 3 | 1.3 (2,363) | 0.7 | 0.0 | 0.7 (0.3) | 3.5 | 870 (1,689) | 0.7 | 0.0 |
+| 121–180 | 3 | 1.0 (2,050) | 8.3 | 3.0 | 5.3 (0.3) | 1.7 | 3,904 (6,650) | 0.7 | 0.3 |
+| 181–240 | 3 | 1.0 (2,050) | 10.0 | 5.0 | 5.0 (0.0) | 1.5 | 6,070 (8,511) | 0.0 | 0.3 |
 
-Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 93, destroyer 65, submarine 29, corvette 8, freighter 3.
+Enemy ships met in 240 days, by class (all seeds): motor torpedo boat 48, light cruiser 34, destroyer 13, submarine 13, corvette 10.
 
 **When each class becomes affordable** (first day the purse covers the cheapest design of the class with the research held; "never" = not within 240 days; one entry per seed)
 
 | Class | Cheapest design | Price | Affordable on day |
 |---|---|---:|---|
 | Motor torpedo boat | pt_mas | 4,000 | 1, 1, 1, 1 |
-| Corvette | co_flower | 9,000 | never, 136, 60, 44 |
-| Destroyer | dd_kclass | 17,000 | never, never, 153, never |
-| Submarine | ss_vii | 26,000 | never, never, never, never |
-| Freighter | fr_liberty | 22,000 | never, never, 153, never |
-| Fleet oiler | ao_t2 | 24,000 | never, never, never, never |
-| Ammunition ship | ae_hood | 38,000 | never, never, never, never |
-| Repair ship | ar_diver | 26,000 | never, never, never, never |
-| Light cruiser | cl_agano | 36,000 | never, never, never, never |
-| Escort carrier | cve_casa | 58,000 | never, never, never, never |
+| Corvette | co_flower | 9,000 | 1, 1, 1, 1 |
+| Destroyer | dd_kclass | 17,000 | never, 28, never, 13 |
+| Submarine | ss_vii | 26,000 | never, 130, never, never |
+| Freighter | fr_liberty | 22,000 | never, 130, never, never |
+| Fleet oiler | ao_t2 | 24,000 | never, 130, never, never |
+| Ammunition ship | ae_hood | 38,000 | never, 147, never, never |
+| Repair ship | ar_diver | 26,000 | never, 130, never, never |
+| Light cruiser | cl_agano | 36,000 | never, 142, never, never |
+| Escort carrier | cve_casa | 58,000 | never, 213, never, never |
 | Heavy cruiser | ca_zara | 62,000 | never, never, never, never |
 | Battleship | bb_scharnhorst | 105,000 | never, never, never, never |
 | Fleet carrier | cv_shokaku | 150,000 | never, never, never, never |
 
 ## The Defector
 
-Starts at Strelsk with cl_cleveland and 20,000 credits. Two hours of play fall about day 208 with the chart at 2×, day 222 at 4×.
+Starts at Strelsk with cl_cleveland and 30,000 credits. Two hours of play fall about day 189 with the chart at 2×, day 192 at 4×.
 
 **Money** (credits in each period; mean of the seeds)
 
 | Days | Purse at end | Net a day | Trade (net)² | Contracts and orders | Commission pay | Battles (prizes, bounty, salvage) | Other¹ | Wages and tenders | Repairs and ammunition | Fuel, food, crew |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1–15 | 18,055 | -130 | 120 | 0 | 0 | 6,562 | -24 | −3,451 | −1,440 | −3,712 |
-| 16–30 | 10,128 | -339 | 0 | 0 | 0 | 0 | -10 | −3,850 | −0 | −1,095 |
-| 31–60 | 14,657 | 167 | 0 | 0 | 1,541 | 14,775 | -347 | −7,310 | −1,698 | −2,432 |
-| 61–90 | 5,352 | -391 | 0 | 0 | 725 | 1,375 | -441 | −5,246 | −2,242 | −3,476 |
-| 91–120 | 0 | -47 | 0 | 0 | 5,078 | 5,025 | 180 | −6,650 | −3,003 | −1,946 |
-| 121–180 | 0 | 0 | 2,447 | 0 | 5,884 | 3,275 | 1,037 | −5,967 | −636 | −6,040 |
-| 181–240 | 0 | 0 | 1,590 | 0 | 6,347 | 11,100 | -2,309 | −6,511 | −7,390 | −2,827 |
+| 1–15 | 28,055 | -130 | 120 | 0 | 0 | 6,562 | -24 | −3,451 | −1,440 | −3,712 |
+| 16–30 | 24,628 | -28 | 0 | 0 | 4,500 | 0 | -10 | −3,850 | −0 | −1,095 |
+| 31–60 | 31,526 | 255 | 0 | 0 | 4,500 | 18,362 | -541 | −7,927 | −1,966 | −5,530 |
+| 61–90 | 28,935 | -109 | 0 | 3,300 | 3,375 | 9,812 | -821 | −7,781 | −3,875 | −6,600 |
+| 91–120 | 21,640 | -463 | 0 | 2,667 | 7,050 | 0 | -201 | −9,220 | −3,600 | −9,525 |
+| 121–180 | 17,204 | -190 | 185 | 0 | 6,000 | 23,967 | -873 | −14,740 | −7,973 | −11,001 |
+| 181–240 | 18,005 | -150 | 1,040 | 8,900 | 127 | 6,500 | -2,474 | −3,994 | −8,970 | −3,880 |
 
 ¹ Anything else that moved the purse: tows, fines, charges at sea. ² Sales less purchases in the period: cargo bought near the end of a period is sold in the next.
 
@@ -441,13 +458,13 @@ Starts at Strelsk with cl_cleveland and 20,000 credits. Two hours of play fall a
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1–15 | 4 | 1.0 (11,800) | 0.8 | 0.2 | 0.5 (0.5) | 2.7 | 8,949 (22,800) | 1.2 | 0.0 |
 | 16–30 | 4 | 1.0 (11,800) | 0.0 | 0.0 | 0.0 (0.0) | – | – (–) | 0.0 | 0.0 |
-| 31–60 | 4 | 1.2 (12,308) | 1.8 | 0.0 | 1.8 (1.0) | 2.6 | 3,248 (5,620) | 3.2 | 0.2 |
-| 61–90 | 4 | 1.8 (13,088) | 0.8 | 0.0 | 0.8 (0.2) | 3.0 | 5,762 (8,225) | 0.2 | 1.2 |
-| 91–120 | 2 | 1.5 (12,645) | 0.5 | 0.0 | 0.5 (0.5) | 2.0 | 3,380 (3,380) | 0.5 | 0.0 |
-| 121–180 | 2 | 1.5 (15,900) | 1.0 | 0.0 | 1.0 (0.5) | 3.0 | 7,005 (10,080) | 1.0 | 1.0 |
-| 181–240 | 1 | 2.0 (20,000) | 2.0 | 0.0 | 2.0 (1.0) | 4.5 | 3,224 (6,172) | 4.0 | 2.0 |
+| 31–60 | 4 | 1.0 (11,800) | 1.8 | 0.0 | 1.8 (1.0) | 2.9 | 3,245 (5,620) | 3.8 | 0.5 |
+| 61–90 | 4 | 1.2 (12,035) | 1.0 | 0.0 | 1.0 (0.8) | 2.2 | 3,116 (4,870) | 1.0 | 0.5 |
+| 91–120 | 3 | 1.3 (14,033) | 0.3 | 0.0 | 0.3 (0.3) | 1.0 | 6,700 (6,700) | 0.0 | 0.0 |
+| 121–180 | 3 | 1.0 (10,100) | 3.0 | 0.7 | 2.3 (1.0) | 3.0 | 6,021 (9,630) | 4.3 | 1.7 |
+| 181–240 | 2 | 1.5 (15,845) | 2.5 | 0.0 | 2.5 (2.0) | 2.6 | 10,183 (15,930) | 1.5 | 2.0 |
 
-Enemy ships met in 240 days, by class (all seeds): corvette 21, destroyer 13, motor torpedo boat 11, freighter 3, submarine 2, escort carrier 1, light cruiser 1.
+Enemy ships met in 240 days, by class (all seeds): corvette 27, motor torpedo boat 20, destroyer 16, escort carrier 7, submarine 3, freighter 3, light cruiser 2.
 
 **When each class becomes affordable** (first day the purse covers the cheapest design of the class with the research held; "never" = not within 240 days; one entry per seed)
 
@@ -456,12 +473,12 @@ Enemy ships met in 240 days, by class (all seeds): corvette 21, destroyer 13, mo
 | Motor torpedo boat | pt_mas | 4,000 | 1, 1, 1, 1 |
 | Corvette | co_flower | 9,000 | 1, 1, 1, 1 |
 | Destroyer | dd_kclass | 17,000 | 1, 1, 1, 1 |
-| Submarine | ss_vii | 26,000 | 8, 38, never, never |
-| Freighter | fr_liberty | 22,000 | 8, 35, never, never |
-| Fleet oiler | ao_t2 | 24,000 | 8, 38, never, never |
-| Ammunition ship | ae_hood | 38,000 | never, never, never, never |
-| Repair ship | ar_diver | 26,000 | 8, 38, never, never |
-| Light cruiser | cl_agano | 36,000 | never, never, never, never |
+| Submarine | ss_vii | 26,000 | 1, 1, 1, 1 |
+| Freighter | fr_liberty | 22,000 | 1, 1, 1, 1 |
+| Fleet oiler | ao_t2 | 24,000 | 1, 1, 1, 1 |
+| Ammunition ship | ae_hood | 38,000 | 8, 38, never, 76 |
+| Repair ship | ar_diver | 26,000 | 1, 1, 1, 1 |
+| Light cruiser | cl_agano | 36,000 | 8, 35, never, 76 |
 | Escort carrier | cve_casa | 58,000 | never, never, never, never |
 | Heavy cruiser | ca_zara | 62,000 | never, never, never, never |
 | Battleship | bb_scharnhorst | 105,000 | never, never, never, never |
@@ -524,11 +541,11 @@ Port prices (before the 6% buying and 7% selling spread) seen by all captains wh
 
 | Days | Fuel | Food | Steel | Medicine | Munitions | Electronics |
 |---|---:|---:|---:|---:|---:|---:|
-| 1–15 | 8 (6–14) | 15 (6–38) | 32 (14–59) | 83 (44–150) | 66 (36–119) | 92 (46–227) |
-| 16–30 | 8 (6–15) | 13 (6–38) | 30 (12–58) | 88 (39–166) | 73 (27–124) | 96 (46–219) |
-| 31–60 | 7 (6–14) | 15 (6–35) | 31 (14–58) | 85 (40–161) | 64 (28–116) | 90 (43–253) |
-| 61–90 | 7 (5–14) | 15 (6–34) | 31 (13–62) | 86 (44–159) | 48 (28–117) | 103 (46–238) |
-| 91–120 | 7 (5–14) | 16 (7–37) | 30 (13–59) | 94 (43–159) | 62 (25–117) | 91 (43–234) |
-| 121–180 | 8 (5–14) | 16 (6–32) | 34 (13–65) | 83 (41–171) | 58 (26–131) | 97 (47–237) |
-| 181–240 | 8 (5–14) | 16 (6–35) | 32 (11–61) | 86 (38–166) | 67 (26–135) | 84 (45–232) |
+| 1–15 | 8 (6–14) | 15 (6–38) | 32 (14–59) | 85 (44–150) | 67 (36–119) | 94 (46–226) |
+| 16–30 | 8 (6–15) | 14 (6–38) | 30 (12–58) | 86 (39–166) | 88 (27–124) | 90 (46–219) |
+| 31–60 | 7 (6–14) | 15 (6–35) | 31 (14–60) | 85 (40–161) | 63 (26–116) | 95 (43–248) |
+| 61–90 | 7 (5–14) | 16 (6–34) | 32 (13–62) | 85 (44–163) | 58 (28–117) | 88 (43–234) |
+| 91–120 | 7 (6–14) | 16 (6–37) | 31 (13–58) | 85 (43–159) | 74 (25–117) | 91 (43–235) |
+| 121–180 | 7 (5–14) | 16 (6–32) | 31 (13–65) | 86 (42–171) | 68 (26–131) | 91 (47–237) |
+| 181–240 | 8 (5–14) | 17 (6–35) | 32 (11–59) | 90 (38–169) | 57 (26–135) | 91 (44–231) |
 

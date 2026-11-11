@@ -1122,6 +1122,8 @@ func new_day(moved: bool) -> void:
     rep_note("Other dealings")
     for k in G.rep: G.rep[k] = clampi(int(G.rep[k]), -100, 100)   # standing has a floor and a ceiling, whatever pushed it
     rep_note("Beyond the limits of -100 and 100 (not counted)")
+    for pn in perk("pension", []):   # monthly pay an origin brings with it (a pensioned officer's half pay, a defector's retainer), for its days
+        if G.day <= int(pn.days) and G.day % 30 == 0: G.credits += int(pn.pay); toast.emit("%s: %s." % [pn.name, fmt(int(pn.pay))])
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()

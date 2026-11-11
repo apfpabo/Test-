@@ -1195,8 +1195,14 @@ class Drawer extends Node2D:
 
     ## Torpedoes run a few metres down: a dark shape seen through the water, a paler body that comes and goes with
     ## the swell (warm-tinted for the enemy's, so they can still be picked out), under the ships, not over them.
+    const TWAKE_B := 2.2   # a torpedo's wake is drawn as for a hull this wide (metres)
     func _torpedoes() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z; var tn = Time.get_ticks_msec() / 1000.0
+        if sim.modern:   # the wakes of torpedoes already gone, fading where they lie
+            for tr in sim.twakes:
+                var pts: Array = []
+                for i in range(tr.size() - 1, -1, -1): pts.append(tr[i])
+                _ribbon(pts, 0, TWAKE_B, 0.3, sim.vt, TWAKE_B * 6.0, Color(0.88, 0.96, 0.96))
         for tp in sim.torps:
             var vis: bool = tp.side == 0 or tp.arm < -20 or (sim.flag != null and tp.pos.distance_to(sim.flag.pos) < 2500)
             if not vis: continue
@@ -1212,10 +1218,12 @@ class Drawer extends Node2D:
             var glow: Texture2D = GameData.glow_tex(); var foam: Texture2D = GameData.fx_tex("foam")
             var sun: Vector2 = -BattleSim.SUN.normalized(); var ph: float = tp.pos.x * 0.031 + tp.pos.y * 0.017
             var wob := func(k: float) -> Vector2: return nr * sin(tn * 4.2 + ph + k * 2.3) * w * 0.7
-            for i in 14:   # the bubble track: it starts a little astern (the bubbles take time to rise) and spreads
-                var k := (i + fposmod(tn * 2.0 + ph, 1.0)) / 14.0; var back := tl * (1.6 + k * 9.0)
-                var bp: Vector2 = tp.pos - d * back + nr * sin(k * 19.0 + ph * 7.0) * w * (0.6 + 2.2 * k)
-                _puff(foam, bp, maxf(w * (0.9 + 2.4 * k), 1.2 * mn), Color(0.88, 0.96, 0.96, 0.4 * (1.0 - k) * (1.0 - k)))
+            # her wake (the owner: like a ship's, but smaller and more discreet): a narrow ribbon of the same foam, from
+            # where she is back along her track (it used to be a string of bubble puffs)
+            var pts: Array = [{"p": tp.pos, "t": sim.vt, "a": tp.a, "v": float(tp.speed)}]
+            var tr: Array = tp.get("trail", [])
+            for i in range(tr.size() - 1, -1, -1): pts.append(tr[i])
+            if pts.size() >= 2: _ribbon(pts, 0, TWAKE_B, 0.3, sim.vt, TWAKE_B * 6.0, Color(0.88, 0.96, 0.96))
             _puff(glow, tp.pos - d * tl * 0.5 - sun * w * 3.0, tl * 0.95, Color(0.0, 0.03, 0.05, 0.42))                  # the shadow, deeper and down-sun
             draw_set_transform(tp.pos - d * tl * 0.5, tp.a, Vector2(1.0, 0.34)); draw_texture_rect(glow, Rect2(-tl * 1.2, -tl * 1.2, tl * 2.4, tl * 2.4), false, Color(0.45, 0.78, 0.8, 0.13 * shim)); draw_set_transform(Vector2.ZERO)   # the sheen of the water over it
             var segs := 6   # the body, in short lengths that shift with the swell (refraction)

@@ -167,6 +167,8 @@ var escape_r := ESCAPE_R
 var ships: Array[CShip] = []
 var shells: Array = []
 var torps: Array = []
+var twakes: Array = []      # the wakes of torpedoes that have run out or struck, fading where they lie
+const TWAKE_LIFE := 3.5     # seconds a torpedo's wake lasts on the sea (some 120 m behind her: the owner found 10 s too long)
 var missiles: Array = []
 var air: Array = []
 var parts: Array[Part] = []
@@ -882,6 +884,13 @@ func part(type: int, p: Vector2, mx: float, size: float, vel := Vector2.ZERO, wi
     parts.append(q); return q
 
 func rdir() -> Vector2: return Vector2.from_angle(randf() * TAU)
+## A particle of this type still young (under `young` of its life) whose disc covers this point, or null.
+func _young_near(type: int, p: Vector2, size: float, young: float) -> Part:
+    for i in range(parts.size() - 1, maxi(-1, parts.size() - 400), -1):   # the newest few hundred: a fall of shot is recent
+        var q: Part = parts[i]
+        if q.t != type or q.life < 0.0 or q.life > q.mx * young: continue
+        if q.pos.distance_to(p) < maxf(q.size, size) * 0.6: return q
+    return null
 
 ## An explosion. Modern: a white-hot core, rolling fireballs, a shockwave ring, debris streaking out, embers drifting
 ## downwind and a pool of light on the water and hulls around it. Classic: a soft flash and smoke.
@@ -945,19 +954,31 @@ func _scars_fx(dtv: float) -> void:
         if randf() < 0.6: part(P.SMOKE, c.p + rdir() * float(c.r) * 0.3, 7.0 + randf() * 4.0, float(c.r) * 0.9, Vector2.ZERO, true)
 
 func fx_splash(p: Vector2, size: float) -> void:
-    part(P.SPLASH, p, 2.0 if modern else 1.8, size)
+    # shells falling together on one spot make one column, not a stack of them (the owner: "the water columns look weird
+    # when multiple shots are fired in the same position"): a splash inside a young column of the same fall swells and
+    # renews it instead of drawing another over it, and its foam joins that column's foam
+    var merged: Part = _young_near(P.SPLASH, p, size, 0.4)
+    if merged != null:
+        merged.size = minf(maxf(merged.size, size) * 1.08, maxf(merged.size, size) * 1.6); merged.life = minf(merged.life, merged.mx * 0.12)
+    else: part(P.SPLASH, p, 2.0 if modern else 1.8, size)
     if not modern: part(P.FOAM, p, 10.0, size * 1.5)
     if modern:
-        var w = part(P.WASH, p, 9.0 + size * 0.4, size * 1.5)   # the foam patch and the trough it leaves (shaders/wash.gdshader)
-        # a burst against a ship's side (a torpedo, a near miss hard alongside) throws its water over her: for its first
-        # moments that foam is drawn above her decks, then it is on the sea and she steams out of it
-        for s in ships:
-            if not active(s) or submerged(s): continue
-            var l: Vector2 = (p - s.pos).rotated(-s.a)
-            if absf(l.x) < s.d.L * 0.5 + 4.0 and absf(l.y) < s.d.B * 0.5 + 6.0: w.over = true; break
+        # the foam patch and the trough it leaves (shaders/wash.gdshader), on the sea: a shell's splash alongside no longer
+        # washes over the ship's decks (the owner found the foam drawn inside the hull); only a torpedo's burst does
+        var fw: Part = _young_near(P.WASH, p, size * 1.5, 0.15)
+        if fw != null: fw.size = minf(fw.size * 1.05, size * 2.4)
+        else: part(P.WASH, p, 9.0 + size * 0.4, size * 1.5)
         for i in 4 + int(size * 0.35):
             var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.7 + randf() * 0.9, size * (0.22 + randf() * 0.2), rdir() * (size * 1.2 + randf() * size * 4.0)); q.drag = 0.18
         part(P.WRING, p, 1.4 + size / 25.0, size * 2.4)
+
+## Is this point on (or within `pad` of) any ship's hull? (Foam belongs on the sea, not on a deck.)
+func on_a_hull(p: Vector2, pad := 0.0) -> bool:
+    for s in ships:
+        if not active(s) or submerged(s): continue
+        var l: Vector2 = (p - s.pos).rotated(-s.a)
+        if absf(l.x) < s.d.L * 0.5 + pad and absf(l.y) < hull_half(s.d, l.x) + pad: return true
+    return false
 
 func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
     var S: float = {"S": 5.5, "M": 9.5, "L": 15.0, "H": 24.0}[size]
@@ -967,7 +988,8 @@ func fx_muzzle(p: Vector2, ang: float, size: String, barrels: int) -> void:
         part(P.GLOW, p + Vector2.from_angle(ang) * S, 0.35, S * 6.0)
         var c = part(P.CORE, p + Vector2.from_angle(ang) * S * 0.4, 0.07, S * 0.9); c.a = ang
     var bl = part(P.BLAST, p, 1.5 if modern else 0.9, S * (3.4 if modern else 3.0)); bl.a = ang
-    if size == "H" or size == "L": part(P.FOAM, p + Vector2.from_angle(ang) * S * 0.6, 2.0, S * 1.1) # the blast flattens the sea ahead of the muzzle
+    var fp: Vector2 = p + Vector2.from_angle(ang) * S * 0.6
+    if (size == "H" or size == "L") and not on_a_hull(fp, S * 0.8): part(P.FOAM, fp, 2.0, S * 1.1)   # the blast flattens the sea ahead of the muzzle (on open water only: fired across the deck, there is no sea there)
     for i in ceili(n / 2.0):
         var a = ang + (randf() - 0.5) * 0.9
         part(P.SPARK, p, 0.3 + randf() * 0.3, S * 0.12, Vector2.from_angle(a) * (60.0 + randf() * 120.0))
@@ -2255,6 +2277,7 @@ func step(dtv: float) -> void:
         elif land_at(sh.pos): fx_land(sh.pos, sz, str(sh.get("ammo", "ap")))
         else: fx_splash(sh.pos, 6 * sz); sound("splash", sh.pos, 0.05 * sz)
     # torpedoes
+    for i in range(twakes.size() - 1, -1, -1): if vt - float(twakes[i].back().t) > TWAKE_LIFE: twakes.remove_at(i)
     for i in range(torps.size() - 1, -1, -1):
         var tp: Dictionary = torps[i]; tp.life -= dt; tp.arm -= dt; tp.en = float(tp.get("en", 0.0)) - dt
         if tp.homing and tp.arm <= 0 and tp.en <= 0:
@@ -2276,10 +2299,17 @@ func step(dtv: float) -> void:
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
                     if s.side == tp.side: _log("torpedo on a friend"); ff_dmg_t += tp.dmg
                     else: _log("torpedo hit")
-                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); part(P.WASH if modern else P.FOAM, tp.pos, 16.0 if modern else 12.0, 45.0 if modern else 60.0)
+                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); var tw = part(P.WASH if modern else P.FOAM, tp.pos, 16.0 if modern else 12.0, 45.0 if modern else 60.0); tw.over = modern   # a torpedo's burst throws its water over her decks for a moment
                     sound("torp_hit", tp.pos, 0.55); gone = true; break
-        if not gone and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
-        if gone: torps.remove_at(i)
+        if not gone and not modern and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
+        if modern:   # her wake: a narrow track like a ship's, laid point by point (battle.gd draws it as a ribbon)
+            if not tp.has("trail"): tp["trail"] = []; tp["tt"] = 0.0
+            tp.tt = float(tp.tt) - dtv
+            if tp.tt <= 0.0: tp.tt = 0.3; tp.trail.append({"p": tp.pos, "t": vt, "a": tp.a, "v": float(tp.speed)})
+            while tp.trail.size() and vt - float(tp.trail[0].t) > TWAKE_LIFE: tp.trail.pop_front()
+        if gone:
+            if modern and tp.has("trail") and tp.trail.size() >= 2: twakes.append(tp.trail)   # it fades where it lies
+            torps.remove_at(i)
     # missiles
     for i in range(missiles.size() - 1, -1, -1):
         var m: Dictionary = missiles[i]

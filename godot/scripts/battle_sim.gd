@@ -977,6 +977,15 @@ func tracer(p: Vector2, q: Vector2, w := "", side := 0) -> void:
 ## turret, then the others half a reload later, so the fall of each half-salvo can be spotted. Single guns fire whole.
 const COIL := 0.08                                          # battle seconds between barrels in a half-salvo
 const TURRET_STEP := {"S": 0.15, "M": 0.25, "L": 0.35, "H": 0.45}   # fore-to-aft ripple between turrets
+## Is a ship of her own side lying where a salvo aimed at `aim` would fall? (Shells hurt friends too: a captain checks
+## his fire. The hand-laid guns of the flagship are the player's own affair.)
+func friend_near(s: CShip, aim: Vector2, tgt: CShip = null) -> bool:
+    for o in ships:
+        if o == s or o == tgt or o.side != s.side or not active(o) or submerged(o): continue
+        var l: Vector2 = (aim - o.pos).rotated(-o.a)
+        if absf(l.x) < o.d.L / 2 + FRIEND_CLEAR and absf(l.y) < o.d.B / 2 + FRIEND_CLEAR: return true
+    return false
+
 func fire_gun(s: CShip, m: Mount, aim: Vector2, w: Dictionary, tgt: CShip = null) -> void:
     var n := int(w.get("barrels", 1))
     var order := 0   # this turret's place, bow to stern, among the ship's guns of its calibre
@@ -1008,6 +1017,7 @@ func _ripple(s: CShip, m: Mount, dt: float) -> void:
 ## error is inside the spread of the salvo she is straddling, and hits come by the pattern's share of the target.
 ## Fire laid by hand on a point of the sea (no target) has no solution: it scatters as it always did.
 const SOL_STALE := 35.0
+const FRIEND_CLEAR := 45.0   # a captain holds a salvo that would fall this near a friend's hull (m)
 const PATTERN := 0.45      # how tight a salvo is round its own centre, against the old scatter of single shells
 func solution(s: CShip, tg: CShip, rel_range: float, fc: float, spread: float) -> Dictionary:
     var k: int = tg.get_instance_id()
@@ -1200,6 +1210,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var in_range = p.distance_to(aim) < rng
                 var trigger = (mouse_down or (autofire and aim_lock)) if manual else true
                 if holding(s) and not manual and aim_air == null: trigger = false   # holding fire (the AA guns still defend the ship)
+                if trigger and not manual and aim_air == null and friend_near(s, aim, m.tgt): trigger = false   # a friend lies where the salvo would fall: check fire
                 if manual:
                     m.st = "arc" if ac.x == 0 else "range" if not in_range else "train" if not aligned else "reload" if m.cd > 0 else "ready"
                     m.err = absf(ang_diff(want, m.ta)); gun_aim = {"pos": aim, "lock": aim_lock}
@@ -2098,7 +2109,7 @@ func step(dtv: float) -> void:
         shells.remove_at(i)
         var hit: CShip = null
         for s in ships:
-            if (s.side == sh.side and sh.get("tgt") != s) or s == sh.who or not active(s) or submerged(s): continue   # (a shell aimed at a ship of her own flag, in the editor, can hit her)
+            if s == sh.who or not active(s) or submerged(s): continue   # a shell hurts whatever it lands on, friend or foe (owner's word, 11 Nov 2026)
             var l: Vector2 = (sh.pos - s.pos).rotated(-s.a)
             if absf(l.x) < s.d.L / 2 + 3 and absf(l.y) < s.d.B / 2 + 3: hit = s; break
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]

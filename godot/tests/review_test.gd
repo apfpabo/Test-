@@ -970,6 +970,22 @@ func _sound() -> void:
 	for i in 200: sim.update_weapons(dd, 0.05)
 	ok(not sim.shells.is_empty(), "once she is on the surface they open fire")
 	boat.dive = 1.0; sim.hold_fire = true; sim.shells.clear(); dd.target = null; boat.pos = dd.pos + Vector2(rng * 0.8, 0)
+	# shells hurt whatever they land on (owner's word): a captain checks fire when a friend lies in the fall of shot
+	var s3 := _sim(["dd_fletcher", "dd_fletcher"], ["dd_fletcher"]); var g = s3.ships[1]; var fr = s3.ships[0]; var en = s3.ships[2]   # (the flagship's guns are laid by hand: the other ship shoots)
+	for x in s3.ships: x.ai_off = true; x.hold = true; x.v = 0.0; x.throttle = 0
+	g.hold = false; g.pos = Vector2(8000, 8000); g.a = PI / 2; en.pos = g.pos + Vector2(2000, 0); en.a = 0.0; fr.pos = en.pos + Vector2(0, 25); fr.a = 0.0; g.target = en
+	for i in 200: s3.update_weapons(g, 0.05)
+	ok(s3.shells.is_empty() and s3.friend_near(g, en.pos, en), "with a friend alongside the enemy 25 m off the guns check fire")
+	fr.pos = g.pos + Vector2(0, 3000)
+	for i in 200: s3.update_weapons(g, 0.05)
+	ok(not s3.shells.is_empty(), "with her clear they open fire")
+	var fh: float = fr.hull
+	for sh in s3.shells: sh.e = sh.e - en.pos + Vector2(8000, 3000)
+	en.pos = Vector2(3000, 3000); fr.pos = Vector2(8000, 3000)
+	for i in 400:
+		if s3.shells.is_empty(): break
+		s3.step(0.05)
+	ok(fr.hull < fh, "a salvo that falls on a friend hurts her (-%.0f)" % (fh - fr.hull))
 	dd.sonar_on = false
 	for i in 400: sim._sonar_tick(0.05)
 	ok(not sim.detected_by(boat, 0) and dd.heard_t > BattleSim.HEARD_FOR, "with the sonar silent the contact is lost, and the destroyer is no longer heard")

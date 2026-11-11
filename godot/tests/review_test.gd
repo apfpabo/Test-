@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends()
-	ok(sections == 16, "every section ran to its end (%d of 16)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace()
+	ok(sections == 17, "every section ran to its end (%d of 17)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1204,4 +1204,24 @@ func _friends() -> void:
 	ok(not sim.ff_confirm("dc") and sim.msg.contains("own charges"), "Z at a crawl warns that her own charges would burst under her")
 	a.v = 14.0
 	ok(sim.ff_confirm("dc"), "Z at speed with no friend about drops at once")
+	sections += 1
+
+## A new captain's grace (tuning after the tuning sheet): bounty squadrons do not hunt you for the first BOUNTY_GRACE days.
+func _grace() -> void:
+	Campaign.new_game("academy"); var G: Dictionary = Campaign.G; var P: Dictionary = G.player
+	var near := 0
+	for f in G.fleets: if f.kind == "bounty" and Campaign.mdist(f.x, f.y, P.x, P.y) <= 300.0: near += 1
+	ok(near == 0, "no bounty squadron starts within 300 units of a new captain (%d)" % near)
+	G.fleets = G.fleets.filter(func(f): return f.kind != "bounty")
+	var w := Vector2(P.x, P.y)   # a point of open water in sight, outside contact range
+	for k in 16:
+		var c := Vector2(P.x, P.y) + Vector2.from_angle(k * TAU / 16.0) * 40.0
+		if not Campaign.on_land(c.x, c.y): w = c; break
+	var b := _fleet("bounty", "raiders", w.x, w.y, ["cl", "dd", "dd"]); b.captain = "Test"; b.reward = 1000
+	P.cool = 0.0; P.route = null; G.day = 5
+	for i in 5: b.cool = 0.0; P.cool = 0.0; G.dayF = 0.0; Campaign.paused = false; Campaign.update(0.05)
+	ok(Campaign.mdist(b.x, b.y, P.x, P.y) > Campaign.CONTACT and not b.get("chasing", false), "on day 5 a bounty squadron in sight (%.0f units off) does not give chase" % Campaign.mdist(b.x, b.y, P.x, P.y))
+	G.day = Campaign.BOUNTY_GRACE + 1
+	for i in 5: b.cool = 0.0; P.cool = 0.0; G.dayF = 0.0; Campaign.paused = false; Campaign.update(0.05)
+	ok(b.get("chasing", false), "after day %d it does" % Campaign.BOUNTY_GRACE)
 	sections += 1

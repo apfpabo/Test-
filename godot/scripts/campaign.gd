@@ -779,6 +779,13 @@ func _garrison_port(fac: String) -> Dictionary:
         if r <= 0: return p
     return ps.back()
 
+## A new captain's grace (tuning, 11 Nov 2026, at the owner's word after the tuning sheet): for the first BOUNTY_GRACE
+## days a bounty squadron does not hunt you. It keeps its distance as from a stronger force, and it is never placed
+## near you at the start; sail into one and it still fights. (Bounty squadrons, met in the first fortnight at six to
+## eighteen times a lone start's strength, ended most of the early campaigns the tuning probe played.)
+const BOUNTY_GRACE := 30
+func bounty_grace(f: Dictionary) -> bool: return f.get("kind", "") == "bounty" and int(G.get("day", 0)) <= BOUNTY_GRACE
+
 func spawn_fleet(kind: String, fac: String, initial := false, mission = null) -> Dictionary:
     var P: Dictionary = G.player; var era = fac_era(mission.fac if mission != null else fac); var tl = enemy_tech(era); var scale = 1.0 + G.day / 120.0
     var f = {"id": G.nextId, "kind": kind, "fac": mission.fac if mission != null else fac, "h": randf() * TAU, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {}}
@@ -795,7 +802,7 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
             var g: Array = C.RAIDER_GROUNDS.pick_random(); pos = water_point(8, Vector2(g[0], g[1]), g[2])
         else:
             var p: Dictionary = G.ports.filter(func(q): return q.fac != "enclave").pick_random(); pos = water_point(8, Vector2(p.sx, p.sy), 420)
-        if mission != null or initial or mdist(pos.x, pos.y, P.x, P.y) > 300: break
+        if mission != null or (initial and kind != "bounty") or mdist(pos.x, pos.y, P.x, P.y) > 300: break   # (a bounty squadron never starts on top of a new captain)
     f.x = pos.x; f.y = pos.y; f.home = {"x": pos.x, "y": pos.y}
     if mission != null:
         f.kind = "mission"; f.name = mission.title; f.mission = true
@@ -1170,7 +1177,7 @@ func update(dt: float) -> void:
         var hos: bool = war[f.fac] or f.get("hunter", false) or f.get("mission", false) or f.kind == "assault"   # as hostile_fleet()
         var rate = 0.6
         if hos and f.cool <= 0 and P.cool <= 0 and dP < SIGHT * fleet_watch(f) * ck_them(f, wx) and not f.ships.all(func(s): return hull(s).kind == "merchant"):   # a hunter that cannot see you does not chase
-            var chase: bool = strength(f.ships) > ps * 0.5 or f.get("mission", false)
+            var chase: bool = (strength(f.ships) > ps * 0.5 or f.get("mission", false)) and not bounty_grace(f)
             f.chaseT = f.get("chaseT", 0.0) - dt; rate = 1.0 if chase else 0.95
             if f.chaseT <= 0 or f.get("route") == null:
                 f.chaseT = 1.2

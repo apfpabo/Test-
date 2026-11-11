@@ -48,7 +48,7 @@ def fmt(x, nd=0):
 digest = {}
 md = []
 md.append('# Tuning sheet: the first hours of a campaign\n')
-md.append('*A report for the owner\'s tuning pass (11 Nov 2026). No number in the game was changed to make it. All figures are measured, untuned, and his to judge.*\n')
+md.append('*A report for the owner\'s tuning pass (11 Nov 2026). All figures are measured, untuned, and his to judge. One change has been made since the first sheet, at his word: a 30-day grace from bounty squadrons for a new captain (see "The first change"). The tables are measured with it.*\n')
 md.append('''## How it was measured
 
 `tests/tune_probe.tscn` is the soak test's unattended captain (`tests/soak_test.gd`: real weather and calendar, every hostile contact fought out by the battle simulation as the battle screen sets it up) with **honest money**: the purse is never topped up and none of the soak's scripted events (reinforcements, a flag, the bomb) are run. In port he sells his cargo, repairs and rearms if he can pay, hires crew to need, buys fuel to the bunkers' room and food for forty days, takes contracts, commissions and story orders as the soak does, and rests a tired squadron. Before sailing he buys the good with the best margin at the port he is bound for, as many tons as still pay (prices move ton by ton). He is prudent, as a player would be: from any force that is not clearly weaker (the contact panel's strength ratio over 0.8, "an even fight" or worse) he tries to break off at the panel's own odds; caught all the same and outgunned, he orders a withdrawal; and until he has three ships he takes only peaceful contracts (deliveries, surveys, escorts, smuggling), no hunts, war contracts, strikes or story orders. He takes prizes, but **buys no ships**, so "affordable" below is read off his purse: the first day his money covers the cheapest design of that class he could order with the research he holds. He does no research of his own, and goes looking for a fight only once he has three ships.
@@ -127,6 +127,10 @@ for o in ORDER:
     d['kinds'] = dict(kinds)
     d['battles'] = mean([r['battles'] for r in rs]); d['won'] = mean([r['won'] for r in rs])
     digest[o] = d
+
+# ------------------------------------------------------------------ the hand-written notes (docs/tuning_sheet_notes.md)
+notes = os.path.join(os.path.dirname(os.path.abspath(out_md)), 'tuning_sheet_notes.md')
+if os.path.exists(notes): md.append(open(notes).read().rstrip() + '\n')
 
 # ------------------------------------------------------------------ the summary table
 md.append('## At a glance\n')

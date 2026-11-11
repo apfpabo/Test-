@@ -13,8 +13,8 @@ func _ready() -> void:
 		for t in [["cv_shokaku", "ca_hipper", "dd_narvik", "dd_narvik"], ["cv_essex", "cv_eagle", "ca_hipper"], ["bb_iowa", "ca_hipper", "dd_narvik"], ["cv_midway", "cve_ryujo"]][run % 4]: b.append(Campaign.new_ship(t, null, "directorate", []))
 		sim.setup(a, b, [], [], 0)
 		if run >= 4: sim.flag = null
-		var total := {}
-		for s in sim.ships: total[s] = sim.planes_left(s)
+		var side_total := [0, 0]
+		for s in sim.ships: side_total[s.side] += sim.planes_left(s)
 		var form_t := {}; var steps := 0; var launched := 0; var landed := 0; var deck_hits := 0; var ditched := 0
 		while not sim.finished and steps < 60000:
 			sim.step(0.05); steps += 1
@@ -33,11 +33,13 @@ func _ready() -> void:
 				if why != "":
 					bad += 1; notes[why] = notes.get(why, 0) + 1
 					if bad < 6: print("  ", why, ": state ", q.state, " n ", q.n, " n0 ", q.n0, " up ", q.up, " dk ", q.dk, " ops ", q.ops, " home alive ", q.home.alive, " step ", steps)
+			var side_now := [0, 0]   # a side never gains aircraft (one carrier may gain another's)
+			for s in sim.ships: side_now[s.side] += sim.planes_left(s)
+			for sd in 2:
+				if side_now[sd] > side_total[sd]: bad += 1; notes["aircraft from nowhere"] = notes.get("aircraft from nowhere", 0) + 1
+				side_total[sd] = side_now[sd]
 			for s in sim.ships:
 				if s.squads.is_empty(): continue
-				var now: int = sim.planes_left(s)
-				if now > total[s]: bad += 1; notes["aircraft from nowhere"] = notes.get("aircraft from nowhere", 0) + 1
-				total[s] = now
 				for sq in s.squads:
 					if sq.state == "out":
 						var found := 0

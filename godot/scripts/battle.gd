@@ -93,8 +93,7 @@ var editor = null           # the editor's panel, in editor mode
 var clean := false          # H: nothing on the screen but the picture (for recording)
 ## Hide or show everything that is not the picture: the HUD, the rings and aiming lines, the editor's panel.
 func set_clean(on: bool) -> void:
-    clean = on; hud.visible = not on
-    if layers.has("overlay"): layers["overlay"].visible = not on
+    clean = on; hud.visible = not on   # (the overlay layer stays: shells, missiles, aircraft and tracer are drawn in it; only its rings and lines go)
     if editor != null: editor.visible = not on
 func remove_view(s: BattleSim.CShip) -> void:
     var v = s.view
@@ -443,7 +442,7 @@ class ShipView extends Node2D:
         var id: String = s.rec.type; var info: Dictionary = GameData.sprites.ships[id]
         spr = info.spr; size_m = Vector2(info.w, info.h)
         for i in 25:   # the deck edge, sampled along her length: for the list and the sea coming over her side
-            var hx: float = lerpf(-float(s.d.L) * 0.495, float(s.d.L) * 0.495, i / 24.0); edge.append(Vector2(hx, battle.sim.hull_half(s.d, hx)))
+            var hx: float = lerpf(-float(s.d.L) * 0.53, float(s.d.L) * 0.53, i / 24.0); edge.append(Vector2(hx, battle.sim.hull_half(s.d, hx)))
         var keel = Keel.new(); keel.view = self; add_child(keel)
         base = _sprite(GameData.ship_tex(id, s.pal, "base"), 1.0 / spr)
         lit_base = ShaderMaterial.new(); lit_base.shader = battle.light_shader; base.material = lit_base
@@ -533,11 +532,12 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
             var ins: Array = []
             for i in e.size():
                 var p: Vector2 = e[i]
-                var wd: float = minf(2.0 * p.y + 0.5, p.y * (absf(h) * 0.75 + kk * 2.4) + 0.25 * sin(p.x * 0.45 + tm * 1.3) * absf(h))
+                # (at her ends, where she is narrow, the water still comes a fair way in: a share of her full beam, not of the beam there)
+                var wd: float = minf(2.0 * p.y + 0.5, maxf(p.y, float(s.d.B) * 0.22) * (absf(h) * 0.75 + kk * 2.4) + 0.25 * sin(p.x * 0.45 + tm * 1.3) * absf(h))
                 ins.append(Vector2(p.x, lo * (p.y - maxf(0.0, wd)))); foam.append(ins[i])
             for i in e.size() - 1:
                 var a: Vector2 = e[i]; var b: Vector2 = e[i + 1]
-                draw_primitive(PackedVector2Array([Vector2(a.x, lo * (a.y + 0.5)), Vector2(b.x, lo * (b.y + 0.5)), ins[i + 1], ins[i]]), PackedColorArray([sea, sea, Color(sea, sea.a * 0.75), Color(sea, sea.a * 0.75)]), PackedVector2Array())
+                draw_primitive(PackedVector2Array([Vector2(a.x, lo * (a.y + float(s.d.B))), Vector2(b.x, lo * (b.y + float(s.d.B))), ins[i + 1], ins[i]]), PackedColorArray([sea, sea, Color(sea, sea.a * 0.75), Color(sea, sea.a * 0.75)]), PackedVector2Array())
             draw_polyline(foam, Color(0.9, 0.96, 0.96, 0.75), 0.4)
             draw_polyline(foam, Color(0.9, 0.96, 0.96, 0.22), 1.4)
         if s.marks.is_empty(): return
@@ -545,6 +545,9 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
         for m in s.marks:
             var tx = GameData.fx_tex("cloud%d" % m.v); var r: float = m.r; var c := Vector2(m.x, m.y)
             if upper and not m.get("gash", false): continue
+            if upper:   # on a heeled ship a mark on her upper works is carried over with the plating it is in, by that plating's height
+                if not m.has("h"): m["h"] = GameData.ship_h_at(s.rec.type, m.x, m.y)
+                draw_set_transform(Vector2(0, view.lean * float(m.h)))
             draw_texture_rect(tx, Rect2(m.x - r, m.y - r, 2 * r, 2 * r), false, Color(0.09, 0.07, 0.05, 0.3 if upper else 0.45))
             if m.get("wreck", false):   # a mount knocked out: burnt round it, plating buckled, bits of the shield strewn about
                 draw_texture_rect(tx, Rect2(m.x - r * 1.2, m.y - r * 1.2, 2.4 * r, 2.4 * r), false, Color(0.03, 0.03, 0.03, 0.55))
@@ -588,7 +591,24 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
                     var lit: float = clampf(nrm.normalized().dot(-sunl), 0.0, 1.0)
                     draw_line(p0, p1, Color(0.35, 0.35, 0.36).lerp(Color(0.85, 0.84, 0.8), lit), maxf(0.1, g * 0.14))
                     if k % 3 == 0: draw_line(p0, p0 + nrm.normalized() * g * 0.5, Color(0.25, 0.25, 0.25, 0.8), maxf(0.08, g * 0.08))   # plate peeled back
-            elif m.hole: draw_circle(c, r * 0.22, Color(0.04, 0.04, 0.04, 0.9))
+            elif m.hole:
+                # a shell hole: not a punched disc but torn plate - a ragged, lopsided opening, a lip that catches the
+                # light on the side away from the sun, and a crack or two running out of it
+                var hr: float = r * 0.22; var sd: float = float(m.get("sd", 0)); var tilt: float = sd * 0.7
+                var hp := PackedVector2Array()
+                for k in 8:
+                    var a: float = k * TAU / 8.0 + 0.25 * sin(sd * 0.9 + k * 2.3)
+                    var rad: float = hr * (0.6 + 0.7 * fposmod(sin(sd * 0.37 + k * 1.93) * 31.7, 1.0))
+                    hp.append(c + (Vector2(cos(a) * 1.25, sin(a) * 0.8) * rad).rotated(tilt))
+                draw_colored_polygon(hp, Color(0.04, 0.04, 0.04, 0.92))
+                for k in 8:
+                    var p0: Vector2 = hp[k]; var p1: Vector2 = hp[(k + 1) % 8]
+                    var lit: float = clampf(((p0 + p1) * 0.5 - c).normalized().dot(-sunl), 0.0, 1.0)
+                    if lit > 0.35: draw_line(p0, p1, Color(0.7, 0.7, 0.68, 0.55 * lit), maxf(0.06, hr * 0.12))
+                for k in 2:
+                    var ca: float = sd * 1.3 + k * 2.6; var from: Vector2 = c + Vector2.from_angle(ca) * hr * 0.8
+                    draw_line(from, from + Vector2.from_angle(ca + 0.4 * sin(sd + k)) * hr * (0.7 + 0.5 * k), Color(0.05, 0.05, 0.05, 0.7), maxf(0.05, hr * 0.1))
+        if upper: draw_set_transform(Vector2.ZERO)
 
     ## Where the line x = v (or y = v) crosses a polygon: the least and greatest of the other coordinate.
     func _cut(pts: PackedVector2Array, v: float, vertical: bool) -> Vector2:
@@ -1214,14 +1234,15 @@ class Drawer extends Node2D:
 
     func _overlay() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z
-        if sim.flag != null and not sim.waypoints.is_empty():   # the flagship's waypoints (Ctrl+Click)
+        var ui: bool = not battle.clean   # with the interface hidden (H) only what is really on the sea and in the air is drawn
+        if ui and sim.flag != null and not sim.waypoints.is_empty():   # the flagship's waypoints (Ctrl+Click)
             var prev: Vector2 = sim.flag.pos
             for wp in sim.waypoints:
                 draw_line(prev, wp, Color(0.93, 0.94, 0.92, 0.55), 1.5 * mn); prev = wp
             for i in sim.waypoints.size():
                 var wp: Vector2 = sim.waypoints[i]
                 draw_circle(wp, 7.0 * mn, Color(0.05, 0.1, 0.12, 0.8)); draw_arc(wp, 7.0 * mn, 0, TAU, 20, Color(0.93, 0.94, 0.92, 0.95), 2.0 * mn)
-        _sensors(sim, mn)
+        if ui: _sensors(sim, mn)
         # torpedo tracks, shells, missiles, aircraft and tracers
         var z0s: float = battle.zoom()
         for sh in sim.shells:
@@ -1310,7 +1331,7 @@ class Drawer extends Node2D:
         else: _tracers(sim, mn)
         # flagship: station ring, gun range, predicted track and where each main turret is laid
         var s = sim.flag
-        if s != null and s.alive:
+        if ui and s != null and s.alive:
             var gold = Color(0.89, 0.7, 0.24)
             _dashed_circle(s.pos, maxf(s.d.L * 0.6 + 10, 24 * mn), Color(gold, 0.55), 1.5 * mn, 8 * mn)
             draw_arc(s.pos, sim.max_gun_range(s), 0, TAU, 128, Color(gold, 0.18), mn)

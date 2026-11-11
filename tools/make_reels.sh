@@ -3,7 +3,7 @@
 #   tools/make_reels.sh <out dir> [clips...]      (needs xvfb-run, ffmpeg; about three minutes a clip without a GPU)
 set -e
 out=$(realpath "$1"); shift; mkdir -p "$out"
-clips=${@:-duel night destroyers torpedo}
+clips=${@:-duel night destroyers torpedo carrier_launch carrier_strike carrier_landing carrier_jets sub_attack}
 cd "$(dirname "$0")/../godot"
 for c in $clips; do
   XDG_DATA_HOME="$out/xdg" xvfb-run -a -s "-screen 0 1080x1920x24" godot --path . --rendering-driver opengl3 --resolution 1080x1920 \

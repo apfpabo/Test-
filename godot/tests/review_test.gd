@@ -916,6 +916,22 @@ func _flying() -> void:
 	sim.despawn(cv)
 	for i in 50: sim.update_air(0.1)
 	ok(sim.air.is_empty(), "a carrier removed in the editor leaves no aircraft circling for ever (%d groups)" % sim.air.size())
+	# aircraft whose carrier is sunk make for another of their side
+	sim = _sim(["cv_essex", "cve_casa"], ["dd_narvik"]); cv = sim.ships[0]; var cve = sim.ships[1]; e = sim.ships[2]
+	for x in sim.ships: x.ai_off = true
+	sim.hold_fire = true; e.god = true; e.pos = cv.pos + Vector2(0, -20000); cve.pos = cv.pos + Vector2(900, 0)
+	var own: int = sim.planes_left(cve); sim.launch_strike(cv, e)
+	for i in 3000:
+		sim.update_air(0.1)
+		if sim.air.all(func(q): return q.state == "out"): break
+	var flying := 0
+	for q in sim.air: flying += int(q.up)
+	sim.damage(cv, cv.hull + 1.0, "resolved")
+	for i in 20000:
+		sim.update_air(0.1)
+		if sim.air.is_empty(): break
+	ok(sim.air.is_empty() and sim.planes_left(cve) > own and sim.planes_left(cv) == 0, "aircraft whose carrier is sunk land on another of their side (%d were up; she had %d of her own and now has %d)" % [flying, own, sim.planes_left(cve)])
+	ok(GameData.ship_h_at("bb_iowa", 0.0, 0.0) > 2.0 and GameData.ship_h_at("bb_iowa", 0.0, 15.0) < 1.0, "and the height of a design's upper works can be read for damage marks")
 	# gashes do not cross
 	sim = _sim(["bb_iowa"], ["dd_narvik"]); bb = sim.ships[0]
 	for i in 12: sim.mark_hit(bb, bb.pos + Vector2(20.0 + i * 0.4, 1.0).rotated(bb.a), 3.0, true, 0.0)

@@ -32,6 +32,7 @@ func _process(_d: float) -> void:
     if f == 334:   # the battleship torn open and listing to starboard
         seed(5)
         for i in 9: sim.mark_hit(bb, sim.world_pt(bb, -90.0 + i * 22.0, [9.0, -12.0, 3.0, 13.0, -6.0, 14.0, -13.0, 0.0, 11.0][i]), 3.0, true, 0.0)
+        for i in 14: sim.mark_hit(bb, sim.world_pt(bb, 20.0 + i * 6.5, [10.0, -8.0, 12.0, -12.0, 6.0, -5.0, 13.0][i % 7]), 1.0 + 0.2 * (i % 3), true, 0.0)   # light shells: holes, not gashes
         bb.list = 0.8; bb.hull = bb.max_hull * 0.4
         battle.camera.position = bb.pos; battle.camera.zoom = Vector2.ONE * 4.0
     if f > 334 and f < 349: bb.list = 0.8

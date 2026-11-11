@@ -1551,6 +1551,13 @@ const DECK_LIST := 0.6    # a list beyond this and nothing can fly
 ## destroyer, over 30 for a battleship, at the battle's ordinary speed): she settles, the sea comes over her low side, and she is gone.
 func sink_k(s: CShip) -> float: return 0.0 if s.alive else minf(1.0, s.sink / (14.0 + float(s.d.L) * 0.07))
 func deck_ok(s: CShip) -> bool: return s.alive and s.deck_out <= 0.0 and absf(s.list) < DECK_LIST
+## Another carrier of the same side for aircraft whose own is lost: the nearest still afloat and in the action.
+func other_deck(q: Dictionary) -> CShip:
+    var best: CShip = null
+    for s in ships:
+        if s == q.home or s.side != q.side or not active(s) or s.sub or int(s.d.get("hangar", 0)) <= 0: continue
+        if best == null or s.pos.distance_squared_to(q.pos) < best.pos.distance_squared_to(q.pos): best = s
+    return best
 func deck_why(s: CShip) -> String: return "her flight deck is holed" if s.deck_out > 0.0 else ("she is listing too far" if absf(s.list) >= DECK_LIST else "")
 ## The ends of the flight deck in the ship's own frame (x aft end, y fore end).
 func deck_span(s: CShip) -> Vector2:
@@ -1600,8 +1607,21 @@ func update_air(dt: float) -> void:
             if on_deck: lost = mini(lost, int(q.up)); q.n = int(q.n0) - lost
             q.up = maxi(0, int(q.up) - lost)
         if not on_deck: q.up = q.n
-        if on_deck and not home.alive:   # the ship is gone under them: what is in the air has nowhere to land
-            q.ops = 0; q.dk = 0; q.n = q.up if q.state == "form" else 0; q.state = "out"
+        if not home.alive:   # the ship is gone under them: those still aboard go with her, those in the air look for another deck
+            if on_deck: q.ops = 0; q.dk = 0; q.n = q.up
+            var alt: CShip = other_deck(q)
+            if q.n > 0 and alt != null:
+                # (owner's decision, 11 Nov 2026) they make for another carrier of their own side and join her air wing
+                # as a squadron of their own; she strikes them below and rearms them like her own
+                var guest := {"state": "out", "t": 0.0, "n": q.n, "n0": q.n, "guest": true}
+                q.sq.n = 0; q.sq.state = "lost"; alt.squads.append(guest); q.sq = guest; q.home = alt
+                if q.state == "land": q.state = "home"
+                elif q.state == "form": q.state = "out"
+                if q.side == 0: say("The %s is gone: her aircraft make for the %s." % [home.rec.name, alt.rec.name], 3.0)
+                home = alt; on_deck = false
+            elif on_deck:
+                if q.state == "land": q.n = 0   # nowhere to come down
+                q.state = "out"
         q.n0 = q.n
         if q.n <= 0: q.sq.n = 0; q.sq.state = "lost"; air.remove_at(i); continue
         if q.state == "out" and (q.target == null or not engageable(q.target)):

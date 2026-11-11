@@ -130,7 +130,8 @@ func _fight(f: Dictionary) -> void:
 	if verbose: print("  [%d] battle with %s (%s%s): %s in %.0f s of battle, sunk %d, lost %d" % [int(G.day), f.name, sim.wx.text, "" if sim.finished else ", UNFINISHED", "victory" if r.victory else ("disengaged" if r.retreated else "defeat"), sim.t, r.sunk.size(), r.lost.size()])
 	if r.victory: st.won += 1
 	st.sunk += r.sunk.size(); st.lost_ships += r.lost.size()
-	ok(G.fleet.size() == before - r.lost.size(), "after a battle the squadron is the ships that were not lost")
+	var shifted: bool = r.notes.any(func(n): return String(n).begins_with("The division you led is lost"))   # then the squadron is the main body, whatever its size
+	ok(shifted or G.fleet.size() == before - r.lost.size(), "after a battle the squadron is the ships that were not lost (%d before, %d lost, %d now)" % [before, r.lost.size(), G.fleet.size()])
 	for s in r.prizes:   # take prizes into the squadron while there is room, as the aftermath screen offers
 		if G.fleet.size() < 10: s.pal = "player"; G.fleet.append(s); Campaign.study_prize(s); st.prizes += 1
 	if not sim.finished: f.cool = 30.0

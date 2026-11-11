@@ -73,6 +73,20 @@ func ship_h(id: String) -> Texture2D:
 func turret_h(w: Dictionary) -> float:
 	return {"H": 3.4, "L": 2.9, "M": 2.5}.get(w.get("size", "S"), 2.1 if w.get("kind", "") == "gun" else 1.4)
 
+## The height in metres of whatever stands at a point of a design's plan (x along her, y to starboard, from her
+## middle): read from the height map, whose picture is kept once per design.
+var _h_img := {}
+func ship_h_at(id: String, x: float, y: float) -> float:
+	if not _h_img.has(id):
+		var t := ship_h(id); _h_img[id] = t.get_image() if t != null else null
+		if _h_img[id] != null and _h_img[id].is_compressed(): _h_img[id].decompress()
+	var im: Image = _h_img[id]
+	if im == null: return 0.0
+	var info: Dictionary = sprites.ships[id]
+	var px := int((x / float(info.w) + 0.5) * im.get_width()); var py := int((y / float(info.h) + 0.5) * im.get_height())
+	if px < 0 or py < 0 or px >= im.get_width() or py >= im.get_height(): return 0.0
+	return im.get_pixel(px, py).r * float(sprites.get("h_max", 40))
+
 ## Mount paint: the flag's superstructure colour (the shader divides out the reference grey the mounts are baked in).
 func mount_tint(p: String) -> Vector3:
 	var c := Color(pal.get(paint(p), pal.player).sup)

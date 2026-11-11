@@ -29,8 +29,8 @@ const CLIPS := {
 	"fleet": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_scharnhorst", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3400.0, "pre": 60.0, "wx": {},
 		"cuts": [[0.0, "me", 2.6, 20.0], [4.0, "them", 2.4, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.2, 0.0]]},
 	# destroyers hunting a dived boat: she lies ahead of them, they find her with sonar and run in over her
-	"sub_hunt": {"player": ["dd_fletcher", "dd_fletcher", "dd_fletcher"], "enemy": ["ss_vii"], "sep": 1300.0, "pre": 900.0, "until": "dc", "wx": {}, "place": "ahead",
-		"cuts": [[0.0, "dropper", 3.4, -95.0], [6.5, "dropper", 2.0, -170.0], [10.5, "sub", 3.2, 0.0]]},
+	"sub_hunt": {"player": ["dd_fletcher", "dd_fletcher", "dd_fletcher"], "enemy": ["ss_vii"], "sep": 1300.0, "pre": 900.0, "until": "dc", "wx": {}, "place": "ahead", "hunt": true,
+		"cuts": [[0.0, "dropper", 3.2, -75.0], [2.6, "pattern", 2.3, 0.0], [8.5, "dropper", 1.7, -160.0]]},
 	# submarines: a torpedo attack on a convoy (a depth-charge hunt was tried and dropped: staged this way the destroyers never get over the boat)
 	"sub_attack": {"player": ["ss_gato", "ss_gato"], "enemy": ["ao_t2", "fr_liberty", "fr_liberty"], "sep": 2200.0, "pre": 900.0, "until": "torp_close", "wx": {},
 		"cuts": [[0.0, "torp", 5.0, 0.0], [3.5, "victim", 2.8, 0.0], [11.0, "sub", 6.0, 0.0]]},
@@ -57,6 +57,7 @@ func _ship(side: int):
 var dc0 := -1
 var victim = null
 var dropper = null
+var pattern_at = null
 func _ready_to_roll(sim, n: int) -> bool:
 	match String(clip.get("until", "")):
 		"torp_close":
@@ -73,6 +74,7 @@ func _ready_to_roll(sim, n: int) -> bool:
 				left += s.dc_left
 				if dropper == null or s.dc_left < dropper.dc_left: dropper = s   # the one whose racks have been emptied
 			if dc0 < 0: dc0 = left
+			if left < dc0 and dropper != null: pattern_at = sim.dc_pattern(dropper)[0]
 			return left < dc0
 	return false
 func _spot(who: String, lead: float) -> Variant:
@@ -93,6 +95,8 @@ func _spot(who: String, lead: float) -> Variant:
 			if victim != null: return victim.pos
 		"sub":
 			for s in sim.ships: if s.sub and s.alive: return s.pos
+		"pattern":   # the water where the pattern was laid: the camera stays there while the charges go off and the ship runs on
+			if pattern_at != null: return pattern_at
 		"dropper":   # the ship that dropped the pattern, and the water astern of her where it bursts
 			if dropper != null: return dropper.pos + Vector2.from_angle(dropper.a) * lead
 	return null
@@ -115,12 +119,20 @@ func _process(d: float) -> void:
 		battle.hud.visible = false; battle.speed_i = 1; battle.cam_free = true
 		battle.set_clean(true)   # no interface, no rings; shells, tracer, missiles and aircraft stay
 		Sfx.music("")           # the game's own sounds only: a clip gets its music where it is posted
+		if clip.get("hunt", false):
+			for s in sim.ships:
+				if s.sub: s.dive = 1.0; s.want_dive = true; s.hold = true
+				else: s.smoke_left = 0.0
 		var n := 0   # the action is already joined when the clip opens: the ranges found, shells in the air, smoke over the water
 		while n < int(float(clip.pre) / 0.02) and not sim.finished and not _ready_to_roll(sim, n):
 			sim.step(0.02); n += 1
 			if n % 3 == 0: sim.fx(0.06)
 	if f < 3: return
 	t += d
+	if clip.get("hunt", false):   # a depth-charge hunt: the boat stays down and silent, and nobody hides the picture in smoke
+		for s in sim.ships:
+			if s.sub: s.want_dive = true; s.dive = maxf(s.dive, 0.9); s.hold = true
+			else: s.smoke_left = 0.0; s.smoke_on = false
 	var cut: Array = clip.cuts[0]
 	for c in clip.cuts: if t >= float(c[0]): cut = c
 	var a = _ship(0); var b = _ship(1); var want := cam_pos

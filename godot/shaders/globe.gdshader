@@ -56,8 +56,14 @@ void fragment() {
 		float n = noise(vec2(lond, latd) * 0.35) * 0.6 + noise(vec2(lond, latd) * 1.3) * 0.4;
 		vec3 sea = mix(vec3(0.050, 0.150, 0.185), vec3(0.085, 0.230, 0.265), n);
 		vec3 c = sea;
+		// a pixel here covers this much of the chart across (in uv): near the poles, where the meridians crowd together,
+		// it spans many texels, and one sample of them broke into radial streaks (the owner: "the poles look weird")
+		float px0 = degrees(1.0 / radius) / max(z, 0.25);
+		float fw = clamp(px0 / 360.0 / max(cos(lat), 0.02), 0.0, 0.25) + smoothstep(66.0, 75.0, abs(latd)) * 0.012;   // (and the high snowfields smoothed along their parallels)
 		if (uv.y > 0.0 && uv.y < 1.0) {
-			vec4 t = texture(terrain, uv);
+			vec4 t = vec4(0.0);
+			for (int k = 0; k < 9; k++) t += texture(terrain, uv + vec2((float(k) / 8.0 - 0.5) * fw, 0.0));
+			t /= 9.0;
 			// a pale shelf of shoal water round every coast (the terrain's alpha, blurred by sampling a little way off)
 			float near = 0.0;
 			for (int i = 0; i < 6; i++) { float a = float(i) * 1.047; near += texture(terrain, uv + vec2(cos(a), sin(a) * 2.25) * 0.0022).a; }
@@ -73,6 +79,10 @@ void fragment() {
 		float nI = noise(sph.xz * 9.0 + sph.y * 3.0) * 0.6 + noise(sph.xz * 23.0) * 0.4;
 		float e = max(-uv.y, uv.y - 1.0);
 		float ice = smoothstep(-0.03, 0.02, e + (nI - 0.5) * 0.035);
+		// and it lies over the last few degrees of the chart too (from 74 S and 78 N): there the snowfields of the
+		// chart's own last rows, wrapped round the pole, became radial streaks (the owner: "the poles look weird")
+		float cap0 = latd < 0.0 ? 74.0 : 78.0;
+		ice = max(ice, smoothstep(cap0, cap0 + 3.0, abs(latd) + (nI - 0.5) * 3.0));
 		c = mix(c, vec3(0.80, 0.86, 0.88) * (0.88 + 0.14 * nI), ice);
 		// the graticule: every 15 degrees faintly, the equator and the prime meridian a little stronger
 		float px = degrees(1.0 / radius) / max(z, 0.25);   // degrees per screen pixel hereabouts
@@ -92,6 +102,12 @@ void fragment() {
 		float hr = mod(day_frac * 24.0 + lond / 15.0, 24.0);
 		float half_day = clamp(6.0 - 4.2 * winter_n * sign(latd) * sin(abs(lat)), 1.5, 10.5);
 		float dark = smoothstep(half_day - 0.5, half_day + 0.7, abs(hr - 12.0));
+		// towards the poles the hour at each meridian drew the night as a wedge with straight sides meeting at the pole;
+		// there the edge of the night is reckoned from the sun itself (a curve, as it is), blended in from 55 degrees
+		float sun_lon = radians((12.0 - day_frac * 24.0) * 15.0); float decl = radians(-23.4 * winter_n);
+		vec3 sun_v = vec3(cos(decl) * cos(sun_lon), sin(decl), cos(decl) * sin(sun_lon));
+		float dark_sun = smoothstep(0.04, -0.08, dot(sph, sun_v));
+		dark = mix(dark, dark_sun, smoothstep(55.0, 72.0, abs(latd)));
 		c = mix(c, c * vec3(0.20, 0.27, 0.40) + vec3(0.0, 0.004, 0.012), dark * 0.86);
 		// the light: from the upper left, the limb falling away into shade, and a soft sheen on the water
 		vec3 nrm = vec3(p.x, p.y, z); vec3 L = normalize(vec3(-0.45, 0.5, 0.74));

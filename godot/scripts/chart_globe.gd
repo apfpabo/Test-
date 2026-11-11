@@ -14,6 +14,8 @@ var spin := Vector2.ZERO    # the turn it was left with when the drag was let go
 var dragging := false
 var moved := 0.0
 var hover = null            # the port under the pointer
+var aim = null              # [lon, lat] the globe is turning to (show_place), or null
+var pin = null              # [x, y, seconds left]: a place marked by show_place
 var sphere: ColorRect
 var marks: Control
 var mat: ShaderMaterial
@@ -73,6 +75,9 @@ func close(at = null) -> void:
     # (wide, but not so wide that the whole height of the chart is in view: then the chart centres itself, not on the place chosen)
     map.free_cam = true; map.cam = to; map.zoom = maxf(map.zoom, get_viewport_rect().size.y / float(Campaign.MH) * 1.35)
 func is_open() -> bool: return visible and not closing
+## Turn the world to a place on the chart and mark it there for a few seconds (the Locations tab's "Show").
+func show_place(x: float, y: float) -> void:
+    aim = [lon_of(x), clampf(lat_of(y), -1.35, 1.35)]; pin = [x, y, 4.0]; spin = Vector2.ZERO
 
 func _process(d: float) -> void:
     if not visible: return
@@ -82,6 +87,13 @@ func _process(d: float) -> void:
     if not closing and map.panel_open: close()   # something on the chart wants you: a contact, a port
     if not dragging and spin.length() > 0.002:   # it runs on a little when let go, and comes to rest
         lon0 += spin.x * d; lat0 = clampf(lat0 + spin.y * d, -1.35, 1.35); spin *= pow(0.04, d)
+    if aim != null:   # turning to a place asked for: the short way round, easing in
+        var dl: float = wrapf(float(aim[0]) - lon0, -PI, PI); var dt: float = float(aim[1]) - lat0; var e: float = 1.0 - pow(0.02, d)
+        lon0 += dl * e; lat0 += dt * e
+        if absf(dl) < 0.002 and absf(dt) < 0.002: aim = null
+    if pin != null:
+        pin[2] = float(pin[2]) - d
+        if float(pin[2]) <= 0.0: pin = null
     lon0 = wrapf(lon0, -PI, PI)
     mat.set_shader_parameter("size", size); mat.set_shader_parameter("mid", centre()); mat.set_shader_parameter("radius", radius())
     mat.set_shader_parameter("centre", Vector2(lon0, lat0)); mat.set_shader_parameter("fade", _ease(shown))
@@ -167,6 +179,12 @@ func _vec(x: float, y: float) -> Vector3:
 
 func draw_marks(ci: Control) -> void:
     var G: Dictionary = Campaign.G; var f13: Font = UI.font("regular"); var fc: Font = UI.font("cond"); var r := radius(); var c := centre()
+    if pin != null:   # the place asked for on the Locations tab: a gold ring that pulses
+        var q := project(float(pin[0]), float(pin[1]))
+        if q.z > 0.0:
+            var ph: float = fposmod(float(pin[2]), 1.0)
+            ci.draw_arc(Vector2(q.x, q.y), 8.0 + 14.0 * (1.0 - ph), 0.0, TAU, 40, Color(UI.GOLD, 0.9 * ph), 2.0, true)
+            ci.draw_arc(Vector2(q.x, q.y), 6.0, 0.0, TAU, 24, UI.GOLD, 2.0, true)
     # the sea lanes you are bound along: the course in hand, laid over the curve of the world
     var route = G.player.get("route")
     if route != null and route is Array and not route.is_empty():

@@ -21,7 +21,7 @@ func _process(_d: float) -> void:
         Campaign.set_course(Campaign.G.player, Campaign.lon_x(25.0), Campaign.lat_y(45.0))
         Campaign.G.wars[Diplomacy.pair("concord", "directorate")] = int(Campaign.G.day) - 12   # a war to show
         for fl in Campaign.G.fleets.slice(0, 12): fl.vis = true
-        map.zoom = 0.14; map._zoom_at(1.0 / 1.12, Vector2(700, 430))
+        map.zoom = map.ZOOM_MIN; map._zoom_at(1.0 / 1.12, Vector2(700, 430))
         ok(g.is_open(), "scrolling out past the chart's widest view opens the globe")
     if f == 40:
         _shot("open")
@@ -34,9 +34,14 @@ func _process(_d: float) -> void:
         ok(g.hover == p, "the port under the pointer is found")
     if f == 48: _shot("close"); g.k = 0.7; g.lat0 = 1.2
     if f == 51: _shot("north"); g.lat0 = -1.2
-    if f == 54:
-        _shot("south"); var p = Campaign.G.ports[3]; g.close(Vector2(p.x, p.y))
-    if f == 90:
+    if f == 54: _shot("south"); g.k = 2.2; g.lat0 = -1.35   # close over the south pole (the owner: the poles looked wrong)
+    if f == 57:
+        _shot("south_close"); g.k = 1.0; var p = Campaign.G.ports[3]; map._show_place(p.x, p.y)   # "Show" on the Locations tab, with the globe up
+    if f == 85:
+        var p = Campaign.G.ports[3]; var q = g.project(p.x, p.y)
+        ok(g.visible and q.z > 0.97 and g.pin != null, "Show on the Locations tab turns the globe to the place and marks it (facing %.2f)" % q.z)
+        _shot("show"); g.close(Vector2(p.x, p.y))
+    if f == 120:
         var p = Campaign.G.ports[3]
         ok(not g.visible and map.free_cam and absf(Campaign.wdx(map.cam.x, p.x)) < 1.0 and absf(map.cam.y - p.y) < get_viewport().get_visible_rect().size.y / map.zoom * 0.5, "closing it puts the chart at the place chosen (the chart keeps its own top and bottom in view)")
         ok(map.overlay.visible and map.world.visible, "and the chart's own names and marks are back")

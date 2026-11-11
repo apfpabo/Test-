@@ -924,14 +924,16 @@ func _unhandled_input(e: InputEvent) -> void:
             KEY_3: _speed(4)
             KEY_4: _speed(8)
             KEY_C, KEY_HOME: free_cam = false
-            KEY_EQUAL, KEY_KP_ADD: zoom = clampf(zoom * 1.25, 0.14, 14)
+            KEY_EQUAL, KEY_KP_ADD: zoom = clampf(zoom * 1.25, ZOOM_MIN, 14)
             KEY_MINUS, KEY_KP_SUBTRACT:
-                if zoom <= 0.1401: globe.open()   # out past the widest view: the world whole
-                zoom = clampf(zoom / 1.25, 0.14, 14)
+                if zoom <= ZOOM_MIN + 0.0001: globe.open()   # out past the widest view: the world whole
+                zoom = clampf(zoom / 1.25, ZOOM_MIN, 14)
 
+## The chart's widest view: scrolling out past it opens the globe (it was 0.14; the owner wanted the globe sooner).
+const ZOOM_MIN := 0.22
 func _zoom_at(f: float, sp: Vector2) -> void:
-    if f < 1.0 and zoom <= 0.1401: globe.open(); return   # out past the widest view: the world whole
-    var before = to_world(sp); zoom = clampf(zoom * f, 0.14, 14)
+    if f < 1.0 and zoom <= ZOOM_MIN + 0.0001: globe.open(); return   # out past the widest view: the world whole
+    var before = to_world(sp); zoom = clampf(zoom * f, ZOOM_MIN, 14)
     if free_cam: cam += before - to_world(sp)
 
 func _click(sp: Vector2) -> void:
@@ -1724,7 +1726,7 @@ func _locations(box: Control) -> void:
             var nm := UI.label(r.name, col); nm.custom_minimum_size.x = 150
             var sub := UI.label("%s · %s · %d km%s" % [fname, r.tag, int(r.d * Campaign.KM_PER_UNIT), " · at war with you" if war else ""], UI.RED if war else UI.DIM, 13); sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             var cx: float = r.cx; var cy: float = r.cy; var sx: float = r.x; var sy: float = r.y; var nmx: String = r.name
-            var show := UI.button("Show", func(): free_cam = true; cam = Vector2(cx, cy); zoom = maxf(zoom, 2.4))
+            var show := UI.button("Show", func(): _show_place(cx, cy))
             var go := UI.button("Set course", func():
                 if Campaign.set_course(Campaign.G.player, sx, sy): free_cam = false; _toast("Course set: %s." % nmx)
                 else: _toast("No way to %s by sea from here." % nmx))
@@ -1733,6 +1735,11 @@ func _locations(box: Control) -> void:
         if shown == 0: list.add_child(UI.label("Nothing by that name.", UI.DIM, 13))
     ed.text_changed.connect(func(t): loc_query = t; fill.call())
     fill.call()
+
+## "Show" on the Locations tab: on the globe, turn the world to the place and mark it; on the chart, go there.
+func _show_place(x: float, y: float) -> void:
+    if globe.is_open(): globe.show_place(x, y); return
+    free_cam = true; cam = Vector2(x, y); zoom = maxf(zoom, 2.4)
 
 func _repairs(box: Control) -> void:
     var G: Dictionary = Campaign.G

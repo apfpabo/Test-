@@ -758,6 +758,28 @@ func water_point(pad := 8.0, near = null, rad := 0.0) -> Vector2:
 
 func ports_of(f: String) -> Array: return G.ports.filter(func(p): return p.fac == f)
 
+## Ships from a pool until their strength (what they are worth: see strength) reaches `want`, at most `mx` of them;
+## at least one, the cheapest, whatever `want` is.
+func build_to_strength(pool: Array, want: float, mx: int, fac: String, tech: Array) -> Array:
+    var ships := []
+    var val := {}   # each design's worth with her standard fit
+    for c in pool:
+        var id = design_for(c, fac, tech)
+        if id != "" and not val.has(id): val[id] = ship_value(new_ship(id, null, fac, tech))
+    if val.is_empty(): return ships
+    var ids: Array = val.keys(); ids.sort_custom(func(a, b): return float(val[a]) < float(val[b]))
+    var got := 0.0
+    while ships.size() < maxi(1, mx):
+        var room: float = want - got; var left: int = maxi(1, mx - ships.size())
+        if room < 0.5 * float(val[ids[0]]) and not ships.is_empty(): break
+        # a ship that fills her share of what is still wanted, and does not overshoot it by much
+        var fit: Array = ids.filter(func(id): return float(val[id]) <= room * 1.1 and float(val[id]) >= room / left * 0.6)
+        var under: Array = ids.filter(func(id): return float(val[id]) <= room * 1.1)
+        var t: String = fit.pick_random() if not fit.is_empty() else (under.back() if not under.is_empty() else ids[0])
+        var sh := new_ship(t, null, fac, tech); ships.append(sh); got += ship_value(sh)
+        if under.is_empty(): break
+    return ships
+
 func build_by_budget(pool: Array, budget: float, mx: int, fac: String, tech: Array) -> Array:
     var ships = []
     while budget > 4000 and ships.size() < mx:
@@ -784,6 +806,17 @@ func _garrison_port(fac: String) -> Dictionary:
 ## near you at the start; sail into one and it still fights. (Bounty squadrons, met in the first fortnight at six to
 ## eighteen times a lone start's strength, ended most of the early campaigns the tuning probe played.)
 const BOUNTY_GRACE := 30
+## Forces that come looking for you are sized to you (tuning, 11 Nov 2026, the owner's idea after the tuning sheet): a
+## bounty squadron is posted at BOUNTY_SIZE times your squadron's strength (a random point in that range, so some can be
+## taken and some should be left alone), between BOUNTY_FLOOR and BOUNTY_CEIL; the hunters an origin sends after you
+## (perk "hunted") come at HUNT_K times it, no bigger than the origin's own budget for them, and not before HUNT_GRACE
+## days. Patrols, raiders and the navies are not scaled: the world stays the size it is.
+const BOUNTY_SIZE := Vector2(0.8, 2.5)
+const BOUNTY_FLOOR := 15000.0
+const BOUNTY_CEIL := 2500000.0
+const HUNT_K := 1.5
+const HUNT_FLOOR := 20000.0
+const HUNT_GRACE := 40
 func bounty_grace(f: Dictionary) -> bool: return f.get("kind", "") == "bounty" and int(G.get("day", 0)) <= BOUNTY_GRACE
 
 func spawn_fleet(kind: String, fac: String, initial := false, mission = null) -> Dictionary:
@@ -826,8 +859,9 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
     else:
         f.captain = ["\"Hook\" Marlowe", "Ysolde Crane", "\"Bosun\" Teague", "Anika Vell", "Black Corwin", "Mother Grist", "\"Lantern\" Pike", "Severin Oakes"].pick_random()
         f.name = "Bounty: " + f.captain
-        f.ships.append(new_ship("ca" if scale > 2.5 else "cl", null, "raiders", tl))
-        f.ships.append_array(build_by_budget(["pt", "dd", "dd", "ss"], (30000 + randf() * 30000) * scale, 5, "raiders", tl))
+        # sized to the squadron it is posted against (BOUNTY_SIZE): some can be taken, some should be left alone
+        var want: float = clampf(randf_range(BOUNTY_SIZE.x, BOUNTY_SIZE.y) * strength(G.fleet), BOUNTY_FLOOR, BOUNTY_CEIL)
+        f.ships = build_to_strength(["pt", "dd", "ss", "cl", "ca", "bb"], want / 1.1, 6, "raiders", tl)   # (a tenth kept back for their refits: make_variant below)
         f.reward = round(strength(f.ships) * 0.35 / 500.0) * 500
     if f.ships.is_empty(): f.ships.append(new_ship("pt" if fac == "raiders" else "corvette", null, f.fac, tl))
     f.capt = {"patrol": randi_range(1, 5), "convoy": randi_range(1, 3), "raiders": randi_range(1, 4), "bounty": randi_range(4, 7), "mission": randi_range(3, 6)}.get(f.kind, randi_range(1, 4))
@@ -852,7 +886,7 @@ func maintain_fleets(initial: bool) -> void:
     for h in perk("hunted", []):
         if G.day > int(h.get("until", 0)): continue
         var have: int = G.fleets.filter(func(f): return f.get("hunter", false) and f.name == h.name).size()
-        if have < int(h.max) and not initial and randf() < float(h.every): spawn_hunter(h)
+        if have < int(h.max) and not initial and G.day > HUNT_GRACE and randf() < float(h.every): spawn_hunter(h)   # (not in the first HUNT_GRACE days)
     if count.call("bounty") < 2 and (initial or randf() < 0.08):
         var f = spawn_fleet("bounty", "raiders", initial)
         if not initial: toast.emit("Bounty posted on %s: %s." % [f.captain, fmt(f.reward)])
@@ -868,7 +902,9 @@ func spawn_hunter(h: Dictionary) -> Dictionary:
         pos = water_point(8, Vector2(P.x, P.y), 420.0)
     f.x = pos.x; f.y = pos.y; f.home = {"x": pos.x, "y": pos.y}
     var tl = enemy_tech(fac_era(fac)); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
-    f.ships = build_by_budget(pool, float(h.budget) * (1.0 + G.day / 200.0), 4, fac, tl)
+    # sized to the squadron it is sent after (HUNT_K), no bigger than the origin's budget for it (which grows with the date)
+    var cap: float = float(h.budget) * (1.0 + G.day / 200.0)
+    f.ships = build_to_strength(pool, clampf(HUNT_K * strength(G.fleet), minf(HUNT_FLOOR, cap), cap), 4, fac, tl)
     if f.ships.is_empty(): f.ships.append(new_ship("dd", null, fac, tl))
     f.capt = randi_range(4, 7)   # they send a good man after you
     G.fleets.append(f)

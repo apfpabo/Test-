@@ -379,7 +379,13 @@ func _decisions() -> void:
 	# resting in port: the world moves, and nothing can bring you to action alongside
 	G.fleets.clear(); G.cargo.food = 500.0; G.credits = 100000.0
 	var cv := _fleet("convoy", "combine", w.x + 600.0, w.y, ["freighter"]); cv.capt = 2
-	var far := Campaign.water_point(8.0, Vector2(w.x + 600.0, w.y), 200.0); cv.x = far.x; cv.y = far.y; var cx: float = cv.x; var cy: float = cv.y
+	var far := Campaign.water_point(8.0, Vector2(w.x + 600.0, w.y), 200.0)
+	for i in 20:   # open water she can sail from (a random point can fall in a pocket no route leaves)
+		cv.x = far.x; cv.y = far.y
+		var to := Campaign.water_point(6.0, far, 300.0)
+		if Campaign.set_course(cv, to.x, to.y): break
+		far = Campaign.water_point(8.0, Vector2(w.x + 600.0, w.y), 200.0)
+	cv.route = null; cv.home = {"x": far.x, "y": far.y}; var cx: float = cv.x; var cy: float = cv.y
 	var foe := _fleet("raiders", "raiders", w.x + 3.0, w.y, ["dd"]); var met := [0]
 	var cb := func(_f): met[0] += 1
 	Campaign.encounter.connect(cb)
@@ -1224,4 +1230,22 @@ func _grace() -> void:
 	G.day = Campaign.BOUNTY_GRACE + 1
 	for i in 5: b.cool = 0.0; P.cool = 0.0; G.dayF = 0.0; Campaign.paused = false; Campaign.update(0.05)
 	ok(b.get("chasing", false), "after day %d it does" % Campaign.BOUNTY_GRACE)
+	# forces that come looking for you are sized to you: bounty squadrons and an origin's hunters
+	for want in [["co_flower"], ["dd_fletcher", "dd_fletcher", "cl_cleveland"], ["bb_iowa", "ca_baltimore", "ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"]]:
+		G.fleet = []
+		for t in want: G.fleet.append(Campaign.new_ship(t, null, "player", []))
+		var me: float = Campaign.strength(G.fleet); var lo := INF; var hi := 0.0
+		for i in 12:
+			var f := Campaign.spawn_fleet("bounty", "raiders"); var k: float = Campaign.strength(f.ships) / me
+			lo = minf(lo, k); hi = maxf(hi, k); G.fleets.erase(f)
+		var floor_k: float = Campaign.BOUNTY_FLOOR / me
+		ok(lo >= minf(0.55, floor_k * 0.5) and hi <= maxf(3.6, floor_k * 2.0), "bounty squadrons against %d ships worth %s come at %.2f to %.2f times their strength" % [want.size(), Campaign.fmt(int(me)), lo, hi])
+	Campaign.new_game("survivor"); G = Campaign.G
+	var h: Dictionary = (Campaign.perk("hunted", []) as Array)[0]; h.every = 1.0
+	G.day = 10; Campaign.maintain_fleets(false)
+	ok(not G.fleets.any(func(f): return f.get("hunter", false)), "no hunters are sent after a Survivor before day %d" % Campaign.HUNT_GRACE)
+	G.day = Campaign.HUNT_GRACE + 5; Campaign.maintain_fleets(false)
+	var hs: Array = G.fleets.filter(func(f): return f.get("hunter", false))
+	var hk: float = Campaign.strength(hs[0].ships) / Campaign.strength(G.fleet) if not hs.is_empty() else 0.0
+	ok(not hs.is_empty() and hk > 0.8 and hk < 3.0, "after that they come, about %.1f times as strong as her destroyer (%.2f)" % [Campaign.HUNT_K, hk])
 	sections += 1

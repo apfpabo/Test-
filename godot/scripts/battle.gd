@@ -263,7 +263,9 @@ func _unhandled_input(e: InputEvent) -> void:
             if mb.pressed: drag = {"at": mb.position, "cam": camera.position, "moved": false, "btn": mb.button_index}
             else:
                 if not drag.is_empty() and not drag.moved and drag.btn == MOUSE_BUTTON_RIGHT:
-                    if not _lock_at_mouse() and (sim.lock != null or sim.autofire): sim.lock = null; sim.autofire = false; sim.say("Check fire.", 1.4)
+                    var own = _own_at_mouse()
+                    if own != null and not sim.editor: _ship_menu(own, mb.position)   # a ship of yours: her radar and sonar
+                    elif not _lock_at_mouse() and (sim.lock != null or sim.autofire): sim.lock = null; sim.autofire = false; sim.say("Check fire.", 1.4)
                 drag = {}
             return
         if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -307,6 +309,46 @@ func _order(o: String, all_msg: String, what: String) -> void:
     if _sel().is_empty(): sim.order = o; sim.say(all_msg, 2.0); return
     for x in _sel(): x.ord = o
     sim.say("%s: %s." % [_sel_names(), what], 2.0)
+
+## The ship of yours under the pointer (the flagship too), or null.
+func _own_at_mouse():
+    var m: Vector2 = world.get_global_mouse_position(); var best = null; var bd := INF
+    for o in sim.ships:
+        if o.side != 0 or not sim.active(o): continue
+        var d: float = o.pos.distance_to(m)
+        if d < maxf(26.0 / zoom(), o.d.L * 0.55) and d < bd: bd = d; best = o
+    return best
+## Radar and sonar, ship by ship or for the squadron (right-click a ship of yours; Y and U do the same from the keys).
+## Radar off: she sees by eye alone, but no enemy set picks hers up. Sonar passive: she only listens, and hears a
+## boat close to; pinging finds a dived boat far off and tells every hydrophone about where the pinger is.
+var ship_menu: PopupMenu
+func _ship_menu(s: BattleSim.CShip, at: Vector2) -> void:
+    if ship_menu == null:
+        ship_menu = PopupMenu.new(); ship_menu.theme = UI.theme(); hud.add_child(ship_menu)
+        ship_menu.id_pressed.connect(func(id: int): _sensor_cmd(id, ship_menu.get_meta("ship")))
+    ship_menu.clear(); ship_menu.set_meta("ship", s)
+    ship_menu.add_separator(s.rec.name)
+    if sim.radar_fitted(s): ship_menu.add_item("Radar: switch off (seen by eye alone; her set is not picked up)" if s.radar_on else "Radar: switch on", 1)
+    else: ship_menu.add_item("No radar" if not s.sub else "No radar (a boat listens)", 90); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
+    if sim.has_sonar(s): ship_menu.add_item("Sonar: go passive (listen only; nothing hears her)" if s.sonar_on else "Sonar: start pinging (finds dived boats; gives her away)", 2)
+    else: ship_menu.add_item("No sonar", 91); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
+    ship_menu.add_separator("The squadron")
+    ship_menu.add_item("All radar off", 3); ship_menu.add_item("All radar on", 4); ship_menu.add_item("All sonar passive", 5); ship_menu.add_item("All sonar pinging", 6)
+    ship_menu.position = Vector2i(at) + Vector2i(get_window().position if not get_window().is_embedded() else Vector2i.ZERO); ship_menu.reset_size(); ship_menu.popup()
+func _sensor_cmd(id: int, s) -> void:
+    var all: Array = sim.ships.filter(func(o): return o.side == 0 and sim.active(o))
+    match id:
+        1:
+            if s != null: s.radar_on = not s.radar_on; sim.say("%s: radar %s." % [s.rec.name, "on" if s.radar_on else "off"], 1.6)
+        2:
+            if s != null: s.sonar_on = not s.sonar_on; s.ping_t = 0.0; sim.say("%s: %s." % [s.rec.name, "pinging" if s.sonar_on else "sonar silent, listening"], 1.6)
+        3, 4:
+            for o in all: o.radar_on = id == 4
+            sim.say("All ships: radar %s." % ("on" if id == 4 else "off"), 1.6)
+        5, 6:
+            for o in all:
+                if sim.has_sonar(o): o.sonar_on = id == 6; o.ping_t = randf() * 2.0
+            sim.say("All ships: %s." % ("pinging" if id == 6 else "sonar silent, listening"), 1.6)
 
 func _lock_at_mouse() -> bool:
     var m = world.get_global_mouse_position(); var best: BattleSim.CShip = null; var bd = INF
@@ -383,6 +425,12 @@ func _key(k: int) -> void:
             if s and sim.counter_flood(s): sim.say("Counter-flooding: she comes upright, and sits deeper for it.", 2.2)
             elif s: sim.say("She has no list worth righting.", 1.0)
         KEY_H: set_clean(not clean)
+        KEY_Y, KEY_U:   # radar (Y) and sonar (U): the ships picked out, else the flagship
+            var who: Array = _sel() if not _sel().is_empty() else ([s] if s else [])
+            for o in who:
+                if k == KEY_Y and sim.radar_fitted(o): _sensor_cmd(1, o)
+                elif k == KEY_U and sim.has_sonar(o): _sensor_cmd(2, o)
+                else: sim.say("%s has no %s." % [o.rec.name, "radar" if k == KEY_Y else "sonar"], 1.2)
         KEY_F9: if editor != null: editor.panel.visible = not editor.panel.visible
         KEY_K:
             if s == null or not sim.can_smoke(s): sim.say("This ship cannot make smoke.", 1.2)
@@ -1176,6 +1224,23 @@ class Drawer extends Node2D:
             var p: Vector2 = e.paint_pos; var r: float = 7.0 * mn
             draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r), p + Vector2(r, 0), p + Vector2(0, r), p + Vector2(-r, 0)]), Color(green, 0.25 + 0.6 * k))
             draw_arc(p, r * (1.6 + 1.2 * (1.0 - k)), 0, TAU, 20, Color(green, 0.5 * k), 1.2 * mn)
+        # sonar pings running out over the sea: yours always; the enemy's when your hydrophones have heard them; the
+        # echo off a dived boat (blue: a boat you have found; red, on a boat of yours: she has been found)
+        for p in sim.pings:
+            var mine_p: bool = p.side == 0
+            if p.echo:
+                var kk: float = clampf(1.0 - float(p.r) / 260.0, 0.0, 1.0); var ec: Color = blue if mine_p else Color(1.0, 0.45, 0.35)
+                draw_arc(p.pos, float(p.r) * 0.5 + 6.0 * mn, 0, TAU, 28, Color(ec, 0.85 * kk), 1.6 * mn)
+                draw_arc(p.pos, float(p.r) + 8.0 * mn, 0, TAU, 32, Color(ec, 0.4 * kk), 1.0 * mn)
+                continue
+            if not mine_p and (p.who == null or p.who.heard_t > BattleSim.HEARD_FOR): continue
+            var r: float = p.r; var mx: float = p.max; var col: Color = blue if mine_p else Color(1.0, 0.6, 0.4)
+            # strong while it can still find a boat, a ghost of itself beyond (where it is only heard)
+            var a: float = (0.85 * (1.0 - 0.5 * r / mx)) if r <= mx else 0.2 * clampf(1.0 - (r - mx) / (mx * (BattleSim.PING_HEAR - 1.0)), 0.0, 1.0)
+            if a <= 0.01 or r < 4.0: continue
+            for j in 3:
+                var rj: float = r - j * 26.0
+                if rj > 2.0: draw_arc(p.pos, rj, 0, TAU, clampi(int(rj * battle.zoom() * 0.5), 24, 160), Color(col, a * (1.0 - j * 0.33)), (2.2 - 0.5 * j) * mn)
         if not Settings.sensors: return
         var ang := sim.radar_angle(); var labelled := false
         for o in sim.ships:
@@ -1195,7 +1260,7 @@ class Drawer extends Node2D:
                     draw_line(ro, ro + Vector2.from_angle(ang) * rr, Color(green, 0.55 if mine else 0.22), 1.2 * mn)
                 if mine:
                     battle.hud_text(self, ro + Vector2(0, -rr - 8.0 * mn), "RADAR %.1f km%s" % [rr / 1000.0, " · phased array" if sim.phased(o) else ""], Color(green, 0.8), mn)
-            var sr := sim.sonar_range(o)
+            var sr := sim.sonar_range(o) if o.sonar_on else 0.0   # silent: no ring (she hears only close to)
             if sr > 0.0:
                 draw_arc(o.pos, sr, 0, TAU, 64, Color(blue, 0.45 if mine else 0.2), mn)
                 if mine: battle.hud_text(self, o.pos + Vector2(0, sr + 16.0 * mn), "SONAR %.1f km" % (sr / 1000.0), Color(blue, 0.85), mn)

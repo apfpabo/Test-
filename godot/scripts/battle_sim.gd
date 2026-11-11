@@ -77,6 +77,11 @@ class CShip:
     var dive = 0.0
     var want_dive = false
     var reveal_t = 0.0
+    var radar_on := true    # her search radar radiating (off: she sees by eye alone, and no one hears her set)
+    var sonar_on := true    # her active sonar pinging (off: she only listens; a boat starts so)
+    var ping_t := 0.0       # until her next ping
+    var held_t := 99.0      # a submerged boat: seconds since a ping last found her
+    var heard_t := 99.0     # seconds since an enemy heard her ping (it gives her away)
     var lit_t = 99.0       # seconds since her own guns last fired: gun flashes give a ship away in the dark
     var radar_only := false   # an enemy held by your radar alone, beyond the eye's reach (see BattleSim._radar_plot)
     var paint_t := 99.0       # battle seconds since a radar sweep last painted her
@@ -340,6 +345,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
+    s.sonar_on = not s.sub; s.ping_t = randf() * PING_PERIOD   # a boat listens and keeps quiet until told to ping
     s.cq = crew_level(float(rec.get("xp", 1.0)))
     # what she is loaded with tells at sea, whoever's she is (owner's decision: other navies are held to the same rules)
     fit_mounts(s)
@@ -484,13 +490,61 @@ func use_round(m: Mount, n := 1) -> bool:
 
 func submerged(s: CShip) -> bool: return s.sub and s.dive > 0.6
 
+## A boat that has dived is found by sound alone (owner's direction, 11 Nov 2026), and sound cuts both ways.
+## *Active*: a ship with sonar switched on pings every PING_PERIOD seconds; the ping runs out as a ring (`pings`) and a
+## submerged boat it reaches inside `sonar_range` is held for PING_HOLD seconds. But a ping is heard PING_HEAR times as
+## far as it finds: every hydrophone of the other side in that distance knows where the pinger is (`heard_t`), a
+## surface ship lost in the dark or a boat that pings herself alike. *Passive*: with the set silent a ship only
+## listens, and hears a boat close to and by the noise she makes: a boat creeping is all but silent, one running fast
+## submerged is heard some way off; a listener steaming hard hears less. A ship with no sonar has only her lookouts,
+## for a periscope close aboard.
+const PING_PERIOD := 8.0
+const PING_SPEED := 650.0   # how fast the ring runs out, metres a battle second (it is drawn, and found by, as it passes)
+const PING_HOLD := 14.0
+const PING_HEAR := 2.5
+const HEARD_FOR := 12.0
+const RADAR_HEARD := 1.25   # a radiating set is picked up this many times as far as it sees, by a ship that has a set of her own
+var pings: Array = []       # {pos, r, max, side, who, echo}: rings on the water, for finding and for drawing
+func radar_fitted(s: CShip) -> bool: return not s.sub and (s.tech.has("radar") or upg(s, "radar") > 0)
+func has_sonar(s: CShip) -> bool: return s.sub or bool(s.d.get("sonar", false))
+func pinging(s: CShip) -> bool: return has_sonar(s) and s.sonar_on and active(s)
+## How far a listener hears a submerged boat with her set silent.
+func passive_range(o: CShip, sb: CShip) -> float:
+    if not has_sonar(o): return 250.0
+    var top: float = float(sb.d.get("subKn", sb.d.kn * 0.4)) * KN
+    var noise: float = 0.4 + 1.7 * clampf(sb.v / maxf(top, 0.1), 0.0, 1.0)
+    var own: float = clampf(o.v / maxf(float(o.d.kn) * KN, 0.1), 0.0, 1.0)
+    return 420.0 * (1.4 if o.sub else 1.0) * noise * (0.6 if own > 0.7 else 1.0) * (1.0 + 0.3 * upg(o, "sonar"))
 func detected_by(sb: CShip, side: int) -> bool:
     if not submerged(sb) or sb.reveal_t > 0: return true
+    if sb.held_t < PING_HOLD or sb.heard_t < HEARD_FOR: return true   # found by a ping, or given away by her own
     for o in ships:
         if o.side != side or not active(o): continue
-        var dd = o.pos.distance_to(sb.pos)
-        if dd < 500.0 or dd < sonar_range(o): return true  # a surface ship's sonar, or a boat's hydrophones hearing another
+        if o.pos.distance_to(sb.pos) < passive_range(o, sb): return true
     return false
+## The pings: sent, running out, finding boats and being heard. Each step.
+func _sonar_tick(dt: float) -> void:
+    for s in ships:
+        s.held_t += dt; s.heard_t += dt
+        if not pinging(s): continue
+        s.ping_t -= dt
+        if s.ping_t > 0.0: continue
+        s.ping_t = PING_PERIOD
+        pings.append({"pos": s.pos, "r": 0.0, "max": sonar_range(s), "side": s.side, "who": s, "echo": false})
+        if s == flag: sound("ping", s.pos, 0.5)
+    for i in range(pings.size() - 1, -1, -1):
+        var p: Dictionary = pings[i]; var r0: float = p.r; p.r += PING_SPEED * dt * (0.6 if p.echo else 1.0)
+        if p.echo:
+            if p.r > 260.0: pings.remove_at(i)
+            continue
+        for o in ships:
+            if o.side == p.side or not active(o): continue
+            var d: float = o.pos.distance_to(p.pos)
+            if d <= r0 or d > p.r: continue   # the ring passes her this step
+            if submerged(o) and d <= float(p.max):
+                o.held_t = 0.0; pings.append({"pos": o.pos, "r": 0.0, "max": 260.0, "side": p.side, "who": o, "echo": true})   # the echo comes back
+            if has_sonar(o) and p.who != null: (p.who as CShip).heard_t = 0.0   # and she has heard who sent it
+        if p.r > float(p.max) * PING_HEAR: pings.remove_at(i)
 
 ## Whether a side can see a ship. Submarines as before (sonar). In bad visibility or at night a surface ship is seen
 ## only within sight of some ship of that side: the eye's reach in this weather, or the radar's for a ship that has
@@ -499,7 +553,7 @@ func detected_by(sb: CShip, side: int) -> bool:
 ## none (they listen: sonar). Sets of the first two eras turn a beam round the horizon, about six turns a minute, and
 ## see a contact once each turn; phased arrays (the Aegis research) look every way at once.
 const RADAR_PERIOD := 10.0   # battle seconds for one turn of a rotating aerial
-func has_radar(s: CShip) -> bool: return not s.sub and (s.tech.has("radar") or upg(s, "radar") > 0)
+func has_radar(s: CShip) -> bool: return s.radar_on and radar_fitted(s)   # a set switched off sees nothing (and is not heard)
 func phased(s: CShip) -> bool: return s.tech.has("aegis")
 ## Where a ship's search aerial stands: her foremast (the plan's `mast`), a carrier's island, else her bridge.
 func radar_pos(o: CShip) -> Vector2:
@@ -539,12 +593,20 @@ func _radar_plot(dt: float) -> void:
             if o.pos.distance_squared_to(e.pos) > r * r: continue
             # the beam turned from a0 to a1 this step: did it cross her bearing?
             if phased(o) or fposmod((e.pos - radar_pos(o)).angle() - a0, TAU) <= a1 - a0 + 0.0001: e.paint_t = 0.0; e.paint_pos = e.pos; break
+        if e.paint_t > 0.0 and (_radar_heard(e, 0) or e.heard_t < HEARD_FOR): e.paint_t = 0.0; e.paint_pos = e.pos   # her own set, or her ping, gives a steady bearing
 
 func sight(o: CShip) -> float:
     var v: float = float(wx.vis)
     if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 if o.tech.has("datalink") else 1.0))
     return v
 func limited() -> bool: return float(wx.vis) > 0.0
+## Is a ship's radiating radar picked up by a side? By any of its ships that carries a set (on or off), within
+## RADAR_HEARD times the distance her radar sees.
+func _radar_heard(s: CShip, side: int) -> bool:
+    if not has_radar(s) or submerged(s): return false
+    var r: float = sight(s) * RADAR_HEARD
+    for o in ships: if o.side == side and active(o) and radar_fitted(o) and o.pos.distance_squared_to(s.pos) < r * r: return true
+    return false
 # ------------------------------------------------------------------ star shell
 ## At night a ship with guns can fire star shell: a flare that hangs over a patch of sea for half a minute and shows
 ## every ship under it as daylight would, to both sides. The ship that fires it gives herself away by the flash.
@@ -615,6 +677,7 @@ func visible_to(s: CShip, side: int) -> bool:
     if s.sub and not detected_by(s, side): return false
     var lim := limited()
     if not lim and screens.is_empty(): return true
+    if s.heard_t < HEARD_FOR or _radar_heard(s, side): return true   # what she sends out, sound or radar, tells where she is
     var show: float = 2.0 if (s.lit_t < 6.0 or not s.fires.is_empty() or s.mag_fire > 0) else 1.0
     var eye: float = float(wx.vis) * show
     if lim and not flares.is_empty() and star_lit(s.pos): eye = maxf(eye, STAR_REACH * (0.35 if wx.get("fog", false) else 1.0))   # under a flare she shows as by day
@@ -1744,7 +1807,7 @@ func step(dtv: float) -> void:
     t += dt; vt += dtv
     small_craft = [false, false]
     for s in ships: if active(s) and (s.d.kind == "pt" or s.d.kind == "sub"): small_craft[s.side] = true
-    _radar_plot(dt); _smoke_tick(dt); _star_tick(dt)
+    _radar_plot(dt); _smoke_tick(dt); _star_tick(dt); _sonar_tick(dt)
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue

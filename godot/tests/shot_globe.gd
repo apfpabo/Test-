@@ -19,6 +19,8 @@ func _process(_d: float) -> void:
     var g = map.globe
     if f == 5:
         Campaign.set_course(Campaign.G.player, Campaign.lon_x(25.0), Campaign.lat_y(45.0))
+        Campaign.G.wars[Diplomacy.pair("concord", "directorate")] = int(Campaign.G.day) - 12   # a war to show
+        for fl in Campaign.G.fleets.slice(0, 12): fl.vis = true
         map.zoom = 0.14; map._zoom_at(1.0 / 1.12, Vector2(700, 430))
         ok(g.is_open(), "scrolling out past the chart's widest view opens the globe")
     if f == 40:

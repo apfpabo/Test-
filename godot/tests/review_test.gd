@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying()
-	ok(sections == 14, "every section ran to its end (%d of 14)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound()
+	ok(sections == 15, "every section ran to its end (%d of 15)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -938,4 +938,53 @@ func _flying() -> void:
 	var gashes := 0
 	for m in bb.marks: if m.get("gash", false): gashes += 1
 	ok(gashes == 1, "twelve heavy hits in one place leave one gash, widened, not twelve across each other (%d)" % gashes)
+	sections += 1
+
+## Submarines are found by sound, and sound cuts both ways: an active ping finds a dived boat far off and tells every
+## hydrophone where the pinger is; a silent ship only hears a boat close to, and a creeping boat hardly at all. Radar
+## can be switched off, and a radiating set is picked up farther than it sees.
+func _sound() -> void:
+	seed(41)
+	var sim := _sim(["dd_fletcher"], ["ss_vii"]); var dd = sim.ships[0]; var boat = sim.ships[1]
+	for x in sim.ships: x.ai_off = true
+	sim.hold_fire = true; boat.hold = true; boat.dive = 1.0; boat.want_dive = true; boat.v = 0.5; boat.throttle = 0; dd.v = 3.0; dd.throttle = 1
+	var rng: float = sim.sonar_range(dd)
+	dd.pos = Vector2(8000, 8000); boat.pos = dd.pos + Vector2(rng * 0.8, 0); dd.ping_t = 0.0
+	ok(not sim.detected_by(boat, 0), "a dived boat lying quiet %.0f m off is not found until a ping reaches her" % (rng * 0.8))
+	var found_at := -1.0
+	for i in 200:
+		sim._sonar_tick(0.05)
+		if found_at < 0.0 and sim.detected_by(boat, 0): found_at = (i + 1) * 0.05
+	ok(found_at > 0.5 and found_at < 6.0 and dd.heard_t < BattleSim.HEARD_FOR, "the ping runs out to her, finds her (%.1f s) and the boat hears who sent it" % found_at)
+	dd.sonar_on = false
+	for i in 400: sim._sonar_tick(0.05)
+	ok(not sim.detected_by(boat, 0) and dd.heard_t > BattleSim.HEARD_FOR, "with the sonar silent the contact is lost, and the destroyer is no longer heard")
+	var creep: float = sim.passive_range(dd, boat); boat.v = float(boat.d.get("subKn", boat.d.kn * 0.4)) * BattleSim.KN
+	var run: float = sim.passive_range(dd, boat)
+	ok(run > creep * 2.5 and creep < 300.0, "listening only, a creeping boat is heard at %.0f m and one running hard at %.0f m" % [creep, run])
+	boat.pos = dd.pos + Vector2(run * 0.9, 0)
+	ok(sim.detected_by(boat, 0), "so a boat running fast close by is heard without a ping")
+	boat.v = 0.5; boat.pos = dd.pos + Vector2(rng * 2.0, 0); boat.sonar_on = true; boat.ping_t = 0.0
+	for i in 200: sim._sonar_tick(0.05)
+	ok(sim.detected_by(boat, 0) and boat.heard_t < BattleSim.HEARD_FOR, "a boat that pings gives herself away to a destroyer twice her sonar's range off")
+	# at night a pinging destroyer is heard by a boat that cannot see her
+	var night := {"sea": 0, "fog": false, "night": true, "moon": 0.0}
+	sim = _sim(["ss_gato"], ["dd_narvik"], Weather.battle(night)); var mine = sim.ships[0]; var foe = sim.ships[1]
+	for x in sim.ships: x.ai_off = true
+	foe.tech = []; foe.radar_on = false; mine.dive = 1.0; mine.want_dive = true
+	mine.pos = Vector2(8000, 8000); foe.pos = mine.pos + Vector2(float(sim.wx.vis) * 1.15, 0); foe.sonar_on = false; foe.lit_t = 99.0
+	ok(not sim.visible_to(foe, 0), "at night a silent destroyer beyond the lookouts' reach is not seen (%.0f m, sight %.0f m)" % [mine.pos.distance_to(foe.pos), float(sim.wx.vis)])
+	foe.sonar_on = true; foe.ping_t = 0.0
+	for i in 200: sim._sonar_tick(0.05)
+	ok(mine.pos.distance_to(foe.pos) < sim.sonar_range(foe) * BattleSim.PING_HEAR and sim.visible_to(foe, 0), "but once she pings, the boat's hydrophones have her")
+	# radar: off sees nothing and is not heard; on, it is picked up farther than it sees
+	sim = _sim(["ca_baltimore"], ["ca_hipper"], Weather.battle(night)); var a = sim.ships[0]; var b = sim.ships[1]
+	a.tech = ["radar"]; b.tech = ["radar"]; a.lit_t = 99.0; b.lit_t = 99.0
+	a.pos = Vector2(8000, 8000); b.pos = a.pos + Vector2(sim.sight(b) * 1.15, 0); a.radar_on = false   # yours listens with her own set switched off
+	ok(sim.has_radar(b) and sim.visible_to(b, 0) and not sim.visible_to(a, 1), "a radiating ship is picked up beyond her own radar's reach by one that keeps her set off, and does not see who has her")
+	b.radar_on = false
+	ok(not sim.has_radar(b) and sim.radar_fitted(b) and not sim.visible_to(b, 0), "with her set switched off she is not picked up there")
+	a.radar_on = true; b.pos = a.pos + Vector2(sim.sight(a) * 0.8, 0)
+	ok(sim.visible_to(b, 0), "inside the other's radar she is seen whatever she does")
+	ok(sim.visible_to(a, 1), "and the ship that radiates there is known to her, set off or not")
 	sections += 1

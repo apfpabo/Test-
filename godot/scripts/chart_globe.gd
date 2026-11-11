@@ -85,6 +85,10 @@ func _process(d: float) -> void:
     lon0 = wrapf(lon0, -PI, PI)
     mat.set_shader_parameter("size", size); mat.set_shader_parameter("mid", centre()); mat.set_shader_parameter("radius", radius())
     mat.set_shader_parameter("centre", Vector2(lon0, lat0)); mat.set_shader_parameter("fade", _ease(shown))
+    # the hour and the weather, as the chart has them
+    var t: float = Weather.now()
+    mat.set_shader_parameter("day_frac", fposmod(t, 1.0)); mat.set_shader_parameter("winter_n", Weather.winter(0.0, t)); mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
+    if map.wx_tex != null: mat.set_shader_parameter("wx", map.wx_tex); mat.set_shader_parameter("has_wx", true)
     marks.modulate.a = _ease(shown); marks.queue_redraw()
     # the chart's own names, scales and dock button belong to the flat chart: away while the world is shown
     map.overlay.visible = shown < 0.5; map.dock.modulate.a = 1.0 - _ease(shown); map.world.visible = shown < 0.999
@@ -148,6 +152,19 @@ func _stand(fac: String) -> Array:
     var rep: float = float(Campaign.G.rep.get(fac, 0))
     return ["friendly", UI.GREEN] if rep >= 25.0 else ["neutral", UI.DIM]
 
+## A line between two places over the curve of the world (the short way round), drawn where it faces you.
+func _arc(ci: Control, a: Dictionary, b: Dictionary, col: Color) -> void:
+    var va := _vec(a.x, a.y); var vb := _vec(b.x, b.y); var prev = null
+    for i in 33:
+        var v: Vector3 = va.slerp(vb, i / 32.0)
+        var x: float = (rad_to_deg(atan2(v.z, v.x)) + 180.0) * float(Campaign.DEG); var y: float = (float(Campaign.LAT0) - rad_to_deg(asin(clampf(v.y, -1.0, 1.0)))) * float(Campaign.DEG)
+        var q := project(x, y)
+        if prev != null and q.z > 0.0 and prev.z > 0.0 and i % 2 == 1: ci.draw_line(Vector2(prev.x, prev.y), Vector2(q.x, q.y), col, 1.6, true)   # dashed
+        prev = q
+func _vec(x: float, y: float) -> Vector3:
+    var lon: float = lon_of(x); var lat: float = lat_of(y)
+    return Vector3(cos(lat) * cos(lon), sin(lat), cos(lat) * sin(lon))
+
 func draw_marks(ci: Control) -> void:
     var G: Dictionary = Campaign.G; var f13: Font = UI.font("regular"); var fc: Font = UI.font("cond"); var r := radius(); var c := centre()
     # the sea lanes you are bound along: the course in hand, laid over the curve of the world
@@ -158,6 +175,34 @@ func draw_marks(ci: Control) -> void:
             var wp: Vector2 = route[i]; var q := project(wp.x, wp.y)
             if q.z > 0.0 and prev.z > 0.0: ci.draw_line(Vector2(prev.x, prev.y), Vector2(q.x, q.y), Color(UI.GOLD, 0.55), 1.5, true)
             prev = q
+    # wars between the powers: a red line over the curve of the world from capital to capital
+    var caps := {}
+    for p in G.ports: if p.get("capital", false) and not caps.has(p.fac): caps[p.fac] = p
+    var wars: Array = []
+    for key in G.get("wars", {}):
+        var ab: PackedStringArray = String(key).split("|")
+        if ab.size() != 2: continue
+        wars.append([ab[0], ab[1], int(G.wars[key])])
+        if caps.has(ab[0]) and caps.has(ab[1]): _arc(ci, caps[ab[0]], caps[ab[1]], Color(UI.RED, 0.75))
+    # land structures, when the world is near enough to tell them apart: a small square in its holder's colour
+    if k >= 1.25:
+        for st in Structures.all():
+            if st.get("nuked", false) or String(st.get("fac", "")) == "": continue
+            var q := project(st.x, st.y)
+            if q.z <= 0.1: continue
+            var at := Vector2(q.x, q.y); var col := UI.GOLD if st.fac == "player" else _col(st.fac); var a: float = clampf(q.z * 3.0, 0.0, 1.0)
+            ci.draw_rect(Rect2(at - Vector2(2.6, 2.6), Vector2(5.2, 5.2)), Color(0.02, 0.05, 0.06, 0.8 * a)); ci.draw_rect(Rect2(at - Vector2(1.7, 1.7), Vector2(3.4, 3.4)), Color(col, 0.9 * a))
+    # fleets you have in sight (and your own detached ones): a small wedge in its flag's colour, red-edged if it is hostile to you
+    for f in G.fleets:
+        var own: bool = String(f.get("fac", "")) == "player"
+        if not own and not f.get("vis", false): continue
+        var q := project(f.x, f.y)
+        if q.z <= 0.06: continue
+        var at := Vector2(q.x, q.y); var a: float = clampf(q.z * 3.0, 0.0, 1.0); var col := UI.GOLD if own else _col(f.fac)
+        var h: float = float(f.get("h", 0.0)); var dir := Vector2.from_angle(h); var sz: float = 5.0 * clampf(sqrt(k), 0.9, 1.5)
+        var tri := PackedVector2Array([at + dir * sz, at - dir * sz * 0.7 + dir.orthogonal() * sz * 0.6, at - dir * sz * 0.7 - dir.orthogonal() * sz * 0.6])
+        ci.draw_colored_polygon(tri, Color(col, a))
+        tri.append(tri[0]); ci.draw_polyline(tri, Color(UI.RED if (not own and Campaign.hostile_fleet(f)) else Color(0.02, 0.05, 0.06), 0.9 * a), 1.0, true)
     # ports: a dot in its power's colour, a ring round a capital, a red ring if that power is at war with you
     var named: Array = []
     for p in G.ports:
@@ -210,5 +255,22 @@ func draw_marks(ci: Control) -> void:
         ci.draw_circle(Vector2(x + 5, y - 4), 4.5, _col(fac))
         ci.draw_string(f13, Vector2(x + 18, y), String(GameData.fac[fac].name), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UI.INK)
         ci.draw_string(f13, Vector2(x + 240, y), "%d port%s · %s" % [row[1], "" if row[1] == 1 else "s", st[0]], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, st[1])
+    # the wars now being fought, and the hour where the world faces you
+    var wy := 74.0; var wx_: float = size.x - 330.0
+    ci.draw_string(fc, Vector2(wx_, wy), "AT WAR", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM)
+    if wars.is_empty() and not rows.any(func(r_): return r_[0] != "player" and Campaign.at_war(r_[0])): wy += 18.0; ci.draw_string(f13, Vector2(wx_, wy), "The powers are at peace.", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UI.DIM)
+    for w in wars:
+        if not GameData.fac.has(w[0]) or not GameData.fac.has(w[1]): continue
+        wy += 18.0
+        ci.draw_circle(Vector2(wx_ + 5, wy - 4), 4.5, _col(w[0])); ci.draw_circle(Vector2(wx_ + 17, wy - 4), 4.5, _col(w[1]))
+        ci.draw_string(f13, Vector2(wx_ + 30, wy), "%s · %s" % [GameData.fac[w[0]].get("short", w[0]), GameData.fac[w[1]].get("short", w[1])], HORIZONTAL_ALIGNMENT_LEFT, 230, 13, UI.INK)
+        ci.draw_string(f13, Vector2(wx_ + 230, wy), "%d days" % maxi(0, int(G.day) - int(w[2])), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.RED)
+    for row in rows:
+        if row[0] == "player" or not Campaign.at_war(row[0]): continue
+        wy += 18.0
+        ci.draw_circle(Vector2(wx_ + 5, wy - 4), 4.5, _col(row[0])); ci.draw_circle(Vector2(wx_ + 17, wy - 4), 4.5, UI.GOLD)
+        ci.draw_string(f13, Vector2(wx_ + 30, wy), "%s · you" % GameData.fac[row[0]].get("short", row[0]), HORIZONTAL_ALIGNMENT_LEFT, 230, 13, UI.RED)
+    var hr: float = fposmod(fposmod(Weather.now(), 1.0) * 24.0 + rad_to_deg(lon0) / 15.0, 24.0)
+    ci.draw_string(f13, Vector2(22, 112), "%s · %02d:%02d where the world faces you · fleets shown are those you have in sight" % [Campaign.date_str(int(G.day)), int(hr), int(fmod(hr, 1.0) * 60.0)], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM)
     ci.draw_string(fc, Vector2(22, 74), "THE WORLD", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, UI.INK)
     ci.draw_string(f13, Vector2(22, 94), "Drag to turn · scroll in, or click a place, to go down to the chart there · Esc: back", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM)

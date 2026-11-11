@@ -132,6 +132,12 @@ func _draw() -> void:
         if s.deck_out > 0: ail.append("flight deck out")
         if s.side == 0 and not s.squads.is_empty(): _wing(sp + Vector2(-_wing(Vector2(-1000, -1000), s, 6.0) / 2.0, -off + 10), s, 6.0)   # centred under her bars
         if s.smoke_on: ail.append("making smoke")
+        if s.side == 0:   # what she is sending out, and whether it has cost her
+            if sim.radar_fitted(s) and not s.radar_on: ail.append("radar off")
+            if s.sub and s.sonar_on: ail.append("pinging")
+            elif not s.sub and sim.has_sonar(s) and not s.sonar_on: ail.append("sonar silent")
+            if sim.submerged(s) and s.held_t < BattleSim.PING_HOLD: ail.append("FOUND BY SONAR")
+            elif s.heard_t < BattleSim.HEARD_FOR and (s.sub or sim.limited()): ail.append("her ping was heard")
         if ail.size(): _text(sp + Vector2(-150, -off - 18), " · ".join(ail), Color(0.93, 0.5, 0.36) if not (ail.size() == 1 and s.smoke_on) else Color(0.8, 0.82, 0.8), 11, HORIZONTAL_ALIGNMENT_CENTER, 300)
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
     # orders and help
@@ -158,7 +164,7 @@ func _draw() -> void:
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     # the keys, wrapped to the width of the window (it ran off the right-hand edge of anything narrower than 2,000 px)
     var hy := 86.0
-    for ln in _wrap(("Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire" + " · " + "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute").split(" · "), W - 32.0, 12):
+    for ln in _wrap(("Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire" + " · " + "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · Y radar · U sonar (right-click a ship of yours for both) · R sensors · P pause · Esc menu · M mute").split(" · "), W - 32.0, 12):
         _text(Vector2(16, hy), ln, Color(INK, 0.45), 12); hy += 15.0
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))

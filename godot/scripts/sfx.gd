@@ -139,6 +139,7 @@ func _engine_loop() -> AudioStreamWAV:
 func event(kind: String, vol: float, rate := 1.0) -> void:
 	if muted or vol < 0.01: return
 	match kind:
+		"ping": _play(_ping_wav(), vol, rate); return
 		"depth": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.55 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol * 0.6, 0.6); return
 		"torp_hit": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.7 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol, 0.8); return
 	if not _rec.has(kind):
@@ -148,6 +149,18 @@ func event(kind: String, vol: float, rate := 1.0) -> void:
 	_play(_rec[kind].pick_random(), vol, rate)
 
 ## vol 0..1, freq picks the nearest bank (lower is heavier), rate scales playback speed.
+## A sonar ping: a clear tone that rings and dies away, and a fainter one after it as if come back off the deep.
+var _ping_s: AudioStreamWAV
+func _ping_wav() -> AudioStreamWAV:
+	if _ping_s != null: return _ping_s
+	var n = int(RATE * 1.6); var out = PackedFloat32Array(); out.resize(n)
+	for i in n:
+		var t = float(i) / RATE
+		var v = sin(TAU * 1450.0 * t) * exp(-t * 4.2) * minf(1.0, t * 400.0)
+		if t > 0.5: v += sin(TAU * 1450.0 * (t - 0.5)) * exp(-(t - 0.5) * 5.0) * 0.22
+		out[i] = v * 0.5
+	_ping_s = _wav(out); return _ping_s
+
 func boom(vol: float, freq := 420.0, rate := 1.0) -> void:
 	if muted or vol < 0.01: return
 	var best = 0

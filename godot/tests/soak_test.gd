@@ -114,6 +114,7 @@ func _fight(f: Dictionary) -> void:
 	sim.flag = null
 	if st.battles % 3 == 1: sim.order = "line"
 	if st.battles % 5 == 2: sim.hold_fire = true
+	_orders(sim, f)
 	var t0 := Time.get_ticks_msec(); var night: bool = sim.wx.night
 	while not sim.finished and sim.t < 7200.0: sim.step(0.02)
 	st.battle_ms += Time.get_ticks_msec() - t0
@@ -135,6 +136,9 @@ func _fight(f: Dictionary) -> void:
 	for s in r.prizes:   # take prizes into the squadron while there is room, as the aftermath screen offers
 		if G.fleet.size() < 10: s.pal = "player"; G.fleet.append(s); Campaign.study_prize(s); st.prizes += 1
 	if not sim.finished: f.cool = 30.0
+
+## A hook for scripts built on this one (tests/tune_probe.gd): orders for the squadron as the action opens.
+func _orders(_sim: BattleSim, _f: Dictionary) -> void: pass
 
 # ------------------------------------------------------------------ in port
 func _dock(p: Dictionary) -> void:

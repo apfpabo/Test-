@@ -961,6 +961,15 @@ func _sound() -> void:
 		sim._sonar_tick(0.05)
 		if found_at < 0.0 and sim.detected_by(boat, 0): found_at = (i + 1) * 0.05
 	ok(found_at > 0.5 and found_at < 6.0 and dd.heard_t < BattleSim.HEARD_FOR, "the ping runs out to her, finds her (%.1f s) and the boat hears who sent it" % found_at)
+	# the owner's report: destroyers shelled the water over a dived boat, through the one making her run. Guns leave a dived boat alone
+	boat.pos = dd.pos + Vector2(900, 0); dd.target = boat; sim.hold_fire = false; dd.hold = false; sim.shells.clear()
+	for i in 200:
+		sim._sonar_tick(0.05); sim.update_weapons(dd, 0.05)
+	ok(sim.detected_by(boat, 0) and sim.shells.is_empty(), "a boat held on sonar 900 m off, dived, is not fired on by the guns")
+	boat.dive = 0.0
+	for i in 200: sim.update_weapons(dd, 0.05)
+	ok(not sim.shells.is_empty(), "once she is on the surface they open fire")
+	boat.dive = 1.0; sim.hold_fire = true; sim.shells.clear(); dd.target = null; boat.pos = dd.pos + Vector2(rng * 0.8, 0)
 	dd.sonar_on = false
 	for i in 400: sim._sonar_tick(0.05)
 	ok(not sim.detected_by(boat, 0) and dd.heard_t > BattleSim.HEARD_FOR, "with the sonar silent the contact is lost, and the destroyer is no longer heard")

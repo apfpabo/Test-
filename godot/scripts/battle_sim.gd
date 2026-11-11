@@ -1169,10 +1169,10 @@ func update_weapons(s: CShip, dt: float) -> void:
                     m.tgt_t -= dt
                     if s.force_tgt != null and engageable(s.force_tgt):   # (editor) set on one ship, whatever her flag
                         m.tgt = s.force_tgt if (p.distance_to(s.force_tgt.pos) < rng and mount_arc(m, ang_diff((s.force_tgt.pos - p).angle(), s.a)).x > 0) else null; m.tgt_t = 1.0
-                    elif m.tgt_t <= 0 or m.tgt == null or not engageable(m.tgt) or not visible_to(m.tgt, s.side):
+                    elif m.tgt_t <= 0 or m.tgt == null or not engageable(m.tgt) or submerged(m.tgt) or not visible_to(m.tgt, s.side):   # (a gun cannot reach a dived boat: she is the depth charges' business)
                         m.tgt_t = 3.0; m.tgt = null
                         var pri: CShip = null
-                        if s.target != null and engageable(s.target) and visible_to(s.target, s.side) and p.distance_to(s.target.pos) < rng and mount_arc(m, ang_diff((s.target.pos - p).angle(), s.a)).x > 0: pri = s.target
+                        if s.target != null and engageable(s.target) and not submerged(s.target) and visible_to(s.target, s.side) and p.distance_to(s.target.pos) < rng and mount_arc(m, ang_diff((s.target.pos - p).angle(), s.a)).x > 0: pri = s.target
                         var heavy: bool = w.size == "L" or w.size == "H"
                         var slot = m.slot; var sa = s.a
                         var mm := m

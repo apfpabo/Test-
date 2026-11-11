@@ -1248,4 +1248,12 @@ func _grace() -> void:
 	var hs: Array = G.fleets.filter(func(f): return f.get("hunter", false))
 	var hk: float = Campaign.strength(hs[0].ships) / Campaign.strength(G.fleet) if not hs.is_empty() else 0.0
 	ok(not hs.is_empty() and hk > 0.8 and hk < 3.0, "after that they come, about %.1f times as strong as her destroyer (%.2f)" % [Campaign.HUNT_K, hk])
+	# officers on half pay while you serve no one (tuning: a warship captain could not pay his way)
+	Campaign.new_game("disgraced"); G = Campaign.G
+	var crew_pay: float = G.crew * 0.15; var full := 0.0
+	for o in G.officers: full += 40.0 * o.lvl
+	ok(Campaign.half_pay() and is_equal_approx(Campaign.wages(), crew_pay + full * Campaign.HALF_PAY), "a Disgraced Officer serving no one pays his officers half (%.0f a day, full pay would be %.0f)" % [Campaign.wages(), crew_pay + full])
+	G.contracts.append({"id": -1, "kind": "survey", "fac": "concord", "reward": 0})
+	ok(not Campaign.half_pay() and is_equal_approx(Campaign.wages(), crew_pay + full), "with a contract in hand they are on full pay (%.0f)" % Campaign.wages())
+	G.contracts.clear()
 	sections += 1

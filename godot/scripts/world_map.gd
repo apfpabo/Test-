@@ -1342,7 +1342,7 @@ func _hull_bar(f: float) -> Control:
 
 func _fleet_table(box: Control, at_port: bool) -> void:
     var G: Dictionary = Campaign.G; var need = Campaign.crew_need(); var short = maxi(0, need - int(G.crew))
-    _p(box, "The first ship listed is your flagship. Crew %s of %s needed%s. Wages %s a day." % [Campaign.fmt(G.crew), Campaign.fmt(need), ", so undermanned ships reload and steam slower" if short else "", Campaign.fmt(Campaign.wages())], UI.DIM, 14)
+    _p(box, "The first ship listed is your flagship. Crew %s of %s needed%s. Wages %s a day%s." % [Campaign.fmt(G.crew), Campaign.fmt(need), ", so undermanned ships reload and steam slower" if short else "", Campaign.fmt(Campaign.wages()), " (your officers on half pay while you serve no one: no commission, contract or flag)" if Campaign.half_pay() and not G.officers.is_empty() else ""], UI.DIM, 14)
     _p(box, Campaign.supply_text() + (" Only the first %d ships not in reserve fight in one action." % Campaign.BATTLE_MAX if Campaign.G.fleet.size() > Campaign.BATTLE_MAX else ""), UI.RED if Campaign.supply_over() > 0 else UI.DIM, 13)
     if at_port: _p(box, "Sell a ship here for what the yard will give, or scuttle her anywhere: her crew stays with you. You cannot part with your last ship.", UI.DIM, 13)
     else: _p(box, "A ship can be sold in any port (Repairs & crew), or scuttled here and now: her crew stays with you. You cannot part with your last ship.", UI.DIM, 13)

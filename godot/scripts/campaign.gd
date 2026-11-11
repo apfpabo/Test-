@@ -466,9 +466,17 @@ func study_prize(s: Dictionary) -> String:
 func reserve() -> float: return float(G.get("reserve", reserve_cap()))
 func dead_in_water() -> bool: return G.player.get("towed") == null and (int(G.crew) <= 0 or (G.cargo.fuel <= 0 and reserve() <= 0.0 and fuel_use() > 0))
 
+## Pay and prize money (tuning, 11 Nov 2026, the owner's go-ahead after the tuning sheet: a warship captain could not
+## pay his way). Officers draw HALF_PAY of their 40 a level a day while you serve no one: no commission, no contract
+## in hand and no flag of your own (a navy's half pay for officers without a ship's employment). Prize money for each
+## ship sunk is PRIZE_MONEY of what she was worth (it was 0.07 to 0.13).
+const HALF_PAY := 0.5
+const PRIZE_MONEY := Vector2(0.15, 0.25)
+func half_pay() -> bool: return G.get("commission") == null and G.get("contracts", []).is_empty() and not Flag.founded()
 func wages() -> float:
     var t: float = G.crew * 0.15
-    for o in G.officers: t += 40 * o.lvl
+    var k: float = HALF_PAY if half_pay() else 1.0
+    for o in G.officers: t += 40 * o.lvl * k
     t += (Structures.garrison_total() + Flag.garrison_total()) * 0.15   # the men holding your structures and ports ashore
     t += Flag.guards() * Flag.GUARD_PAY                                # guard squadrons on station
     t += Structures.troops_all() * Structures.TROOP_WAGE   # soldiers embarked in troopships
@@ -1716,7 +1724,7 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     G.kills += r.sunk.size()
     var beaten: Array = r.sunk + r.prizes; var beaten_value = 0.0
     for s in beaten: beaten_value += ship_value(s)
-    for s in r.sunk: r.coin += ship_value(s) * (0.07 + randf() * 0.06)
+    for s in r.sunk: r.coin += ship_value(s) * randf_range(PRIZE_MONEY.x, PRIZE_MONEY.y)
     if f != null: r.coin *= float((perk("prize", {}) as Dictionary).get(f.fac, 1.0))   # a letter of marque pays better against its target
     r.coin = int(round(r.coin / 50.0) * 50)
     r.rp = int(round(beaten_value / 4000.0)); G.rp += r.rp

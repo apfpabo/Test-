@@ -42,19 +42,46 @@ The same 32 runs, squadron lost on day:
 
 **What it did not do.** The Survivor's and the Defector's purses are empty by about day 60–120 in every run. Their ships go unrepaired and their crews unpaid, and they lose fights they would otherwise win. That is the wages-against-income problem, the next step. The Academy now loses to patrols and raiders as often as to bounties.
 
+## The third change: half pay, and better prize money
+
+At the owner's word:
+- **Half pay.** Officers draw half their pay (`HALF_PAY`) while you serve no one: no commission, no contract in hand and no flag of your own. The fleet page says so beside the wages.
+- **Better prize money.** Prize money for a ship sunk is 15–25% of what she was worth (`PRIZE_MONEY`); it was 7–13%.
+
+The same 32 runs, squadron lost on day:
+
+| Origin | With the first two changes | With the third as well | Purse at the end, third (thousands) |
+|---|---|---|---|
+| The Merchant Captain | all four survived | all four survived | 109, 103, 113, 60 |
+| The Hijacker | 231, 191, two survived | 231, 178, two survived | 27, 48, 33, 24 |
+| The Smuggler | 214, three survived | 214, three survived | 43, 69, 44, 42 |
+| The Privateer | 162, three survived | all four survived | 27, 41, 39, 34 |
+| The Disgraced Officer | 93, 194, two survived | 148, three survived | 0, 1, 0, 0 |
+| The Survivor of the Lost Fleet | 137, 104, 98, survived | 137, 154, two survived | 0, 0, 15, 0 |
+| The Defector | 100, 63, 118, 74 | 222, 136, 88, 66 | 0, 0, 5, 14 |
+| The Academy Cast-Off | 47, 129, two survived | 47, 129, two survived | 12, 38, 22, 19 |
+| **Runs lost of 32** | **15** | **12** | |
+
+**What it did.** The Defector's battles now pay about 260 a day, and his squadron lasts longer (to day 66–222). The Disgraced Officer and the Survivor each lose one run fewer.
+
+**What it did not do.** The three navy origins still go broke:
+- The Survivor is broke by day 4 to 11, before pay matters. He starts with 6,000 credits and spends about 105 a day on fuel, food and hiring crew.
+- The Disgraced Officer is broke by day 62 to 83. He holds a contract most of the time, so his officers are seldom on half pay.
+- The Defector's cruiser costs about 460 a day in wages, repairs and stores together.
+
+Half pay as built helps a captain only between jobs.
+
 ## What stands out
 
-For the owner to judge. The two changes above are the only ones made.
+For the owner to judge. The three changes above are the only ones made.
 
-- **Fewer lone starts are lost** (15 of 32 by day 240, from 20). What still sinks them is mostly the navy origins' poverty, then patrols and raiders. Bounty squadrons and hunters are now fights a captain can choose to take or avoid.
-- **Income only beats wages for traders.** Per day afloat in the first 120 days:
-  - The Merchant made about 280 from trade and 55 from contracts, against 50 in wages.
-  - The Smuggler made about 230 from trade and 80 from contracts. The Privateer made about 110 from trade and 70 from contracts and commission pay. Both pay about 105 in wages.
-  - The Hijacker lives on contracts (140 a day against 16 in wages).
-  - The Disgraced Officer made about 150 against 160 in wages, and the Survivor about 215 against 135. Repairs, stores and losses still empty both purses.
-  - The Defector made about 220, mostly from prizes, against 230 in wages for his cruiser and 50 in repairs, and his purse ran down to nothing.
-- **Battles pay little early.** Prizes, bounty and salvage come to under 25 a day for every origin but the Defector (165 a day).
-- **A destroyer is in reach at once for four origins.** The cheapest destroyer (17,000) is affordable on day 1 for the Merchant, the Smuggler, the Privateer and the Defector. The Hijacker reaches it between day 5 and day 124, and the Academy in three runs (days 40–195). The Disgraced Officer reaches it once (day 32) and the Survivor never. The cheapest heavy cruiser (62,000) is within reach for every Merchant (days 43–140) and one Smuggler (day 94). A battleship (105,000) is within reach for three Merchants (days 183–238). A fleet carrier never is.
+- **Fewer lone starts are lost** (12 of 32 by day 240, from 20). Bounty squadrons and hunters are now fights a captain can choose. What still ends the navy origins is money.
+- **The navy origins cannot pay their way.** Per day afloat in the first 120 days:
+  - The Disgraced Officer made about 150 against 155 in wages and 50 in repairs and stores.
+  - The Survivor made about 230 against 130 in wages and 125 in repairs and stores, and was broke within his first fortnight.
+  - The Defector made about 310, mostly prizes, against 240 in wages and 220 in repairs and stores.
+- **Traders do well.** The Merchant made about 310 a day from trade against 45 in wages, and the Smuggler about 330 from trade and contracts against 105. The Privateer made about 180 against 105. The Hijacker made about 115, mostly contracts, against 10.
+- **A destroyer is in reach at once for four origins, a heavy cruiser for the Merchant only.** The cheapest destroyer (17,000) is affordable on day 1 for the Merchant, the Smuggler, the Privateer and the Defector. A heavy cruiser (62,000) is affordable for every Merchant by about day 140, and a battleship (105,000) for three of them by day 240.
 - **Prices are steady, the spread between ports is wide.** Port medians hardly move over the eight months. The cheapest and dearest ports differ by four to five times for medicine, munitions and electronics, so the first ton often shows a margin over 100%. But each ton bought raises the price by 0.3% and each ton sold lowers it as much, so a full hold earns far less than that first ton suggests.
-- **Two hours of play falls between day 130 and day 230.** By the model under "How it was measured", the Hijacker (15 battles) reaches two hours about day 130 and the Survivor about day 140; a quiet trader is past day 240.
+- **Two hours of play falls between day 130 and day 230.** That is by the model under "How it was measured"; battles are most of the player's time.
 

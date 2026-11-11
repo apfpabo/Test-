@@ -600,6 +600,52 @@ func sight(o: CShip) -> float:
     if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 if o.tech.has("datalink") else 1.0))
     return v
 func limited() -> bool: return float(wx.vis) > 0.0
+## What a captain sends out (emission control). Other navies' captains choose, as you do for your own ships (a side
+## with no flagship, in tests and recordings, is run the same way). By day in clear weather nothing is lost by it:
+## everything is on. In the dark or the murk:
+##   *Sonar*: a ship keeps silent and listens, unless her side has had word of a submarine in the last three minutes
+##   (a boat seen, heard, or a torpedo track): then the ships near where she was last known ping to find her; or unless
+##   the ship is in the enemy's sight anyway, when silence hides nothing. A boat pings only to hunt another boat, and
+##   only with no hunter near enough to hear her.
+##   *Radar*: a ship that is not yet seen, and whose side has nothing in sight, runs with her set off and closes
+##   unobserved; one ship (the first that carries a set) looks round with hers for twenty seconds in every ninety, so
+##   the force is not blind. Once she is seen, or there is an enemy to shoot at within reach of her guns, the set goes on.
+var sub_alarm := [999.0, 999.0]            # seconds since each side last knew of an enemy submarine
+var sub_seen := [Vector2.ZERO, Vector2.ZERO]   # and where
+var _emcon_t := 0.0
+func _emcon(dt: float) -> void:
+    sub_alarm[0] += dt; sub_alarm[1] += dt
+    for sb in ships:
+        if not sb.sub or not active(sb): continue
+        var other: int = 1 - sb.side
+        if (submerged(sb) and detected_by(sb, other)) or (not submerged(sb) and visible_to(sb, other)): sub_alarm[other] = 0.0; sub_seen[other] = sb.pos
+    _emcon_t -= dt
+    if _emcon_t > 0.0 or editor: return
+    _emcon_t = 1.5
+    var dark: bool = limited()
+    for side in 2:
+        if side == 0 and flag != null: continue   # your ships: your switches
+        var has_contact := false; var picket: CShip = null
+        for o in ships:
+            if o.side != side and engageable(o) and visible_to(o, side): has_contact = true
+            if o.side == side and active(o) and picket == null and radar_fitted(o): picket = o
+        for s in ships:
+            if s.side != side or not active(s) or s.ai_off: continue
+            var seen: bool = visible_to(s, 1 - side) if dark else true
+            if has_sonar(s):
+                var was: bool = s.sonar_on
+                if s.sub:
+                    var hunter_near := false
+                    for o in ships: if o.side != side and active(o) and not o.sub and has_sonar(o) and o.pos.distance_to(s.pos) < sonar_range(s) * PING_HEAR: hunter_near = true
+                    s.sonar_on = submerged(s) and sub_alarm[side] < 180.0 and not hunter_near and s.pos.distance_to(sub_seen[side]) < 5000.0
+                elif not dark: s.sonar_on = true
+                else: s.sonar_on = seen or (sub_alarm[side] < 180.0 and s.pos.distance_to(sub_seen[side]) < 4500.0)
+                if s.sonar_on and not was: s.ping_t = randf() * 2.0
+            if radar_fitted(s):
+                if not dark or seen: s.radar_on = true
+                elif has_contact: s.radar_on = nearest_enemy(s.pos, side, max_gun_range(s) * 1.05, func(o: CShip) -> bool: return visible_to(o, side)) != null
+                else: s.radar_on = s == picket and fmod(t, 90.0) < 20.0
+
 ## Is a ship's radiating radar picked up by a side? By any of its ships that carries a set (on or off), within
 ## RADAR_HEARD times the distance her radar sees.
 func _radar_heard(s: CShip, side: int) -> bool:
@@ -1605,6 +1651,13 @@ func ai_ship(s: CShip, dt: float) -> void:
     if s.pos.x < mg or s.pos.x > AW - mg or s.pos.y < mg or s.pos.y > AH - mg: desired = (Vector2(AW, AH) / 2 - s.pos).angle()
     s.rudder = helm(s, steer_avoid(s, desired))
     s.throttle = 4 if d > pref + 1500 or asw else 3
+    # a boat that is being hunted goes quiet: found by a ping, or with a pinging ship close by, she creeps (a creeping
+    # boat is all but silent to a listener) unless she is on her run in to fire
+    if s.sub and submerged(s) and s.torp_run_t <= 0 and (s.side == 1 or flag == null or s != flag):
+        var hunted: bool = s.held_t < PING_HOLD
+        if not hunted:
+            for hn in ships: if hn.side != s.side and active(hn) and not hn.sub and has_sonar(hn) and hn.pos.distance_to(s.pos) < (sonar_range(hn) * 1.3 if hn.sonar_on else 900.0): hunted = true; break
+        if hunted and d > 1400.0: s.throttle = 1
     if s.d.kind == "carrier" and not holding(s): launch_strike(s, nearest_enemy(s.pos, s.side, 30000.0, func(o: CShip) -> bool: return not submerged(o)))
 
 ## Flying from a carrier. Aircraft leave the deck and come back to it one at a time: a squadron ordered off forms up
@@ -1807,7 +1860,7 @@ func step(dtv: float) -> void:
     t += dt; vt += dtv
     small_craft = [false, false]
     for s in ships: if active(s) and (s.d.kind == "pt" or s.d.kind == "sub"): small_craft[s.side] = true
-    _radar_plot(dt); _smoke_tick(dt); _star_tick(dt); _sonar_tick(dt)
+    _radar_plot(dt); _smoke_tick(dt); _star_tick(dt); _sonar_tick(dt); _emcon(dt)
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue

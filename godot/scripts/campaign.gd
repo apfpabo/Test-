@@ -1790,8 +1790,21 @@ func load_game() -> bool:
     Flag.apply()
     for o in [G.player] + G.fleets: _restore_route(o)
     _ints(G)
+    _pad_fits()
     paused = false
     return true
+
+## A design may have gained mounts since a game was saved (the corrected batteries of 11 Nov 2026): every saved ship's
+## fit is made as long as her design's list of mounts, the new ones as designed.
+func _pad_fits() -> void:
+    var all: Array = G.get("fleet", []).duplicate()
+    for f in G.get("fleets", []): all.append_array(f.get("ships", []))
+    for s in all:
+        if not (s is Dictionary) or not s.has("fit") or not GameData.hulls.has(s.get("type", "")): continue
+        var slots: Array = GameData.hulls[s.type].slots
+        while s.fit.size() < slots.size():
+            var df = slots[s.fit.size()].get("def")
+            s.fit.append(df if df != null else "")
 
 func _restore_route(o: Dictionary) -> void:
     if o.get("route") != null:

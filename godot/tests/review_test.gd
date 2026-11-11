@@ -977,6 +977,25 @@ func _sound() -> void:
 	foe.sonar_on = true; foe.ping_t = 0.0
 	for i in 200: sim._sonar_tick(0.05)
 	ok(mine.pos.distance_to(foe.pos) < sim.sonar_range(foe) * BattleSim.PING_HEAR and sim.visible_to(foe, 0), "but once she pings, the boat's hydrophones have her")
+	# other navies' captains choose what to send out
+	sim = _sim(["ss_gato"], ["dd_narvik", "dd_narvik", "ca_hipper"], Weather.battle(night)); mine = sim.ships[0]
+	for x in sim.ships: x.tech = ["radar"] if x.side == 1 else []; x.lit_t = 99.0
+	mine.dive = 1.0; mine.want_dive = true; mine.v = 0.3; mine.pos = Vector2(8000, 12000)
+	for i in 3: sim.ships[1 + i].pos = Vector2(7000 + i * 800, 4000)
+	sim.flag = mine; sim.t = 30.0; sim._emcon_t = 0.0; sim._emcon(0.1)
+	var pinging := 0; var radiating := 0
+	for x in sim.ships: if x.side == 1: pinging += int(x.sonar_on and sim.has_sonar(x)); radiating += int(x.radar_on)
+	ok(pinging == 0 and radiating == 0, "at night, unseen and with nothing in sight, another navy's ships run silent with their sets off (%d pinging, %d radiating)" % [pinging, radiating])
+	sim.t = 95.0; sim._emcon_t = 0.0; sim._emcon(0.1)
+	radiating = 0
+	for x in sim.ships: if x.side == 1: radiating += int(x.radar_on)
+	ok(radiating == 1, "but one of them looks round with her radar now and then (%d radiating)" % radiating)
+	mine.pos = sim.ships[1].pos + Vector2(600, 0); mine.reveal_t = 20.0; sim._emcon_t = 0.0; sim._emcon(0.1)
+	pinging = 0
+	for x in sim.ships: if x.side == 1: pinging += int(x.sonar_on and sim.has_sonar(x))
+	ok(pinging >= 1 and sim.sub_alarm[1] < 1.0, "once a boat has shown herself the destroyers near her start pinging (%d)" % pinging)
+	sim = _sim(["ss_gato"], ["dd_narvik"]); sim.flag = sim.ships[0]; sim.ships[1].sonar_on = false; sim.ships[1].radar_on = false; sim.ships[1].tech = ["radar"]; sim._emcon_t = 0.0; sim._emcon(0.1)
+	ok(sim.ships[1].sonar_on and sim.ships[1].radar_on, "by day in clear weather everything is on: nothing is lost by it")
 	# radar: off sees nothing and is not heard; on, it is picked up farther than it sees
 	sim = _sim(["ca_baltimore"], ["ca_hipper"], Weather.battle(night)); var a = sim.ships[0]; var b = sim.ships[1]
 	a.tech = ["radar"]; b.tech = ["radar"]; a.lit_t = 99.0; b.lit_t = 99.0

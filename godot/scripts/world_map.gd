@@ -8,6 +8,8 @@ var cam = Vector2.ZERO         # camera centre in map units
 var free_cam = false
 var drag = {}
 var world: Node2D
+const Globe = preload("res://scripts/chart_globe.gd")
+var globe   # the world as a globe, shown past the chart's widest view (chart_globe.gd)
 var land_copies: Array = []
 var marks: Node2D
 var overlay: Control
@@ -66,6 +68,9 @@ func _ready() -> void:
         wp.uv = PackedVector2Array([Vector2(0, 0), Vector2(180, 0), Vector2(180, 80), Vector2(0, 80)]); wp.texture = wx_tex; wp.material = wx_mat; wp.position.x = k * Campaign.MW; world.add_child(wp)
     _weather_grid()
     marks = Marks.new(); marks.map = self; world.add_child(marks)
+    # the globe: the far overview, over the chart and under the interface
+    var gl = CanvasLayer.new(); gl.layer = 4; add_child(gl)
+    globe = Globe.new(); globe.map = self; gl.add_child(globe)
     var cl = CanvasLayer.new(); cl.layer = 5; add_child(cl)
     ui = Control.new(); ui.set_anchors_preset(Control.PRESET_FULL_RECT); ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.theme = UI.theme(); cl.add_child(ui)
     overlay = Overlay.new(); overlay.map = self; overlay.set_anchors_preset(Control.PRESET_FULL_RECT); overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(overlay)
@@ -656,7 +661,8 @@ func _build_top() -> void:
         var v: int = pair[0]
         var b = UI.button(pair[1], func(): _speed(v)); b.custom_minimum_size.x = 40; b.focus_mode = Control.FOCUS_NONE
         b.add_theme_font_size_override("font_size", 14); seg.add_child(b); speed_btns.append([v, b])
-    var cb := UI.button("Centre", func(): free_cam = false); cb.focus_mode = Control.FOCUS_NONE; top.add_child(cb)
+    var gb := UI.button("Globe", func(): globe.close() if globe.is_open() else globe.open()); gb.focus_mode = Control.FOCUS_NONE; gb.tooltip_text = "The world whole (or scroll out past the widest view of the chart)"; top.add_child(gb)
+    var cb := UI.button("Centre", func(): globe.close(Vector2(Campaign.G.player.x, Campaign.G.player.y)); free_cam = false); cb.focus_mode = Control.FOCUS_NONE; top.add_child(cb)
 
 func _speed(v: int) -> void:
     if v == 0: Campaign.paused = not Campaign.paused; _user_pause = Campaign.paused
@@ -913,9 +919,12 @@ func _unhandled_input(e: InputEvent) -> void:
             KEY_4: _speed(8)
             KEY_C, KEY_HOME: free_cam = false
             KEY_EQUAL, KEY_KP_ADD: zoom = clampf(zoom * 1.25, 0.14, 14)
-            KEY_MINUS, KEY_KP_SUBTRACT: zoom = clampf(zoom / 1.25, 0.14, 14)
+            KEY_MINUS, KEY_KP_SUBTRACT:
+                if zoom <= 0.1401: globe.open()   # out past the widest view: the world whole
+                zoom = clampf(zoom / 1.25, 0.14, 14)
 
 func _zoom_at(f: float, sp: Vector2) -> void:
+    if f < 1.0 and zoom <= 0.1401: globe.open(); return   # out past the widest view: the world whole
     var before = to_world(sp); zoom = clampf(zoom * f, 0.14, 14)
     if free_cam: cam += before - to_world(sp)
 

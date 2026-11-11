@@ -113,6 +113,9 @@ class CShip:
     var smoke_left = 60.0  # seconds of smoke in the generators
     var smoke_d = 0.0
     var v_cmd = -1.0       # a speed to hold (m/s) when keeping station, or -1 for the engine telegraph
+    var sheer = null       # a ship she has just struck: she steers clear of her for `sheer_t` seconds
+    var sheer_t := 0.0
+    var brake := -1.0      # a speed not to exceed while another ship is close ahead (keeping clear), or -1
     var ord = ""           # her own order, if she has been given one apart from the squadron's (see ord_of)
     var ord_pt := Vector2.ZERO   # where "goto" sends her
     var ord_tgt: CShip = null    # whom a torpedo attack is made on (or the nearest enemy)
@@ -1536,7 +1539,109 @@ func steer_avoid(s: CShip, desired: float) -> float:
             if in_island(is_, s.pos + Vector2.from_angle(desired) * look * k, 250.0):
                 var to_c: float = (is_.c - s.pos).angle()
                 return desired + (1.0 if ang_diff(desired, to_c) >= 0 else -1.0)
-    return desired
+    return _clear_of_ships(s, desired)
+
+## Collisions and ramming (reworked 11 Nov 2026 at the owner's word: ramming hurts, friend or foe). A hull is a long
+## thing, not a circle: each ship is taken as her centreline with half her beam round it, so two ships touch where
+## their sides or stems really would. A touch at a crawl only fends them off. With way on, both are hurt by how fast
+## they came together and by the other's weight; the ship that strikes with her stem is hurt less than the one struck in
+## the side, who is also holed there and takes a list to that side. A boat running shallow (periscope depth) can be
+## rammed; a boat gone deep is passed over.
+const RAM_SLOW := 1.5      # closing speeds under this (m/s) do no damage
+const RAM_K := 0.95        # damage for each m/s of closing speed and each root-ton of the other ship
+const RAM_DEEP := 0.8      # a boat dived deeper than this is under the keels of surface ships
+func ram_hull(s: CShip) -> Array:   # the two ends of her centreline (stern, stem) and the half beam
+    var h: float = maxf(0.0, s.d.L * 0.5 - s.d.B * 0.5); var u := Vector2.from_angle(s.a)
+    return [s.pos - u * h, s.pos + u * h, s.d.B * 0.5]
+## The nearest points of two segments: [point on the first, point on the second, how far along the first (0 stern .. 1 stem), along the second].
+func _seg_near(p1: Vector2, q1: Vector2, p2: Vector2, q2: Vector2) -> Array:
+    var d1 := q1 - p1; var d2 := q2 - p2; var r := p1 - p2
+    var a := d1.dot(d1); var e := d2.dot(d2); var f := d2.dot(r); var sN := 0.0; var tN := 0.0
+    if a <= 0.0001 and e <= 0.0001: return [p1, p2, 0.5, 0.5]
+    if a <= 0.0001: tN = clampf(f / e, 0.0, 1.0)
+    else:
+        var c := d1.dot(r)
+        if e <= 0.0001: sN = clampf(-c / a, 0.0, 1.0)
+        else:
+            var bb := d1.dot(d2); var den := a * e - bb * bb
+            sN = clampf((bb * f - c * e) / den, 0.0, 1.0) if den > 0.0001 else 0.5
+            tN = (bb * sN + f) / e
+            if tN < 0.0: tN = 0.0; sN = clampf(-c / a, 0.0, 1.0)
+            elif tN > 1.0: tN = 1.0; sN = clampf((bb - c) / a, 0.0, 1.0)
+    return [p1 + d1 * sN, p2 + d2 * tN, sN, tN]
+func can_collide(s: CShip) -> bool: return active(s) and (not s.sub or s.dive < RAM_DEEP)
+func _collisions() -> void:
+    var live: Array[CShip] = []
+    for s in ships: if can_collide(s): live.append(s)
+    for i in live.size():
+        for j in range(i + 1, live.size()):
+            var a: CShip = live[i]; var b: CShip = live[j]
+            if a.pos.distance_squared_to(b.pos) > pow((a.d.L + b.d.L) * 0.5 + 10.0, 2.0): continue
+            var ha: Array = ram_hull(a); var hb: Array = ram_hull(b)
+            var n: Array = _seg_near(ha[0], ha[1], hb[0], hb[1]); var gap: float = (n[0] as Vector2).distance_to(n[1]); var reach: float = float(ha[2]) + float(hb[2])
+            if gap >= reach: continue
+            var nrm: Vector2 = ((n[1] as Vector2) - (n[0] as Vector2)) / gap if gap > 0.01 else (b.pos - a.pos).normalized()
+            var ov: float = (reach - gap) * 0.5
+            a.pos -= nrm * ov; b.pos += nrm * ov   # they cannot lie in one another
+            var closing: float = (Vector2.from_angle(a.a) * a.v - Vector2.from_angle(b.a) * b.v).dot(nrm)
+            # one collision is one collision: the same two do not grind on each other every few seconds (they did, until one
+            # sank). Having struck, each sheers off from the other, and they are not counted as striking again for half a minute.
+            if closing < RAM_SLOW or a.ram_t > 0 or b.ram_t > 0 or (a.sheer == b and a.sheer_t > 0.0): continue
+            a.sheer = b; b.sheer = a; a.sheer_t = 30.0; b.sheer_t = 30.0
+            # who struck whom: a stem (the last tenth of her length forward) against anything but another stem is a ram
+            var a_stem: bool = float(n[2]) > 0.9; var b_stem: bool = float(n[3]) > 0.9
+            var ka := 1.0; var kb := 1.0
+            if a_stem and not b_stem: ka = 0.45
+            elif b_stem and not a_stem: kb = 0.45
+            if a.sub: ka *= 1.5   # a boat's pressure hull is no match for a stem
+            if b.sub: kb *= 1.5
+            var at: Vector2 = ((n[0] as Vector2) + (n[1] as Vector2)) * 0.5
+            var da: float = RAM_K * closing * sqrt(float(b.d.t)) * ka; var db: float = RAM_K * closing * sqrt(float(a.d.t)) * kb
+            a.ram_t = 6.0; b.ram_t = 6.0
+            for pr in [[a, b, da, a_stem and not b_stem], [b, a, db, b_stem and not a_stem]]:
+                var me: CShip = pr[0]; var other: CShip = pr[1]
+                if not pr[3]:   # struck in the side: holed there, and she lists to it
+                    var ly: float = (at - me.pos).rotated(-me.a).y
+                    me.list = clampf(me.list + signf(ly) * clampf(float(pr[2]) / me.max_hull, 0.05, 0.4), -1.0, 1.0)
+                    mark_hit(me, at, 3.0, true, 0.2)
+                else: mark_hit(me, at, 1.5, false, 0.0)   # her stem crumpled
+                damage(me, float(pr[2]), "ram")
+            # way comes off both, most off the lighter
+            var ma: float = float(a.d.t); var mb: float = float(b.d.t)
+            a.v *= clampf(1.0 - 0.7 * mb / (ma + mb), 0.25, 0.9); b.v *= clampf(1.0 - 0.7 * ma / (ma + mb), 0.25, 0.9)
+            sound("hit_big", at, 0.7); part(P.SMOKE, at, 5.0, 10.0, Vector2.ZERO, true)
+            if modern: wreckage(a if a.alive else b, at, 4, 2.0); fx_splash(at, 18.0)
+            var rammer: CShip = a if (a_stem and not b_stem) else (b if (b_stem and not a_stem) else null)
+            var victim: CShip = b if rammer == a else a
+            if rammer != null: say(("The %s rams the %s!" if rammer.side != victim.side else "Collision! The %s has run into the %s.") % [rammer.rec.name, victim.rec.name], 3.0)
+            else: say("Collision! The %s and the %s have struck." % [a.rec.name, b.rec.name], 3.0)
+            _log("collision" if a.side != b.side else "collision between friends")
+## A captain keeps clear of other ships: if she and another (not a boat gone deep) are closing and would pass within a
+## ship's length in the next half minute, he alters to pass under her stern. Your flagship is yours to con.
+func _clear_of_ships(s: CShip, desired: float) -> float:
+    if s.sheer_t > 0.0 and s.sheer != null and (s.sheer as CShip).alive and s.pos.distance_to((s.sheer as CShip).pos) < (s.d.L + (s.sheer as CShip).d.L) * 0.75 + 60.0:
+        s.brake = maxf(s.v * 0.5, 2.0)   # she has just struck her: away from her, easy
+        return (s.pos - (s.sheer as CShip).pos).angle()
+    var vs := Vector2.from_angle(desired) * maxf(s.v, 3.0)
+    var worst = null; var worst_t := 30.0
+    for o in ships:
+        if o == s or not can_collide(o) or (o.sub and submerged(o)): continue
+        var rel: Vector2 = o.pos - s.pos; var dist: float = rel.length()
+        if dist > 900.0 + s.d.L: continue
+        var rv: Vector2 = Vector2.from_angle(o.a) * o.v - vs
+        var rv2: float = rv.length_squared()
+        if rv2 < 1.0: continue
+        var tc: float = -rel.dot(rv) / rv2
+        if tc <= 0.0 or tc > worst_t: continue
+        if (rel + rv * tc).length() < (s.d.L + o.d.L) * 0.5 + 25.0: worst = o; worst_t = tc
+    if worst == null: return desired
+    var o2: CShip = worst
+    # close, and she is ahead of us: ease down as well as turn (two ships making for the same boat, or a leader who has lost way)
+    if worst_t < 16.0 and absf(ang_diff((o2.pos - s.pos).angle(), s.a)) < 1.1: s.brake = maxf(0.0, o2.v * 0.5) if worst_t > 6.0 else 0.0
+    # turn away from where she will be: towards her stern if she is crossing, else simply away from her bearing
+    var to_stern: Vector2 = (o2.pos - Vector2.from_angle(o2.a) * (o2.d.L * 0.5 + s.d.L)) - s.pos
+    var away: float = signf(ang_diff(to_stern.angle(), desired)); if away == 0.0: away = float(s.pref_side)
+    return desired + away * clampf(1.4 - worst_t / 30.0, 0.5, 1.3)
 
 func yaw_lag(s: CShip) -> float: return 3.0 + s.d.L / 45.0
 
@@ -1578,7 +1683,7 @@ func keep_station(s: CShip, off: Vector2) -> void:
 
 func ai_ship(s: CShip, dt: float) -> void:
     if s.struck: s.throttle = 0; s.rudder = 0; return
-    s.v_cmd = -1.0
+    s.v_cmd = -1.0; s.brake = -1.0
     # smoke: a ship that is running, or badly hurt with the enemy in sight, covers herself (and those behind her)
     if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else ord_of(s) == "retreat") or s.hull / s.max_hull < 0.4):
         if nearest_enemy(s.pos, s.side, 10000.0) != null: make_smoke(s, true)
@@ -1902,7 +2007,7 @@ func step(dtv: float) -> void:
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue
-        s.reveal_t = maxf(0.0, s.reveal_t - dt); s.ram_t = maxf(0.0, s.ram_t - dt); s.lit_t += dt
+        s.reveal_t = maxf(0.0, s.reveal_t - dt); s.ram_t = maxf(0.0, s.ram_t - dt); s.sheer_t = maxf(0.0, s.sheer_t - dt); s.lit_t += dt
         # AI ships think four times a battle second and work their weapons ten times; your flagship every step
         if s == flag:
             if player_rudder != 0.0: waypoints.clear()   # taking the helm yourself cancels the waypoints
@@ -1922,6 +2027,7 @@ func step(dtv: float) -> void:
         top *= (1.0 - 0.25 * absf(s.list)) * s.ld_speed * (1.0 - 0.3 * s.ballast)
         var want: float = top * TELEGRAPH[s.throttle] * (1 - 0.3 * absf(s.rud) * minf(1.0, s.v / maxf(1.0, top)))
         if s.v_cmd >= 0.0 and s != flag: want = minf(want, s.v_cmd)
+        if s.brake >= 0.0 and s != flag: want = minf(want, s.brake)   # easing down for a ship close ahead
         var t_acc: float = 40.0 + s.d.L * 0.6
         if top <= 0.0: s.v = maxf(0.0, s.v - s.d.kn * KN / (t_acc * 1.4) * dt)   # engines stopped: she loses way
         else: s.v += clampf(want - s.v, -top / (t_acc * 1.4) * dt, top / t_acc * dt)
@@ -1984,18 +2090,7 @@ func step(dtv: float) -> void:
             f.st -= dtv
             if f.st <= 0: f.st = 0.35; part(P.SMOKE, world_pt(s, f.x, f.y), 8.0 + randf() * 5.0, 3.0 + f.r * 2.5, Vector2.ZERO, true)
     want_torp = false; want_msl = false
-    # collisions between surface ships
-    var live: Array[CShip] = []
-    for s in ships: if active(s) and not submerged(s): live.append(s)
-    for i in live.size():
-        for j in range(i + 1, live.size()):
-            var a = live[i]; var b = live[j]; var ra: float = a.d.L * 0.3; var rb: float = b.d.L * 0.3; var dd = a.pos.distance_to(b.pos)
-            if dd < ra + rb and dd > 0.01:
-                var nrm = (b.pos - a.pos) / dd; var ov = (ra + rb - dd) / 2
-                a.pos -= nrm * ov; b.pos += nrm * ov
-                if a.side != b.side and a.ram_t <= 0 and b.ram_t <= 0:
-                    var rv = absf(a.v - b.v) + 4
-                    damage(b, rv * a.d.L * 0.1, "ram"); damage(a, rv * b.d.L * 0.1, "ram"); a.ram_t = 8.0; b.ram_t = 8.0; a.v *= 0.5; b.v *= 0.5
+    _collisions()
     # shells land
     for i in range(shells.size() - 1, -1, -1):
         var sh: Dictionary = shells[i]; sh.t += dt; var k: float = minf(1.0, sh.t / sh.T); sh.pos = sh.s.lerp(sh.e, k)

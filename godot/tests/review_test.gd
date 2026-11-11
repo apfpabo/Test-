@@ -998,6 +998,35 @@ func _sound() -> void:
 		for q in before: if not q.has("rel") and not sim.dcs.has(q): bursts += 1; nearest_burst = minf(nearest_burst, q.pos.distance_to(sim.world_pt(dd, -dd.d.L / 2, 0)))
 	ok(bursts == 6 and nearest_burst > 70.0, "six charges burst, none nearer her stern than %.0f m (the first used to go off some 45 m astern)" % nearest_burst)
 	ok(boat.hull < hull0, "and the boat under them is hurt (%.0f of %.0f)" % [boat.hull, hull0])
+	# ramming and collisions: hulls, not circles; friend or foe; by closing speed and weight
+	sim = _sim(["dd_fletcher", "bb_iowa"], ["ss_vii", "dd_narvik"]); dd = sim.ships[0]; var bbr = sim.ships[1]; boat = sim.ships[2]; var foe_dd = sim.ships[3]
+	for x in sim.ships: x.ai_off = true; x.pos = Vector2(3000 + 3000 * sim.ships.find(x), 3000); x.v = 0.0; x.throttle = 0
+	sim.hold_fire = true; foe_dd.hold = true; boat.hold = true
+	# two ships lying beam to beam 40 m apart do not touch (as circles they did)
+	dd.pos = Vector2(8000, 8000); dd.a = 0.0; foe_dd.pos = dd.pos + Vector2(0, 40); foe_dd.a = 0.0; var h0: float = dd.hull
+	sim._collisions()
+	ok(dd.pos == Vector2(8000, 8000) and dd.hull == h0, "two destroyers lying beam to beam 40 m apart are clear of each other")
+	# a touch at a crawl fends them off and hurts neither
+	foe_dd.pos = dd.pos + Vector2(0, 8); dd.v = 0.5; dd.a = 0.3
+	sim._collisions()
+	ok(dd.hull == h0 and foe_dd.hull == foe_dd.max_hull and dd.pos.distance_to(foe_dd.pos) > 8.5, "touching at a crawl they are fended off and neither is hurt")
+	# the destroyer rams a boat on the surface, stem on to her side, at 15 m/s
+	foe_dd.pos = Vector2(3000, 12000); boat.dive = 0.0; boat.pos = Vector2(10000, 8000); boat.a = PI / 2; dd.pos = boat.pos - Vector2(dd.d.L * 0.5 + boat.d.B * 0.5 - 2.0, 0); dd.a = 0.0; dd.v = 15.0
+	var bh: float = boat.hull; sim._collisions()
+	ok(boat.hull < bh * 0.5 and dd.hull < h0 and (h0 - dd.hull) < (bh - boat.hull) and absf(boat.list) > 0.04, "a destroyer ramming a surfaced boat at speed all but sinks her, and is hurt herself (boat -%.0f, destroyer -%.0f; the boat lists)" % [bh - boat.hull, h0 - dd.hull])
+	var after: float = dd.hull; dd.ram_t = 0.0; boat.ram_t = 0.0; dd.pos = boat.pos - Vector2(dd.d.L * 0.5 + boat.d.B * 0.5 - 2.0, 0); dd.v = 15.0
+	boat.alive = true; boat.sink = 0.0; boat.hull = 100.0; sim._collisions()
+	ok(dd.hull == after, "it is one collision: they do not strike again a moment later")
+	# a boat gone deep is passed over
+	boat.alive = true; boat.sink = 0.0; boat.hull = boat.max_hull; boat.dive = 1.0; dd.sheer_t = 0.0   # (the ram sank her: afloat again for the next checks)
+	boat.sheer_t = 0.0; dd.ram_t = 0.0; boat.ram_t = 0.0; dd.v = 15.0; dd.pos = boat.pos - Vector2(dd.d.L * 0.5 + boat.d.B * 0.5 - 2.0, 0); bh = boat.hull; sim._collisions()
+	ok(boat.hull == bh, "a boat gone deep is passed over")
+	boat.dive = 0.7; dd.ram_t = 0.0; boat.ram_t = 0.0; dd.sheer_t = 0.0; boat.sheer_t = 0.0; dd.v = 15.0; dd.pos = boat.pos - Vector2(dd.d.L * 0.5 + boat.d.B * 0.5 - 2.0, 0); sim._collisions()
+	ok(boat.hull < bh, "but one at periscope depth can be rammed")
+	# friends: a destroyer running into her own battleship's side
+	boat.pos = Vector2(3000, 15000); dd.hull = dd.max_hull; dd.ram_t = 0.0; dd.sheer_t = 0.0; bbr.a = PI / 2; bbr.pos = Vector2(12000, 8000); dd.a = 0.0; dd.v = 12.0; dd.pos = bbr.pos - Vector2(dd.d.L * 0.5 + bbr.d.B * 0.5 - 2.0, 0)
+	var bb0: float = bbr.hull; h0 = dd.hull; sim._collisions()
+	ok(dd.hull < h0 and bbr.hull < bb0 and (h0 - dd.hull) / dd.max_hull > 4.0 * (bb0 - bbr.hull) / bbr.max_hull, "friends are hurt too, the light ship far the worse (destroyer -%.0f%%, battleship -%.1f%%)" % [100.0 * (h0 - dd.hull) / dd.max_hull, 100.0 * (bb0 - bbr.hull) / bbr.max_hull])
 	# other navies' captains choose what to send out
 	sim = _sim(["ss_gato"], ["dd_narvik", "dd_narvik", "ca_hipper"], Weather.battle(night)); mine = sim.ships[0]
 	for x in sim.ships: x.tech = ["radar"] if x.side == 1 else []; x.lit_t = 99.0

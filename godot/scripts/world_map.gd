@@ -1300,6 +1300,18 @@ func _show_aftermath(r: Dictionary) -> void:
                 box.add_child(UI.row([UI.label("%s · %s · %d%% · needs %d crew" % [s.name, h.name, int(s.hullFrac * 100), h.crew]),
                     UI.button("Take as prize", func(): _take_prize(s), true, Campaign.can_add_ship(s.type) != ""),
                     UI.button("Scuttle for " + Campaign.fmt(Campaign.ship_value(s) * 0.1), func(): s.taken = "Scuttled"; Campaign.G.credits += round(Campaign.ship_value(s) * 0.1); _show_aftermath(r))]))
+        var wr: Array = r.get("wrecks", [])
+        if not wr.is_empty():
+            box.add_child(UI.label("WRECKS THAT CAN BE RAISED", UI.DIM, 12))
+            _p(box, "These went down slowly in water your boats can work. Raised, a ship comes back at a fifth of her hull with one or two lasting defects (a yard can rebuild them away), nearly empty magazines and a green crew. Steel comes from your holds (%d tons aboard)." % int(Campaign.G.cargo.get("steel", 0.0)), UI.DIM)
+            for w in wr:
+                var h2: Dictionary = GameData.hulls[w.rec.type]; var c: Dictionary = Campaign.recover_cost(w.rec)
+                var who: String = ("your " if w.own else "enemy ") + h2.name.to_lower()
+                if w.taken != "": _p(box, "%s · %s · %s" % [w.rec.name, who, w.taken], UI.GREEN); continue
+                var why: String = Campaign.can_recover(w)
+                var b := UI.button("Raise her · %d t steel, %s" % [int(c.steel), Campaign.fmt(int(c.credits))], func(): _toast(Campaign.recover(w)); _show_aftermath(r), false, why != "")
+                if why != "": b.tooltip_text = why
+                box.add_child(UI.row([UI.label("%s · %s" % [w.rec.name, who]), b]))
         box.add_child(UI.button("Return to the chart", func(): _aftermath_done(r), true))
     , true)
 
@@ -1369,6 +1381,10 @@ func _fleet_table(box: Control, at_port: bool) -> void:
             var oc: int = Campaign.overhaul_cost(s)
             var ob := UI.button("Overhaul · " + Campaign.fmt(oc), func(): Campaign.overhaul(s); _rerender(), false, oc == 0 or G.credits < oc)
             ob.tooltip_text = "Take the wear off her machinery and fittings (down to %d%%: an old ship is never new again)." % int(Campaign.wear_floor(s) * 100); items.append(ob)
+            if not Campaign.defects(s).is_empty():
+                var rbc: int = Campaign.rebuild_cost(s)
+                var rbb := UI.button("Rebuild defects · " + Campaign.fmt(rbc), func(): Campaign.rebuild(s); _rerender(), false, G.credits < rbc)
+                rbb.tooltip_text = "The yard puts right what was wrong with her when she was raised: " + "; ".join(Campaign.defects(s).map(func(k): return Campaign.DEFECTS[k])) + "."; items.append(rbb)
             var lb := UI.button("Lay up here", func(): _toast(Campaign.lay_up(s, cur_port)); _rerender(), false, Campaign.can_lay_up(s, cur_port) != "")
             lb.tooltip_text = "Pay off her crew and leave her here: no supply, %s a day for her berth. Recommission her here when you want her back." % Campaign.fmt(int(ceil(Campaign.layup_fee(s)))); items.append(lb)
         if _scuttle_id == str(s.id):
@@ -1383,8 +1399,9 @@ func _fleet_table(box: Control, at_port: bool) -> void:
 ## Age and wear for the fleet list: gold from a third worn, red from two thirds.
 func _wear_label(s: Dictionary) -> Label:
     var w: float = Campaign.wear(s)
-    var l := UI.label("%d yr · wear %d%%" % [int(Campaign.age_years(s)), int(w * 100)], UI.RED if w > 0.66 else (UI.GOLD if w > 0.33 else UI.DIM), 13)
-    l.tooltip_text = "Wear costs her up to %d%% of her speed on passage and %d%% of her machinery in action; an overhaul in port takes it off." % [int(Campaign.WEAR_SPEED * 100), int(Campaign.WEAR_ENG * 100)]
+    var dn: int = Campaign.defects(s).size()
+    var l := UI.label("%d yr · wear %d%%%s" % [int(Campaign.age_years(s)), int(w * 100), (" · %d defect%s" % [dn, "" if dn == 1 else "s"]) if dn else ""], UI.RED if (w > 0.66 or dn) else (UI.GOLD if w > 0.33 else UI.DIM), 13)
+    l.tooltip_text = "Wear costs her up to %d%% of her speed on passage and %d%% of her machinery in action; an overhaul in port takes it off." % [int(Campaign.WEAR_SPEED * 100), int(Campaign.WEAR_ENG * 100)] + ("\nDefects from when she was raised: " + "; ".join(Campaign.defects(s).map(func(k): return Campaign.DEFECTS[k])) + ". A yard can rebuild them." if dn else "")
     l.mouse_filter = Control.MOUSE_FILTER_PASS
     return l
 

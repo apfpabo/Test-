@@ -133,6 +133,9 @@ func _fight(f: Dictionary) -> void:
 	st.sunk += r.sunk.size(); st.lost_ships += r.lost.size()
 	var shifted: bool = r.notes.any(func(n): return String(n).begins_with("The division you led is lost"))   # then the squadron is the main body, whatever its size
 	ok(shifted or G.fleet.size() == before - r.lost.size(), "after a battle the squadron is the ships that were not lost (%d before, %d lost, %d now)" % [before, r.lost.size(), G.fleet.size()])
+	for w in r.get("wrecks", []):   # raise what wrecks can be raised, as the aftermath screen offers
+		G.cargo.steel = maxf(float(G.cargo.steel), float(Campaign.recover_cost(w.rec).steel))
+		if Campaign.can_recover(w) == "": Campaign.recover(w); st["raised"] = int(st.get("raised", 0)) + 1
 	for s in r.prizes:   # take prizes into the squadron while there is room, as the aftermath screen offers
 		if G.fleet.size() < 10: s.pal = "player"; G.fleet.append(s); Campaign.study_prize(s); st.prizes += 1
 	if not sim.finished: f.cool = 30.0

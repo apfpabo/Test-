@@ -392,7 +392,7 @@ func crew_need() -> int:
 func crew_frac() -> float: return minf(1.0, G.crew / maxf(1.0, crew_need()))
 func fuel_use() -> float:
     var t = 0.0
-    for s in all_ships(): t += hull(s).fuel   # a detached main body steams too, and still fills the bunkers
+    for s in all_ships(): t += hull(s).fuel * (1.15 if s.get("defects", []).has("boilers") else 1.0)   # a detached main body steams too, and still fills the bunkers
     return t
 ## The reserve: the last few days of fuel kept back in the bunkers, burned at a third of the normal rate at a
 ## crawl once the bunkers are dry. When it is gone the squadron is dead in the water: call a friendly fleet by
@@ -583,12 +583,48 @@ func _laid_day() -> void:
             laid().erase(e); toast.emit("The %s, laid up at %s, has been seized: the %s is at war with you." % [e.ship.name, p.name, GameData.fac[p.fac].short]); continue
         G.credits -= layup_fee(e.ship)
 
+# ------------------------------------------------------------------ wrecks raised after an action
+## Recovering wrecks (Starsector; the owner's go-ahead, 11 Nov 2026). Holding the field after an action, some of the
+## ships that went down slowly, yours and theirs (WRECK_CHANCE; never one blown up by her magazine, never a boat), lie
+## where they can be raised: for steel from the holds and money (recover_cost) she comes back at a fifth of her hull,
+## nearly empty magazines and a green crew, with one or two lasting DEFECTS. A yard rebuilds them away (rebuild_cost).
+## An enemy design raised gives her drawings, as a prize does.
+const WRECK_CHANCE := [0.45, 0.3]   # your own ships, theirs
+const DEFECTS := {"shafts": "bent shafts: 8% slower", "hull": "a strained hull: 15% less to lose", "fc": "fire control knocked out of true: salvos spread wider", "boilers": "tired boilers: 15% more fuel"}
+func defects(s: Dictionary) -> Array: return s.get("defects", [])
+func recover_cost(rec: Dictionary) -> Dictionary: return {"steel": clampi(int(float(hull(rec).t) * 0.012), 10, 150), "credits": int(round(float(hull(rec).price) * 0.12 / 50.0) * 50)}
+func can_recover(w: Dictionary) -> String:
+    if w.taken != "": return "Done."
+    var why := can_add_ship(w.rec.type)
+    if why != "": return why
+    var c := recover_cost(w.rec)
+    if float(G.cargo.get("steel", 0.0)) < int(c.steel): return "Needs %d tons of steel in the holds." % int(c.steel)
+    if float(G.credits) < int(c.credits): return "Not enough money."
+    return ""
+func recover(w: Dictionary) -> String:
+    var why := can_recover(w)
+    if why != "": return why
+    var c := recover_cost(w.rec); G.cargo.steel = float(G.cargo.steel) - int(c.steel); G.credits -= int(c.credits)
+    var ns: Dictionary = w.rec.duplicate(true); ns.pal = "player"; ns.id = str(randi()); ns.hullFrac = 0.2; ns.ammo = 0.15; ns.xp = 0.0; ns.erase("taken")
+    if not w.own: ns.name = GameData.names.player.pick_random()
+    var keys: Array = DEFECTS.keys(); keys.shuffle(); var d: Array = ns.get("defects", []).duplicate()
+    for k in keys.slice(0, 1 if randf() < 0.6 else 2): if not d.has(k): d.append(k)
+    ns.defects = d; ship_refitted(ns); G.fleet.append(ns); w.taken = "Raised"
+    var out := "The %s is raised and joins you at a fifth of her hull: %s. She needs %d crew." % [ns.name, ", ".join(d.map(func(k): return DEFECTS[k].split(":")[0])), int(hull(ns).crew)]
+    if not w.own:
+        var st := study_prize(ns)
+        if st != "": out += " " + st
+    return out
+func rebuild_cost(s: Dictionary) -> int: return int(round(float(hull(s).price) * 0.15 * defects(s).size() / 50.0) * 50)
+func rebuild(s: Dictionary) -> void:
+    G.credits -= rebuild_cost(s); s.erase("defects")
+
 ## Cruise speed on the chart in map units a second: about 70% of the slowest ship's top speed.
 func fleet_map_speed(ships: Array) -> float:
     var m = INF
     for s in ships:
         var up = s.get("up")
-        m = minf(m, hull(s).kn * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)) * load_speed(s) * (1.0 - WEAR_SPEED * wear(s)))   # an overloaded ship holds the squadron back on passage too, and a worn one
+        m = minf(m, hull(s).kn * (0.92 if s.get("defects", []).has("shafts") else 1.0) * (0.75 + 0.25 * s.hullFrac) * (1.0 + 0.04 * (int(up.get("eng", 0)) if up != null else 0)) * load_speed(s) * (1.0 - WEAR_SPEED * wear(s)))   # an overloaded ship holds the squadron back on passage too, and a worn one
     return m * 0.576
 ## The engine-room telegraph on the chart: speed as a share of cruising speed, and fuel burned a day as a share of
 ## the cruising burn (it rises steeply with speed, so slow steaming stretches the bunkers and flank speed drains them).
@@ -1825,6 +1861,12 @@ func apply_battle(sim: BattleSim) -> Dictionary:
                 for gd in C.GOODS: if gd.id == g: got.append("%d %s" % [take, gd.name.to_lower()])
         r.goods = ", ".join(got)
     r.salvage = salvage(r.sunk) if r.victory else {}
+    # wrecks that can be raised: holding the field, of the ships that went down slowly (not blown up, not boats)
+    r.wrecks = []
+    if r.victory:
+        for s in sim.ships:
+            if s.alive or s.blown or s.sub or s.escaped: continue
+            if randf() < WRECK_CHANCE[s.side]: r.wrecks.append({"rec": s.rec, "own": s.side == 0, "taken": ""})
     # officers gain experience from the tonnage beaten; those aboard ships that sank go down with them
     var xp = int(round(beaten_value / 600.0)) + 10
     for s in sim.ships:

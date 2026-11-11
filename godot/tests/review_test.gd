@@ -1301,4 +1301,28 @@ func _ageing() -> void:
 		P.x = 2686.0; P.y = 1408.0
 		if Campaign.set_course(P, p.sx, p.sy): gone += 1
 	ok(gone == G.ports.size(), "a squadron in a cove hard by a harbour finds a course out (%d of %d harbours)" % [gone, G.ports.size()])
+	# wrecks raised after an action (Starsector): some of the ships that went down slowly, never one blown up
+	Campaign.new_game("commission"); G = Campaign.G; G.credits = 900000.0; G.cargo.steel = 300.0
+	G.fleet = [Campaign.new_ship("cl_cleveland", "Holder", "player", [])]; G.crew = Campaign.crew_need() + 400
+	var found: Array = []; var blown_raised := false
+	for i in 40:
+		var ws := _sim(["cl_cleveland"], ["ca_hipper", "dd_narvik"]); ws.ships[0].rec = G.fleet[0]
+		for x in ws.ships: if x.side == 1: x.alive = false; x.hull = 0.0
+		ws.ships[2].blown = true
+		GameData.pending = {}
+		var r: Dictionary = Campaign.apply_battle(ws)
+		for w in r.get("wrecks", []):
+			found.append(w)
+			if w.rec == ws.ships[2].rec: blown_raised = true
+		G.fleet = [G.fleet[0]] if not G.fleet.is_empty() else [Campaign.new_ship("cl_cleveland", "Holder", "player", [])]
+	ok(not found.is_empty() and not blown_raised, "holding the field, some wrecks can be raised (%d in 40 actions), never one her magazine blew up" % found.size())
+	var w0: Dictionary = found[0]; G.cargo.steel = float(Campaign.recover_cost(w0.rec).steel) + 5.0; var st0: float = G.cargo.steel; var n0: int = G.fleet.size()
+	print("  ", Campaign.recover(w0))
+	var raised: Dictionary = G.fleet.back()
+	ok(G.fleet.size() == n0 + 1 and float(raised.hullFrac) < 0.25 and not Campaign.defects(raised).is_empty() and float(G.cargo.steel) < st0, "raised, she joins at a fifth of her hull with %d defect(s), for steel from the holds" % Campaign.defects(raised).size())
+	raised.defects = ["shafts", "boilers"]; raised.hullFrac = 1.0; Campaign.ship_refitted(raised)
+	var plain: Dictionary = raised.duplicate(true); plain.erase("defects")
+	ok(Campaign.fleet_map_speed([raised]) < Campaign.fleet_map_speed([plain]) * 0.95, "bent shafts make her slower on passage")
+	var rb: int = Campaign.rebuild_cost(raised); var cr: float = G.credits; Campaign.rebuild(raised)
+	ok(Campaign.defects(raised).is_empty() and is_equal_approx(float(G.credits), cr - rb) and rb > 0, "a yard rebuilds the defects away (%s)" % Campaign.fmt(rb))
 	sections += 1

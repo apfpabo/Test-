@@ -134,6 +134,7 @@ class CShip:
     var foul_said := false      # (a torpedo attack) she has said why she is holding
     var dc_held_at := -99.0     # when she last held a pattern for a friend (a measure: see sys_log)
     var fp := 0                 # floatplanes aboard on her catapults (see launch_spotter)
+    var blown := false          # lost to her own magazine: nothing left to raise (Campaign wrecks)
     var fp_t := 0.0             # until her captain will next think of flying one off
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
@@ -362,7 +363,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
     s.eng = 1.0 - 0.2 * clampf(float(rec.get("wear", 0.0)), 0.0, 1.0)   # worn machinery (Campaign.WEAR_ENG): damage control can bring it to 0.8 at best, as for a hit
     s.fp = clampi(int(rec.get("fp", d.get("p", {}).get("cat", []).size())), 0, d.get("p", {}).get("cat", []).size()); s.fp_t = 20.0 + randf() * 40.0
-    s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
+    s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")) * (0.85 if rec.get("defects", []).has("hull") else 1.0); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     s.sonar_on = not s.sub; s.ping_t = randf() * PING_PERIOD   # a boat listens and keeps quiet until told to ping
     s.cq = crew_level(float(rec.get("xp", 1.0)))
@@ -820,6 +821,9 @@ const UPGRADES := {
 static func upg(s: CShip, k: String) -> int: return int(s.up.get(k, 0))
 
 func speed_mult(s: CShip) -> float:
+    if s.rec.get("defects", []).has("shafts"): return _speed_mult(s) * 0.92   # a raised wreck's bent shafts (Campaign.DEFECTS)
+    return _speed_mult(s)
+func _speed_mult(s: CShip) -> float:
     return (1.0 - (0.05 * int(wx.sea) if s.d.t < 3000.0 and not submerged(s) else 0.015 * int(wx.sea))) * (1.2 if s.sub and s.tech.has("snorkel") and submerged(s) else 1.0) * s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
 
 func gun_range(s: CShip, w: Dictionary) -> float:
@@ -1106,6 +1110,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
     var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.0 + (s.ld_spread - 1.0) * (1.0 + 0.5 * int(wx.sea))) * (1.0 + 0.7 * absf(s.list)) * (1.15 if s.side == 1 else 1.0) * (0.85 if s.tech.has("datalink") else 1.0)
     fc *= 1.0 + 0.1 * int(wx.sea)                                         # a moving platform
+    if s.rec.get("defects", []).has("fc"): fc *= 1.15                     # a raised wreck's fire control, never quite true again
     if wx.night and not has_radar(s): fc *= 1.35                           # spotting the fall of shot by eye in the dark
     s.lit_t = 0.0
     var spread: float = w.spread * fc / maxf(0.3, s.fc) * CREW[s.cq].gun
@@ -1659,6 +1664,7 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
 
 ## A magazine goes up: the ship is lost.
 func detonate(s: CShip) -> void:
+    s.blown = true
     for i in 4: fx_boom(s.pos + Vector2((randf() - 0.5) * s.d.L * 0.5, 0).rotated(s.a), s.d.L * (0.4 + randf() * 0.3), 1.6)
     part(P.FLASH, s.pos, 0.5, s.d.L * 0.8); sound("blast", s.pos, 1.0); sound("hit_big", s.pos, 0.8)
     if modern:

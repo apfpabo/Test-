@@ -114,6 +114,7 @@ func _process(d: float) -> void:
 		sim.flag = null   # both sides fought by the simulation
 		battle.hud.visible = false; battle.speed_i = 1; battle.cam_free = true
 		battle.set_clean(true)   # no interface, no rings; shells, tracer, missiles and aircraft stay
+		Sfx.music("")           # the game's own sounds only: a clip gets its music where it is posted
 		var n := 0   # the action is already joined when the clip opens: the ranges found, shells in the air, smoke over the water
 		while n < int(float(clip.pre) / 0.02) and not sim.finished and not _ready_to_roll(sim, n):
 			sim.step(0.02); n += 1

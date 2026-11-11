@@ -23,6 +23,7 @@ var views: Array = []
 var light_shader: Shader = preload("res://shaders/ship_light.gdshader")
 
 func _ready() -> void:
+    Sfx.music("battle")
     var cfg: Dictionary = GameData.pending
     sim = BattleSim.new(); sim.modern = Settings.fx_modern
     sim.on_boom = _boom

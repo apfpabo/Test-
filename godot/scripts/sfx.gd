@@ -82,6 +82,12 @@ func _ready() -> void:
 	else:
 		var amp = AudioEffectAmplify.new(); amp.volume_db = PRE_GAIN_DB; AudioServer.add_bus_effect(0, amp)
 		AudioServer.add_bus_effect(0, AudioEffectLimiter.new())
+	for i in 2:
+		var mp := AudioStreamPlayer.new(); mp.bus = "Music"; mp.volume_db = -60.0; mp.process_mode = Node.PROCESS_MODE_ALWAYS; add_child(mp); _mus.append(mp)
+	for k in MUSIC:
+		var mpath := "res://assets/music/%s.ogg" % MUSIC[k][0]
+		if ResourceLoader.exists(mpath):
+			var ms = load(mpath); ms.loop = false; _mus_streams[k] = ms
 	# the sounds the owner chose (11 Nov 2026): one-shots (`cue`) and loops that follow what is on the screen (`layer`)
 	for n in ["siren", "gong", "paper"]:
 		var st = load("res://assets/sfx/%s.ogg" % n) if ResourceLoader.exists("res://assets/sfx/%s.ogg" % n) else null
@@ -235,6 +241,40 @@ func engine(level: float) -> void: _eng_level = clampf(level, 0.0, 1.0)
 
 ## The open sea all round: level 0..1, and coast 0..1 for how much land is near (gulls call more often there).
 const PRE_GAIN_DB := 4.4
+## Music (the owner's three pieces, 11 Nov 2026; assets/music, Music bus). `music("menu" | "chart" | "battle" | "")`
+## says which should be playing; it is never cut: the piece that was playing fades out over some three seconds while
+## the new one fades in, so going from the menu to the chart to a battle and back runs one into the next. A piece
+## plays through, rests for a while in silence, and comes again (file, level in dB, seconds of rest).
+const MUSIC := {"menu": ["lost_frontier", -3.0, 12.0], "chart": ["long_note_two", -4.0, 75.0], "battle": ["steel_and_seething", -8.0, 40.0]}
+const MUSIC_IN := 3.5     # seconds for a piece to come in
+const MUSIC_OUT := 3.0    # and to go out
+var _mus: Array = []      # two players: one coming in or playing, one going out
+var _mus_k := [0.0, 0.0]  # how far each is faded in, 0..1
+var _mus_on := 0          # which of the two holds the piece wanted
+var _mus_name := ""       # the piece wanted ("" for none)
+var _mus_playing := ""    # the piece the wanted player was last given
+var _mus_rest := 0.0
+var _mus_streams := {}
+func music(name: String) -> void: _mus_name = name if MUSIC.has(name) else ""
+func _music_tick(dt: float) -> void:
+	if _mus.is_empty(): return
+	var cur: AudioStreamPlayer = _mus[_mus_on]
+	if _mus_name != _mus_playing:   # another piece is wanted: this one starts on its way out, and the other player takes the new one
+		_mus_on = 1 - _mus_on; cur = _mus[_mus_on]; _mus_playing = _mus_name; _mus_rest = 0.0
+		cur.stop(); _mus_k[_mus_on] = 0.0
+		if _mus_name != "" and _mus_streams.has(_mus_name): cur.stream = _mus_streams[_mus_name]; cur.volume_db = -60.0; cur.play()
+	for i in 2:
+		var pl: AudioStreamPlayer = _mus[i]; var want: bool = i == _mus_on and _mus_name != ""
+		_mus_k[i] = move_toward(_mus_k[i], 1.0 if want else 0.0, dt / (MUSIC_IN if want else MUSIC_OUT))
+		if pl.playing:
+			var gain: float = float(MUSIC[_mus_name][1]) if want else float(pl.get_meta("gain", -4.0))
+			if want: pl.set_meta("gain", gain)
+			pl.volume_db = gain + linear_to_db(maxf(_mus_k[i] * _mus_k[i], 0.0001))   # the square: a fade that sounds even
+			if not want and _mus_k[i] <= 0.0: pl.stop()
+	# the piece has run its length: a rest, then it comes again (faded in afresh)
+	if _mus_name != "" and not cur.playing and _mus_streams.has(_mus_name):
+		_mus_rest += dt
+		if _mus_rest >= float(MUSIC[_mus_name][2]): _mus_rest = 0.0; _mus_k[_mus_on] = 0.0; cur.volume_db = -60.0; cur.play()
 var _cues := {}                  # one-shot sounds by name: siren (battle stations), gong (the bell: port and engine orders), paper (pages)
 ## name: true if it belongs to the weather (Ambience bus), false if to things on the screen (Effects bus)
 const LAYERS := {"prop": false, "fire": false, "bubbles": false, "rain": true, "thunder": true, "storm": true}
@@ -261,6 +301,7 @@ func _fade(pl: AudioStreamPlayer, lin: float, rate: float, dt: float, pitch := 1
 	if lin <= 0.001 and pl.volume_db <= -55.0: pl.stop()
 
 func _process(dt: float) -> void:
+	_music_tick(dt)
 	for n in _layers:   # the loops asked for since the last frame; then the asking starts again
 		_fade(_layers[n], float(_layer_want[n]) * 0.5, 14.0, dt); _layer_want[n] = 0.0
 	var e := _eng_level * BED

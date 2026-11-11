@@ -7,6 +7,7 @@ const PATH := "user://settings.cfg"
 var master := 0.8
 var effects := 1.0
 var ambience := 0.8
+var music := 0.6                 # the Music bus (three pieces chosen by the owner, 11 Nov 2026)
 var minimap := 1                  # 0 small, 1 medium, 2 large
 var fx_modern := true             # battle effects: modern (layered explosions, light, spray) or classic
 var sensors := true               # show sensor ranges and the radar sweep (R on the chart and in battle)
@@ -21,13 +22,13 @@ const OUTPUT := 1.0
 
 func _ready() -> void:
 	UI.setup(get_tree().root)   # Barlow and the shared theme for every screen
-	for b in ["Effects", "Ambience"]:
+	for b in ["Effects", "Ambience", "Music"]:
 		if AudioServer.get_bus_index(b) < 0:
 			AudioServer.add_bus(); var i := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(i, b); AudioServer.set_bus_send(i, "Master")
 	var cf := ConfigFile.new()
 	if cf.load(PATH) == OK:
-		master = cf.get_value("sound", "master", master); effects = cf.get_value("sound", "effects", effects)
+		master = cf.get_value("sound", "master", master); effects = cf.get_value("sound", "effects", effects); music = cf.get_value("sound", "music", music)
 		ambience = cf.get_value("sound", "ambience", ambience); minimap = cf.get_value("battle", "minimap", minimap)
 		fx_modern = cf.get_value("battle", "fx_modern", fx_modern); sensors = cf.get_value("battle", "sensors", sensors)
 		if int(cf.get_value("sound", "scale", 1)) < 2:   # saved on the old, ten-times-louder scale: keep the same loudness
@@ -36,13 +37,13 @@ func _ready() -> void:
 	apply()
 
 func apply() -> void:
-	for pair in [["Master", master * OUTPUT], ["Effects", effects], ["Ambience", ambience]]:
+	for pair in [["Master", master * OUTPUT], ["Effects", effects], ["Ambience", ambience], ["Music", music]]:
 		var i := AudioServer.get_bus_index(pair[0])
 		if i >= 0: AudioServer.set_bus_volume_db(i, linear_to_db(maxf(float(pair[1]), 0.0001))); AudioServer.set_bus_mute(i, float(pair[1]) <= 0.001)
 
 func save() -> void:
 	var cf := ConfigFile.new()
-	cf.set_value("sound", "scale", 2); cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern)
+	cf.set_value("sound", "scale", 2); cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("sound", "music", music); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern)
 	cf.set_value("battle", "sensors", sensors)
 	cf.save(PATH)
 
@@ -52,7 +53,7 @@ func minimap_width() -> float: return MINIMAP_W[clampi(minimap, 0, 2)]
 func panel() -> Control:
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 8)
 	box.add_child(UI.label("Settings", UI.GOLD, 24))
-	for row in [["Master volume", "master"], ["Effects (guns, hits, engines)", "effects"], ["Ambience (sea, gulls)", "ambience"]]:
+	for row in [["Master volume", "master"], ["Effects (guns, hits, engines)", "effects"], ["Ambience (sea, gulls, weather)", "ambience"], ["Music", "music"]]:
 		var key: String = row[1]
 		var l := UI.label(row[0], UI.INK, 14); l.custom_minimum_size.x = 220
 		var sl := HSlider.new(); sl.min_value = 0; sl.max_value = 1; sl.step = 0.05; sl.value = get(key); sl.custom_minimum_size = Vector2(200, 24)

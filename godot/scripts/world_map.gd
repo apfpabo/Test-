@@ -35,6 +35,7 @@ var chan_lines: Array = []
 var last_coast_zoom = -1.0
 
 func _ready() -> void:
+    Sfx.music("chart")
     RenderingServer.set_default_clear_color(Color("#0a171c"))
     _prepare_land()
     world = Node2D.new(); add_child(world)

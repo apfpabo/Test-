@@ -23,7 +23,9 @@ Sonar ping (synthesised in `sfx.gd`), battle stations, the ship's bell and teleg
 
 From the listening page: the level 20 dB up under a limiter (`Settings.OUTPUT` is now 1.0 and `Sfx.PRE_GAIN_DB` 4.4 ahead of the limiter; a recorded duel measures -19.5 LUFS, peaks -6 dB); the recorded sonar ping; the siren for battle stations; the gong for the bell (alongside in port, an engine order on the chart); paper for a page turned (a new panel or Command page); the propeller loop near aircraft; fire crackling near a burning ship; bubbles by a ship going down; rain in a rough sea, storm wind and thunder in a storm (battle and chart). Not chosen: the interface switches, the alarms, the bells. Built by `tools/build_sfx_chosen.py`; played through `Sfx.cue(name)` (one-shots) and `Sfx.layer(name, level)` (loops: ask every frame, a loop nobody asks for fades out).
 
-**Music**: the first round (adventure and fantasy orchestral) was turned down: "too adventure-like, didn't seem to represent the tone of the game". The second round looks for the sombre and restrained.
+**Music, chosen 11 Nov 2026** (second round): "Lost Frontier" on the main menu, "Long Note Two" on the chart, "Steel and Seething" in battle, all by Kevin MacLeod (CC BY 4.0: credited on the main menu; `godot/assets/music`, built by `tools/build_music.py`, each levelled to -20 LUFS). `Sfx.music("menu" | "chart" | "battle" | "")` says which should play; the owner asked that nothing cut in when going between screens, so the old piece fades out over three seconds while the new fades in over three and a half, and a piece that has run its length rests in silence before it comes again (`Sfx.MUSIC`: file, level, rest). The Music bus has its own slider in Settings (default 60%). Reels are recorded without music. `tests/music_test.tscn` checks the crossfade has no step.
+
+**Music, first round**: the first round (adventure and fantasy orchestral) was turned down: "too adventure-like, didn't seem to represent the tone of the game". The second round looks for the sombre and restrained.
 
 ## Rules
 

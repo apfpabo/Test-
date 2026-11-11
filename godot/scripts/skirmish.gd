@@ -25,6 +25,7 @@ var theirs_list: ItemList
 var ids: Array = []
 
 func _ready() -> void:
+    Sfx.music("menu")
     set_anchors_preset(Control.PRESET_FULL_RECT)
     var bg = ColorRect.new(); bg.color = Color(0.06, 0.12, 0.14); bg.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(bg)
     var scroll = ScrollContainer.new(); scroll.set_anchors_preset(Control.PRESET_FULL_RECT); add_child(scroll)

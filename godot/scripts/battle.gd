@@ -333,7 +333,7 @@ func _key(k: int) -> void:
                 if s.squads.is_empty(): sim.say("This ship carries no aircraft.", 1.2)
                 else:
                     var tg: BattleSim.CShip = sim.lock if (sim.lock != null and sim.engageable(sim.lock) and sim.visible_to(sim.lock, 0)) else sim.nearest_enemy(sim.mouse_world, 0, INF, func(o): return not sim.submerged(o))
-                    var can_fly: bool = tg != null and not (int(sim.wx.sea) >= 3 or sim.wx.fog or (sim.wx.night and not s.tech.has("jets")))
+                    var can_fly: bool = tg != null and sim.deck_ok(s) and not (int(sim.wx.sea) >= 3 or sim.wx.fog or (sim.wx.night and not s.tech.has("jets")))
                     if tg == null: sim.say("No target in sight for a strike.", 1.5)
                     elif not sim.launch_strike(s, tg) and can_fly: sim.say("No squadrons ready.", 1.2)   # otherwise the sim has said why
         KEY_C:
@@ -505,7 +505,7 @@ class Keel extends Node2D:
     var view
     func _draw() -> void:
         var h: float = view.heel()
-        if absf(h) < 0.08 or view.battle.zoom() * view.s.d.L < 25: return
+        if absf(h) < 0.08 or view.battle.zoom() * view.s.d.L < 25 or (view.s.sub and view.s.dive > 0.1): return
         var hi: float = -signf(h); var B: float = view.s.d.B; var off: float = absf(h) * B * 0.3; var e: Array = view.edge
         for i in e.size() - 1:
             var a: Vector2 = e[i]; var b: Vector2 = e[i + 1]

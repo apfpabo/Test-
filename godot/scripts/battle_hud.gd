@@ -70,6 +70,16 @@ func toggle_menu() -> void:
 func _text(p: Vector2, s: String, col := INK, size := 13, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0) -> void:
     draw_string(font, p, s, align, width, size, col)
 
+## Items joined with " · " into as few lines as fit the width.
+func _wrap(items: PackedStringArray, width: float, fs: int) -> Array:
+    var out: Array = []; var cur := ""
+    for it in items:
+        var nxt: String = it if cur == "" else cur + " · " + it
+        if cur != "" and font.get_string_size(nxt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width: out.append(cur); cur = it
+        else: cur = nxt
+    if cur != "": out.append(cur)
+    return out
+
 func _bar(p: Vector2, w: float, h: float, f: float, col: Color) -> void:
     draw_rect(Rect2(p, Vector2(w, h)), Color(0.02, 0.06, 0.08, 0.85)); draw_rect(Rect2(p, Vector2(w * clampf(f, 0, 1), h)), col)
 
@@ -120,7 +130,7 @@ func _draw() -> void:
         elif s.steer < 0.7: ail.append("steering damaged")
         if absf(s.list) >= 0.3: ail.append("listing to " + ("starboard" if s.list > 0 else "port"))
         if s.deck_out > 0: ail.append("flight deck out")
-        if s.side == 0 and not s.squads.is_empty(): _wing(sp + Vector2(-w / 2, -off + 10), s, 6.0)
+        if s.side == 0 and not s.squads.is_empty(): _wing(sp + Vector2(-_wing(Vector2(-1000, -1000), s, 6.0) / 2.0, -off + 10), s, 6.0)   # centred under her bars
         if s.smoke_on: ail.append("making smoke")
         if ail.size(): _text(sp + Vector2(-150, -off - 18), " · ".join(ail), Color(0.93, 0.5, 0.36) if not (ail.size() == 1 and s.smoke_on) else Color(0.8, 0.82, 0.8), 11, HORIZONTAL_ALIGNMENT_CENTER, 300)
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
@@ -146,12 +156,14 @@ func _draw() -> void:
     _text(Vector2(ox + 8, 28), sl, GOLD if smk else Color(INK, 0.6))
     _text(Vector2(16, 54), {"engage": "Each ship picks her own target and fights at her best range.", "escort": "Ships keep station round the flagship and engage what comes near.", "abreast": "Ships hold station abeam of the flagship, turning and changing speed with her; guns fire as they bear.", "screen": "Light ships hold an arc ahead of the flagship, the heavier ones follow her in column.", "line": "Ships follow in the flagship's wake: steer the line and every gun bears together.", "retreat": "All ships turn away and open the range to break contact."}[sim.order] + ("  Only the flagship fires; AA still defends." if sim.hold_fire else ""), DIM, 12)
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
-    _text(Vector2(16, 86), "Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire", Color(INK, 0.45), 12)
-    _text(Vector2(16, 101), "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute", Color(INK, 0.45), 12)
+    # the keys, wrapped to the width of the window (it ran off the right-hand edge of anything narrower than 2,000 px)
+    var hy := 86.0
+    for ln in _wrap(("Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire" + " · " + "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · R sensors · P pause · Esc menu · M mute").split(" · "), W - 32.0, 12):
+        _text(Vector2(16, hy), ln, Color(INK, 0.45), 12); hy += 15.0
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
-        _text(Vector2(16, 116), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
-    var ry = 136.0 if (sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog) else 128.0
+        _text(Vector2(16, hy), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
+    var ry = hy + (20.0 if (sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog) else 12.0)
     # ten ships a side must fit above the shell panel on a small window: the rows close up rather than drop ships
     var step := 16.0; var room: float = (H - 396.0) - ry - 52.0
     if sim.ships.size() * step > room: step = maxf(11.0, room / sim.ships.size())

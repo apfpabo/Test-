@@ -8,16 +8,18 @@ var out := ""
 func _ready() -> void:
     out = OS.get_cmdline_user_args()[0]
     Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
-    GameData.pending = {"player": ["cv_essex", "bb_iowa", "ca_baltimore"], "enemy": ["ca_hipper"], "enemy_fac": "directorate", "player_tech": ["radar"], "enemy_tech": [], "islands": 0}
+    GameData.pending = {"player": ["cv_essex", "bb_iowa", "ca_baltimore", "cv_forrestal"], "enemy": ["ca_hipper"], "enemy_fac": "directorate", "player_tech": ["radar"], "enemy_tech": [], "islands": 0}
     battle = load("res://scenes/battle.tscn").instantiate(); add_child(battle)
 func _shot(n: String) -> void: get_viewport().get_texture().get_image().save_png("%s/deck_%s.png" % [out, n])
 func _process(_d: float) -> void:
     f += 1
-    var sim = battle.sim; var cv = sim.ships[0]; var bb = sim.ships[1]; var ca = sim.ships[2]; var e = sim.ships[3]
+    var sim = battle.sim; var cv = sim.ships[0]; var bb = sim.ships[1]; var ca = sim.ships[2]; var e = sim.ships[4]; var cj = sim.ships[3]
     if f == 2:
         battle.speed_i = 1; battle.cam_free = true; sim.hold_fire = true; e.ai_off = true; e.god = true; e.pos = cv.pos + Vector2(0, -30000)
         for s in sim.ships: s.ai_off = true
-    if f == 6: sim.launch_strike(cv, e)
+    if f == 6: sim.launch_strike(cv, e); cj.tech = ["jets", "radar"]; sim.launch_strike(cj, e)
+    if f == 100: battle.camera.position = cj.pos + Vector2.from_angle(cj.a) * 150.0; battle.camera.zoom = Vector2.ONE * 2.0
+    if f == 103: _shot("jets")
     if f == 150: battle.camera.position = cv.pos + Vector2.from_angle(cv.a) * 120.0; battle.camera.zoom = Vector2.ONE * 3.0
     if f == 153: _shot("takeoff")
     if f == 154: battle.camera.zoom = Vector2.ONE * 1.2

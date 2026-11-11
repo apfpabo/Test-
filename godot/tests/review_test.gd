@@ -900,6 +900,22 @@ func _flying() -> void:
 	ok(not bb.alive and sim.sink_k(bb) < 0.3 and sim.sink_k(dd) < 0.4 and sim.sink_k(dd) > sim.sink_k(bb), "five seconds after she is lost a ship has barely begun to go (battleship %.2f, destroyer %.2f)" % [sim.sink_k(bb), sim.sink_k(dd)])
 	for i in 1800: sim.finished = false; sim.step(0.02)
 	ok(sim.sink_k(bb) >= 1.0, "and within three quarters of a minute she is gone")
+	# the action does not end with a ship half under
+	sim = _sim(["bb_iowa"], ["dd_narvik"]); e = sim.ships[1]; sim.ships[0].ai_off = true; sim.hold_fire = true
+	sim.damage(e, e.hull + 1.0, "resolved")
+	for i in 400: sim.step(0.02)   # eight seconds: the old report came up after five
+	ok(not sim.finished and sim.sink_k(e) < 1.0, "the action is not called over while the last ship is still going down (%.2f under after 8 s)" % sim.sink_k(e))
+	for i in 3000:
+		sim.step(0.02)
+		if sim.finished: break
+	ok(sim.finished and sim.sink_k(e) >= 1.0, "it ends once she is gone")
+	# a carrier taken off the sea in the editor takes her aircraft with her
+	sim = _sim(["cv_essex", "dd_fletcher"], ["dd_narvik"]); cv = sim.ships[0]; sim.editor = true
+	sim.launch_strike(cv, sim.ships[2])
+	for i in 300: sim.update_air(0.1)
+	sim.despawn(cv)
+	for i in 50: sim.update_air(0.1)
+	ok(sim.air.is_empty(), "a carrier removed in the editor leaves no aircraft circling for ever (%d groups)" % sim.air.size())
 	# gashes do not cross
 	sim = _sim(["bb_iowa"], ["dd_narvik"]); bb = sim.ships[0]
 	for i in 12: sim.mark_hit(bb, bb.pos + Vector2(20.0 + i * 0.4, 1.0).rotated(bb.a), 3.0, true, 0.0)

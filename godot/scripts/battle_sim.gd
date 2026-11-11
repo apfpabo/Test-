@@ -318,6 +318,8 @@ func spawn(type: String, side: int, at: Vector2, heading: float, tech: Array) ->
     return s
 func despawn(s: CShip) -> void:
     ships.erase(s)
+    for i in range(air.size() - 1, -1, -1): if air[i].home == s: air.remove_at(i)   # her aircraft go with her: they would circle for ever, with no deck to work them
+    s.deck_ops.clear()
     for x in ships:
         if x.force_tgt == s: x.force_tgt = null
         if x.target == s: x.target = null
@@ -1017,7 +1019,7 @@ func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
     else: aa_shot(s, m, p, sq.pos)
     part(P.FLAK, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 50.0, 0.6, 8.0)
     if randf() < chance * (0.6 if sq.jet else 1.0) * (1.35 if s.tech.has("aa_prox") else 1.0):   # proximity fuzes
-        sq.n -= 1; part(P.FALL, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 30.0, 1.4, 6.0)
+        sq.n = maxi(0, int(sq.n) - 1); part(P.FALL, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 30.0, 1.4, 6.0)
 
 func update_weapons(s: CShip, dt: float) -> void:
     var is_player = s == flag; var sm = submerged(s)
@@ -1063,7 +1065,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                             var na = nearest_air(s.side, p, rng * 0.7)
                             if na != null: m.air = na
                     if m.tgt != null: aim = lead_point(p, m.tgt, w.speed)
-                    elif not m.air.is_empty() and m.air.n > 0: aim = m.air.pos; aim_air = m.air
+                    elif not m.air.is_empty() and m.air.up > 0: aim = m.air.pos; aim_air = m.air
                 if aim == null: # nothing in range: lay on the nearest enemy, so the turret is trained when one closes
                     m.rest_t -= dt
                     if m.rest_t <= 0:
@@ -1584,7 +1586,7 @@ func launch_strike(s: CShip, tg: CShip) -> bool:
             "type": "tb" if launched % 2 == 0 else "db", "jet": jet, "target": tg, "state": "form"})
         q.state = "out"; launched += 1
     if launched and s.side == 0: say(str(launched) + " squadron" + ("s" if launched > 1 else "") + " taking off.", 2.0)
-    if launched and s.side == 1: say("Enemy aircraft are taking off!", 2.5)
+    if launched and s.side == 1: say("Enemy aircraft are taking off!" if visible_to(s, 0) else "Enemy aircraft inbound!", 2.5)
     return launched > 0
 
 func update_air(dt: float) -> void:
@@ -1834,7 +1836,7 @@ func step(dtv: float) -> void:
         m.life -= dt; m.v = minf(m.speed, m.v + m.speed * dt)
         var tg = m.target; var alive = false
         if tg != null:
-            if m.kind == "sam": alive = (tg is Dictionary and ((tg.has("n") and tg.n > 0) or (tg.get("kind", "") == "ssm" and not tg.get("dead", false))))
+            if m.kind == "sam": alive = (tg is Dictionary and ((tg.has("n") and tg.up > 0) or (tg.get("kind", "") == "ssm" and not tg.get("dead", false))))
             else: alive = tg is CShip and engageable(tg)
         if m.kind == "ssm" and not alive:
             m.target = nearest_enemy(m.pos, m.side, 6000.0, func(o: CShip) -> bool: return not submerged(o)); alive = m.target != null
@@ -1845,7 +1847,7 @@ func step(dtv: float) -> void:
             if m.kind == "sam" and d < 40:
                 if randf() < m.p:
                     if m.target.get("kind", "") == "ssm": kill_missile(m.target)
-                    else: m.target.n -= 2; part(P.FALL, tpos, 1.4, 6.0)
+                    else: m.target.n = maxi(0, int(m.target.n) - mini(2, int(m.target.up))); part(P.FALL, tpos, 1.4, 6.0)   # only machines in the air can be hit
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B) and m.target.tech.has("ecm") and not m.get("ecm_tried", false):
                 m.ecm_tried = true
@@ -1889,7 +1891,11 @@ func step(dtv: float) -> void:
         end_t += dtv / BT
         if not end_msg:
             end_msg = true; say("The enemy is beaten!" if theirs == 0 else ("Contact lost." if mine and theirs else "Action over."), 3.0)
-        if end_t > 2.5: _finish()
+        # the action is not called over while a ship is still going down: the last one to sink is seen to sink
+        # (the report used to come up 2.5 s after she was hit, and froze her a quarter of the way under)
+        var going := false
+        for s in ships: if not s.alive and sink_k(s) < 1.0: going = true; break
+        if end_t > 2.5 and (not going or end_t > 25.0): _finish()
 
 func trail_point(s: CShip) -> Dictionary:
     var sx: float = s.d.L * 0.3; var sy = hull_half(s.d, sx)

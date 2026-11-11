@@ -107,6 +107,7 @@ void fragment() {
 	vec3 fc = mix(vec3(0.7, 0.83, 0.86), vec3(0.88, 0.93, 0.93), clamp(0.6 + (f0 - f2) * 0.5, 0.0, 1.0));
 	over(o, fc, clamp(f0 * 1.15, 0.0, 1.0) * 0.78 * vis);
 	o.rgb *= mix(1.0, 0.5, night);
+	o.a *= 1.0 - clamp(COLOR.b * 2.05, 0.0, 1.0);   // the pass over a ship lets the foam go as it settles (blue 0..0.49)
 	COLOR = o;
 	}
 }

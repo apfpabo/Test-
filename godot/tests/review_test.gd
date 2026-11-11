@@ -852,7 +852,7 @@ func _flying() -> void:
 	for i in 400:
 		sim.update_air(0.1); most_ops = maxi(most_ops, cv.deck_ops.size())
 		if sim.air[0].up == 1: seen_one = true
-	ok(seen_one and most_ops <= 3, "the machines leave the deck one after another (never more than %d on the run at once)" % most_ops)
+	ok(seen_one and most_ops <= 6, "the machines leave the deck one after another (never more than %d on the run at once)" % most_ops)
 	var up := 0
 	for q in sim.air: up += int(q.up)
 	ok(up > 0 and up < full, "forty seconds on, some are up and some still wait their turn (%d of %d)" % [up, full])

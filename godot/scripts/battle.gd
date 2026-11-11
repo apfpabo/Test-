@@ -51,7 +51,7 @@ func _ready() -> void:
     water_mat = ShaderMaterial.new(); water_mat.shader = preload("res://shaders/water.gdshader"); water.material = water_mat; bg.add_child(water)
     # world layers, bottom to top
     world = Node2D.new(); world.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS; add_child(world)
-    for n in ["islands", "wash", "below", "bursts", "shadows", "ships", "above", "light", "overlay"]:
+    for n in ["islands", "wash", "below", "shadows", "ships", "washtop", "bursts", "above", "light", "overlay"]:   # water columns stand above the ships they rise beside: a torpedo's burst goes up over her side, not under her
         var node: Node2D
         if n == "ships": node = Node2D.new()
         else: node = Drawer.new(); node.battle = self; node.kind = n; node.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
@@ -60,6 +60,7 @@ func _ready() -> void:
             var ll := CanvasLayer.new(); ll.layer = 1; ll.follow_viewport_enabled = true; add_child(ll); ll.add_child(node); layers[n] = node; continue
         if n == "overlay":   # range rings and aiming lines stay readable at night too
             var ol := CanvasLayer.new(); ol.layer = 2; ol.follow_viewport_enabled = true; add_child(ol); ol.add_child(node); layers[n] = node; continue
+        if n == "washtop": node.material = wash_mat   # the same foam, over the ships, for a burst hard against one
         if n == "wash": wash_mat = ShaderMaterial.new(); wash_mat.shader = preload("res://shaders/wash.gdshader"); wash_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = wash_mat
         if n == "bursts": burst_mat = ShaderMaterial.new(); burst_mat.shader = preload("res://shaders/burst.gdshader"); burst_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = burst_mat
         world.add_child(node); layers[n] = node
@@ -724,6 +725,7 @@ class Drawer extends Node2D:
             "below": _scars(); _wakes(); _parts(0); _wreckage(); _torpedoes()
             "bursts": _bursts()
             "wash": _wash()
+            "washtop": _wash(true)
             "shadows": _shadows()
             "above": _parts(1); _screens()
             "light": _parts(2); _flares()
@@ -754,6 +756,15 @@ class Drawer extends Node2D:
             for i in range(last_i, -1, -1):
                 var q: Dictionary = s.trail[i]
                 if not q.sm and ((last_i - i) % stride == 0 or i == 0): pts.append(q)
+            if sim.modern and s.sub:
+                # a boat running submerged leaves no churned wake, but the sea over her is not quite still: a faint,
+                # narrow track of disturbed water in the same foam as every other wake (it was a string of rings)
+                var deep: Array = []
+                if sim.active(s) and sim.submerged(s): deep.append(sim.trail_point(s))
+                for i in range(last_i, -1, -1):
+                    var q: Dictionary = s.trail[i]
+                    if q.sm and ((last_i - i) % stride == 0 or i == 0): deep.append(q)
+                if deep.size() >= 2: _ribbon(deep, 0, s.d.B, 0.32 * clampf(float(deep[0].v) / 6.0, 0.2, 1.0), now, float(s.d.B) * 2.4, Color(0.84, 0.94, 0.94))
             if pts.size() < 2: continue
             var B: float = s.d.B; var strength = clampf(pts[0].v / 10.0, 0.1, 1.0)
             if sim.modern:
@@ -924,20 +935,27 @@ class Drawer extends Node2D:
             _rpuff(tex, c.p + BattleSim.SUN * r * 0.16, r * 0.8, ang + 2.3, Color(0.3, 0.32, 0.34, a * 0.35))   # its shaded side
 
     ## What a shell leaves on the sea: a foam patch and a spreading trough, one quad each (shaders/wash.gdshader).
-    func _wash() -> void:
+    ## The foam on the sea. `top`: the pass over the ships, which draws only the young foam of a burst against a ship's
+    ## side and lets it go (the fade is carried in the quad's blue, 0..0.49) as it settles back onto the sea.
+    func _wash(top := false) -> void:
         var sim: BattleSim = battle.sim
         if not sim.modern: return
         var vr: Rect2 = battle.view_rect().grow(300); var mn: float = 1.0 / battle.zoom()
         for q in sim.parts:
             if q.life < 0 or not vr.has_point(q.pos): continue
             if q.t == P.BLAST:   # a gun's blast on the sea: the quad is turned to the line of fire
+                if top: continue
                 var rb: float = maxf(q.size, 2.0 * mn)
                 draw_set_transform(q.pos, q.a, Vector2.ONE)
                 draw_rect(Rect2(-Vector2(rb, rb) * 2.0, Vector2(rb, rb) * 4.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0211 + q.pos.y * 0.0133, 1.0), 1.0, clampf((q.size / mn - 2.0) / 4.0, 0.0, 1.0)))
                 draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE); continue
             if q.t != P.WASH: continue
+            var age: float = clampf(q.life / q.mx, 0.0, 1.0); var gone := 0.0
+            if top:
+                if not q.over or age > 0.28: continue
+                gone = smoothstep(0.08, 0.28, age) * 0.49
             var R: float = maxf(q.size, 1.5 * mn)
-            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(clampf(q.life / q.mx, 0.0, 1.0), fposmod(q.pos.x * 0.0173 + q.pos.y * 0.0091, 1.0), 0.0, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
+            draw_rect(Rect2(q.pos - Vector2(R, R) * 4.0, Vector2(R, R) * 8.0), Color(age, fposmod(q.pos.x * 0.0173 + q.pos.y * 0.0091, 1.0), gone, clampf((q.size / mn - 1.5) / 3.0, 0.0, 1.0)))
 
     ## An aircraft in plan, in metres (nose along +x): a shadow on the sea first, then the machine in its service
     ## paint with the light on one wing, its canopy, markings, and the propeller's disc or the jet's exhaust.
@@ -1305,22 +1323,8 @@ class Drawer extends Node2D:
         # from the formation astern, onto the deck and forward to the lift
         for cv in sim.ships:
             if cv.deck_ops.is_empty() or (cv.side == 1 and (sim.limited() or not sim.screens.is_empty()) and not sim.visible_to(cv, 0)): continue
-            var span: Vector2 = sim.deck_span(cv); var dl: float = span.y - span.x
-            for op in cv.deck_ops:
-                var f: float = clampf(op.t / op.dur, 0.0, 1.0); var pp: Vector2; var pa: float = cv.a; var alt := 2.0
-                if op.k == "to":
-                    if f < 0.45: pp = sim.world_pt(cv, lerpf(span.x + dl * 0.4, span.y, pow(f / 0.45, 2.0)), 0.0)
-                    else:
-                        var v: float = smoothstep(0.0, 1.0, (f - 0.45) / 0.55); var bow: Vector2 = sim.world_pt(cv, span.y, 0.0)
-                        pp = bow.lerp(op.q.pos, v); alt = lerpf(2.0, 28.0 if op.q.type == "tb" else 60.0, v)
-                        if op.q.pos.distance_to(bow) > 5.0: pa = lerp_angle(cv.a, (op.q.pos - bow).angle(), v)
-                else:
-                    var wire: Vector2 = sim.world_pt(cv, span.x + dl * 0.12, 0.0)
-                    if f < 0.65:
-                        var v: float = f / 0.65; var p1: Vector2 = sim.world_pt(cv, span.x - 380.0, 0.0)
-                        pp = op.from.lerp(p1, v).lerp(p1.lerp(wire, v), v); alt = lerpf(28.0 if op.q.type == "tb" else 60.0, 2.0, v * v)
-                        var tan: Vector2 = (p1 - op.from).lerp(wire - p1, v); pa = tan.angle() if tan.length() > 1.0 else cv.a
-                    else: pp = sim.world_pt(cv, lerpf(span.x + dl * 0.12, span.x + dl * 0.5, 1.0 - pow(1.0 - (f - 0.65) / 0.35, 2.0)), 0.0)
+            for op in cv.deck_ops:   # each is flown by the simulation (BattleSim._fly_op): here it is only drawn where it is
+                var pp: Vector2 = op.pos; var pa: float = op.a; var alt: float = op.alt
                 if z0 < 0.3 or not sim.modern:
                     var ps = maxf(1.0, 1.6 * mn); draw_set_transform(pp, pa, Vector2(ps, ps) * 0.7)
                     draw_rect(Rect2(-5, -1, 11, 2), Color("#e8a08a") if cv.side else Color("#f3e2a8")); draw_rect(Rect2(0, -7, 2.5, 14), Color("#e8a08a") if cv.side else Color("#f3e2a8"))

@@ -77,8 +77,7 @@ func _spot(who: String, lead: float) -> Variant:
 		"deck":
 			for s in sim.ships:
 				if s.side != 0 or s.deck_ops.is_empty(): continue
-				var op: Dictionary = s.deck_ops[0]; var span: Vector2 = sim.deck_span(s)
-				return sim.world_pt(s, lerpf(span.x, span.y, 0.75 if op.k == "to" else 0.1), 0.0)
+				return s.deck_ops[0].pos
 		"torp":
 			for tp in sim.torps: return tp.pos + Vector2.from_angle(tp.a) * 40.0
 		"victim":   # the ship the torpedoes are running at: once chosen, stay with her

@@ -133,6 +133,7 @@ class CShip:
 
 class Part:
     var t: int
+    var over := false   # foam thrown over a ship: drawn above her while it is young
     var pos: Vector2
     var vel = Vector2.ZERO
     var life = 0.0
@@ -825,7 +826,13 @@ func fx_splash(p: Vector2, size: float) -> void:
     part(P.SPLASH, p, 2.0 if modern else 1.8, size)
     if not modern: part(P.FOAM, p, 10.0, size * 1.5)
     if modern:
-        part(P.WASH, p, 9.0 + size * 0.4, size * 1.5)   # the foam patch and the trough it leaves (shaders/wash.gdshader)
+        var w = part(P.WASH, p, 9.0 + size * 0.4, size * 1.5)   # the foam patch and the trough it leaves (shaders/wash.gdshader)
+        # a burst against a ship's side (a torpedo, a near miss hard alongside) throws its water over her: for its first
+        # moments that foam is drawn above her decks, then it is on the sea and she steams out of it
+        for s in ships:
+            if not active(s) or submerged(s): continue
+            var l: Vector2 = (p - s.pos).rotated(-s.a)
+            if absf(l.x) < s.d.L * 0.5 + 4.0 and absf(l.y) < s.d.B * 0.5 + 6.0: w.over = true; break
         for i in 4 + int(size * 0.35):
             var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.7 + randf() * 0.9, size * (0.22 + randf() * 0.2), rdir() * (size * 1.2 + randf() * size * 4.0)); q.drag = 0.18
         part(P.WRING, p, 1.4 + size / 25.0, size * 2.4)
@@ -1544,8 +1551,6 @@ func ai_ship(s: CShip, dt: float) -> void:
 ## own: a bomb or shell through it (`deck_out`, seconds until it is patched) or a heavy list stops all flying, and
 ## machines kept waiting too long run out of fuel and ditch.
 const DECK_GAP := 4.0     # seconds between one machine and the next
-const DECK_RUN := 7.0     # the deck run and the climb to the formation
-const DECK_LAND := 9.0    # the approach, the wire and the lift
 const DECK_LIST := 0.6    # a list beyond this and nothing can fly
 ## How far a lost ship has gone down, 0..1. A big ship takes longer about it than a small one (some 20 s for a
 ## destroyer, over 30 for a battleship, at the battle's ordinary speed): she settles, the sea comes over her low side, and she is gone.
@@ -1672,7 +1677,7 @@ func update_air(dt: float) -> void:
         # the deck: machines already rolling or on the approach finish; the next one goes when the deck is clear
         for j in range(s.deck_ops.size() - 1, -1, -1):
             var op: Dictionary = s.deck_ops[j]; op.t += dt
-            if op.t < op.dur: continue
+            if not _fly_op(s, op, dt): continue
             op.q.ops = maxi(0, int(op.q.ops) - 1)
             if op.k == "to": op.q.up += 1
             s.deck_ops.remove_at(j)
@@ -1682,12 +1687,55 @@ func update_air(dt: float) -> void:
         for q in air: if q.home == s and q.state == "land" and q.up > 0: nxt = q; break
         if nxt != null:
             nxt.up -= 1; nxt.ops += 1; s.deck_t = DECK_GAP * 1.5
-            s.deck_ops.append({"k": "ld", "t": 0.0, "dur": DECK_LAND, "q": nxt, "from": nxt.pos + Vector2(-26.0 * ceili(nxt.up / 2.0), 0).rotated(nxt.a), "a0": nxt.a})
+            s.deck_ops.append({"k": "ld", "ph": "gate", "t": 0.0, "pt": 0.0, "q": nxt, "pos": nxt.pos + Vector2(-26.0 * ceili(nxt.up / 2.0), 0).rotated(nxt.a), "a": nxt.a,
+                "v": 220.0 if nxt.jet else 75.0, "alt": 28.0 if nxt.type == "tb" else 60.0})
             continue
         for q in air: if q.home == s and q.state == "form" and q.dk > 0: nxt = q; break
         if nxt != null:
             nxt.dk -= 1; nxt.ops += 1; s.deck_t = DECK_GAP
-            s.deck_ops.append({"k": "to", "t": 0.0, "dur": DECK_RUN, "q": nxt})
+            s.deck_ops.append({"k": "to", "ph": "run", "t": 0.0, "pt": 0.0, "q": nxt, "pos": world_pt(s, lerpf(deck_span(s).x, deck_span(s).y, 0.4), 0.0), "a": s.a, "v": 0.0, "alt": 2.0})
+
+## One machine taking off or landing, flown as an aircraft is flown: it has a place, a heading and a speed, and it
+## turns no faster than an aircraft can, so its path is a curve and never a corner. Taking off: down the deck, straight
+## on over the bow as it climbs, then round to join its squadron. Landing: out of the formation, round to a point
+## astern of the ship, up her wake onto the deck, and forward to the lift. True when it is done.
+const DECK_ROLL := 3.0
+func _fly_op(s: CShip, op: Dictionary, dt: float) -> bool:
+    var q: Dictionary = op.q; var span: Vector2 = deck_span(s); var dl: float = span.y - span.x
+    var cruise: float = 220.0 if q.jet else 75.0; var high: float = 28.0 if q.type == "tb" else 60.0
+    op.pt += dt
+    match String(op.ph):
+        "run":   # the deck run: gathering way to the bow
+            var k: float = clampf(op.pt / DECK_ROLL, 0.0, 1.0)
+            op.pos = world_pt(s, lerpf(span.x + dl * 0.4, span.y, k * k), 0.0); op.a = s.a; op.alt = 2.0
+            if k >= 1.0: op.ph = "fly"; op.pt = 0.0; op.v = s.v + 2.0 * dl * 0.6 / DECK_ROLL
+        "fly":   # away over the bow, climbing; then round to the squadron, a little faster than it flies
+            op.v = move_toward(op.v, cruise * 1.3, cruise * 0.5 * dt); op.alt = move_toward(op.alt, high, high * 0.3 * dt)
+            var slot: Vector2 = q.pos + Vector2(-26.0 * ceili(q.up / 2.0), 0).rotated(q.a) if q.up > 0 else q.pos
+            if op.pt > 1.5: op.a += clampf(ang_diff((slot - op.pos).angle(), op.a), -0.7 * dt, 0.7 * dt)
+            op.pos += Vector2.from_angle(op.a) * op.v * dt
+            return (op.pt > 1.5 and op.pos.distance_to(slot) < maxf(45.0, op.v * 0.35)) or op.pt > 30.0
+        "gate":  # out of the formation and round to a point astern of her, slowing and coming down
+            var slow: float = maxf(55.0, s.v + 40.0)
+            op.v = move_toward(op.v, slow, cruise * 0.4 * dt); op.alt = move_toward(op.alt, 22.0, high * 0.2 * dt)
+            var gate: Vector2 = world_pt(s, span.x - 420.0, 0.0)
+            op.a += clampf(ang_diff((gate - op.pos).angle(), op.a), -0.8 * dt, 0.8 * dt)
+            op.pos += Vector2.from_angle(op.a) * op.v * dt
+            if op.pos.distance_to(gate) < maxf(110.0, op.v * 1.3) or op.pt > 40.0: op.ph = "final"; op.pt = 0.0
+        "final": # up her wake: lined up with the deck and sinking onto it
+            var wire: Vector2 = world_pt(s, span.x + dl * 0.12, 0.0); var d: float = op.pos.distance_to(wire)
+            op.v = move_toward(op.v, maxf(40.0, s.v + 28.0), 30.0 * dt); op.alt = minf(op.alt, 2.0 + d * 0.06)
+            # aim a little way up the centreline from where she is, so she comes onto it and along it, not across it
+            var aim: Vector2 = world_pt(s, span.x + dl * 0.12 - d * 0.55, 0.0) if d > 60.0 else wire
+            op.a += clampf(ang_diff((aim - op.pos).angle(), op.a), -1.3 * dt, 1.3 * dt)
+            op.pos += Vector2.from_angle(op.a) * op.v * dt
+            if d < 22.0 or op.pt > 25.0: op.ph = "roll"; op.pt = 0.0; op.x = span.x + dl * 0.12; op.off = (op.pos - wire).rotated(-s.a); op.da = ang_diff(op.a, s.a)
+        "roll":  # on the deck: pulled up by the wires and taxied forward to the lift
+            var k: float = clampf(op.pt / DECK_ROLL, 0.0, 1.0); var ease: float = 1.0 - pow(1.0 - k, 2.0)
+            var settle: float = 1.0 - clampf(op.pt / 0.6, 0.0, 1.0)   # the last of her drift and swing taken out as she touches
+            op.pos = world_pt(s, lerpf(op.x, span.x + dl * 0.5, ease), 0.0) + (op.off * settle).rotated(s.a); op.a = s.a + float(op.da) * settle; op.alt = 2.0
+            return k >= 1.0
+    return false
 
 # ------------------------------------------------------------------ step
 func step(dtv: float) -> void:
@@ -1755,7 +1803,7 @@ func step(dtv: float) -> void:
             s.trail_t = 0.2; s.trail.append(trail_point(s))
             while s.trail.size() and vt - s.trail[0].t > 18.0: s.trail.pop_front()
         s.wake_t -= dtv
-        if s.wake_t <= 0 and s.v > 1 and sm: s.wake_t = 0.4; part(P.SWAKE, world_pt(s, -s.d.L * 0.48, 0), 3.0, s.d.B * 0.5)
+        if s.wake_t <= 0 and s.v > 1 and sm and not modern: s.wake_t = 0.4; part(P.SWAKE, world_pt(s, -s.d.L * 0.48, 0), 3.0, s.d.B * 0.5)
         if modern and not s.sub and s.v > 2.0 and active(s):   # bow spray flung out at speed, the stern churning
             var sk := clampf(s.v / (s.d.kn * KN), 0.0, 1.0)
             if randf() < dtv * 14.0 * sk:

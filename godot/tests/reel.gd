@@ -46,7 +46,7 @@ func _ready() -> void:
 	clip = CLIPS[a[0] if a.size() and CLIPS.has(a[0]) else "duel"]
 	if a.size() > 1: length = float(a[1])
 	seed(11); Settings.sensors = false
-	GameData.pending = {"player": clip.player, "enemy": clip.enemy, "enemy_fac": "directorate", "player_tech": clip.get("tech", ["radar"]), "enemy_tech": ["radar"], "islands": 0}
+	GameData.pending = {"quiet": true, "player": clip.player, "enemy": clip.enemy, "enemy_fac": "directorate", "player_tech": clip.get("tech", ["radar"]), "enemy_tech": ["radar"], "islands": 0}
 	if not clip.wx.is_empty(): GameData.pending.weather = Weather.battle(clip.wx)
 	battle = load("res://scenes/battle.tscn").instantiate(); add_child(battle)
 func _ship(side: int):

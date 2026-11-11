@@ -209,6 +209,7 @@ var on_boom: Callable    # (pos, vol, freq, rate) for sound
 var on_pop: Callable     # (pos, vol, weapon id) for light AA and point-defence fire
 var on_sound: Callable   # (kind, pos, vol) for recorded events: see Sfx.event
 var sys_log := {}        # subsystem events this battle, for tests and balance
+var ff_dmg := 0.0   # hull points taken off ships by their own side's shells (a measure, shown nowhere)
 func _log(k: String) -> void: sys_log[k] = sys_log.get(k, 0) + 1
 var small_craft = [false, false]  # whether each side still has torpedo boats or submarines afloat
 var dcs: Array = []              # depth charges sinking towards their set depth
@@ -2116,6 +2117,7 @@ func step(dtv: float) -> void:
         if sh.get("tgt") != null: spot(sh.who, sh.tgt, float(sh.get("rel", 6.0)))   # the fall of shot is seen and the next salvo corrected
         if hit != null:
             var res := shell_result(hit, sh); _log("shell " + res.kind)
+            if hit.side == sh.side: _log("shell on a friend"); ff_dmg += sh.dmg * res.k
             mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico", float(res.get("fire", 1.0)))
             if res.kind == "pen": hit_systems(hit, sh.pos, sh.dmg, "shell")
             damage(hit, sh.dmg * res.k, "resolved")

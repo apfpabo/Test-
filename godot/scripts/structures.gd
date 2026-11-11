@@ -195,12 +195,17 @@ func air_group() -> int:
 func jets() -> bool: return Campaign.has_tech("jets")
 func plane_cost() -> int: return int(D.jet_cost if jets() else D.plane_cost)
 ## Cost to bring every air group up to strength.
+## A cruiser's or battleship's floatplanes: one a catapult; lost ones are replaced in port with the carriers' aircraft.
+func floatplanes_max(rec: Dictionary) -> int: return Campaign.hull(rec).get("p", {}).get("cat", []).size()
+func floatplanes(rec: Dictionary) -> int: return mini(int(rec.get("fp", floatplanes_max(rec))), floatplanes_max(rec))
 func replace_cost() -> int:
 	var n := 0
-	for s in g().fleet: n += planes_max(s) - planes(s)
+	for s in g().fleet: n += planes_max(s) - planes(s) + floatplanes_max(s) - floatplanes(s)
 	return n * plane_cost()
 func replace_planes() -> void:
-	for s in g().fleet: if planes_max(s) > 0: s.air = planes_max(s)
+	for s in g().fleet:
+		if planes_max(s) > 0: s.air = planes_max(s)
+		s.erase("fp")   # floatplanes aboard again
 
 ## Days (fractional) until the air groups have rearmed after a strike.
 func strike_wait() -> float:

@@ -1696,7 +1696,9 @@ func apply_battle(sim: BattleSim) -> Dictionary:
     for s in sim.ships:
         if s.side == 0:
             if not s.alive: r.lost.append(s.rec); cas += s.d.crew * 0.5
-            else: s.rec.xp = crew_xp(s.rec) * (1.0 - 0.5 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)) + 1.0; s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = mini(sim.planes_left(s), maxi(Structures.planes_max(s.rec), int(hull(s.rec).get("hangar", 0)) * 6)); s.rec.rdy = maxf(RDY_MIN, readiness(s.rec) - 0.1 - 0.25 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
+            else:
+                s.rec.fp = s.fp + sim.spotters.filter(func(q): return q.ship == s).size()   # floatplanes aboard, and those still aloft come home after the action
+                s.rec.xp = crew_xp(s.rec) * (1.0 - 0.5 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)) + 1.0; s.rec.hullFrac = maxf(0.05, s.hull / s.max_hull); s.rec.ammo = sim.ammo_frac(s); s.rec.air = mini(sim.planes_left(s), maxi(Structures.planes_max(s.rec), int(hull(s.rec).get("hangar", 0)) * 6)); s.rec.rdy = maxf(RDY_MIN, readiness(s.rec) - 0.1 - 0.25 * clampf(s.dmg_taken / s.max_hull, 0.0, 1.0)); cas += s.d.crew * (s.dmg_taken / s.max_hull) * 0.25 * (1 - 0.15 * s.sk.dc)
         else:
             if not s.alive: r.sunk.append(s.rec)
             else:

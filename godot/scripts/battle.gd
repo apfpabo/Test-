@@ -386,7 +386,10 @@ func _key(k: int) -> void:
             if s and not sim.has_kind(s, "ssm"): sim.say("No missile launchers on this ship.", 1.2)
         KEY_F:
             if s:
-                if s.squads.is_empty(): sim.say("This ship carries no aircraft.", 1.2)
+                if s.squads.is_empty():   # a cruiser's or battleship's floatplane: off the catapult to spot for her guns
+                    var why: String = sim.spotter_why(s)
+                    if why != "": sim.say(why, 1.4)
+                    else: sim.launch_spotter(s)
                 else:
                     var tg: BattleSim.CShip = sim.lock if (sim.lock != null and sim.engageable(sim.lock) and sim.visible_to(sim.lock, 0)) else sim.nearest_enemy(sim.mouse_world, 0, INF, func(o): return not sim.submerged(o))
                     var can_fly: bool = tg != null and sim.deck_ok(s) and not (int(sim.wx.sea) >= 3 or sim.wx.fog or (sim.wx.night and not s.tech.has("jets")))
@@ -1310,7 +1313,10 @@ class Drawer extends Node2D:
                 var t: float = k * 1.35 - j * gap + float(tr.get("ph", 0.0)) * gap * 0.5
                 if t < 0.0 or t > 1.0: continue
                 var head: Vector2 = a + d * t; var tail: Vector2 = head - dir * minf(D * streak, D * t)
-                draw_polygon(PackedVector2Array([tail, head + nrm * wd * 0.5, head + dir * wd * 0.6, head - nrm * wd * 0.5]), PackedColorArray([Color(col, 0.0), Color(core, 0.95), Color(core, 0.95), Color(core, 0.95)]))
+                if head.distance_to(tail) > 0.05:   # (a streak just fired has no length: no shape to draw; drawn about its own place, as small shapes must be)
+                    draw_set_transform(head)
+                    draw_polygon(PackedVector2Array([tail - head, nrm * wd * 0.5, dir * wd * 0.6, -nrm * wd * 0.5]), PackedColorArray([Color(col, 0.0), Color(core, 0.95), Color(core, 0.95), Color(core, 0.95)]))
+                    draw_set_transform(Vector2.ZERO)
                 if z > 0.1: _puff(glow, head, wd * 4.5, Color(col, 0.6)); _puff(glow, head, wd * 1.6, Color(1.0, 0.97, 0.9, 0.8))
 
     ## Wreckage on the water and in the air: dark, ragged pieces, tumbling while they fly (with a shadow that closes
@@ -1367,16 +1373,22 @@ class Drawer extends Node2D:
                 var axis: Vector2 = (head - back).normalized(); var nrm: Vector2 = axis.orthogonal(); var mid: Vector2 = back.lerp(head, 0.55)
                 var hot := Color(1.0, 0.97, 0.86); var cool := Color(1.0, 0.45, 0.2) if sh.side else Color(1.0, 0.62, 0.25)
                 # outer glow of the streak, then its core
-                draw_polygon(PackedVector2Array([back, mid + nrm * r * 1.5, head + nrm * r * 1.1, head - nrm * r * 1.1, mid - nrm * r * 1.5]),
+                # (drawn about the shell's own place: small shapes built in world coordinates fail to triangulate far out)
+                var bk: Vector2 = back - head; var md: Vector2 = mid - head
+                draw_set_transform(head)
+                draw_polygon(PackedVector2Array([bk, md + nrm * r * 1.5, nrm * r * 1.1, -nrm * r * 1.1, md - nrm * r * 1.5]),
                     PackedColorArray([Color(cool, 0.0), Color(cool, 0.12), Color(hc, 0.3), Color(hc, 0.3), Color(cool, 0.12)]))
-                draw_polygon(PackedVector2Array([back, mid + nrm * r * 0.55, head + nrm * r * 0.6, head - nrm * r * 0.6, mid - nrm * r * 0.55]),
+                draw_polygon(PackedVector2Array([bk, md + nrm * r * 0.55, nrm * r * 0.6, -nrm * r * 0.6, md - nrm * r * 0.55]),
                     PackedColorArray([Color(cool, 0.0), Color(hc, 0.55), Color(hot, 0.95), Color(hot, 0.95), Color(hc, 0.55)]))
+                draw_set_transform(Vector2.ZERO)
                 var fl: float = 0.8 + 0.2 * sin(sim.vt * 47.0 + sh.s.x * 0.37)   # the tracer flickers as the shell spins
                 _puff(GameData.glow_tex(), head, r * (4.5 + 2.5 * big) * fl, Color(hc, 0.32 + 0.12 * big))
                 _puff(GameData.glow_tex(), head, r * 1.8, Color(hot, 0.7))
                 if z0s > 0.7:   # close in: the shell, base towards us, nose down her line of flight
                     var bl: float = {"S": 0.6, "M": 0.9, "L": 1.3, "H": 1.9}[sh.size]; var bw: float = bl * 0.3
-                    draw_colored_polygon(PackedVector2Array([head + axis * bl, head + axis * bl * 0.35 + nrm * bw, head - axis * bl * 0.6 + nrm * bw, head - axis * bl * 0.6 - nrm * bw, head + axis * bl * 0.35 - nrm * bw]), Color(0.16, 0.15, 0.14, 0.95))
+                    draw_set_transform(head)
+                    draw_colored_polygon(PackedVector2Array([axis * bl, axis * bl * 0.35 + nrm * bw, -axis * bl * 0.6 + nrm * bw, -axis * bl * 0.6 - nrm * bw, axis * bl * 0.35 - nrm * bw]), Color(0.16, 0.15, 0.14, 0.95))
+                    draw_set_transform(Vector2.ZERO)
                     draw_circle(head - axis * bl * 0.6, bw * 0.8, hot)
                 else: draw_circle(head, r * 0.75, hot)
             else: draw_circle(sh.pos - Vector2(0, hgt), r, hc)
@@ -1417,6 +1429,24 @@ class Drawer extends Node2D:
                     var ps = maxf(1.0, 1.6 * mn); draw_set_transform(pp, pa, Vector2(ps, ps) * 0.7)
                     draw_rect(Rect2(-5, -1, 11, 2), Color("#e8a08a") if cv.side else Color("#f3e2a8")); draw_rect(Rect2(0, -7, 2.5, 14), Color("#e8a08a") if cv.side else Color("#f3e2a8"))
                 else: PlaneArt.draw(self, pp, pa, maxf(1.0, 0.8 * mn), op.q.jet, cv.side, op.q.type == "tb", sun_s, alt)
+        # floatplanes: on their catapults (with the ship's heel), and those aloft spotting
+        if sim.modern and z0 >= 0.3:
+            for sh in sim.ships:
+                if sh.fp <= 0 or not sh.alive or sh.view == null or (sh.side == 1 and (sim.limited() or not sim.screens.is_empty()) and not sim.visible_to(sh, 0)): continue
+                var cats: Array = sim.cats_of(sh); var dsh: float = sh.view.deck_shift + sh.view.lean * 2.5
+                for ci in mini(sh.fp, cats.size()):
+                    var c: Array = cats[ci]; var cy: float = float(c[1])
+                    var ca: float = sh.a + (signf(cy) * 0.32 if cy != 0.0 else PI / 2)
+                    var along: float = 7.0 if cy != 0.0 else 2.0   # out along her rail: on twin catapults, which splay outward, this keeps the two planes' wings clear of each other
+                    var cp: Vector2 = sh.pos + Vector2(float(c[0]) + along * cos(ca - sh.a), cy + dsh + along * sin(ca - sh.a)).rotated(sh.a)
+                    PlaneArt.draw(self, cp, ca, 1.0, false, sh.side, false, sun_s, 4.0, null, true)
+        for q in sim.spotters:
+            if q.side == 1 and not sim.spotter_over(1, q.pos) and (sim.limited() or not sim.screens.is_empty()) and q.pos.distance_to(sim.flag.pos if sim.flag != null else q.pos) > 3000.0: continue
+            if z0 < 0.3 or not sim.modern:
+                var ps2 = maxf(1.0, 1.6 * mn); draw_set_transform(q.pos, q.a, Vector2(ps2, ps2) * 0.7)
+                var qc: Color = Color("#e8a08a") if q.side else Color("#f3e2a8")
+                draw_rect(Rect2(-5, -1, 11, 2), qc); draw_rect(Rect2(0, -7, 2.5, 14), qc)
+            else: PlaneArt.draw(self, q.pos, q.a, maxf(1.0, 0.8 * mn), false, q.side, false, sun_s, float(q.alt))
         draw_set_transform(Vector2.ZERO)
         if not sim.modern:
             for tr in sim.tracers: draw_line(tr.a, tr.b, Color(1, 0.86, 0.55, tr.life * 6), mn)

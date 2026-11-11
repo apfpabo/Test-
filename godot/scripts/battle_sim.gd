@@ -133,6 +133,8 @@ class CShip:
     var foul_since := 0.0       # when her torpedoes were first held for it
     var foul_said := false      # (a torpedo attack) she has said why she is holding
     var dc_held_at := -99.0     # when she last held a pattern for a friend (a measure: see sys_log)
+    var fp := 0                 # floatplanes aboard on her catapults (see launch_spotter)
+    var fp_t := 0.0             # until her captain will next think of flying one off
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
     var mag_fire = 0.0     # a magazine fire burning: seconds until it reaches the charges (0 = none)
@@ -358,6 +360,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     var s = CShip.new(); var d: Dictionary = GameData.hulls[rec.type]
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
+    s.fp = clampi(int(rec.get("fp", d.get("p", {}).get("cat", []).size())), 0, d.get("p", {}).get("cat", []).size()); s.fp_t = 20.0 + randf() * 40.0
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     s.sonar_on = not s.sub; s.ping_t = randf() * PING_PERIOD   # a boat listens and keeps quiet until told to ping
@@ -739,6 +742,7 @@ func visible_to(s: CShip, side: int) -> bool:
     var lim := limited()
     if not lim and screens.is_empty(): return true
     if s.heard_t < HEARD_FOR or _radar_heard(s, side): return true   # what she sends out, sound or radar, tells where she is
+    if not submerged(s) and spotter_over(side, s.pos): return true   # a floatplane overhead sees over the smoke
     var show: float = 2.0 if (s.lit_t < 6.0 or not s.fires.is_empty() or s.mag_fire > 0) else 1.0
     var eye: float = float(wx.vis) * show
     if lim and not flares.is_empty() and star_lit(s.pos): eye = maxf(eye, STAR_REACH * (0.35 if wx.get("fog", false) else 1.0))   # under a flare she shows as by day
@@ -1069,6 +1073,7 @@ func spot(s: CShip, tg: CShip, reload: float) -> void:
     if has_radar(s): keep = 0.36
     elif wx.get("night", false) and not star_lit(tg.pos): keep = 0.78
     if not eye_sees(tg, s.side): keep = maxf(keep, 0.7 if has_radar(s) else 0.92)   # behind smoke or beyond sight: the plot alone
+    if spotter_over(s.side, tg.pos): keep *= SPOT_HELP   # her floatplane is over the target, calling the fall of shot
     keep = clampf(keep * CREW[s.cq].spot, 0.2, 0.95)
     so.r = float(so.r) * keep; so.a = float(so.a) * keep
     # the target's helm and ours spoil the reckoning a little each time
@@ -1156,7 +1161,76 @@ func nearest_air(side: int, p: Vector2, rng: float):
         if q.side == side or q.up <= 0: continue   # machines on the deck are not in the sky to be shot at
         var dd: float = p.distance_to(q.pos)
         if dd < bd: bd = dd; best = q
+    for q in spotters:   # a floatplane over the action is fair game too
+        if q.side == side or int(q.n) <= 0: continue
+        var dd: float = p.distance_to(q.pos)
+        if dd < bd: bd = dd; best = q
     return best
+
+# ------------------------------------------------------------------ floatplanes
+## A cruiser's or a battleship's floatplanes (the owner: the planes painted on their catapults could not be used). One
+## a catapult, drawn on the rail as the carriers' piston aircraft are drawn (PlaneArt). Flown off by day in fair
+## weather (F for yours; other captains do it themselves once the enemy is in sight), she goes out over the enemy and
+## circles there: her ship's salvos fall where she can see them (spotting takes more of the error off, SPOT_HELP), and
+## her side sees what lies within SPOT_SEE of her, over smoke as well. Anti-aircraft fire can bring her down; at the
+## end of her endurance she comes home and is hoisted in. A ship lost with her plane aloft loses it.
+const SPOT_SEE := 4000.0     # how far a floatplane's observer sees ships on the sea about her (m)
+const SPOT_HELP := 0.6       # the error left after a spotted salvo is multiplied by this when she is over the target
+const SPOT_ENDURE := 900.0   # battle seconds aloft before she must come home
+const SPOT_V := 55.0         # her speed, m/s
+const SPOT_ORBIT := 2500.0   # how far off the target she circles (outside the light flak, inside the heavy)
+var spotters: Array = []
+func cats_of(s: CShip) -> Array: return s.d.get("p", {}).get("cat", [])
+## Why she cannot fly a floatplane off now, or "".
+func spotter_why(s: CShip) -> String:
+    if cats_of(s).is_empty(): return "This ship carries no aircraft."
+    if s.fp <= 0: return "Her floatplanes are all away."
+    if int(wx.sea) >= 3 or wx.fog or wx.night: return "Her floatplane cannot fly: " + ("the sea is too rough." if int(wx.sea) >= 3 else ("fog." if wx.fog else "it is night."))
+    if not s.alive or s.struck or s.eng_out > 0 and s.v < 1.0: return "She cannot launch now."
+    return ""
+func launch_spotter(s: CShip) -> bool:
+    if spotter_why(s) != "": return false
+    var c: Array = cats_of(s)[maxi(0, s.fp - 1)]; var cy: float = float(c[1])
+    var a: float = s.a + signf(cy) * 0.32 if cy != 0.0 else s.a + PI / 2 * (1.0 if randf() < 0.5 else -1.0)   # along her catapult (a centreline one trained to the beam)
+    s.fp -= 1
+    spotters.append({"ship": s, "side": s.side, "pos": world_pt(s, float(c[0]), cy), "a": a, "v": SPOT_V * 0.6, "t": 0.0, "home": false, "n": 1, "up": 1, "jet": false, "alt": 30.0, "ph": randf() * TAU})
+    boom(world_pt(s, float(c[0]), cy), 0.05, 700.0)
+    if s.side == 0: say("The %s flies off her floatplane to spot for her guns." % s.rec.name, 1.8)
+    return true
+## Is a floatplane of this side over (within SPOT_SEE of) this point, in light she can see by?
+func spotter_over(side: int, p: Vector2) -> bool:
+    if wx.night or wx.fog: return false
+    for q in spotters: if q.side == side and int(q.n) > 0 and not q.home and p.distance_to(q.pos) < SPOT_SEE: return true
+    return false
+func _spotters(dt: float) -> void:
+    for s in ships:   # captains fly theirs off once the enemy is in sight (the flagship's is the player's to fly)
+        if s.fp <= 0 or (s.side == 0 and s == flag) or s.ai_off: continue
+        s.fp_t -= dt
+        if s.fp_t > 0.0: continue
+        s.fp_t = 30.0
+        if spotters.any(func(q): return q.ship == s): continue   # one aloft at a time
+        if nearest_enemy(s.pos, s.side, 25000.0, func(x: CShip) -> bool: return not submerged(x)) != null: launch_spotter(s)
+    for i in range(spotters.size() - 1, -1, -1):
+        var q: Dictionary = spotters[i]; var sh: CShip = q.ship
+        if int(q.n) <= 0:   # shot down
+            part(P.FALL, q.pos, 1.6, 7.0); fx_splash(q.pos, 5.0); spotters.remove_at(i)
+            if q.side == 0: say("A floatplane of ours is shot down.", 1.5)
+            continue
+        q.t = float(q.t) + dt; q.alt = minf(150.0, float(q.alt) + dt * 6.0); q.v = minf(SPOT_V, float(q.v) + dt * 4.0)
+        if float(q.t) > SPOT_ENDURE or not sh.alive or wx.night or wx.fog: q.home = true
+        var goal: Vector2
+        if q.home:
+            if not sh.alive: goal = q.pos + Vector2.from_angle(q.a) * 500.0   # her ship is gone: she flies on until her fuel is out
+            else: goal = sh.pos
+            if sh.alive and q.pos.distance_to(sh.pos) < 160.0: sh.fp += 1; spotters.remove_at(i); continue   # landed alongside and hoisted in
+            if not sh.alive and float(q.t) > SPOT_ENDURE * 1.4: spotters.remove_at(i); continue
+        else:
+            var tg: CShip = nearest_enemy(sh.pos if sh.alive else q.pos, q.side, INF, func(x: CShip) -> bool: return not submerged(x))
+            if tg == null: tg = nearest_any(q.pos, q.side)
+            if tg == null: q.home = true; goal = sh.pos
+            else: goal = tg.pos + Vector2.from_angle(float(q.t) * SPOT_V / SPOT_ORBIT + float(q.ph)) * SPOT_ORBIT
+        q.a = float(q.a) + clampf(ang_diff((goal - q.pos).angle(), float(q.a)), -0.35 * dt, 0.35 * dt)
+        q.pos += Vector2.from_angle(float(q.a)) * float(q.v) * dt
 
 func nearest_missile(side: int, p: Vector2, rng: float, for_sam := false):
     var best = null; var bd = rng
@@ -2362,6 +2436,7 @@ func step(dtv: float) -> void:
             if m.kind == "ssm": fx_splash(m.pos, 14.0)
             missiles.remove_at(i)
     update_air(dt)
+    _spotters(dt)
     for i in range(dcs.size() - 1, -1, -1):
         var q = dcs[i]
         if q.has("rel"):   # still aboard: it goes over the stern (or out from a thrower) when its turn comes

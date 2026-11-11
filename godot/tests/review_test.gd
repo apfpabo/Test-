@@ -986,7 +986,7 @@ func _sound() -> void:
 	for i in 200: s3.update_weapons(g, 0.05)
 	ok(not s3.shells.is_empty(), "with her clear they open fire")
 	var fh: float = fr.hull
-	for sh in s3.shells: sh.e = sh.e - en.pos + Vector2(8000, 3000)
+	for sh in s3.shells: sh.e = Vector2(8000, 3000) + (sh.e - en.pos) * 0.1   # onto the friend (their scatter kept small: whether a shell hits must not hang on the dice)
 	en.pos = Vector2(3000, 3000); fr.pos = Vector2(8000, 3000)
 	for i in 400:
 		if s3.shells.is_empty(): break

@@ -1026,20 +1026,30 @@ class Drawer extends Node2D:
                         if _hash(float(j), float(q.v) * 3.1 + floor(sk * 4.0)) < 0.35: continue   # broken, not a ring
                         var a0: float = j * TAU / 24.0; var rj: float = r2 * (0.9 + 0.2 * _hash(float(j) + 7.0, float(q.v)))
                         draw_arc(q.pos, rj, a0, a0 + TAU / 24.0, 4, Color(0.86 * nk, 0.93 * nk, 0.92 * nk, 0.28 * (1.0 - sk)), w * 0.8)
-            # the column's top, leaning downwind; a mist of spray about it
+            # the column's top, leaning downwind (the owner found the soft puffs alone read as a cloud): jets of water flung
+            # out from it, a crown of thrown water with the droplets showing in it, lit hard on the sun's side and shaded on
+            # the other, and a spray of droplets about it rather than a soft mist
             if h > 0.5:
                 var lean: Vector2 = wind * h * 0.08; var c: Vector2 = q.pos + lean; var r: float = R * (0.75 + 0.35 * rise) * (1.0 + 0.6 * fallK)
-                var a: float = clampf(h / (H * 0.15), 0.0, 1.0)
-                _rpuff(cl, c, r * 1.3, q.a, Color(0.62 * nk, 0.74 * nk, 0.76 * nk, 0.35 * a))
-                if fine:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
-                    for i in 9:
+                var a: float = clampf(h / (H * 0.15), 0.0, 1.0); var foam: Texture2D = GameData.fx_tex("foam")
+                _rpuff(foam, c, r * 1.3, q.a, Color(0.82 * nk, 0.9 * nk, 0.9 * nk, 0.45 * a))   # droplets thrown wide
+                _rpuff(foam, c, r * 1.0, q.a + 2.3, Color(0.9 * nk, 0.96 * nk, 0.96 * nk, 0.6 * a))   # and nearer in, thicker
+                if fine:
+                    for i in 26:   # streaks of water flung out from it: thin, faint and of every length, lit on the sun's side
+                        var j: float = _hash(float(i) + 21.0, float(q.v) + q.pos.y * 0.011); var an: float = q.a + i * TAU / 26.0 + (j - 0.5) * 0.25
+                        var dir := Vector2.from_angle(an); var litk: float = clampf(0.6 - 0.4 * dir.dot(sun), 0.25, 1.0)
+                        var r0: float = r * 0.35; var r1: float = r * (0.75 + 0.6 * j) * (1.0 + 0.4 * fallK)
+                        var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.5 * a)
+                        draw_polygon(PackedVector2Array([c + dir * r0 + Vector2(-dir.y, dir.x) * r * 0.03, c + dir * r1, c + dir * r0 - Vector2(-dir.y, dir.x) * r * 0.03]), PackedColorArray([cb, Color(cb, 0.0), cb]))
+                    for i in 9:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
                         var j: float = _hash(float(i) + 3.0, float(q.v) + q.pos.y * 0.013); var j2: float = _hash(float(i) + 11.0, q.pos.x * 0.017)
                         var an: float = q.a + i * TAU / 9.0 + (j2 - 0.5) * 0.9
-                        _rpuff(GameData.fx_tex("cloud%d" % (i % 4)), c + Vector2.from_angle(an) * r * (0.2 + 0.45 * j), r * (0.3 + 0.35 * j2), an * 1.7, Color(0.9 * nk, 0.95 * nk, 0.95 * nk, (0.6 + 0.3 * j) * a))
-                _rpuff(cl, c, r * 0.8, q.a + 1.0, Color(0.95 * nk, 0.98 * nk, 0.97 * nk, 0.95 * a))
+                        _rpuff(GameData.fx_tex("cloud%d" % (i % 4)), c + Vector2.from_angle(an) * r * (0.2 + 0.4 * j), r * (0.26 + 0.3 * j2), an * 1.7, Color(0.92 * nk, 0.97 * nk, 0.97 * nk, (0.7 + 0.3 * j) * a))
+                _rpuff(cl, c, r * 0.72, q.a + 1.0, Color(0.97 * nk, 0.99 * nk, 0.99 * nk, a))
                 if fine:
-                    _rpuff(cl, c + sun * r * 0.25, r * 0.65, q.a + 2.0, Color(0.47 * nk, 0.58 * nk, 0.63 * nk, 0.4 * a))   # its shaded side
-                    _rpuff(cl, c - sun * r * 0.22, r * 0.45, q.a + 3.0, Color(nk, nk, nk, 0.7 * a))                    # its lit crown
+                    _rpuff(cl, c + sun * r * 0.28, r * 0.6, q.a + 2.0, Color(0.36 * nk, 0.48 * nk, 0.55 * nk, 0.55 * a))   # its shaded side, firmly
+                    _rpuff(cl, c - sun * r * 0.2, r * 0.38, q.a + 3.0, Color(nk, nk, nk, 0.9 * a))                       # its lit crown
+                    _rpuff(foam, c, r * 0.85, q.a * 2.0, Color(0.55 * nk, 0.68 * nk, 0.72 * nk, 0.45 * a))               # the droplets in it: water, not vapour
 
     ## The sea sinking round the shot (the owner's reference, 12 Nov 2026): one quad a splash for its first five seconds,
     ## lit as a surface by shaders/sink.gdshader (a bowl, a ragged lip, ripples). The progress, a seed and the light ride

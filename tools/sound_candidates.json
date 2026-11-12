@@ -184,5 +184,329 @@
    "page": "https://incompetech.com/music/royalty-free/music.html"
   }
  ],
- "music_round_2_note": "Offered 11 Nov 2026 with a no-music option for each place; awaiting the owner."
+ "music_round_2_note": "Offered 11 Nov 2026 with a no-music option for each place; awaiting the owner.",
+ "gaps_12_nov": {
+  "note": "Candidates for the sounds still missing, offered on 12 Nov 2026 (listening page Iron Meridian Sound Gaps). Clips cut to the loudest stretch, levelled to -20 LUFS. Licences read from each page that day.",
+  "clips": [
+   {
+    "id": "j1",
+    "group": "jet",
+    "label": "Jet engine at take-off",
+    "secs": 3.6,
+    "title": "Jet Engine Takeoff",
+    "author": "dklon",
+    "licence": "CC BY 3.0",
+    "page": "https://opengameart.org/content/jet-engine-takeoff",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "j2",
+    "group": "jet",
+    "label": "Jet launch, short",
+    "secs": 2.5,
+    "title": "Fly launch jet (Yo Frankie!)",
+    "author": "Lamoot",
+    "licence": "CC BY 3.0",
+    "page": "https://opengameart.org/content/fly-launch-jet-yo-frankie",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "j3",
+    "group": "jet",
+    "label": "Aircraft passing",
+    "secs": 3.8,
+    "title": "Airplane",
+    "author": "jobromedia",
+    "licence": "CC BY 3.0 (offered also under GPL)",
+    "page": "https://opengameart.org/content/airplane-0",
+    "lufs": "-20.6"
+   },
+   {
+    "id": "j4",
+    "group": "jet",
+    "label": "Airliner landing (a heavy jet roar)",
+    "secs": 6.0,
+    "title": "LAX Airport landing sound",
+    "author": "freetousesounds",
+    "licence": "CC BY 4.0",
+    "page": "https://opengameart.org/content/lax-airport-landing-sound-la-city-sounds",
+    "lufs": "-19.0"
+   },
+   {
+    "id": "j5",
+    "group": "jet",
+    "label": "Aircraft overhead (game pack)",
+    "secs": 6.0,
+    "title": "War on Water: SNDFX",
+    "author": "yd",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/war-on-water-sndfx",
+    "lufs": "-20.3"
+   },
+   {
+    "id": "j6",
+    "group": "jet",
+    "label": "Aircraft overhead, second (game pack)",
+    "secs": 6.0,
+    "title": "War on Water: SNDFX",
+    "author": "yd",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/war-on-water-sndfx",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "d1",
+    "group": "dive",
+    "label": "Air rushing out (steam hiss 1)",
+    "secs": 1.8,
+    "title": "Steam release sounds",
+    "author": "bart",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/steam-release-sounds",
+    "lufs": "-20.5"
+   },
+   {
+    "id": "d2",
+    "group": "dive",
+    "label": "Air rushing out (steam hiss 3)",
+    "secs": 1.8,
+    "title": "Steam release sounds",
+    "author": "bart",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/steam-release-sounds",
+    "lufs": "-20.5"
+   },
+   {
+    "id": "d3",
+    "group": "dive",
+    "label": "Pressure seal letting go",
+    "secs": 1.4,
+    "title": "Vacuum/Pressure Seal Opening",
+    "author": "dklon",
+    "licence": "CC BY 3.0",
+    "page": "https://opengameart.org/content/vacuumpressure-seal-opening",
+    "lufs": "-26.3"
+   },
+   {
+    "id": "d4",
+    "group": "dive",
+    "label": "Valve turned, air hissing",
+    "secs": 4.0,
+    "title": "Rusty valve sfx pack",
+    "author": "Axelated",
+    "licence": "CC BY 4.0",
+    "page": "https://opengameart.org/content/rusty-valve-sfx-pack",
+    "lufs": "-18.9"
+   },
+   {
+    "id": "d5",
+    "group": "dive",
+    "label": "Dive klaxon",
+    "secs": 2.8,
+    "title": "Various Alerts",
+    "author": "dklon",
+    "licence": "CC BY 3.0",
+    "page": "https://opengameart.org/content/various-alerts",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "d6",
+    "group": "dive",
+    "label": "Heavy press, then pressure released",
+    "secs": 2.6,
+    "title": "JC Sounds: Mechanical Pack Vol 1",
+    "author": "JC Sounds",
+    "licence": "CC BY 4.0",
+    "page": "https://opengameart.org/content/jc-sounds-mechanical-pack-vol-1",
+    "lufs": "-19.3"
+   },
+   {
+    "id": "c1",
+    "group": "trade",
+    "label": "Coins counted",
+    "secs": 1.6,
+    "title": "coin sounds",
+    "author": "syncopika",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/coin-sounds",
+    "lufs": "-20.0"
+   },
+   {
+    "id": "c2",
+    "group": "trade",
+    "label": "Coins dropped in a till",
+    "secs": 1.0,
+    "title": "Coin Sounds",
+    "author": "Varkalandar",
+    "licence": "CC BY 3.0 (offered also under GPL, OGA-BY)",
+    "page": "https://opengameart.org/content/coin-sounds-0",
+    "lufs": "-20.1"
+   },
+   {
+    "id": "c3",
+    "group": "trade",
+    "label": "A handful of coins",
+    "secs": 1.3,
+    "title": "Coins Sounds",
+    "author": "jalastram",
+    "licence": "CC BY 3.0",
+    "page": "https://opengameart.org/content/coins-sounds",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "r1",
+    "group": "refit",
+    "label": "Heavy clank",
+    "secs": 1.0,
+    "title": "Mechanical Sounds",
+    "author": "BMacZero",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/mechanical-sounds",
+    "lufs": "-20.5"
+   },
+   {
+    "id": "r2",
+    "group": "refit",
+    "label": "Machinery working",
+    "secs": 1.0,
+    "title": "Mechanical Sounds",
+    "author": "BMacZero",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/mechanical-sounds",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "r3",
+    "group": "refit",
+    "label": "A lock driven home",
+    "secs": 1.0,
+    "title": "JC Sounds: Mechanical Pack Vol 1",
+    "author": "JC Sounds",
+    "licence": "CC BY 4.0",
+    "page": "https://opengameart.org/content/jc-sounds-mechanical-pack-vol-1",
+    "lufs": "-19.8"
+   },
+   {
+    "id": "r4",
+    "group": "refit",
+    "label": "Heavy press strikes",
+    "secs": 1.7,
+    "title": "JC Sounds: Mechanical Pack Vol 1",
+    "author": "JC Sounds",
+    "licence": "CC BY 4.0",
+    "page": "https://opengameart.org/content/jc-sounds-mechanical-pack-vol-1",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "s1",
+    "group": "save",
+    "label": "Typewriter, a line typed",
+    "secs": 1.0,
+    "title": "Typewriter sounds",
+    "author": "Cassie-OrbitGames",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/typewriter-sounds",
+    "lufs": "-19.7"
+   },
+   {
+    "id": "s2",
+    "group": "save",
+    "label": "Key click (game pack)",
+    "secs": 1.0,
+    "title": "War on Water: SNDFX",
+    "author": "yd",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/war-on-water-sndfx",
+    "lufs": "-20.9"
+   },
+   {
+    "id": "w1",
+    "group": "joins",
+    "label": "Steam whistle",
+    "secs": 2.3,
+    "title": "Steam whistle",
+    "author": "bart",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/steam-whistle",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "w2",
+    "group": "joins",
+    "label": "Steam whistle, second take",
+    "secs": 2.1,
+    "title": "Steam whistle",
+    "author": "bart",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/steam-whistle",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "w3",
+    "group": "joins",
+    "label": "Foghorn",
+    "secs": 2.4,
+    "title": "Foghorn Kinda Gross",
+    "author": "Musheran",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/foghorn-kinda-gross",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "w4",
+    "group": "joins",
+    "label": "Friendly ship (game pack)",
+    "secs": 5.0,
+    "title": "War on Water: SNDFX",
+    "author": "yd",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/war-on-water-sndfx",
+    "lufs": "-18.9"
+   },
+   {
+    "id": "t1",
+    "group": "jam",
+    "label": "Radio static 1",
+    "secs": 4.0,
+    "title": "Frequency Static Sound Effects",
+    "author": "bretbernhoft",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/frequency-static-sound-effects",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "t2",
+    "group": "jam",
+    "label": "Radio static 2",
+    "secs": 4.0,
+    "title": "Frequency Static Sound Effects",
+    "author": "bretbernhoft",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/frequency-static-sound-effects",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "t3",
+    "group": "jam",
+    "label": "Scatter noise",
+    "secs": 4.0,
+    "title": "Static",
+    "author": "xhunterko",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/static",
+    "lufs": "-20.4"
+   },
+   {
+    "id": "t4",
+    "group": "jam",
+    "label": "Radio chatter through static (game pack)",
+    "secs": 4.5,
+    "title": "War on Water: SNDFX",
+    "author": "yd",
+    "licence": "CC0",
+    "page": "https://opengameart.org/content/war-on-water-sndfx",
+    "lufs": "-20.6"
+   }
+  ]
+ }
 }

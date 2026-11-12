@@ -116,6 +116,38 @@ and every new random draw since (points of interest, tempers) changes what each 
 merchant's first freighter should be able to outrun or outlast a few torpedo boats, or whether that is a fair danger
 of the trade.
 
+## Tuning round 1: three changes the owner chose (12 Nov 2026)
+
+The owner picked all three proposals (A, B, C in [`OWNER_DECISIONS.md`](OWNER_DECISIONS.md)):
+
+- **A.** The Merchant gets an evasion perk of 25.
+- **B.** Raider flotillas keep a new captain's 30-day grace and are never placed on top of a new captain.
+- **C.** The Survivor gets back pay: 2,000 every 30 days for 180 days.
+
+The same 32 runs were made on the same seeds. Everything added since the last measurement is in them too: tales,
+armour by place, refits with armour, electronic war, save slots.
+
+| Origin | Lost on day, before | Now | What sank them, now |
+|---|---|---|---|
+| The Merchant Captain | 133, 66, survived, 31 | 133, three survived | raiders |
+| The Survivor of the Lost Fleet | three survived, 53 | all four survived | |
+| The Academy Cast-Off | survived, 44, two survived | three survived, 82 | raiders |
+| The Hijacker | survived, 101, 58, survived | 225, 150, 59, 213 | the hunters |
+| The Defector | 116, survived, 54, 71 | 94, 149, 56, 151 | patrols, the hunters, a story force |
+| The Disgraced Officer | 161, three survived | 87, survived, 39, survived | a story force, raiders |
+| The Smuggler | all four survived | all four survived | |
+| The Privateer | all four survived | all four survived | |
+| **Runs lost of 32** | **11** | **12** | |
+
+**What it did.**
+
+- **Two of the changes did what they were for.** The Merchant now loses one run in four instead of three, on day 133 to raiders, as before on that seed. The Survivor lives out all four runs, and his purse rises to between 21,000 and 35,000 by the end in three of them; the fourth ended with nothing.
+- **The total did not fall.** The Hijacker and the Defector lost more. Neither was touched by these changes. Both now lose to the forces their origins send after them (the hunters) and to patrols, mostly after day 90. The Disgraced Officer lost two runs, one to a story force on day 87.
+- **Likeliest cause:** chance moving with the new random draws. The grace changes where raiders are placed at the start, and every draw after that differs. Four seeds an origin is still a small sample.
+
+**For the owner, if he wants a second round:** whether the Hijacker's and the Defector's hunters, now the main danger to
+them, should come less often or later. They come at 1.5 times the squadron's strength from day 40.
+
 ## What stands out
 
 For the owner to judge. The four changes above are the only ones made. (The figures below were measured before the fourth change; the table above has the navy origins after it.)

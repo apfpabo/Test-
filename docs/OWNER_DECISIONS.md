@@ -3,7 +3,7 @@
 Decisions the agent has left for the owner, with what each choice would mean. Newest first. Strike one out (or move it
 to the roadmap) once it is decided.
 
-## 4. Tuning, round 1: three proposals (12 Nov 2026)
+## ~~4. Tuning, round 1: three proposals~~ Decided 12 Nov 2026: all three, made and measured (TUNING_SHEET.md, "Tuning round 1")
 
 The owner asked for proposals to pick from while he plays. None is made yet. Each comes with what it would change and
 the agent's prediction. The figures are from [`TUNING_SHEET.md`](TUNING_SHEET.md) and from 12 further Merchant runs.
@@ -33,7 +33,7 @@ had about 7,000 left on day 30 and 3,300 on day 120, and one run was lost on day
 The agent's suggestion: all three. A and C each touch one origin; B touches every start for one month. To pick, say
 which letters. The agent then runs the 32 tuning runs again and reports.
 
-## 3. The Merchant's first freighter against torpedo boats (12 Nov 2026)
+## ~~3. The Merchant's first freighter against torpedo boats~~ Decided 12 Nov 2026: change A of round 1 (she can run); she is already armed as the real ships were
 
 Measured again with everything added since the last tuning round (no numbers changed): the Merchant, the safest start
 before, is now lost in three of four runs, each time to a few motor torpedo boats (with a corvette or destroyer) that
@@ -61,6 +61,13 @@ slick lasts, the look at night), or go back to Classic. Nothing more will be cha
 
 Where it lives: `BattleSim.fx_splash_new`, `battle._columns`, `_laces`, `_sinks`, `shaders/sink.gdshader`; see the
 "new splash" note in `CLAUDE.md`.
+
+## 5. The sound gaps (12 Nov 2026)
+
+Seven things are silent: jet aircraft, a boat diving or surfacing, trade, a refit done, saving, a ship joining, and
+jamming. Candidates, levelled to one loudness, are on the listening page "Iron Meridian Sound Gaps"
+(https://claude.ai/artifact/PZL2UfbDwiHdz4hAXYCh3T) and in `tools/sound_candidates.json` ("gaps_12_nov"). None is in
+the game until the owner has chosen.
 
 ## Older lists still open
 

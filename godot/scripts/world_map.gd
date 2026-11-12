@@ -1321,7 +1321,7 @@ func _show_aftermath(r: Dictionary) -> void:
         open_panel(func(box):
             box.add_child(UI.title("Struck from the list")); _p(box, "Your last ship went down with her colours flying.")
             _p(box, "You lasted %d days, until %d, and sank or captured %d ships." % [Campaign.G.day, Campaign.year(), Campaign.G.kills], UI.DIM)
-            DirAccess.remove_absolute(Campaign.SAVE_PATH)
+            Campaign._save_wait(); DirAccess.remove_absolute(Campaign.SAVE_PATH)   # (after any autosave still being written)
             box.add_child(UI.button("New campaign", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"), true)), true)
         return
     open_panel(func(box):

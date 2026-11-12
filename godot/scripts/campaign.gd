@@ -1307,7 +1307,7 @@ func new_day(moved: bool) -> void:
     Flag.new_day()
     _replenish()
     if G.get("test", false): _test_topup()
-    if G.day % 3 == 0: save()   # autosave every few days at sea
+    if G.day % 3 == 0: save(false)   # autosave every few days at sea (written on a worker thread)
     _research_day()
 
 ## A day in a storm at sea knocks small ships about; the first day of one is announced, and so is its passing.
@@ -2114,9 +2114,21 @@ func _complete_mission(r: Dictionary) -> void:
         else: r.notes.append(S.chains[by].end)
 
 # ------------------------------------------------------------------ saves
-func save() -> void:
+## `now` false (the autosave every few days at sea): the state is copied here and written out on a worker thread, so
+## the chart does not stall for the 15 ms or so of turning it into text (a stress run showed it as a 30-70 ms hitch
+## every third day at 8x). Any save or load waits for one still being written.
+var _save_task := -1
+func _notification(what: int) -> void:   # quitting: let an autosave being written finish, so the file is whole
+    if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE: _save_wait()
+func save(now := true) -> void:
     if G.is_empty(): return
+    _save_wait()
     var g = G.duplicate(true)
+    if now: _write_save(g)
+    else: _save_task = WorkerThreadPool.add_task(_write_save.bind(g), false, "autosave")
+func _save_wait() -> void:
+    if _save_task >= 0: WorkerThreadPool.wait_for_task_completion(_save_task); _save_task = -1
+func _write_save(g: Dictionary) -> void:
     _strip_routes(g.player)
     for f in g.fleets: _strip_routes(f)
     var fa = FileAccess.open(SAVE_PATH, FileAccess.WRITE); fa.store_string(JSON.stringify(g))
@@ -2128,7 +2140,7 @@ func _strip_routes(o: Dictionary) -> void:
         for q in o.route: pts.append([q.x, q.y])
         o.route = pts
 
-func has_save() -> bool: return FileAccess.file_exists(SAVE_PATH)
+func has_save() -> bool: _save_wait(); return FileAccess.file_exists(SAVE_PATH)
 ## The saved game's version, or 0 if there is none or it cannot be read.
 func save_version() -> int:
     if not has_save(): return 0
@@ -2136,6 +2148,7 @@ func save_version() -> int:
     return int(d.get("v", 0)) if d is Dictionary else 0
 
 func load_game() -> bool:
+    _save_wait()
     if not has_save(): return false
     var d = JSON.parse_string(FileAccess.open(SAVE_PATH, FileAccess.READ).get_as_text())
     if not (d is Dictionary) or int(d.get("v", 0)) < SAVE_VERSION: return false

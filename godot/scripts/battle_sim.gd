@@ -1068,6 +1068,21 @@ func _scars_fx(dtv: float) -> void:
 ## the battle screen with its height and its shadow on the sea; and a thin lacy slick of foam over paler churned water,
 ## drifting downwind and fading over 15 to 35 s. `size` is as the classic splash takes it (a shell's is 6 to 20).
 static func col_stand(size: float) -> float: return 0.25 * size
+## A gun's calibre in millimetres, read from its id (g356 is 356 mm); 0 for anything else.
+static func calibre_mm(wid: String) -> int:
+    if not wid.begins_with("g"): return 0
+    var d := ""
+    for ch in wid.substr(1):
+        if ch < "0" or ch > "9": break
+        d += ch
+    return int(d) if d != "" else 0
+## How big a shell's splash is. The classic style and guns under 300 mm go by the size class as before; in the new style
+## a heavy gun's splash goes by its calibre (the owner's request, 12 Nov 2026): a 14-inch about 18, a 16-inch about 20,
+## an 18-inch about 23, the 20-inch about 26, against 20.4 for every heavy gun before.
+func shell_splash(sh: Dictionary, sz: float) -> float:
+    var mm: int = int(sh.get("mm", 0))
+    if modern and splash_new and mm >= 300: return 20.4 * float(mm) / 406.0
+    return 6.0 * sz
 static func col_life(size: float) -> float: return 1.6 + col_stand(size) + 2.4
 func fx_splash_new(p: Vector2, size: float) -> void:
     var merged: Part = _young_near(P.COLUMN, p, size, 0.25)   # shells falling together: one column, swollen and renewed
@@ -1247,7 +1262,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
     var kind := shell_for(s, aim, pen)
     s.last_shell = kind
     pen *= SHELLS[kind].pen
-    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind, "tgt": tgt, "rel": float(w.rel)})
+    shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind, "tgt": tgt, "rel": float(w.rel), "mm": calibre_mm(m.wid)})
     if m.rec.size() != n: m.rec.resize(n)
     m.rec[i] = 1.0; m.recoil = 1.0
     fx_muzzle(p + Vector2.from_angle(ang) * (w.tl * 0.42 + w.bl), ang, w.size, 1)
@@ -2491,7 +2506,7 @@ func step(dtv: float) -> void:
             for k2 in (8 if modern else 3): part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * (160.0 if modern else 60.0))
             sound("hit", sh.pos, 0.14 * sz)
         elif land_at(sh.pos): fx_land(sh.pos, sz, str(sh.get("ammo", "ap")))
-        else: fx_splash(sh.pos, 6 * sz); sound("splash", sh.pos, 0.05 * sz)
+        else: fx_splash(sh.pos, shell_splash(sh, sz)); sound("splash", sh.pos, 0.05 * sz)
     # torpedoes
     for i in range(twakes.size() - 1, -1, -1): if vt - float(twakes[i].back().t) > TWAKE_LIFE: twakes.remove_at(i)
     for i in range(torps.size() - 1, -1, -1):

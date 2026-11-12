@@ -1443,4 +1443,6 @@ func _levels() -> void:
 	sp.parts.clear(); sp.splash_new = false; sp.fx_splash(Vector2(500, 500), 20.0); kinds = sp.parts.map(func(q): return q.t)
 	ok(kinds.has(BattleSim.P.SPLASH) and kinds.has(BattleSim.P.WASH) and not kinds.has(BattleSim.P.COLUMN), "classic splashes are as they were")
 	ok(Settings.SPLASH_DEFAULT == "new" and BattleSim.col_stand(20.4) > BattleSim.col_stand(6.0) * 3.0, "a heavy shell's column stands far longer than a light one's")
+	sp.splash_new = true
+	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1

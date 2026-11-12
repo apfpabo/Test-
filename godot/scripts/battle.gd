@@ -203,10 +203,10 @@ func splash_parts() -> Array:
     var fr := Engine.get_process_frames()
     if fr != _sp_frame:
         _sp_frame = fr; _sp_lists = [[], []]
-        if sim.modern and sim.splash_new:
+        if sim.modern:   # (from the simulation's own short lists of them: no walk over every particle)
             var vr: Rect2 = view_rect().grow(400)
-            for q in sim.parts:
-                if (q.t == BattleSim.P.COLUMN or q.t == BattleSim.P.LACE) and q.life >= 0.0 and vr.has_point(q.pos): _sp_lists[0 if q.t == BattleSim.P.COLUMN else 1].append(q)
+            for q in sim.splash_cols: if q.life >= 0.0 and vr.has_point(q.pos): _sp_lists[0].append(q)
+            for q in sim.splash_laces: if q.life >= 0.0 and vr.has_point(q.pos): _sp_lists[1].append(q)
     return _sp_lists
 
 # ------------------------------------------------------------------ frame

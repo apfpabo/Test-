@@ -970,11 +970,10 @@ func part(type: int, p: Vector2, mx: float, size: float, vel := Vector2.ZERO, wi
 func rdir() -> Vector2: return Vector2.from_angle(randf() * TAU)
 ## A particle of this type still young (under `young` of its life) whose disc covers this point, or null.
 ## The splash of this kind nearest `p` within `reach` times the larger of the two sizes, no older than `age` seconds.
-func _near_part(type: int, p: Vector2, size: float, reach: float, age: float) -> Part:
+func _near_part(list: Array, p: Vector2, size: float, reach: float, age: float) -> Part:
     var best: Part = null; var bd := INF
-    for i in range(parts.size() - 1, maxi(-1, parts.size() - 300), -1):
-        var q: Part = parts[i]
-        if q.t != type or q.life < 0.0 or q.life > age: continue
+    for q in list:
+        if q.life < 0.0 or q.life > age or q.life >= q.mx: continue
         var d: float = q.pos.distance_to(p)
         if d < maxf(q.size, size) * reach and d < bd: bd = d; best = q
     return best
@@ -1096,25 +1095,29 @@ func shell_splash(sh: Dictionary, sz: float) -> float:
     if modern and splash_new and mm >= 300: return 20.4 * float(mm) / 406.0
     return 6.0 * sz
 static func col_life(size: float) -> float: return 1.6 + col_stand(size) + 2.4
+## The new splash's columns and slicks, kept apart from the particle list as well (so neither the drawing nor the
+## joining of shells has to walk every particle for them: that cost a ten-ship action two milliseconds a frame)
+var splash_cols: Array = []
+var splash_laces: Array = []
 func fx_splash_new(p: Vector2, size: float) -> void:
     # shells falling together, or one spot hit again and again, make one splash, not a stack of them (a stress picture of
     # the new style showed crossed rims and a column that shrank and rose again at every hit, 12 Nov 2026): a shell
     # within a column's width of a young one joins it; a column already up stays up (it does not start rising again)
     # and grows a little; the sea's bowl stays one bowl, kept deep while the hits go on
-    var merged: Part = _near_part(P.COLUMN, p, size, 1.0, 1.6 + col_stand(size) + 0.4)
+    var merged: Part = _near_part(splash_cols, p, size, 1.0, 1.6 + col_stand(size) + 0.4)
     if merged != null:
         merged.size = minf(maxf(merged.size, size) * 1.06, maxf(merged.size, size) * 1.5)
         if merged.life > 1.6: merged.life = 1.6   # standing again, from the top of its rise: no shrinking, no jump
         merged.mx = col_life(merged.size)
     else:
-        var c := part(P.COLUMN, p, col_life(size), size, Vector2.ZERO, true); c.v = randi() % 4; c.a = randf() * TAU; c.side = randi() % 997   # (side: its own seed for the drawing; it drifts with the wind, so its place cannot be one)
-    var fl: Part = _near_part(P.LACE, p, size, 2.7, 5.0)   # a salvo's shells, tens of metres apart, sink one stretch of sea
+        var c := part(P.COLUMN, p, col_life(size), size, Vector2.ZERO, true); c.v = randi() % 4; c.a = randf() * TAU; c.side = randi() % 997; splash_cols.append(c)   # (side: its own seed for the drawing; it drifts with the wind, so its place cannot be one)
+    var fl: Part = _near_part(splash_laces, p, size, 2.7, 5.0)   # a salvo's shells, tens of metres apart, sink one stretch of sea
     if fl != null:
         var d: float = fl.pos.distance_to(p)
         fl.pos = fl.pos.lerp(p, 0.35)   # centred among the shells that made it
         fl.size = minf(maxf(fl.size, size) * 1.02 + d * 0.1, maxf(fl.size, size) * 1.25)   # (it grew to swallow the salvo)
         fl.life = minf(fl.life, 2.0)   # the bowl held deep while the shells keep coming; its slick starts when they stop
-    else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997
+    else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997; splash_laces.append(l)
     for i in 3 + int(size * 0.25):   # droplets thrown out at the first instant
         var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.6 + randf() * 0.7, size * (0.18 + randf() * 0.16), rdir() * (size * 1.2 + randf() * size * 3.0)); q.drag = 0.18
 func fx_splash(p: Vector2, size: float) -> void:
@@ -2683,10 +2686,14 @@ func fx(dtv: float) -> void:
         if q.spin != 0.0: q.a += q.spin * dtv
         if q.t == P.DEBRIS and q.spin != 0.0 and q.life > 0.0 and randf() < dtv * 22.0:   # a burning fragment leaves a thread of smoke
             var tr = part(P.SMOKE, q.pos, 0.9 + randf() * 0.8, q.size * (1.2 + randf()), q.vel * 0.05, true); tr.a = randf() * TAU
-        if q.life >= q.mx: parts.remove_at(i)
+        if q.life >= q.mx:
+            parts.remove_at(i)
+            if q.t == P.COLUMN: splash_cols.erase(q)
+            elif q.t == P.LACE: splash_laces.erase(q)
     flash = maxf(0.0, flash - dtv * 1.4)
     if parts.size() > 3200:
         parts.reverse(); parts.resize(3200); parts.reverse()
+        splash_cols = splash_cols.filter(func(q): return parts.has(q)); splash_laces = splash_laces.filter(func(q): return parts.has(q))   # (the oldest dropped: not left frozen in these)
     for i in range(hit_marks.size() - 1, -1, -1):
         hit_marks[i].t -= dtv
         if hit_marks[i].t <= 0: hit_marks.remove_at(i)

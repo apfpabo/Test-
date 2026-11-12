@@ -1120,6 +1120,8 @@ func open_panel(build: Callable, blocking := false, width := 760.0, key := "") -
     var box = VBoxContainer.new(); box.size_flags_horizontal = Control.SIZE_EXPAND_FILL; box.add_theme_constant_override("separation", 8); scroll.add_child(box)
     cur_panel = shade; _panel_scroll = scroll
     build.call(box)
+    if keep > 0:   # a redrawn page opens where it was, before it is first drawn: it showed at the top for a frame or two
+        scroll.get_v_scroll_bar().max_value = keep + 100000.0; scroll.scroll_vertical = keep
     if fresh:
         shade.modulate.a = 0.0; pc.modulate.a = 0.0; pc.scale = Vector2(0.97, 0.97)
         pc.resized.connect(func(): pc.pivot_offset = pc.size / 2, CONNECT_ONE_SHOT)
@@ -1137,7 +1139,7 @@ func open_panel(build: Callable, blocking := false, width := 760.0, key := "") -
 func _fit_panel(scroll: ScrollContainer, box: Control, keep := 0) -> void:
     if not is_instance_valid(scroll): return
     scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y - 140)
-    if keep > 0:
+    if keep > 0:   # (and again once laid out, in case the page grew shorter)
         await get_tree().process_frame
         if is_instance_valid(scroll): scroll.scroll_vertical = keep
 
@@ -1819,7 +1821,7 @@ func close_drawer() -> void:
 func _fit_drawer(scroll: ScrollContainer, box: Control, keep: int) -> void:
     if not is_instance_valid(scroll): return
     scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y + 4, get_viewport_rect().size.y * 0.52)   # and about half its height: the rest scrolls
-    if keep > 0:
+    if keep > 0:   # (and again once laid out, in case the page grew shorter)
         await get_tree().process_frame
         if is_instance_valid(scroll): scroll.scroll_vertical = keep
 func show_command() -> void:
@@ -1841,6 +1843,7 @@ func show_command() -> void:
     var xb := UI.button("✕", close_drawer); xb.focus_mode = Control.FOCUS_NONE; xb.tooltip_text = "Close (or click the tab again, or Esc)"; xb.size_flags_vertical = Control.SIZE_SHRINK_BEGIN; head.add_child(xb)
     box.add_child(head)
     _command_page(box)
+    if keep > 0: scroll.get_v_scroll_bar().max_value = keep + 100000.0; scroll.scroll_vertical = keep   # (as the panel: no flash at the top)
     _fit_drawer.call_deferred(scroll, box, keep)
     pc.resized.connect(func(): pc.pivot_offset = Vector2(0, pc.size.y))   # it grows out of the tab bar
     if fresh:

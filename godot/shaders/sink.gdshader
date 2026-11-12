@@ -14,12 +14,12 @@ float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a
 // the surface's height at p (in bowl radii); k is how far it has filled again
 float height(vec2 p, float k, float seed) {
 	float ang = atan(p.y, p.x);
-	float rag = 1.0 + 0.045 * (noise(vec2(cos(ang), sin(ang)) * 2.3 + seed) - 0.5) + 0.012 * (noise(vec2(cos(ang), sin(ang)) * 6.0 + seed * 2.0) - 0.5);   // a gently uneven lip (it was ragged enough to look cut out)
+	float rag = 1.0 + 0.09 * (noise(vec2(cos(ang), sin(ang)) * 2.3 + seed) - 0.5) + 0.04 * (noise(vec2(cos(ang), sin(ang)) * 6.0 + seed * 2.0) - 0.5);
 	float r0 = length(p), r = r0 / rag;   // the lip is ragged; the bowl inside it is smooth (a ragged bowl showed spokes)
 	float depth = (1.0 - k) * (1.0 - k);
-	float bowl = -depth * pow(max(0.0, 1.0 - r0 * r0), 1.6) * smoothstep(1.08, 0.9, r0);   // eased into the lip, no crease at the edge
-	float lip = 0.13 * (1.0 - k) * exp(-pow((r - 1.04) / 0.22, 2.0)) * (0.85 + 0.3 * fbm(p * 2.5 + seed));   // a broad, soft rise
-	float rip = 0.05 * (1.0 - k) * sin((r - 1.0) * 14.0 - k * 9.0) * exp(-max(r - 1.0, 0.0) * 3.5) * smoothstep(1.02, 1.3, r);   // eased in: starting at the edge they drew a crease round it
+	float bowl = -depth * pow(max(0.0, 1.0 - r0 * r0), 1.6) * smoothstep(1.06, 0.9, r0);   // eased into the lip: no dark crease inside it
+	float lip = 0.2 * (1.0 - k) * exp(-pow((r - 1.02) / 0.13, 2.0)) * (0.7 + 0.6 * fbm(p * 3.0 + seed));
+	float rip = 0.06 * (1.0 - k) * sin((r - 1.0) * 14.0 - k * 9.0) * exp(-max(r - 1.0, 0.0) * 3.5) * smoothstep(1.02, 1.25, r);   // eased in: no crease at the edge
 	float chop = 0.015 * (fbm(p * 4.0 + seed * 3.0) - 0.5) * smoothstep(1.3, 0.6, r);   // the disturbed surface inside
 	return bowl + lip + rip + chop;
 }
@@ -45,7 +45,7 @@ void fragment() {
 	o.rgb = mix(o.rgb, vec3(0.0, 0.05, 0.06), deep * 0.5 * (1.0 - o.a));
 	o.a = max(o.a, deep * 0.28);
 	// foam on the lip, where it is highest, broken up
-	float lipf = smoothstep(0.08, 0.16, h) * smoothstep(0.6, 0.85, fbm(p * 5.0 + seed * 5.0)) * 0.7;
+	float lipf = smoothstep(0.12, 0.2, h) * smoothstep(0.55, 0.8, fbm(p * 6.0 + seed * 5.0));
 	o.rgb = mix(o.rgb, vec3(0.88, 0.95, 0.94) * light, lipf * 0.8); o.a = max(o.a, lipf * 0.55);
 	// the sun's glint on the lit side of the lip
 	vec3 hv = normalize(l + vec3(0.0, 0.0, 1.0));

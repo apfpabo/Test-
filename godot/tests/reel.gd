@@ -38,6 +38,12 @@ const CLIPS := {
 	# a fleet action in a rising sea at dusk: the lines in spray and gun flashes
 	"heavy_sea": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_littorio", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3200.0, "pre": 60.0, "wx": {"sea": 3, "fog": false, "night": false, "moon": 0.5},
 		"cuts": [[0.0, "me", 2.8, 20.0], [4.0, "them", 2.6, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.4, 0.0]]},
+	# the owner's request (12 Nov 2026): night, a storm, star shell, and carriers' jets going in on a battleship. Aircraft
+	# cannot take off in a storm, so the strike is flown off in the heavy sea before it and goes in as the storm breaks
+	# ("storm_at" puts the weather the camera rolls in); both sides light the action with star shell ("stars")
+	"night_storm": {"player": ["cv_forrestal", "cv_forrestal", "bb_iowa", "dd_gearing", "dd_gearing"], "enemy": ["bb_yamato", "ca_takao", "dd_kagero", "dd_kagero"], "sep": 8500.0, "pre": 700.0, "until": "strike_in",
+		"wx": {"sea": 2, "fog": false, "night": true, "moon": 0.25}, "storm_at": {"sea": 3, "fog": false, "night": true, "moon": 0.25}, "stars": true, "place": "ahead", "tech": ["radar", "jets", "missiles"],
+		"cuts": [[0.0, "air", 3.0, 0.0], [3.5, "them", 2.3, 0.0], [7.5, "them", 3.2, 0.0], [11.0, "air", 2.6, 0.0]]},
 	"fleet": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_scharnhorst", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3400.0, "pre": 60.0, "wx": {},
 		"cuts": [[0.0, "me", 2.6, 20.0], [4.0, "them", 2.4, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.2, 0.0]]},
 	# destroyers hunting a dived boat: she lies ahead of them, they find her with sonar and run in over her
@@ -142,6 +148,16 @@ func _process(d: float) -> void:
 			sim.step(0.02); n += 1
 			if n % 3 == 0: sim.fx(0.06)
 	if f < 3: return
+	if f == 3 and clip.has("storm_at"): sim.wx = Weather.battle(clip.storm_at); battle.apply_weather()   # the storm breaks as the camera rolls
+	if clip.get("stars", false):   # star shell over the action: the target's ships light up the strike coming in, ours light up the target
+		for s in sim.ships:
+			if not s.alive or s.squads.size() > 0: continue
+			var aim = null
+			for q in sim.air: if q.side != s.side and q.up > 0: aim = q.pos; break
+			if aim == null:
+				var foe = _ship(1 - s.side)
+				if foe != null: aim = foe.pos
+			if aim != null: sim.fire_star(s, aim)
 	t += d
 	if clip.get("hunt", false):   # a depth-charge hunt: the boat stays down and silent, and nobody hides the picture in smoke
 		for s in sim.ships:

@@ -815,13 +815,22 @@ class Drawer extends Node2D:
 
     # Wakes: overlapping soft foam stamps. The churned band starts the width of the stern and spreads; the bow wave
     # hugs the forward hull and runs on into the Kelvin arms, which open at about 19.5 degrees to the track.
+    var wake_a := {}   # each ship's wake alpha, eased (see below)
     func _wakes() -> void:
         var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var foam = GameData.fx_tex("foam"); var now = sim.vt
         var min_step = 2.2 / z; var view: Rect2 = battle.view_rect()
         for s in sim.ships:
             if s.trail.size() < 2: continue
             if s.sub and s.side == 1 and not sim.detected_by(s, 0): continue
-            if s.side == 1 and (sim.limited() or not sim.screens.is_empty()) and (s.radar_only or not sim.visible_to(s, 0)): continue   # radar shows a ship, not her wake
+            # an enemy's wake fades with her: in sight it is all there, held by radar alone it fades with the echo between
+            # sweeps, out of sight it is gone; eased, so it never blinks out under a hull still on the screen (the owner
+            # saw it vanish for a second under a ship held only by radar, 12 Nov 2026)
+            var want := 1.0
+            if s.side == 1 and (sim.limited() or not sim.screens.is_empty()):
+                if s.radar_only: want = clampf(1.0 - s.paint_t / BattleSim.RADAR_PERIOD, 0.0, 1.0)
+                elif not sim.visible_to(s, 0): want = 0.0
+            var wa: float = move_toward(float(wake_a.get(s, want)), want, get_process_delta_time() * 2.0); wake_a[s] = wa
+            if wa < 0.02: continue
             # nothing of this wake on the screen: leave it (the trail runs some hundreds of metres astern)
             if not view.grow(900.0 + s.d.L).has_point(s.pos) and not view.grow(200.0).has_point(s.trail[0].p): continue
             var pts: Array = []
@@ -841,7 +850,7 @@ class Drawer extends Node2D:
                     if q.sm and ((last_i - i) % stride == 0 or i == 0): deep.append(q)
                 if deep.size() >= 2: _ribbon(deep, 0, s.d.B, 0.32 * clampf(float(deep[0].v) / 6.0, 0.2, 1.0), now, float(s.d.B) * 2.4, Color(0.84, 0.94, 0.94))
             if pts.size() < 2: continue
-            var B: float = s.d.B; var strength = clampf(pts[0].v / 10.0, 0.1, 1.0)
+            var B: float = s.d.B; var strength = clampf(pts[0].v / 10.0, 0.1, 1.0) * wa
             if sim.modern:
                 # the churned track astern: a broad mottled ribbon, bright at the screws, greening and fading as it widens
                 _ribbon(pts, 0, B, strength, now, B * 5.0, Color(0.9, 0.97, 0.96))

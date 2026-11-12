@@ -4,6 +4,8 @@ extends Control
 var pc: PanelContainer
 var home: Control
 var test_mode := false
+var guide := true   # a new captain is guided through the chart, the first harbour and the first action (scripts/guide.gd)
+const Guide = preload("res://scripts/guide.gd")
 var _busy := false
 
 ## A page change: the panel fades out, the page is changed, and the panel fades back in as it settles, so pages
@@ -74,6 +76,8 @@ func _new_campaign() -> void:
         b.pressed.connect(func(): go(func(): _origin(pc, box, key))); grid.add_child(b)
     var tm := CheckBox.new(); tm.text = "Test mode: every technology researched, every design in every shipyard, unlimited money and research points"; tm.button_pressed = test_mode
     tm.toggled.connect(func(on): test_mode = on); box.add_child(tm)
+    var gm := CheckBox.new(); gm.text = "Guide me through my first voyage and battle"; gm.button_pressed = guide
+    gm.toggled.connect(func(on): guide = on); box.add_child(gm)
     box.add_child(UI.row([UI.button("Back", func(): go(_home))]))
 
 ## The title in iron: brushed steel capitals with a drop shadow, over a riveted rule.
@@ -133,4 +137,4 @@ func _origin(pc: PanelContainer, main: Control, key: String, navy := "concord") 
     var h: Dictionary = GameData.hulls[st.fleet[0][0]]
     box.add_child(UI.label("You start with: " + info.start, UI.INK, 14, true))
     box.add_child(UI.label("%s (%s class, modelled on the %s)%s · %s · from %s" % [h.name, h.dn, h.model, (" and %d more" % (st.fleet.size() - 1)) if st.fleet.size() > 1 else "", Campaign.fmt(st.credits), st.port], UI.DIM, 13, true))
-    box.add_child(UI.row([UI.button("Begin" + (" (test mode)" if test_mode else ""), func(): Campaign.new_game(key, navy, test_mode); get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true), UI.button("Back", func(): _back(box, main))]))
+    box.add_child(UI.row([UI.button("Begin" + (" (test mode)" if test_mode else ""), func(): Campaign.new_game(key, navy, test_mode); (Guide.start() if guide else null); get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true), UI.button("Back", func(): _back(box, main))]))

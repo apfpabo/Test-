@@ -81,6 +81,7 @@ func _ready() -> void:
     dock = UI.button("Dock", _on_dock, true); dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM); dock.position = Vector2(-80, -60); dock.visible = false; ui.add_child(dock)
     dock.set_anchor_and_offset(SIDE_LEFT, 0.5, -90); dock.set_anchor_and_offset(SIDE_RIGHT, 0.5, 90); dock.set_anchor_and_offset(SIDE_TOP, 1.0, -64); dock.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -26)
     panel_layer = Control.new(); panel_layer.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(panel_layer)
+    if Guide.active(): guide_card = Guide.new(); guide_card.host = self; add_child(guide_card)   # the new captain's guide
     ui.move_child(cmdbar, -1)   # the Command tabs stay clickable over an open panel
     Campaign.toast.connect(_toast); Campaign.encounter.connect(_on_encounter); Campaign.reached_port.connect(open_port)
     cam = Vector2(Campaign.G.player.x, Campaign.G.player.y)
@@ -128,6 +129,8 @@ func _smooth(pv: PackedVector2Array) -> PackedVector2Array:
         pv = out
     return pv
 const Flags = preload("res://scripts/flags.gd")
+const Guide = preload("res://scripts/guide.gd")
+var guide_card = null   # the new captain's guide, while it runs
 const Art = preload("res://scripts/art.gd")
 ## A scene illustration across the top of a panel, if the picture exists (docs/ART.md); nothing otherwise.
 func _banner(box: Control, key: String, h := 170.0) -> void:
@@ -1262,6 +1265,7 @@ func _show_origin() -> void:
         box.add_child(UI.button("Put to sea", func(): close_panel(); Campaign.paused = false, true)), true)
 
 func _show_aftermath(r: Dictionary) -> void:
+    if guide_card != null and is_instance_valid(guide_card): guide_card.aftermath()
     if Campaign.G.fleet.is_empty():
         open_panel(func(box):
             box.add_child(UI.title("Struck from the list")); _p(box, "Your last ship went down with her colours flying.")

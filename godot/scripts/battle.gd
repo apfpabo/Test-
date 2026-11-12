@@ -86,12 +86,15 @@ func _ready() -> void:
     var bm := ShaderMaterial.new(); bm.shader = preload("res://shaders/bloom.gdshader"); bloom.material = bm; bl.add_child(bloom)
     var hl = CanvasLayer.new(); hl.layer = 10; add_child(hl)
     hud = HUD.new(); hud.battle = self; hud.set_anchors_preset(Control.PRESET_FULL_RECT); hud.mouse_filter = Control.MOUSE_FILTER_IGNORE; hl.add_child(hud)
+    if Guide.active() and cfg.has("player_recs") and int(Campaign.G.guide.get("battle", 0)) < Guide.BATTLE.size():   # the guide's first action
+        var gd = Guide.new(); gd.host = self; gd.in_battle = true; add_child(gd)
     if cfg.get("editor", false):   # the editor: a panel for staging actions, more paces of time, and an action that never ends by itself
         sim.editor = true; speeds = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0]; speed_i = 3
         editor = Editor.new(); editor.battle = self; hl.add_child(editor)
 
 const Editor = preload("res://scripts/battle_editor.gd")
 const Flags = preload("res://scripts/flags.gd")
+const Guide = preload("res://scripts/guide.gd")
 const PlaneArt = preload("res://scripts/plane_art.gd")
 var editor = null           # the editor's panel, in editor mode
 var clean := false          # H: nothing on the screen but the picture (for recording)

@@ -162,6 +162,7 @@ func _process(d: float) -> void:
 		while n < int(float(clip.pre) / 0.02) and not sim.finished and not _ready_to_roll(sim, n):
 			sim.step(0.02); n += 1
 			if n % 3 == 0: sim.fx(0.06)
+		if clip.has("storm_at"): sim.wx = Weather.battle(clip.storm_at); battle.apply_weather()   # in the storm from the first frame (it broke on the third: a flash)
 	if f < 3: return
 	if f == 3 and clip.get("split", false):   # the other carrier flies off her strike as the camera rolls on her
 		var them1 = _ship(1)
@@ -169,8 +170,8 @@ func _process(d: float) -> void:
 			if s.side != 0 or them1 == null: continue
 			var held := false
 			for q in s.squads: if q.state == "held": q.state = "ready"; held = true
-			if held: sim.launch_strike(s, them1)
-	if f == 3 and clip.has("storm_at"): sim.wx = Weather.battle(clip.storm_at); battle.apply_weather()   # the storm breaks as the camera rolls
+			if held:   # flown off as the storm comes on (aircraft cannot take off in one: the deck is cleared as it breaks)
+				var wx0: Dictionary = sim.wx; sim.wx = Weather.battle(clip.wx); sim.launch_strike(s, them1); sim.wx = wx0
 	if clip.get("stars", false) and f % 180 == 3:   # the target's escorts keep star shell burning over and beside her (their own, so it is
 		var tg = _ship(1)                                  # there as the camera rolls: ours, from 8 km off, took fourteen seconds to arrive)
 		if tg != null:

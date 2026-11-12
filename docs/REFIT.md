@@ -15,6 +15,7 @@ Step 3 of the owner's order of work (10 Nov 2026), after his direction to take a
 - Weight counts for more the higher it sits: guns on deck 1, anti-aircraft mounts 1.5, launch cells 0.8, torpedoes 0.9; armour, machinery and torpedo protection low in the hull; directors and radar high on the masts.
 - Up to 110% of her designed topweight she rides easily. Beyond that her salvos spread, 2% wider for each 1% more, and half as much again for each step of the sea state.
 - At 130% the yard will not pass her.
+- Between her margin and the yard's limit the yard asks before it does the work (the owner's decision, 12 Nov 2026): a fit that leaves her over her margin or top-heavy, and worse off than she is, shows what it costs her and a "Refit anyway" button.
 
 ## Systems
 

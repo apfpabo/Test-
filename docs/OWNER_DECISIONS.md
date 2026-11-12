@@ -9,29 +9,17 @@ Measured again with everything added since the last tuning round (no numbers cha
 before, is now lost in three of four runs, each time to a few motor torpedo boats (with a corvette or destroyer) that
 catch her lone freighter when she tries to break off. Not caused by wear (tested). Choices: let a merchant break off
 from small raiders more often, give her first freighter a light gun or two, keep raiders' torpedo boats off the trade
-lanes for the first weeks, or keep it as a fair danger of the trade. The figures: [`TUNING_SHEET.md`](TUNING_SHEET.md),
+lanes for the first weeks, or keep it as a fair danger of the trade. **The owner (12 Nov 2026):** run more seeds first;
+if it holds, the agent's proposal is to arm her as the real ships were (a gun aft, one forward, light AA). The figures: [`TUNING_SHEET.md`](TUNING_SHEET.md),
 "Measured again".
 
-## 1. Should the yard refuse a badly overweight fit? (12 Nov 2026)
+## ~~1. Should the yard refuse a badly overweight fit?~~ Decided 12 Nov 2026: warn and ask
 
-**What happens now.** A hull has a margin of 1.2% of her displacement for extra weight; past it she is slower, turns
-worse and rolls more. The yard refuses a fit only when it is more than a further 3% of her displacement over that
-margin, or her topweight passes 130% (`BattleSim.loading`, `ok`). For the Iowa (45,000 t) that is a 540 t margin and
-then 1,350 t more. In the refit reel, a 20-inch twin was tried in the
-Iowa's aft turret: 1,251 t over her margin, 6% slower, 4% slower on the helm, salvos spread 39% wider in a calm sea,
-and the yard still passed it.
+The hard limit stays where it was. A fit that leaves her over her margin or top-heavy, and worse than she is now, gets a
+second step: the yard's naval architect says what it costs her (tons over, speed, helm, salvo spread) and asks "Refit
+anyway?" (`world_map._refit`, `refit_warn`; pictured by `tests/shot_refit.tscn` as `refit_warn.png`).
 
-**The choices.**
-- **Keep it as it is.** The player may make bad ships; the ledger shows the price plainly. (Rule the Waves lets you build
-  an unbalanced design and lets the sea punish it.)
-- **Refuse sooner.** Lower the limit, for example to 1.5% over the margin instead of 3%, so a fit like the 20-inch aft is
-  refused with the reason shown. Safer, but less freedom.
-- **Warn and ask.** Let it through, but only after a "This fit is far over her margin: confirm anyway?" step.
-
-Where it lives: `BattleSim.loading` (`limit`, `ok`), `world_map._refit` (the Confirm button and the refusal line),
-[`REFIT.md`](REFIT.md).
-
-## 2. The new shell splash, after playing with it (12 Nov 2026)
+## 2. The new shell splash, after playing with it (12 Nov 2026): the owner will play it and report
 
 **What happens now.** The new splash is the default (a sunken bowl, a column by calibre that casts its shadow, a falling
 curtain, a lacy slick; shells landing together join one splash). Settings > Shell splashes > Classic brings back the old

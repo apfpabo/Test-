@@ -2184,6 +2184,7 @@ func _yard(box: Control, p: Dictionary) -> void:
 ## Refit: weapons chosen here form a plan for the ship; nothing is bought until the refit is confirmed. Undo discards
 ## the plan, Standard fit plans the design's own armament, and the card shows the selected mount against what is fitted.
 var refit_plan := {}   # ship id -> planned fit
+var refit_warn := ""    # the ship whose costly refit the yard is asking about (warn and ask)
 var refit_sel := 0     # slot shown on the weapon card
 func _refit(box: Control) -> void:
     var G: Dictionary = Campaign.G
@@ -2233,8 +2234,21 @@ func _refit(box: Control) -> void:
     var net: int = buy - refund
     if changes: _p(box, "%d mount%s changed · new weapons and yard labour %s · sold back %s · %s %s · done at once, but her crew must work it up: readiness %d%% → %d%%" % [changes, "" if changes == 1 else "s", Campaign.fmt(buy), Campaign.fmt(refund), "net cost" if net >= 0 else "net refund", Campaign.fmt(absi(net)), int(round(Campaign.readiness(s) * 100)), int(round(maxf(Campaign.RDY_MIN, Campaign.readiness(s) - Campaign.refit_readiness(s, refit_tons(s, plan))) * 100))], UI.INK, 14)
     var can: bool = changes > 0 and G.credits >= net and ld.ok
+    # over her margin or top-heavy, and worse than she is now: the yard asks before it does it (the owner's decision,
+    # 12 Nov 2026: warn and ask, keep the hard limit)
+    var ld0: Dictionary = BattleSim.loading(d, s.fit, s.get("up", {}))
+    var costly: bool = can and (float(ld.speed) < float(ld0.speed) - 0.001 or float(ld.spread) > float(ld0.spread) + 0.001) and (float(ld.over_t) > 0.0 or float(ld.top) > BattleSim.TOP_SLACK)
+    var do_it := func(): refit_warn = ""; apply_refit(s, plan); refit_plan.erase(s.id); _toast("%s refitted." % s.name); _render_port()
+    if costly and refit_warn == String(s.id):
+        var harm := []
+        if float(ld.over_t) > 0.0: harm.append("%s t over her margin: %d%% slower, %d%% slower on the helm" % [Campaign.fmt(int(ld.over_t)), int(round((1.0 - float(ld.speed)) * 100)), int(round((1.0 - float(ld.turn)) * 100))])
+        if float(ld.top) > BattleSim.TOP_SLACK: harm.append("top-heavy: salvos %d%% wider" % int(round((float(ld.spread) - 1.0) * 100)))
+        _p(box, "The yard's naval architect asks you to think again. This fit leaves her %s. Refit anyway?" % "; ".join(harm), UI.GOLD, 14)
+        box.add_child(UI.row([UI.button(("Refit anyway · " + Campaign.fmt(net)) if net > 0 else "Refit anyway", do_it, true), UI.button("Back to the plan", func(): refit_warn = ""; _render_port())]))
+        _systems(box, s); return
     var confirm = UI.button(("Confirm refit · " + Campaign.fmt(net)) if net > 0 else "Confirm refit", func():
-        apply_refit(s, plan); refit_plan.erase(s.id); _toast("%s refitted." % s.name); _render_port(), true, not can)
+        if costly: refit_warn = String(s.id); _render_port()
+        else: do_it.call(), true, not can)
     var undo = UI.button("Undo changes", func(): refit_plan.erase(s.id); _render_port(), false, changes == 0)
     var std = UI.button("Standard fit", func(): refit_plan[s.id] = BattleSim.default_fit(d, G.tech); _render_port())
     box.add_child(UI.row([confirm, undo, std]))

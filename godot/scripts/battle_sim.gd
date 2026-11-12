@@ -567,7 +567,9 @@ func _sonar_tick(dt: float) -> void:
         if s.ping_t > 0.0: continue
         s.ping_t = PING_PERIOD
         pings.append({"pos": s.pos, "r": 0.0, "max": sonar_range(s), "side": s.side, "who": s, "echo": false})
-        if s == flag: sound("ping", s.pos, 0.5)
+        # every ping is heard, fading with distance from the camera: your flagship's loudest, your other ships less, an enemy's
+        # faint as if through the water (only the flagship's used to sound; the owner saw silent rings, 12 Nov 2026)
+        sound("ping", s.pos, 0.5 if s == flag else (0.3 if s.side == 0 else 0.16))
     for i in range(pings.size() - 1, -1, -1):
         var p: Dictionary = pings[i]; var r0: float = p.r; p.r += PING_SPEED * dt * (0.6 if p.echo else 1.0)
         if p.echo:

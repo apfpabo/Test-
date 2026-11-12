@@ -813,13 +813,13 @@ class Drawer extends Node2D:
     func _draw() -> void:
         match kind:
             "islands": _islands()
-            "below": _scars(); _wakes(); _parts(0); _laces(); _wreckage(); _torpedoes()
+            "below": _scars(); _wakes(); _parts(0); _laces(); _columns(true); _wreckage(); _torpedoes()
             "bursts": _bursts()
             "wash": _wash()
             "sink": _sinks()
             "washtop": _wash(true)
             "shadows": _shadows()
-            "above": _columns(); _parts(1); _screens()
+            "above": _columns(false); _parts(1); _screens()
             "light": _parts(2); _flares()
             "overlay": _overlay()
 
@@ -989,9 +989,12 @@ class Drawer extends Node2D:
     ## long as it is tall; as it falls, a ragged curtain of spray ringing out and a low surge running on beyond it.
     func _night_k(p: Vector2) -> float:
         var sim: BattleSim = battle.sim
-        return 0.45 if (sim.wx.get("night", false) and not sim.star_lit(p)) else 1.0
+        # (the night veil darkens the whole scene already: a splash dimmed twice turned a grey that read as a cloud)
+        return 0.85 if (sim.wx.get("night", false) and not sim.star_lit(p)) else 1.0
     static func _hash(a: float, b: float) -> float: return fposmod(sin(a * 12.9898 + b * 78.233) * 43758.5453, 1.0)
-    func _columns() -> void:
+    ## `sea`: the parts on the sea (its shadow, the falling curtain, the skirt of foam), drawn under the ships; otherwise the
+    ## column itself, standing over them (the owner saw a splash's foam and shadow lying across a ship's deck, 12 Nov 2026)
+    func _columns(sea: bool) -> void:
         var sim: BattleSim = battle.sim
         if not sim.modern: return
         var z: float = battle.zoom(); var mn: float = 1.0 / z
@@ -1004,7 +1007,7 @@ class Drawer extends Node2D:
             var big: bool = R * z > 2.0     # far out a column is a few pixels: no shadow
             var fine: bool = R * z > 5.0    # and only a column of some size on the screen has a crown, a curtain and a surge
             # its shadow on the sea (a sun some 35 degrees up: the shadow is about 1.35 times the height)
-            if big and h > 1.0:   # an ellipse laid away from the sun, a soft rim round a firmer body
+            if sea and big and h > 1.0:   # an ellipse laid away from the sun, a soft rim round a firmer body
                 var L: float = h * 1.35; var sa: float = (1.0 if nk > 0.9 else 0.3) * minf(1.0, h / (H * 0.3))
                 for layer in [[1.18, 0.14], [1.0, 0.3]]:
                     var pts := PackedVector2Array()
@@ -1014,7 +1017,7 @@ class Drawer extends Node2D:
                     draw_colored_polygon(pts, Color(0.0, 0.03, 0.05, float(layer[1]) * sa))
             # the curtain and the surge as it falls: water dropping back in ragged sheets and a spreading skirt of foam, at
             # uneven angles and distances (an even ring of puffs and a dashed ring read as drawn, not as water)
-            if fine and fallK > 0.0:
+            if sea and fine and fallK > 0.0:
                 var foam_t: Texture2D = GameData.fx_tex("foam")
                 var rr: float = R * (0.8 + 1.6 * fallK)
                 for i in 9:
@@ -1028,7 +1031,7 @@ class Drawer extends Node2D:
             # the column's top, leaning downwind (the owner found the soft puffs alone read as a cloud): jets of water flung
             # out from it, a crown of thrown water with the droplets showing in it, lit hard on the sun's side and shaded on
             # the other, and a spray of droplets about it rather than a soft mist
-            if h > 0.5:
+            if not sea and h > 0.5:
                 var lean: Vector2 = wind * h * 0.08; var c: Vector2 = q.pos + lean; var r: float = R * (0.75 + 0.35 * rise) * (1.0 + 0.6 * fallK)
                 var a: float = clampf(h / (H * 0.15), 0.0, 1.0); var foam: Texture2D = GameData.fx_tex("foam")
                 _rpuff(foam, c, r * 1.3, q.a, Color(0.82 * nk, 0.9 * nk, 0.9 * nk, 0.3 * a))   # droplets thrown wide

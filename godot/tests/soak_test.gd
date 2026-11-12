@@ -301,6 +301,10 @@ func _events(day: int) -> void:
 		var by: Array = G.fleet.duplicate(); by.sort_custom(func(a, b): return float(Campaign.hull(a).kn) > float(Campaign.hull(b).kn))
 		print(Campaign.detach(by.slice(0, by.size() / 2)))
 	if _once("rejoin", day, 80) and Campaign.body() != null: Campaign.body().join = true
+	# a captain who has signalled the main body steers to meet it (a slow, worn body was left astern for six weeks by a
+	# squadron sailing on at twice its speed: merchant, seed 21)
+	if day > 80 and Campaign.body() != null and Campaign.body().get("join", false):
+		var bd = Campaign.body(); Campaign.set_course(G.player, float(bd.x), float(bd.y))
 	if _once("rejoined", day, 122): ok(Campaign.body() == null, "the main body has rejoined six weeks after the signal (it follows at its own speed, however far you go; a slow, worn body can take five weeks and more)")
 	if _once("dark", day, 100): Campaign.set_dark(true)
 	if _once("light", day, 112): Campaign.set_dark(false)

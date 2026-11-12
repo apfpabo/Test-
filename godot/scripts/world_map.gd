@@ -1528,7 +1528,12 @@ func _division_section(box: Control) -> void:
         var km := int(Campaign.mdist(G.player.x, G.player.y, b.x, b.y) * Campaign.KM_PER_UNIT)
         _p(box, "Your main body is detached: %s, %d km from you, following at %d knots. Apart from you it is a fleet like any other: a power at war with you will fight it if they meet." % [_counts(b.ships), km, int(Campaign.fleet_map_speed(b.ships) / 0.576 * 0.7)], UI.GOLD, 14)
         box.add_child(UI.row([UI.button("Signal the main body to rejoin" if not b.get("join", false) else "Rejoining when in company ✓", func(): b.join = not b.get("join", false); _rerender(), not b.get("join", false))]))
-        _p(box, "It rejoins when it comes up with you (within about 75 km). Slow down or stop to let it.", UI.DIM, 13)
+        # (a stress run left a slow main body astern for six weeks while the squadron sailed on: one click closes the gap)
+        box.add_child(UI.row([UI.button("Steer to meet it", func():
+            var P: Dictionary = Campaign.G.player
+            if Campaign.set_course(P, b.x, b.y): _toast("Course set to meet the main body (%d km off)." % int(Campaign.mdist(P.x, P.y, b.x, b.y) * Campaign.KM_PER_UNIT))
+            _rerender())]))
+        _p(box, "It rejoins when it comes up with you (within about 75 km). Slow down or stop to let it, or steer to meet it.", UI.DIM, 13)
         return
     var fast: Array = G.fleet.filter(func(s): return s.get("fast", false))
     if G.fleet.size() < 2: _p(box, "One ship is no squadron to divide.", UI.DIM, 13); return

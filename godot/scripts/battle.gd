@@ -57,7 +57,7 @@ func _ready() -> void:
     water_mat = ShaderMaterial.new(); water_mat.shader = preload("res://shaders/water.gdshader"); water.material = water_mat; bg.add_child(water)
     # world layers, bottom to top
     world = Node2D.new(); world.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS; add_child(world)
-    for n in ["islands", "wash", "below", "shadows", "ships", "washtop", "bursts", "above", "light", "overlay"]:   # water columns stand above the ships they rise beside: a torpedo's burst goes up over her side, not under her
+    for n in ["islands", "wash", "sink", "below", "shadows", "ships", "washtop", "bursts", "above", "light", "overlay"]:   # water columns stand above the ships they rise beside: a torpedo's burst goes up over her side, not under her
         var node: Node2D
         if n == "ships": node = Node2D.new()
         else: node = Drawer.new(); node.battle = self; node.kind = n; node.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
@@ -68,6 +68,7 @@ func _ready() -> void:
             var ol := CanvasLayer.new(); ol.layer = 2; ol.follow_viewport_enabled = true; add_child(ol); ol.add_child(node); layers[n] = node; continue
         if n == "washtop": node.material = wash_mat   # the same foam, over the ships, for a burst hard against one
         if n == "wash": wash_mat = ShaderMaterial.new(); wash_mat.shader = preload("res://shaders/wash.gdshader"); wash_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = wash_mat
+        if n == "sink": var sm := ShaderMaterial.new(); sm.shader = preload("res://shaders/sink.gdshader"); sm.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = sm
         if n == "bursts": burst_mat = ShaderMaterial.new(); burst_mat.shader = preload("res://shaders/burst.gdshader"); burst_mat.set_shader_parameter("sun", BattleSim.SUN.normalized()); node.material = burst_mat
         world.add_child(node); layers[n] = node
     for is_ in sim.islands: _add_island(is_)
@@ -815,6 +816,7 @@ class Drawer extends Node2D:
             "below": _scars(); _wakes(); _parts(0); _laces(); _wreckage(); _torpedoes()
             "bursts": _bursts()
             "wash": _wash()
+            "sink": _sinks()
             "washtop": _wash(true)
             "shadows": _shadows()
             "above": _columns(); _parts(1); _screens()
@@ -1039,6 +1041,19 @@ class Drawer extends Node2D:
                     _rpuff(cl, c + sun * r * 0.25, r * 0.65, q.a + 2.0, Color(0.47 * nk, 0.58 * nk, 0.63 * nk, 0.4 * a))   # its shaded side
                     _rpuff(cl, c - sun * r * 0.22, r * 0.45, q.a + 3.0, Color(nk, nk, nk, 0.7 * a))                    # its lit crown
 
+    ## The sea sinking round the shot (the owner's reference, 12 Nov 2026): one quad a splash for its first five seconds,
+    ## lit as a surface by shaders/sink.gdshader (a bowl, a ragged lip, ripples). The progress, a seed and the light ride
+    ## in the quad's colour; it spans 1.5 bowl radii each way.
+    func _sinks() -> void:
+        var sim: BattleSim = battle.sim
+        if not sim.modern: return
+        var z: float = battle.zoom()
+        for q in battle.splash_parts()[1]:
+            var e: float = q.life; var bk: float = e / 5.0
+            if bk >= 1.0 or q.size * z < 1.5: continue
+            var rb: float = q.size * (1.25 + 1.5 * sqrt(bk)) * 1.5
+            draw_rect(Rect2(q.pos - Vector2(rb, rb), Vector2(rb, rb) * 2.0), Color(bk, fposmod(q.pos.x * 0.0131 + q.pos.y * 0.0077, 1.0), _night_k(q.pos), 1.0))
+
     ## What the new splash leaves on the sea: paler churned water, then a thin lace of foam with dark water between,
     ## stretched downwind, drifting and fading (GameData.lace_tex). Drawn on the sea, under the ships.
     func _laces() -> void:
@@ -1047,24 +1062,6 @@ class Drawer extends Node2D:
         var glow: Texture2D = GameData.glow_tex(); var wind: Vector2 = BattleSim.WIND.normalized()
         for q in battle.splash_parts()[1]:
             var e: float = q.life; var k: float = clampf(e / q.mx, 0.0, 1.0); var sz: float = q.size; var nk: float = _night_k(q.pos)
-            # the sea sinks where the shot went in (the owner's reference, 12 Nov 2026): a shallow bowl round the splash,
-            # darker water inside, its wall on the sun's side in shade and the far wall catching the light, a broken bright
-            # lip; it spreads a little and the sea fills it again over some five seconds
-            var bk: float = clampf(e / 5.0, 0.0, 1.0)
-            if bk < 1.0 and sz * battle.zoom() > 1.5:
-                var rb: float = sz * (1.25 + 1.5 * sqrt(bk)); var ba: float = minf(1.0, e / 0.15) * (1.0 - smoothstep(0.45, 1.0, bk))
-                var sunv: Vector2 = BattleSim.SUN.normalized(); var sa: float = sunv.angle()
-                var disc := PackedVector2Array()
-                for i in 28:
-                    var an: float = i * TAU / 28.0
-                    disc.append(q.pos + Vector2.from_angle(an) * rb * (1.0 + 0.05 * (_hash(float(i), float(q.v)) - 0.5)))
-                draw_colored_polygon(disc, Color(0.0, 0.05, 0.08, 0.32 * ba * nk))                                      # the bowl, darker water
-                draw_arc(q.pos, rb * 0.86, sa + PI - 1.5, sa + PI + 1.5, 18, Color(0.0, 0.03, 0.05, 0.3 * ba), rb * 0.26)   # its wall towards the sun, in shade
-                draw_arc(q.pos, rb * 0.97, sa - 1.3, sa + 1.3, 18, Color(0.62 * nk, 0.82 * nk, 0.86 * nk, 0.38 * ba), maxf(rb * 0.05, 1.0 / battle.zoom()))   # the far wall in the light
-                for j in 16:   # the lip, broken: bright where the sea spills back in
-                    if _hash(float(j), float(q.v) + 5.0) < 0.45: continue
-                    var a0: float = j * TAU / 16.0
-                    draw_arc(q.pos, rb * 1.01, a0, a0 + TAU / 22.0, 3, Color(0.85 * nk, 0.94 * nk, 0.94 * nk, 0.45 * ba), maxf(rb * 0.035, 1.0 / battle.zoom()))
             var ak: float = minf(1.0, e / 1.5) * (1.0 - k)
             _puff(glow, q.pos, sz * (1.8 + 0.05 * e), Color(0.25 * nk, 0.55 * nk, 0.52 * nk, 0.3 * ak))   # aerated water, paler green
             var t0: float = (1.6 + BattleSim.col_stand(sz)) * 0.8

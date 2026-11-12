@@ -197,6 +197,7 @@ func combat_speed() -> float: return speeds[speed_i]
 # ------------------------------------------------------------------ frame
 func _process(delta: float) -> void:
     sim.modern = Settings.fx_modern   # the effects style can change in the pause menu
+    sim.fx_far = zoom() < 0.35   # far out, smoke is laid thinner in bigger puffs (BattleSim.fx_far)
     bloom.visible = sim.modern
     var dt = minf(delta, 0.05)
     sim.msg_t -= dt # messages fade on the real clock, whatever the battle speed
@@ -1072,8 +1073,12 @@ class Drawer extends Node2D:
         var clouds = [GameData.fx_tex("cloud0"), GameData.fx_tex("cloud1"), GameData.fx_tex("cloud2"), GameData.fx_tex("cloud3")]
         var tn = Time.get_ticks_msec() / 1000.0; var sun: Vector2 = -BattleSim.SUN.normalized()
         if layer == 2 and sim.flash > 0.0: draw_rect(vr, Color(1, 0.78, 0.5, 0.12 * sim.flash * sim.flash))
+        # far out, a puff of smoke is a few pixels across: its lit side and shadow are drawn only from close in, and a
+        # particle under a quarter of a pixel is not drawn at all (a ten-ship action at the widest zoom spent ten
+        # milliseconds a frame drawing nearly two thousand of them, most twice or three times; 12 Nov 2026)
+        var lod: bool = z < 0.35; var tiny: float = 0.25 / z
         for q in sim.parts:
-            if q.life < 0 or not vr.has_point(q.pos): continue
+            if q.life < 0 or q.size < tiny or not vr.has_point(q.pos): continue
             var k: float = q.life / q.mx; var cl: Texture2D = clouds[q.v]
             if layer == 0:
                 match q.t:
@@ -1102,17 +1107,17 @@ class Drawer extends Node2D:
                         base = base.lerp(Color(0.45, 0.24, 0.1), warm * 0.7); var r: float = q.size * grow
                         var ang: float = q.a + q.v * 1.3 + q.life * (0.15 if q.v % 2 else -0.15)
                         _rpuff(cl, q.pos, r, ang, Color(base, a))
-                        _rpuff(cl, q.pos + sun * r * 0.14, r * 0.72, ang + 0.8, Color(hi, a * 0.28))
+                        if not lod: _rpuff(cl, q.pos + sun * r * 0.14, r * 0.72, ang + 0.8, Color(hi, a * 0.28))
                     P.MTRAIL:   # a missile's smoke trail: white, lit on the sun's side, curling as it spreads
                         var r: float = maxf(q.size, 1.2 * mn) * (0.7 + k * 2.6); var a: float = 0.6 * pow(1 - k, 1.2) * minf(1.0, q.life * 10.0)
                         var ang: float = q.v * 1.3 + q.life * (0.5 if q.v % 2 else -0.5)
-                        _rpuff(cl, q.pos, r, ang, Color(0.86, 0.87, 0.86, a)); _rpuff(cl, q.pos + sun * r * 0.14, r * 0.7, ang + 0.9, Color(1, 1, 1, a * 0.35))
-                        _rpuff(cl, q.pos - sun * r * 0.16, r * 0.75, ang - 0.7, Color(0.45, 0.47, 0.5, a * 0.3))
+                        _rpuff(cl, q.pos, r, ang, Color(0.86, 0.87, 0.86, a))
+                        if not lod: _rpuff(cl, q.pos + sun * r * 0.14, r * 0.7, ang + 0.9, Color(1, 1, 1, a * 0.35)); _rpuff(cl, q.pos - sun * r * 0.16, r * 0.75, ang - 0.7, Color(0.45, 0.47, 0.5, a * 0.3))
                     P.SOOT:   # the black heart of a big explosion: oily smoke boiling up through the fire, lit red from inside at first
                         var r: float = q.size * (0.7 + 2.6 * sqrt(k)); var a := 0.82 * minf(1.0, q.life * 5.0) * pow(1 - k, 0.9)
                         var hot := clampf(1.0 - q.life / 0.9, 0.0, 1.0)
                         _rpuff(cl, q.pos, r, q.a, Color(Color(0.07, 0.065, 0.06).lerp(Color(0.5, 0.16, 0.04), hot * 0.8), a))
-                        _rpuff(cl, q.pos + sun * r * 0.16, r * 0.66, q.a + 1.1, Color(0.36, 0.34, 0.32, a * 0.3))
+                        if not lod: _rpuff(cl, q.pos + sun * r * 0.16, r * 0.66, q.a + 1.1, Color(0.36, 0.34, 0.32, a * 0.3))
                     _: _part_classic(1, q, k, cl, puff, foam_tex(), mn, z, tn)
             else:
                 match q.t:

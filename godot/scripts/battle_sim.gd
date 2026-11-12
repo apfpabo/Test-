@@ -171,6 +171,10 @@ var escape_r := ESCAPE_R
 var ships: Array[CShip] = []
 var shells: Array = []
 var torps: Array = []
+## Set by the battle screen when it is zoomed far out (under 0.35): funnel smoke and missile trails are laid half as
+## thick in bigger puffs, which look the same from there (a ten-ship action spent ten milliseconds a frame on nearly
+## two thousand puffs a few pixels across; 12 Nov 2026). The simulation itself is untouched by it.
+var fx_far := false
 var twakes: Array = []      # the wakes of torpedoes that have run out or struck, fading where they lie
 const TWAKE_LIFE := 3.5     # seconds a torpedo's wake lasts on the sea (some 120 m behind her: the owner found 10 s too long)
 var missiles: Array = []
@@ -908,15 +912,29 @@ func hull_half(d: Dictionary, x: float) -> float:
         if x > h0 - fe0: half *= sqrt(maxf(0.0, (h0 - x) / fe0))
         elif x < -h0 + fr0: half *= maxf(p.get("tw", 0.5) if p.get("stern", "c") == "t" else 0.15, sqrt(maxf(0.0, (x + h0) / fr0)))
         return half
-    var key: String = String(d.get("id", "")) + ":" + str(d.L) + ":" + str(d.B)
-    var tab: PackedVector2Array = _halves.get(key, PackedVector2Array())
-    if tab.is_empty(): tab = _hull_table(d); _halves[key] = tab
-    if x >= tab[0].x: return tab[0].y if x <= tab[0].x + 0.01 else 0.0
-    for i in range(1, tab.size()):
-        if x >= tab[i].x:
-            var a: Vector2 = tab[i - 1]; var c: Vector2 = tab[i]
-            return c.y if is_equal_approx(a.x, c.x) else lerpf(c.y, a.y, (x - c.x) / (a.x - c.x))
-    return tab[tab.size() - 1].y if x >= tab[tab.size() - 1].x - 0.01 else 0.0
+    # a uniform table of 129 half-breadths from stern to bow, built once per design: a lookup is an index and a lerp
+    # (it was a text key and a walk along the curve on every call, and the battle step grew half again slower)
+    var tab: PackedFloat32Array = _halves.get(d.get("id", ""), PackedFloat32Array())
+    if tab.is_empty(): tab = _hull_uniform(d); _halves[d.get("id", "")] = tab
+    var h: float = d.L * 0.5
+    if x <= -h or x >= h: return 0.0
+    var u: float = (x + h) / d.L * 128.0; var i: int = mini(int(u), 127)
+    return lerpf(tab[i], tab[i + 1], u - i)
+static func _hull_uniform(d: Dictionary) -> PackedFloat32Array:
+    var e: PackedVector2Array = _hull_table(d); var out := PackedFloat32Array(); out.resize(129)
+    var h: float = d.L * 0.5
+    for k in 129:
+        var x: float = -h + d.L * k / 128.0; var y := 0.0
+        if x >= e[0].x: y = e[0].y
+        elif x <= e[e.size() - 1].x: y = e[e.size() - 1].y
+        else:
+            for i in range(1, e.size()):
+                if x >= e[i].x:
+                    var a2: Vector2 = e[i - 1]; var c: Vector2 = e[i]
+                    y = c.y if is_equal_approx(a2.x, c.x) else lerpf(c.y, a2.y, (x - c.x) / (a2.x - c.x)); break
+        out[k] = y
+    if out[0] < 0.0: out[0] = 0.0
+    return out
 static func _bez(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t: float) -> Vector2:
     var u := 1.0 - t; return u * u * u * p0 + 3.0 * u * u * t * p1 + 3.0 * u * t * t * p2 + t * t * t * p3
 ## The starboard edge from bow to stern as (x, half-breadth), x falling.
@@ -2375,21 +2393,21 @@ func step(dtv: float) -> void:
         if s.wake_t <= 0 and s.v > 1 and sm and not modern: s.wake_t = 0.4; part(P.SWAKE, world_pt(s, -s.d.L * 0.48, 0), 3.0, s.d.B * 0.5)
         if modern and not s.sub and s.v > 2.0 and active(s):   # bow spray flung out at speed, the stern churning
             var sk := clampf(s.v / (s.d.kn * KN), 0.0, 1.0)
-            if randf() < dtv * 14.0 * sk:
+            if not fx_far and randf() < dtv * 14.0 * sk:   # (a third of a pixel from far out: not laid there)
                 var sd := 1.0 if randf() < 0.5 else -1.0; var bx: float = s.d.L * 0.38
                 var q = part(P.SPRAY, world_pt(s, bx, sd * hull_half(s.d, bx)), 0.5 + randf() * 0.5, s.d.B * (0.04 + 0.04 * sk), Vector2.from_angle(s.a + sd * (1.3 + randf() * 0.4)) * (6.0 + s.v * (0.8 + randf()))); q.drag = 0.2
-            if randf() < dtv * 6.0 * sk:
-                var c = part(P.CHURN, world_pt(s, -s.d.L * 0.5, (randf() - 0.5) * s.d.B * 0.5), 2.5 + randf() * 2.0, s.d.B * (0.25 + randf() * 0.2), -Vector2.from_angle(s.a) * s.v * 0.3); c.a = randf() * TAU; c.spin = (randf() - 0.5) * 0.6
+            if randf() < dtv * (3.0 if fx_far else 6.0) * sk:
+                var c = part(P.CHURN, world_pt(s, -s.d.L * 0.5, (randf() - 0.5) * s.d.B * 0.5), 2.5 + randf() * 2.0, s.d.B * (0.25 + randf() * 0.2) * (1.3 if fx_far else 1.0), -Vector2.from_angle(s.a) * s.v * 0.3); c.a = randf() * TAU; c.spin = (randf() - 0.5) * 0.6
         if not s.sub and s.d.p.has("fun") and s.d.p.fun.size():
             s.smoke_t -= dtv
             if s.smoke_t <= 0:
-                s.smoke_t = 0.2
+                s.smoke_t = 0.4 if fx_far else 0.2
                 for f in s.d.p.fun:
                     var fp: Vector2 = world_pt(s, f[0], f[3] if f.size() > 3 else 0.0)
                     if s.eng_out > 0:   # engines stopped: no draught in the funnels, steam blowing off instead
                         if modern and randf() < 0.5: part(P.STEAM, fp + rdir() * s.d.B * 0.2, 4.0 + randf() * 2.0, 2.5 + s.d.B * 0.2, rdir() * 3.0, true)
                     else:
-                        part(P.FUNNEL, fp, 5.0, 2.0 + s.d.B * 0.14, -Vector2.from_angle(s.a) * 3.0, true)
+                        part(P.FUNNEL, fp, 5.0, (2.0 + s.d.B * 0.14) * (1.3 if fx_far else 1.0), -Vector2.from_angle(s.a) * 3.0, true)
                         if s.eng < 0.75 and randf() < (0.9 - s.eng): part(P.SMOKE, fp, 6.0 + randf() * 3.0, 2.5 + s.d.B * 0.2, -Vector2.from_angle(s.a) * 3.0, true)   # damaged boilers smoke black
         # fires burn where they started, move with the ship and pour smoke downwind until damage control puts them out
         if s.hull / s.max_hull < 0.4 and s.fires.size() < 3 and randf() < dt * 0.01: mark_hit(s, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.4, 0).rotated(s.a), 2.0, false)
@@ -2500,9 +2518,9 @@ func step(dtv: float) -> void:
                 fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); sound("hit_big", m.pos, 0.55); missiles.remove_at(i); continue
         m.pos += Vector2.from_angle(m.a) * m.v * dt
         if modern:   # smoke laid every few metres of flight, so the trail is one unbroken line however fast she flies
-            var step_m: float = m.v * dt; var n_p := clampi(int(ceil(step_m / 3.5)), 1, 12); var back_v: Vector2 = Vector2.from_angle(m.a)
+            var step_m: float = m.v * dt; var n_p := clampi(int(ceil(step_m / (8.0 if fx_far else 3.5))), 1, 12); var back_v: Vector2 = Vector2.from_angle(m.a)
             for k in n_p:
-                var tp = part(P.MTRAIL, m.pos - back_v * (6.0 + step_m * k / n_p) + Vector2(randf() - 0.5, randf() - 0.5) * 2.0, (1.1 if m.kind == "sam" else 2.0) + randf() * 0.5, 3.6 + randf() * 1.5, Vector2.ZERO, true)
+                var tp = part(P.MTRAIL, m.pos - back_v * (6.0 + step_m * k / n_p) + Vector2(randf() - 0.5, randf() - 0.5) * 2.0, (1.1 if m.kind == "sam" else 2.0) + randf() * 0.5, (3.6 + randf() * 1.5) * (1.3 if fx_far else 1.0), Vector2.ZERO, true)
                 tp.a = randf() * TAU
         elif randf() < dtv * 30: part(P.MTRAIL, m.pos, 1.0 if m.kind == "sam" else 2.0, 4.0)
         if m.age < 1.6: # the booster burning: flame at the tail, darker smoke mixed into the trail

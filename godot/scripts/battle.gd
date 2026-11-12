@@ -1057,10 +1057,21 @@ class Drawer extends Node2D:
         var sim: BattleSim = battle.sim
         if not sim.modern: return
         var z: float = battle.zoom()
+        # bowls that overlap are one stretch of sunken sea: the larger is drawn, and one whose centre lies inside it is not
+        # (two drawn rims crossed each other where a salvo fell close)
+        var bowls := []
         for q in battle.splash_parts()[1]:
+            var bk0: float = q.life / 5.0
+            if bk0 < 1.0 and q.size * z >= 1.5: bowls.append([q, q.size * (1.25 + 1.5 * sqrt(bk0))])
+        bowls.sort_custom(func(x, y): return x[1] > y[1])
+        var drawn := []
+        for b in bowls:
+            var q = b[0]; var inside := false
+            for d in drawn: if q.pos.distance_to(d[0].pos) < float(d[1]) * 1.3: inside = true; break
+            if inside: continue
+            drawn.append(b)
             var e: float = q.life; var bk: float = e / 5.0
-            if bk >= 1.0 or q.size * z < 1.5: continue
-            var rb: float = q.size * (1.25 + 1.5 * sqrt(bk)) * 1.5
+            var rb: float = float(b[1]) * 1.5
             draw_rect(Rect2(q.pos - Vector2(rb, rb), Vector2(rb, rb) * 2.0), Color(bk, fposmod(q.pos.x * 0.0131 + q.pos.y * 0.0077, 1.0), _night_k(q.pos), 1.0))
 
     ## What the new splash leaves on the sea: paler churned water, then a thin lace of foam with dark water between,

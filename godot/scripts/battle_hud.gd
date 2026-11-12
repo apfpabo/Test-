@@ -216,7 +216,13 @@ func _draw() -> void:
         while lfs > 9 and font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x > w - 20: lfs -= 1
         _text(Vector2(x + 10, y + 46), line, DIM, lfs)
         _text(Vector2(x + 10, y + 64), "Hull", DIM, 12); _bar(Vector2(x + 60, y + 56), 350, 7, f.hull / f.max_hull, GREEN)
-        _text(Vector2(x + 10, y + 78), "Armour", DIM, 12); _bar(Vector2(x + 60, y + 72), 350, 5, f.armor / maxf(1.0, f.d.armor), Color(0.62, 0.67, 0.67))
+        _text(Vector2(x + 10, y + 78), "Armour", DIM, 12)
+        var a0: Dictionary = BattleSim.armour_of(f.d)   # armour by place: belt, deck and turrets, each as it stands against as built
+        var ai := 0
+        for pl in [["belt", "belt"], ["deck", "deck"], ["tur", "turrets"]]:
+            var ax: float = x + 60 + ai * 118; ai += 1
+            _text(Vector2(ax, y + 78), pl[1], DIM, 10)
+            _bar(Vector2(ax + 38, y + 72), 74, 5, float(f.ar.get(pl[0], 0.0)) / maxf(1.0, float(a0[pl[0]])) if float(a0[pl[0]]) > 0.0 else 0.0, Color(0.62, 0.67, 0.67))
         # damaged subsystems, shown only when something is wrong
         var sysl = []
         if f.mag_fire > 0: sysl.append("MAGAZINE FIRE %d s · N floods it" % int(f.mag_fire))

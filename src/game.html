@@ -532,13 +532,31 @@ const DESIGN_LIST = [
     slots: [...pair('V', 73, 4, 'ssm'), ...pair('V', 63, 4, 'ssm'), sl('V', 88, 0, ALL, 'sam'), sl('V', 50, 0, ALL, 'sam'), sl('V', -72, 0, ALL, 'sam'), sl('M', -86, 0, AFT, 'g130t'), ...pair('A', 44, 9.4, 'ciws'), ...pair('A', -70, 9.6, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
 ];
 const HULL_K = 1; // overall toughness, tuned against measured battle lengths
+// Armour by place (the owner's go-ahead, 12 Nov 2026): the belt is each design's `armor`; here are the armoured deck,
+// the main turrets' faces and the share of her length the belt covers (the citadel; the ends beyond it are thin). From
+// published figures, rounded; the deck is the main armoured deck over the citadel. A design not listed has a deck of 0.4
+// of her belt, turrets as her belt and a citadel of 0.6 of her length (BattleSim.armour_of).
+const ARMOUR = {
+  bb_kgv: { deck: 152, tur: 324, cit: .60 }, bb_bismarck: { deck: 110, tur: 360, cit: .70 }, bb_littorio: { deck: 162, tur: 350, cit: .64 },
+  bb_yamato: { deck: 200, tur: 650, cit: .53 }, bb_iowa: { deck: 153, tur: 432, cit: .60 }, bb_vanguard: { deck: 152, tur: 343, cit: .60 },
+  bb_nelson: { deck: 159, tur: 406, cit: .55 }, bb_scharnhorst: { deck: 105, tur: 360, cit: .70 }, bb_montana: { deck: 185, tur: 457, cit: .60 },
+  bb_alsace: { deck: 170, tur: 430, cit: .55 }, bb_soyuz: { deck: 180, tur: 495, cit: .60 }, bb_h39: { deck: 120, tur: 385, cit: .70 },
+  bb_lion: { deck: 152, tur: 381, cit: .60 }, bb_a150: { deck: 230, tur: 700, cit: .53 },
+  cl_fiji: { deck: 51, tur: 51, cit: .55 }, cl_cleveland: { deck: 51, tur: 165, cit: .60 }, cl_atlanta: { deck: 32, tur: 32, cit: .50 },
+  cl_agano: { deck: 20, tur: 25, cit: .50 }, cl_abruzzi: { deck: 40, tur: 135, cit: .60 }, cl_sverdlov: { deck: 50, tur: 175, cit: .60 },
+  ca_zara: { deck: 70, tur: 150, cit: .60 }, ca_takao: { deck: 35, tur: 25, cit: .50 }, ca_hipper: { deck: 50, tur: 160, cit: .70 },
+  ca_baltimore: { deck: 65, tur: 203, cit: .60 }, ca_desmoines: { deck: 90, tur: 203, cit: .60 },
+  cv_shokaku: { deck: 100, tur: 25, cit: .50 }, cv_essex: { deck: 64, tur: 25, cit: .55 }, cv_eagle: { deck: 100, tur: 25, cit: .60 },
+  cv_midway: { deck: 89, tur: 25, cit: .60 }, cv_forrestal: { deck: 76, tur: 25, cit: .60 }, cv_nimitz: { deck: 64, tur: 25, cit: .60 },
+  cv_ford: { deck: 64, tur: 25, cit: .60 }, cg_kirov: { deck: 70, tur: 30, cit: .50 },
+};
 const HULLS = {};
 for (const d of DESIGN_LIST) {
   const c = CLASSES[d.cls];
   HULLS[d.id] = Object.assign({ kind: c.kind, cls: c.cls, cargo: c.cargo, sonar: c.sonar, radar: c.radar, tech: c.tech }, d, {
     name: d.name || c.name, cls: c.cls, klass: d.cls, speed: d.kn, hull: Math.round(Math.max(220, 8.1 * Math.pow(d.t, 0.675)) * HULL_K / 10) * 10,
     fuel: d.cls === 'ssn' || d.nuc ? 0 : Math.round(0.045 * Math.sqrt(d.t) * 10) / 10,
-    island: d.p.fd && d.p.fd.isl ? d.p.fd.isl : null });
+    island: d.p.fd && d.p.fd.isl ? d.p.fd.isl : null }, ARMOUR[d.id] || {});
 }
 const DESIGNS_OF = {}; for (const d of DESIGN_LIST) (DESIGNS_OF[d.cls] = DESIGNS_OF[d.cls] || []).push(d.id);
 // Saves from before the yards existed stored a class key as the ship type.

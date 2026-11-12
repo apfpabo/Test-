@@ -2168,7 +2168,7 @@ func _yard(box: Control, p: Dictionary) -> void:
         var col = VBoxContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         col.add_child(UI.label("%s · %s class · %s %s" % [h.name, h.dn, h.cls, ("· era %d" % h.era) if h.era > 1 else ""], UI.INK, 16))
         col.add_child(UI.label("%s · %d · modelled on the %s" % [GameData.makers[h.yard].name, h.year, h.model], UI.DIM, 13, true))
-        col.add_child(UI.label("%s t · %s m · %s kn · turning circle %s m · belt %d mm · Hull %d · Crew %s · Cargo %d%s%s" % [Campaign.fmt(h.t), str(h.L), str(h.kn), Campaign.fmt(h.td), h.armor, h.hull, Campaign.fmt(h.crew), h.cargo, (" · %d air squadrons" % h.hangar) if h.get("hangar", 0) else "", " · sonar" if h.get("sonar", false) else ""] + _aux_text(h), UI.DIM, 13, true))
+        col.add_child(UI.label("%s t · %s m · %s kn · turning circle %s m · %s · Hull %d · Crew %s · Cargo %d%s%s" % [Campaign.fmt(h.t), str(h.L), str(h.kn), Campaign.fmt(h.td), armour_text(h), h.hull, Campaign.fmt(h.crew), h.cargo, (" · %d air squadrons" % h.hangar) if h.get("hangar", 0) else "", " · sonar" if h.get("sonar", false) else ""] + _aux_text(h), UI.DIM, 13, true))
         col.add_child(UI.label(", ".join(arms.keys().map(func(k): return "%d× %s" % [arms[k], k])), UI.DIM, 13, true))
         col.add_child(UI.button("Buy · " + Campaign.fmt(pr), func():
             if G.credits >= pr and Campaign.can_add_ship(t) == "":
@@ -2199,7 +2199,7 @@ func _refit(box: Control) -> void:
     box.add_child(picks)
     var th = _thumb(s.type, "player", 520, plan); th.sel = refit_sel; th.on_pick = func(i): refit_sel = i; _render_port()
     th.mouse_filter = Control.MOUSE_FILTER_STOP; th.tooltip_text = "Click a mount on the plan to choose it."; box.add_child(th)
-    box.add_child(UI.label("%s · %s · %s class (%s) · %s t · %s kn · belt %d mm · Hull %d" % [s.name, d.name, d.dn, GameData.makers[d.yard].short, Campaign.fmt(d.t), str(d.kn), d.armor, d.hull], UI.INK, 15))
+    box.add_child(UI.label("%s · %s · %s class (%s) · %s t · %s kn · %s · Hull %d" % [s.name, d.name, d.dn, GameData.makers[d.yard].short, Campaign.fmt(d.t), str(d.kn), armour_text(d, s), d.hull], UI.INK, 15))
     var sizes = {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / PD", "T": "Torpedo", "V": "Launch cells"}
     # side by side on a wide window; on a narrow one (a portrait screen, a small window, a scaled-up interface) the weapon
     # card goes above the list, where it was cut off at the right
@@ -2255,6 +2255,12 @@ func _refit(box: Control) -> void:
     if changes and G.credits < net: _p(box, "You need %s more for this refit." % Campaign.fmt(net - G.credits), UI.RED, 14)
     if changes and not ld.ok: _p(box, "The yard will not pass this fit: %s. Land something, or choose lighter weapons." % ("she would be %d tons over what her hull can carry" % int(ld.over_t - ld.limit) if ld.over_t > ld.limit else "she would be dangerously top-heavy"), UI.RED, 14)
     _systems(box, s)
+
+## A design's armour by place, for a line of figures: "belt 307 · deck 153 · turrets 432 mm" (a ship's refit armour added).
+func armour_text(d: Dictionary, rec = null) -> String:
+    var a: Dictionary = BattleSim.armour_of(d, rec)
+    if float(a.belt) < 25.0: return "belt %d mm" % int(a.belt)
+    return "belt %d · deck %d · turrets %d mm" % [int(a.belt), int(a.deck), int(a.tur)]
 
 ## The weight ledger of a planned fit: what she carries by kind, against her standard fit and margin, and what it
 ## does to her (BattleSim.loading).

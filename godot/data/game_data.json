@@ -4682,7 +4682,10 @@
    "speed": 31.5,
    "hull": 3650,
    "fuel": 4.2,
-   "island": null
+   "island": null,
+   "deck": 51,
+   "tur": 51,
+   "cit": 0.55
   },
   "cl_cleveland": {
    "kind": "war",
@@ -4942,7 +4945,10 @@
    "speed": 32.5,
    "hull": 4540,
    "fuel": 4.9,
-   "island": null
+   "island": null,
+   "deck": 51,
+   "tur": 165,
+   "cit": 0.6
   },
   "cl_atlanta": {
    "kind": "war",
@@ -5176,7 +5182,10 @@
    "speed": 32.5,
    "hull": 3100,
    "fuel": 3.7,
-   "island": null
+   "island": null,
+   "deck": 32,
+   "tur": 32,
+   "cit": 0.5
   },
   "cl_agano": {
    "kind": "war",
@@ -5398,7 +5407,10 @@
    "speed": 35,
    "hull": 3080,
    "fuel": 3.7,
-   "island": null
+   "island": null,
+   "deck": 20,
+   "tur": 25,
+   "cit": 0.5
   },
   "cl_abruzzi": {
    "kind": "war",
@@ -5641,7 +5653,10 @@
    "speed": 34,
    "hull": 3900,
    "fuel": 4.4,
-   "island": null
+   "island": null,
+   "deck": 40,
+   "tur": 135,
+   "cit": 0.6
   },
   "cl_sverdlov": {
    "kind": "war",
@@ -5909,7 +5924,10 @@
    "speed": 32.5,
    "hull": 5000,
    "fuel": 5.2,
-   "island": null
+   "island": null,
+   "deck": 50,
+   "tur": 175,
+   "cit": 0.6
   },
   "cve_casa": {
    "kind": "carrier",
@@ -6571,7 +6589,10 @@
    "speed": 32,
    "hull": 4560,
    "fuel": 4.9,
-   "island": null
+   "island": null,
+   "deck": 70,
+   "tur": 150,
+   "cit": 0.6
   },
   "ca_takao": {
    "kind": "war",
@@ -6812,7 +6833,10 @@
    "speed": 35.5,
    "hull": 4950,
    "fuel": 5.2,
-   "island": null
+   "island": null,
+   "deck": 35,
+   "tur": 25,
+   "cit": 0.5
   },
   "ca_hipper": {
    "kind": "war",
@@ -7090,7 +7114,10 @@
    "speed": 32,
    "hull": 5110,
    "fuel": 5.3,
-   "island": null
+   "island": null,
+   "deck": 50,
+   "tur": 160,
+   "cit": 0.7
   },
   "ca_baltimore": {
    "kind": "war",
@@ -7338,7 +7365,10 @@
    "speed": 33,
    "hull": 5220,
    "fuel": 5.4,
-   "island": null
+   "island": null,
+   "deck": 65,
+   "tur": 203,
+   "cit": 0.6
   },
   "ca_desmoines": {
    "kind": "war",
@@ -7571,7 +7601,10 @@
    "speed": 33,
    "hull": 5810,
    "fuel": 5.9,
-   "island": null
+   "island": null,
+   "deck": 90,
+   "tur": 203,
+   "cit": 0.6
   },
   "bb_kgv": {
    "kind": "war",
@@ -7852,7 +7885,10 @@
    "speed": 28,
    "hull": 9760,
    "fuel": 8.6,
-   "island": null
+   "island": null,
+   "deck": 152,
+   "tur": 324,
+   "cit": 0.6
   },
   "bb_bismarck": {
    "kind": "war",
@@ -8161,7 +8197,10 @@
    "speed": 30,
    "hull": 10640,
    "fuel": 9.2,
-   "island": null
+   "island": null,
+   "deck": 110,
+   "tur": 360,
+   "cit": 0.7
   },
   "bb_littorio": {
    "kind": "war",
@@ -8459,7 +8498,10 @@
    "speed": 30,
    "hull": 10520,
    "fuel": 9.1,
-   "island": null
+   "island": null,
+   "deck": 162,
+   "tur": 350,
+   "cit": 0.64
   },
   "bb_yamato": {
    "kind": "war",
@@ -8951,7 +8993,10 @@
    "speed": 27,
    "hull": 14360,
    "fuel": 11.5,
-   "island": null
+   "island": null,
+   "deck": 200,
+   "tur": 650,
+   "cit": 0.53
   },
   "bb_iowa": {
    "kind": "war",
@@ -9304,7 +9349,10 @@
    "speed": 33,
    "hull": 11200,
    "fuel": 9.5,
-   "island": null
+   "island": null,
+   "deck": 153,
+   "tur": 432,
+   "cit": 0.6
   },
   "bb_vanguard": {
    "kind": "war",
@@ -9603,7 +9651,10 @@
    "speed": 30,
    "hull": 11120,
    "fuel": 9.5,
-   "island": null
+   "island": null,
+   "deck": 152,
+   "tur": 343,
+   "cit": 0.6
   },
   "bb_nelson": {
    "kind": "war",
@@ -9895,7 +9946,10 @@
    "speed": 23,
    "hull": 9140,
    "fuel": 8.2,
-   "island": null
+   "island": null,
+   "deck": 159,
+   "tur": 406,
+   "cit": 0.55
   },
   "bb_scharnhorst": {
    "kind": "war",
@@ -10216,7 +10270,10 @@
    "speed": 31,
    "hull": 8920,
    "fuel": 8.1,
-   "island": null
+   "island": null,
+   "deck": 105,
+   "tur": 360,
+   "cit": 0.7
   },
   "bb_montana": {
    "kind": "war",
@@ -10566,7 +10623,10 @@
    "speed": 28,
    "hull": 13680,
    "fuel": 11.1,
-   "island": null
+   "island": null,
+   "deck": 185,
+   "tur": 457,
+   "cit": 0.6
   },
   "bb_alsace": {
    "kind": "war",
@@ -10867,7 +10927,10 @@
    "speed": 32,
    "hull": 11200,
    "fuel": 9.5,
-   "island": null
+   "island": null,
+   "deck": 170,
+   "tur": 430,
+   "cit": 0.55
   },
   "bb_soyuz": {
    "kind": "war",
@@ -11225,7 +11288,10 @@
    "speed": 28,
    "hull": 13480,
    "fuel": 10.9,
-   "island": null
+   "island": null,
+   "deck": 180,
+   "tur": 495,
+   "cit": 0.6
   },
   "bb_h39": {
    "kind": "war",
@@ -11534,7 +11600,10 @@
    "speed": 30,
    "hull": 12450,
    "fuel": 10.3,
-   "island": null
+   "island": null,
+   "deck": 120,
+   "tur": 385,
+   "cit": 0.7
   },
   "bb_lion": {
    "kind": "war",
@@ -11821,7 +11890,10 @@
    "speed": 30,
    "hull": 10440,
    "fuel": 9.1,
-   "island": null
+   "island": null,
+   "deck": 152,
+   "tur": 381,
+   "cit": 0.6
   },
   "bb_a150": {
    "kind": "war",
@@ -12303,7 +12375,10 @@
    "speed": 30,
    "hull": 15100,
    "fuel": 11.9,
-   "island": null
+   "island": null,
+   "deck": 230,
+   "tur": 700,
+   "cit": 0.53
   },
   "ddg_adams": {
    "kind": "war",
@@ -14017,7 +14092,10 @@
     44,
     14,
     4.2
-   ]
+   ],
+   "deck": 100,
+   "tur": 25,
+   "cit": 0.5
   },
   "cv_essex": {
    "kind": "carrier",
@@ -14210,7 +14288,10 @@
     22,
     38,
     6.5
-   ]
+   ],
+   "deck": 64,
+   "tur": 25,
+   "cit": 0.55
   },
   "cv_eagle": {
    "kind": "carrier",
@@ -14368,7 +14449,10 @@
     18,
     46,
     8
-   ]
+   ],
+   "deck": 100,
+   "tur": 25,
+   "cit": 0.6
   },
   "cv_midway": {
    "kind": "carrier",
@@ -14525,7 +14609,10 @@
     30,
     52,
     10
-   ]
+   ],
+   "deck": 89,
+   "tur": 25,
+   "cit": 0.6
   },
   "cv_forrestal": {
    "kind": "carrier",
@@ -14672,7 +14759,10 @@
     24,
     40,
     10
-   ]
+   ],
+   "deck": 76,
+   "tur": 25,
+   "cit": 0.6
   },
   "cv_nimitz": {
    "kind": "carrier",
@@ -14808,7 +14898,10 @@
     -52,
     22,
     9
-   ]
+   ],
+   "deck": 64,
+   "tur": 25,
+   "cit": 0.6
   },
   "ddg_zumwalt": {
    "kind": "war",
@@ -15325,7 +15418,10 @@
     -80,
     18,
     8
-   ]
+   ],
+   "deck": 64,
+   "tur": 25,
+   "cit": 0.6
   },
   "ssn_virginia": {
    "kind": "sub",
@@ -16017,7 +16113,10 @@
    "speed": 32,
    "hull": 7390,
    "fuel": 0,
-   "island": null
+   "island": null,
+   "deck": 70,
+   "tur": 30,
+   "cit": 0.5
   }
  },
  "WEAPONS": {

@@ -10,6 +10,7 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
   const data = await p.evaluate(() => ({ HULLS, WEAPONS, PAL, YARD_STYLE, CLASSES, MAKERS, FAC_MAKERS, FAC, NAMES, HULL_ORDER, TEAK, LINO }));
   fs.mkdirSync(path.join(OUT, 'data'), { recursive: true });
   fs.writeFileSync(path.join(OUT, 'data', 'game_data.json'), JSON.stringify(data, null, 1));
+  if (process.env.DATA_ONLY) { await b.close(); return; }   // DATA_ONLY=1: the game data alone, no art
   // which paint schemes each design can appear in: the player's and the raiders' (any), plus each flag that buys from its yard
   // (a flag that borrows another's paint, FAC.paint, needs none of its own; auxiliaries are bought by everyone, so they come in every scheme)
   const combos = {}; for (const [id, d] of Object.entries(data.HULLS)) { const set = new Set(['player', 'raiders']);

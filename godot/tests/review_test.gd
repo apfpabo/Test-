@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels()
-	ok(sections == 19, "every section ran to its end (%d of 19)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour()
+	ok(sections == 20, "every section ran to its end (%d of 20)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1445,4 +1445,43 @@ func _levels() -> void:
 	ok(Settings.SPLASH_DEFAULT == "new" and BattleSim.col_stand(20.4) > BattleSim.col_stand(6.0) * 3.0, "a heavy shell's column stands far longer than a light one's")
 	sp.splash_new = true
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
+	sections += 1
+
+## Armour by place (docs/ARMOUR.md): belt, deck and turrets of their own; the deck struck more the steeper the fall; a
+## turret pierced is out of action; thin ends; penetration by calibre and range.
+func _armour() -> void:
+	var iowa: Dictionary = GameData.hulls["bb_iowa"]; var a := BattleSim.armour_of(iowa)
+	ok(int(a.belt) == 307 and int(a.deck) == 153 and int(a.tur) == 432 and is_equal_approx(float(a.cit), 0.6), "the Iowa: belt 307, deck 153, turrets 432 mm, citadel 0.6")
+	var fl: Dictionary = GameData.hulls["dd_fletcher"]; var b := BattleSim.armour_of(fl)
+	ok(is_equal_approx(float(b.deck), float(fl.armor) * 0.4) and is_equal_approx(float(b.tur), float(fl.armor)), "a design without figures: deck 0.4 of the belt, turrets as the belt")
+	ok(int(BattleSim.armour_of(iowa, {"arm": {"deck": 25}}).deck) == 178, "a refit's armour adds to the place")
+	var near := BattleSim.deck_share(iowa, BattleSim.fall_angle(0.1, "H")); var far := BattleSim.deck_share(iowa, BattleSim.fall_angle(1.0, "H"))
+	ok(near < 0.2 and far > 0.6, "the deck is struck %d%% of the time close in, %d%% at the limit" % [int(near * 100), int(far * 100)])
+	var p16a := BattleSim.shell_pen("g406", GameData.weapons["g406"], 0.0); var p16b := BattleSim.shell_pen("g406", GameData.weapons["g406"], 0.5); var p16c := BattleSim.shell_pen("g406", GameData.weapons["g406"], 1.0)
+	ok(p16a > 750 and p16b > 450 and p16b < 560 and p16c < 320, "the 16-inch: %d mm close in, %d at half range, %d at the limit" % [int(p16a), int(p16b), int(p16c)])
+	# shells into an Iowa from a 16-inch: where they strike and what they do
+	seed(31)
+	var sim := BattleSim.new()
+	sim.setup([Campaign.new_ship("bb_iowa", "A", "player", [])], [Campaign.new_ship("bb_iowa", "B", "raiders", [])], [], [], 0)
+	var tg: BattleSim.CShip = sim.ships[1]; tg.pos = Vector2.ZERO; tg.a = 0.0
+	var places := {}; var ends := 0; var mk := func(fall: float, at: Vector2) -> Dictionary:
+		var sh := {"s": at + Vector2(0, -8000), "e": at, "pos": at, "dmg": 285.0, "size": "H", "pen": BattleSim.shell_pen("g406", GameData.weapons["g406"], fall), "fall": fall, "ammo": "ap"}
+		return sim.shell_result(tg, sh)
+	for i in 300:
+		var r: Dictionary = mk.call(1.0, Vector2(randf_range(-60, 60), 0)); places[r.get("place", "")] = int(places.get(r.get("place", ""), 0)) + 1
+	ok(int(places.get("deck", 0)) > int(places.get("belt", 0)), "plunging fire at the limit strikes the deck most (%s)" % str(places))
+	places = {}
+	for i in 300:
+		var r: Dictionary = mk.call(0.1, Vector2(randf_range(-60, 60), 0)); places[r.get("place", "")] = int(places.get(r.get("place", ""), 0)) + 1
+	ok(int(places.get("belt", 0)) > 3 * int(places.get("deck", 0)), "close in it strikes the side (%s)" % str(places))
+	var endr: Dictionary = mk.call(0.5, Vector2(float(iowa.L) * 0.46, 0))
+	ok(endr.get("ends", false) and endr.kind != "nopen", "a hit at her bow meets thin plating (%s)" % endr.text)
+	var tur: BattleSim.Mount = null
+	for m in tg.mounts: if m.w.size == "H": tur = m; break
+	tg.ar.tur = 50.0; tur.dead = false   # a turret with its face shot away (the shots above may have knocked it out)
+	var got := false
+	for i in 40:
+		var r: Dictionary = mk.call(0.2, Vector2(float(tur.slot.x), float(tur.slot.y)))
+		if r.get("place", "") == "tur" and r.kind == "pen": got = true; break
+	ok(got and tur.dead, "a shell through a turret's face puts it out of action")
 	sections += 1

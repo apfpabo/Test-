@@ -54,7 +54,8 @@ class CShip:
     var w = 0.0
     var max_hull = 1.0
     var hull = 1.0
-    var armor = 0.0
+    var armor = 0.0        # her belt as it stands (= ar.belt; kept for the older reckonings: missiles, systems)
+    var ar := {}           # armour by place as it stands, mm: belt, deck, tur (armour_of; worn down where it is holed)
     var alive = true
     var escaped = false
     var struck = false
@@ -373,6 +374,8 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     var cap: int = 1 if drone_ship(d, tech) else d.get("p", {}).get("cat", []).size()
     s.fp = clampi(int(rec.get("fp", cap)), 0, cap); s.fp_t = 20.0 + randf() * 40.0
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")) * (0.85 if rec.get("defects", []).has("hull") else 1.0); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
+    var ak: float = (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac); var a0 := armour_of(d, rec)
+    s.ar = {"belt": a0.belt * ak, "deck": a0.deck * ak, "tur": a0.tur * ak}; s.armor = s.ar.belt
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     s.sonar_on = not s.sub; s.ping_t = randf() * PING_PERIOD   # a boat listens and keeps quiet until told to ping
     s.cq = crew_level(float(rec.get("xp", 1.0)))
@@ -1080,6 +1083,20 @@ func _scars_fx(dtv: float) -> void:
 ## drifting downwind and fading over 15 to 35 s. `size` is as the classic splash takes it (a shell's is 6 to 20).
 static func col_stand(size: float) -> float: return 0.25 * size
 ## A gun's calibre in millimetres, read from its id (g356 is 356 mm); 0 for anything else.
+## A shell's penetration of side armour struck square, in mm (armour by place, 12 Nov 2026), from her calibre and how
+## far out she was fired against her gun's range (0 close in, 1 at the limit): a heavy gun's shell beats about twice its
+## calibre close in and seven tenths of it at the limit (the published curves of the 14-, 16- and 18-inch guns, rounded:
+## the 16-inch beats about 500 mm at half range); a cruiser's gun less, being lighter for its bore, a light gun less
+## again. Guns with no calibre in their name go by their shell's weight as before.
+static func shell_pen(wid: String, w: Dictionary, frac: float) -> float:
+    var mm := float(calibre_mm(wid))
+    if mm <= 0.0: return float(w.dmg) * 1.9 * (1.0 - 0.45 * frac)
+    match String(w.size):
+        "H": return mm * (2.0 - 1.3 * frac)
+        "L": return mm * (1.7 - 1.15 * frac)
+        "M": return mm * (1.5 - 1.0 * frac)
+    return mm * (1.0 - 0.6 * frac)
+
 static func calibre_mm(wid: String) -> int:
     if not wid.begins_with("g"): return 0
     var d := ""
@@ -1282,8 +1299,8 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
     else:
         a = ang + (randf() - 0.5) * 2 * spread
         dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
-    # penetration in mm of armour, from the shell's weight, falling off with range; fall: how steeply it comes down
-    var pen: float = float(w.dmg) * 1.9 * (1.0 - 0.45 * clampf(dd / rng, 0.0, 1.0))
+    # penetration in mm of armour, by calibre and range (armour by place); fall: how steeply it comes down
+    var pen: float = shell_pen(m.wid, w, clampf(dd / rng, 0.0, 1.0))
     var kind := shell_for(s, aim, pen)
     s.last_shell = kind
     pen *= SHELLS[kind].pen
@@ -1721,29 +1738,84 @@ func shell_for(s: CShip, aim: Vector2, pen: float) -> String:
     if tg.d.armor >= 40 and pen > tg.armor * 1.15: return "ap"
     return "he"
 
+## Armour by place (docs/ARMOUR.md; the owner's go-ahead, 12 Nov 2026), mm as built: the belt (`armor`), the armoured
+## deck, the main turrets' faces, and `cit`, the share of her length the belt and deck cover (beyond it the ends are thin).
+## Designs without figures of their own: a deck of 0.4 of the belt, turrets as the belt, a citadel of 0.6.
+static func armour_of(d: Dictionary, rec = null) -> Dictionary:
+    var belt := float(d.armor)
+    var a := {"belt": belt, "deck": float(d.get("deck", belt * 0.4)), "tur": float(d.get("tur", belt)), "cit": float(d.get("cit", 0.6))}
+    if rec != null:   # armour added in a refit (Campaign: refit by weight), mm on each place
+        var add: Dictionary = rec.get("arm", {})
+        for k in ["belt", "deck", "tur"]: a[k] += float(add.get(k, 0.0))
+    return a
+
+## How steeply a shell comes down, in radians, from how far out she was fired against her gun's range: a heavy gun's
+## shell falls at a few degrees close in and about 35 at the limit of her range; a lighter gun's flatter.
+static func fall_angle(fall: float, size: String) -> float:
+    return deg_to_rad(lerpf(3.0, 35.0 if size == "H" or size == "L" else 25.0, pow(clampf(fall, 0.0, 1.0), 1.5)))
+
+## The chance a shell striking her comes down on her deck rather than her side: her deck as the shell sees it (beam by
+## the sine of its fall) against her side above the water (freeboard by the cosine).
+static func deck_share(d: Dictionary, th: float) -> float:
+    var fb: float = clampf(0.045 * float(d.L), 2.5, 11.0)
+    var dk: float = float(d.B) * sin(th)
+    return dk / (dk + fb * cos(th))
+
+var spare: Mount = null   # a turret whose armour held: the hit's marks do not knock it out (mark_hit)
+
 ## What a shell does when it strikes. Its penetration (mm, from its weight and the range it was fired at) meets the
-## armour it hits: the belt, made thicker by the angle the shell strikes at, or the thinner deck if it comes down
-## steeply from long range. A very oblique hit can ricochet; a shell that beats the armour penetrates (full damage,
-## and it reaches the ship's subsystems), but a heavy shell into a lightly built ship may pass straight through
-## (over-penetration); one that fails only throws splinters.
+## armour of the place it strikes (armour by place): a main turret's face; the deck, more often the steeper it falls
+## (long range), struck the more squarely the steeper it comes; or the side, the belt within her citadel and thin
+## plating at the ends beyond it, made thicker by the angle it strikes at. An oblique hit can glance off the side, and a
+## flat one off the deck. A shell that beats the plate penetrates (full damage, and it reaches the subsystems; into an
+## unarmoured end it does less harm, but lets the sea in), but a heavy shell into a lightly built ship or an end may
+## pass straight through (over-penetration); one that fails only throws splinters.
 func shell_result(tg: CShip, sh: Dictionary) -> Dictionary:
     var dir: Vector2 = (sh.e - sh.s).normalized(); var side_n := Vector2.from_angle(tg.a + PI / 2)
     var obl: float = acos(clampf(absf(dir.dot(side_n)), 0.0, 1.0))   # 0 = square to the side
-    var fall: float = sh.fall; var deck: bool = fall > 0.6 and randf() < (fall - 0.6) * 2.0
-    var armour: float = maxf(1.0, tg.armor * (0.4 if deck else 1.0))
-    if deck: obl = lerpf(obl, 0.5, 0.7)                               # coming down steeply: the deck is struck more squarely
-    if not deck and obl > 1.12 and randf() < (obl - 1.0) / 0.5: return {"kind": "rico", "k": 0.03, "text": "Ricochet"}
-    var eff: float = armour / maxf(cos(obl), 0.25)
+    var th := fall_angle(float(sh.fall), String(sh.size))
+    var A := armour_of(tg.d); var l: Vector2 = (sh.pos - tg.pos).rotated(-tg.a)
+    var ends: bool = absf(l.x) > A.cit * float(tg.d.L) / 2.0
+    if tg.ar.is_empty(): tg.ar = {"belt": tg.armor, "deck": A.deck, "tur": A.tur}
+    var mount: Mount = null
+    for m in tg.mounts:
+        if m.dead or m.w.kind != "gun" or m.w.size == "S" or m.w.size == "A": continue
+        if Vector2(float(m.slot.x) - l.x, float(m.slot.y) - l.y).length() < float(m.w.get("tw", 2.5)) * 0.9 + 1.0: mount = m; break
+    var place := "belt"
+    if mount != null and randf() < 0.75: place = "tur"
+    elif randf() < deck_share(tg.d, th): place = "deck"
+    var plate: float; var eff: float
+    match place:
+        "tur":   # the face, turned partly towards the fire as it trains
+            plate = maxf(1.0, float(tg.ar.tur)); eff = plate / maxf(cos(obl * 0.5) * cos(th), 0.3)
+        "deck":
+            if th < deg_to_rad(9.0) and randf() < 0.8 * (1.0 - th / deg_to_rad(9.0)): return {"kind": "rico", "k": 0.03, "text": "Ricochet (deck)", "place": "deck"}
+            plate = maxf(1.0, float(tg.ar.deck) * (0.35 if ends else 1.0)); eff = plate / maxf(sin(th), 0.12)
+        _:
+            if obl > 1.12 and randf() < (obl - 1.0) / 0.5: return {"kind": "rico", "k": 0.03, "text": "Ricochet", "place": "belt"}
+            plate = maxf(1.0, float(tg.ar.belt) * (0.15 if ends else 1.0)); eff = plate / maxf(cos(obl) * cos(th), 0.25)
     var pen: float = sh.get("pen", sh.dmg * 1.9)
     var am: Dictionary = SHELLS[sh.get("ammo", "ap")]; var tag: String = am.name + " · "
+    var where_: String = {"tur": " (turret)", "deck": " (deck)", "belt": ""}[place] if not ends or place == "tur" else (" (deck, at her end)" if place == "deck" else " (at her end)")
+    var endk: float = 0.6 if ends and place != "tur" else 1.0   # an end holed is less vital than her citadel
     if pen < eff:   # HE and incendiary burst on the plate: more blast and fire than an AP shell that fails
         var kb: float = (0.1 + 0.15 * pen / eff) * float(am.nopen)
-        if tg.d.armor < 25: kb = maxf(kb, 0.55 * float(am.hit))   # an unarmoured ship: the burst does real harm
-        return {"kind": "nopen", "k": minf(kb, 0.8), "text": tag + ("Burst on the armour" if sh.get("ammo", "ap") != "ap" else "No penetration") + (" (deck)" if deck else ""), "fire": am.fire}
-    if sh.get("ammo", "ap") == "ap" and pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14) and randf() < 0.55:
-        return {"kind": "over", "k": 0.35, "text": tag + "Overpenetration", "fire": am.fire}
-    tg.armor = maxf(tg.d.armor * 0.4, tg.armor - sh.dmg * 0.1)       # the plate is weakened where it was holed
-    return {"kind": "pen", "k": float(am.hit), "text": tag + ("Deck penetration" if deck else "Penetration"), "fire": am.fire}
+        if plate < 25.0: kb = maxf(kb, 0.55 * float(am.hit) * endk)   # thin plating: the burst does real harm
+        if place == "tur": spare = mount
+        return {"kind": "nopen", "k": minf(kb, 0.8), "text": tag + ("Burst on the armour" if sh.get("ammo", "ap") != "ap" else "No penetration") + where_, "fire": am.fire, "place": place, "ends": ends}
+    if sh.get("ammo", "ap") == "ap" and pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14 or ends) and place != "tur" and randf() < 0.55:
+        return {"kind": "over", "k": 0.35, "text": tag + "Overpenetration" + where_, "fire": am.fire, "place": place, "ends": ends}
+    var base: float = {"belt": float(A.belt), "deck": float(A.deck), "tur": float(A.tur)}[place]
+    if not ends or place == "tur": tg.ar[place] = maxf(base * 0.4, float(tg.ar[place]) - sh.dmg * 0.1)   # the plate is weakened where it was holed
+    tg.armor = float(tg.ar.belt)
+    if place == "tur" and mount != null:   # through the face: the turret is out of action
+        mount.dead = true
+        if tg.side == 0: say("A shell has pierced a %s turret on the %s: it is out of action!" % [mount.w.name, tg.rec.name], 2.5)
+    if ends and place != "tur" and (sh.size == "H" or sh.size == "L"):   # holed at the bow or stern: water comes in and she trims and lists a little
+        tg.list = clampf(tg.list + (signf(l.y) if absf(l.y) > 0.5 else 1.0) * 0.04, -1.0, 1.0)
+    var nm: String = {"tur": "Turret penetration", "deck": "Deck penetration", "belt": "Belt penetration"}[place]
+    if ends and place != "tur": nm = "Penetration at her end" if place == "belt" else "Deck penetration at her end"
+    return {"kind": "pen", "k": float(am.hit) * endk, "text": tag + nm, "fire": am.fire, "place": place, "ends": ends}
 
 # ------------------------------------------------------------------ damage
 func damage(s: CShip, dmg: float, type: String) -> void:
@@ -1752,10 +1824,12 @@ func damage(s: CShip, dmg: float, type: String) -> void:
     match type:
         "resolved": hd = dmg   # already weighed against the armour (shell_result)
         "shell":
-            var eff = dmg / (dmg + s.armor); hd = dmg * maxf(0.03, eff); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.25 * eff)
+            var eff = dmg / (dmg + s.armor); hd = dmg * maxf(0.03, eff); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.25 * eff); if not s.ar.is_empty(): s.ar.belt = s.armor
         "torp": hd = dmg * (1 - minf(0.45, s.d.armor / 700.0)) * (1.0 - 0.15 * upg(s, "tds"))
         "missile": hd = dmg * (1 - minf(0.55, s.armor / 550.0))
-        "bomb": hd = dmg * dmg / (dmg + s.armor * 0.7); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.15)
+        "bomb":   # bombs come down on the deck (armour by place)
+            var dk: float = float(s.ar.get("deck", s.armor * 0.4)); var dk0: float = armour_of(s.d).deck
+            hd = dmg * dmg / (dmg + dk * 1.75); if not s.ar.is_empty(): s.ar.deck = maxf(dk0 * 0.4, dk - dmg * 0.15)
         _: hd = dmg
     if type != "magazine": hd *= 1 - 0.07 * s.sk.dc   # damage control cannot save a ship whose magazine has gone up
     s.hull -= hd; s.dmg_taken += hd; last_hit = t
@@ -1785,7 +1859,7 @@ func hit_systems(s: CShip, wp: Vector2, dmg: float, kind: String) -> void:
     var pen: float
     match kind:
         "shell": pen = dmg / (dmg + s.armor)
-        "bomb": pen = dmg / (dmg + s.armor * 0.6)
+        "bomb": pen = dmg / (dmg + float(s.ar.get("deck", s.armor * 0.4)) * 1.5)
         "torp": pen = 1.0 - minf(0.5, s.d.armor / 700.0)
         _: pen = 0.75
     var heavy: float = clampf(dmg / 250.0, 0.15, 1.5)
@@ -1903,7 +1977,7 @@ func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool, fire_k := 1.0) -> vo
     if big: wreckage(s, wp, int(1 + sz), sz)
     if randf() < 0.12 * sz * fire_k: s.fires.append({"x": x, "y": y, "t": 60.0 + randf() * 180.0, "r": 0.8 + sz * 0.9, "st": 0.0})
     for m in s.mounts:
-        if m.dead or m.w.kind == "sam" or m.w.kind == "ssm": continue
+        if m.dead or m.w.kind == "sam" or m.w.kind == "ssm" or m == spare: continue   # (a turret whose face held is not knocked out)
         if Vector2(m.slot.x - x, m.slot.y - y).length() < m.w.get("tw", 2.5) * 0.9 + 1 and randf() < 0.1 * sz:
             m.dead = true
             s.marks.append({"x": float(m.slot.x), "y": float(m.slot.y), "r": float(m.w.get("tw", 2.5)) * 1.5 + 1.5, "v": randi() % 4, "hole": false, "gash": false, "edge": false, "sd": randi() % 1000, "side": 1.0, "wreck": true})
@@ -2519,10 +2593,11 @@ func step(dtv: float) -> void:
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
         if sh.get("tgt") != null: spot(sh.who, sh.tgt, float(sh.get("rel", 6.0)))   # the fall of shot is seen and the next salvo corrected
         if hit != null:
-            var res := shell_result(hit, sh); _log("shell " + res.kind)
+            spare = null; var res := shell_result(hit, sh); _log("shell " + res.kind); _log("shell %s %s" % [res.kind, res.get("place", "")])
             if hit.side == sh.side: _log("shell on a friend"); ff_dmg += sh.dmg * res.k
             mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico", float(res.get("fire", 1.0)))
             if res.kind == "pen": hit_systems(hit, sh.pos, sh.dmg, "shell")
+            spare = null
             damage(hit, sh.dmg * res.k, "resolved")
             if res.kind == "rico": part(P.SPARK, sh.pos, 0.5, 2 + sz, Vector2.from_angle((sh.e - sh.s).angle() + (randf() - 0.5) * 1.2) * 120.0)
             else: fx_boom(sh.pos, 7 * sz * (1.0 if res.kind == "pen" else 0.6), 0.6)

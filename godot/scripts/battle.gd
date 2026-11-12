@@ -1032,15 +1032,15 @@ class Drawer extends Node2D:
             if h > 0.5:
                 var lean: Vector2 = wind * h * 0.08; var c: Vector2 = q.pos + lean; var r: float = R * (0.75 + 0.35 * rise) * (1.0 + 0.6 * fallK)
                 var a: float = clampf(h / (H * 0.15), 0.0, 1.0); var foam: Texture2D = GameData.fx_tex("foam")
-                _rpuff(foam, c, r * 1.3, q.a, Color(0.82 * nk, 0.9 * nk, 0.9 * nk, 0.45 * a))   # droplets thrown wide
-                _rpuff(foam, c, r * 1.0, q.a + 2.3, Color(0.9 * nk, 0.96 * nk, 0.96 * nk, 0.6 * a))   # and nearer in, thicker
+                _rpuff(foam, c, r * 1.3, q.a, Color(0.82 * nk, 0.9 * nk, 0.9 * nk, 0.3 * a))   # droplets thrown wide
+                _rpuff(foam, c, r * 1.0, q.a + 2.3, Color(0.9 * nk, 0.96 * nk, 0.96 * nk, 0.42 * a))   # and nearer in, thicker
                 if fine:
-                    for i in 26:   # streaks of water flung out from it: thin, faint and of every length, lit on the sun's side
-                        var j: float = _hash(float(i) + 21.0, float(q.v) + q.pos.y * 0.011); var an: float = q.a + i * TAU / 26.0 + (j - 0.5) * 0.25
+                    for i in 14:   # streaks of water flung out from it: faint, soft and of every length, lit on the sun's side
+                        var j: float = _hash(float(i) + 21.0, float(q.v) + q.pos.y * 0.011); var an: float = q.a + i * TAU / 14.0 + (j - 0.5) * 0.35
                         var dir := Vector2.from_angle(an); var litk: float = clampf(0.6 - 0.4 * dir.dot(sun), 0.25, 1.0)
                         var r0: float = r * 0.35; var r1: float = r * (0.75 + 0.6 * j) * (1.0 + 0.4 * fallK)
-                        var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.5 * a)
-                        draw_polygon(PackedVector2Array([c + dir * r0 + Vector2(-dir.y, dir.x) * r * 0.03, c + dir * r1, c + dir * r0 - Vector2(-dir.y, dir.x) * r * 0.03]), PackedColorArray([cb, Color(cb, 0.0), cb]))
+                        var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.26 * a)
+                        draw_polygon(PackedVector2Array([c + dir * r0 + Vector2(-dir.y, dir.x) * r * 0.06, c + dir * r1, c + dir * r0 - Vector2(-dir.y, dir.x) * r * 0.06]), PackedColorArray([cb, Color(cb, 0.0), cb]))
                     for i in 9:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
                         var j: float = _hash(float(i) + 3.0, float(q.v) + q.pos.y * 0.013); var j2: float = _hash(float(i) + 11.0, q.pos.x * 0.017)
                         var an: float = q.a + i * TAU / 9.0 + (j2 - 0.5) * 0.9
@@ -1049,7 +1049,7 @@ class Drawer extends Node2D:
                 if fine:
                     _rpuff(cl, c + sun * r * 0.28, r * 0.6, q.a + 2.0, Color(0.36 * nk, 0.48 * nk, 0.55 * nk, 0.55 * a))   # its shaded side, firmly
                     _rpuff(cl, c - sun * r * 0.2, r * 0.38, q.a + 3.0, Color(nk, nk, nk, 0.9 * a))                       # its lit crown
-                    _rpuff(foam, c, r * 0.85, q.a * 2.0, Color(0.55 * nk, 0.68 * nk, 0.72 * nk, 0.45 * a))               # the droplets in it: water, not vapour
+                    _rpuff(foam, c, r * 0.85, q.a * 2.0, Color(0.6 * nk, 0.72 * nk, 0.76 * nk, 0.25 * a))                # the droplets in it: water, not vapour
 
     ## The sea sinking round the shot (the owner's reference, 12 Nov 2026): one quad a splash for its first five seconds,
     ## lit as a surface by shaders/sink.gdshader (a bowl, a ragged lip, ripples). The progress, a seed and the light ride

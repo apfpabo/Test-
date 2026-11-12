@@ -149,12 +149,11 @@ func _process(d: float) -> void:
 			if n % 3 == 0: sim.fx(0.06)
 	if f < 3: return
 	if f == 3 and clip.has("storm_at"): sim.wx = Weather.battle(clip.storm_at); battle.apply_weather()   # the storm breaks as the camera rolls
-	if clip.get("stars", false) and f % 150 == 4:   # star shell over the action, one shell a side every five seconds, bursting beside it
-		for side in [0, 1]:
-			var s = null
-			for x in sim.ships: if x.side == side and x.alive and x.squads.is_empty() and sim.can_star(x) and x.star_t <= 0.0: s = x; break
-			var foe = _ship(1 - side)
-			if s != null and foe != null: sim.fire_star(s, foe.pos + Vector2(900.0 if side == 0 else -900.0, -600.0))
+	if clip.get("stars", false) and f % 180 == 3:   # the target's escorts keep star shell burning over and beside her (their own, so it is
+		var tg = _ship(1)                                  # there as the camera rolls: ours, from 8 km off, took fourteen seconds to arrive)
+		if tg != null:
+			var off := Vector2(700.0, -500.0) if (f / 180) % 2 == 0 else Vector2(-600.0, 400.0)
+			sim.flares.append({"p": tg.pos + off, "t": 1.6, "v": randi() % 4})
 	t += d
 	if clip.get("hunt", false):   # a depth-charge hunt: the boat stays down and silent, and nobody hides the picture in smoke
 		for s in sim.ships:

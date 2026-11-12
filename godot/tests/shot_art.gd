@@ -1,6 +1,7 @@
 extends Node
 ## Close-up of ship art: godot --path godot res://tests/shot_art.tscn -- <out.png> <zoom> <design,design,...> [heading degrees] [metres ahead of amidships]
-## The designs are lined up side by side with turrets trained ahead and aft, paused, HUD hidden.
+## The designs are lined up side by side with turrets trained ahead and aft, paused, HUD hidden. LIST=0.6 (an environment
+## variable) gives them that list to starboard, to see the hull drawn as a solid against the plan.
 var battle: Node
 var frame := 0
 var args: PackedStringArray
@@ -17,7 +18,7 @@ func _process(_d: float) -> void:
         var gap := 0.0; for s in mine: gap = maxf(gap, s.d.B + 14.0)
         for i in mine.size():
             var s = mine[i]; s.a = hd; s.pos = Vector2(0, 0) + Vector2.from_angle(hd + PI / 2) * (i - (mine.size() - 1) / 2.0) * gap
-            s.v = 0.0
+            s.v = 0.0; s.list = float(OS.get_environment("LIST")) if OS.get_environment("LIST") != "" else 0.0
             for m in s.mounts: m.ta = 0.0 if m.slot.x > 0 else PI if m.slot.y == 0 else float(m.slot.arcs[0][0])
         for s in sim.ships: if s.side == 1: s.pos = Vector2(9000, 9000)
         battle.cam_free = true; battle.camera.position = Vector2.from_angle(hd) * (float(args[4]) if args.size() > 4 else 0.0); battle.camera.zoom = Vector2.ONE * float(args[1] if args.size() > 1 else "2.5")

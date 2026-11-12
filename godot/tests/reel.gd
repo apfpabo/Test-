@@ -44,7 +44,7 @@ const CLIPS := {
 	"night_storm": {"player": ["cv_forrestal", "cv_forrestal", "dd_gearing", "dd_gearing", "dd_gearing"], "enemy": ["bb_yamato", "dd_kagero", "dd_kagero"], "sep": 9000.0, "pre": 900.0,
 		"until": "strike_d", "until_d": 3800.0, "split": true, "screen": true,
 		"wx": {"sea": 2, "fog": false, "night": true, "moon": 0.25}, "storm_at": {"sea": 3, "fog": false, "night": true, "moon": 0.25}, "stars": true, "place": "ahead", "tech": ["radar", "jets", "missiles"],
-		"cuts": [[0.0, "deck", 2.2, 0.0], [4.5, "them", 2.4, 0.0], [10.5, "them", 1.1, 0.0]]},
+		"cuts": [[0.0, "launching", 1.2, 120.0], [4.5, "them", 2.4, 0.0], [10.5, "them", 1.1, 0.0]]},
 	"fleet": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_scharnhorst", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3400.0, "pre": 60.0, "wx": {},
 		"cuts": [[0.0, "me", 2.6, 20.0], [4.0, "them", 2.4, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.2, 0.0]]},
 	# destroyers hunting a dived boat: she lies ahead of them, they find her with sonar and run in over her
@@ -105,6 +105,11 @@ func _spot(who: String, lead: float) -> Variant:
 	match who:
 		"air":
 			for q in sim.air: if q.side == 0 and q.up > 0: return q.pos + Vector2(-26.0, 0).rotated(q.a)
+		"launching":   # the carrier flying off her strike, with her screen about her: the camera on her, a little ahead
+			for s in sim.ships:
+				if s.side == 0 and s.alive and not s.squads.is_empty() and not s.deck_ops.is_empty(): return s.pos + Vector2.from_angle(s.a) * lead
+			for s in sim.ships:
+				if s.side == 0 and s.alive and not s.squads.is_empty() and s.deck_out <= 0.0 and s.ai_off: return s.pos + Vector2.from_angle(s.a) * lead
 		"deck":
 			for s in sim.ships:
 				if s.side != 0 or s.deck_ops.is_empty(): continue

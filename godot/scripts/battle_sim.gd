@@ -15,7 +15,7 @@ const WIND := Vector2(7.0, 3.5)  # smoke drift, metres per visual second
 const SUN := Vector2(0.55, 0.85) # direction shadows fall on the chart
 
 enum P { FOAM, OIL, SWAKE, TWAKE, SPLASH, GEYSER, BLAST, DC, SMOKE, GUNSMOKE, FUNNEL, DUST, FLAK, MTRAIL, FLASH, BOOM, FIRE, SPARK, FALL,
-    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH, STEAM, DIRT }   # the modern effects (Settings.fx_modern)
+    CORE, FIREBALL, RING, DEBRIS, EMBER, SPRAY, WRING, GLOW, CHURN, FLARE, SOOT, WASH, STEAM, DIRT, COLUMN, LACE }   # the modern effects (Settings.fx_modern)
 
 class Mount:
     var slot: Dictionary
@@ -181,6 +181,7 @@ var missiles: Array = []
 var air: Array = []
 var parts: Array[Part] = []
 var modern := true                 # the modern effects: layered explosions, light, spray (Settings.fx_modern); false = classic
+var splash_new := true             # the new shell splashes (Settings.splash): column, curtain and lacy slick; false = the classic splash
 var flash := 0.0                   # a magazine going up lights the whole sky for a moment
 var wx: Dictionary = Weather.CLEAR  # the weather and light the battle is fought in (Weather.battle): sea, fog, night, moon, vis, radar
 var tracers: Array = []
@@ -1062,7 +1063,25 @@ func _scars_fx(dtv: float) -> void:
         part(P.FIRE, c.p + rdir() * float(c.r) * 0.5, 0.7 + randf() * 0.7, float(c.r) * (0.5 + randf() * 0.4), Vector2.ZERO)
         if randf() < 0.6: part(P.SMOKE, c.p + rdir() * float(c.r) * 0.3, 7.0 + randf() * 4.0, float(c.r) * 0.9, Vector2.ZERO, true)
 
+## The new splash (the owner's choice, 12 Nov 2026; Settings.splash, "classic" keeps the look before): a column of water
+## that rises in about 1.6 s and stands by its calibre (`col_stand`) before it falls back as a curtain of spray, drawn by
+## the battle screen with its height and its shadow on the sea; and a thin lacy slick of foam over paler churned water,
+## drifting downwind and fading over 15 to 35 s. `size` is as the classic splash takes it (a shell's is 6 to 20).
+static func col_stand(size: float) -> float: return 0.25 * size
+static func col_life(size: float) -> float: return 1.6 + col_stand(size) + 2.4
+func fx_splash_new(p: Vector2, size: float) -> void:
+    var merged: Part = _young_near(P.COLUMN, p, size, 0.25)   # shells falling together: one column, swollen and renewed
+    if merged != null:
+        merged.size = minf(maxf(merged.size, size) * 1.08, maxf(merged.size, size) * 1.6); merged.life = minf(merged.life, 0.5)
+    else:
+        var c := part(P.COLUMN, p, col_life(size), size, Vector2.ZERO, true); c.v = randi() % 4; c.a = randf() * TAU
+    var fl: Part = _young_near(P.LACE, p, size * 1.5, 0.1)
+    if fl != null: fl.size = minf(fl.size * 1.05, size * 2.0)
+    else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU
+    for i in 3 + int(size * 0.25):   # droplets thrown out at the first instant
+        var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.6 + randf() * 0.7, size * (0.18 + randf() * 0.16), rdir() * (size * 1.2 + randf() * size * 3.0)); q.drag = 0.18
 func fx_splash(p: Vector2, size: float) -> void:
+    if modern and splash_new: fx_splash_new(p, size); return
     # shells falling together on one spot make one column, not a stack of them (the owner: "the water columns look weird
     # when multiple shots are fired in the same position"): a splash inside a young column of the same fall swells and
     # renews it instead of drawing another over it, and its foam joins that column's foam

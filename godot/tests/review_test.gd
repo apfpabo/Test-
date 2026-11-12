@@ -1436,4 +1436,11 @@ func _levels() -> void:
 	ok(Campaign.enemy_tech(3).has("radar+2") and not Campaign.enemy_tech(2).has("radar+2") and Campaign.enemy_tech(4).has("radar+3") and not Campaign.enemy_tech(4).has("nuclear+2"), "the powers' levels follow their era")
 	Campaign.save(); Campaign.load_game()
 	ok(Campaign.tech_lv("radar") == 3, "levels survive a save")
+	# the splash styles (the owner's choice with a way back, 12 Nov 2026): the new one lays a column and a slick, classic its own
+	var sp := BattleSim.new(); sp.modern = true; sp.splash_new = true; sp.fx_splash(Vector2(500, 500), 20.0)
+	var kinds: Array = sp.parts.map(func(q): return q.t)
+	ok(kinds.has(BattleSim.P.COLUMN) and kinds.has(BattleSim.P.LACE) and not kinds.has(BattleSim.P.SPLASH), "the new splash: a column and a lacy slick")
+	sp.parts.clear(); sp.splash_new = false; sp.fx_splash(Vector2(500, 500), 20.0); kinds = sp.parts.map(func(q): return q.t)
+	ok(kinds.has(BattleSim.P.SPLASH) and kinds.has(BattleSim.P.WASH) and not kinds.has(BattleSim.P.COLUMN), "classic splashes are as they were")
+	ok(Settings.SPLASH_DEFAULT == "new" and BattleSim.col_stand(20.4) > BattleSim.col_stand(6.0) * 3.0, "a heavy shell's column stands far longer than a light one's")
 	sections += 1

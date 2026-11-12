@@ -25,6 +25,7 @@ var light_shader: Shader = preload("res://shaders/ship_light.gdshader")
 func _ready() -> void:
     Sfx.music("battle")
     var cfg: Dictionary = GameData.pending
+    if Settings.fx_modern and Settings.splash != "classic": GameData.lace_tex(0)   # the new splash's foam, made before the first shell lands
     sim = BattleSim.new(); sim.modern = Settings.fx_modern
     sim.on_boom = _boom
     sim.on_sound = func(kind: String, p: Vector2, vol: float): Sfx.event(kind, vol * _near(p)); if (kind == "gun_H" or kind == "blast") and vol >= 0.4: shake = maxf(shake, vol * _near(p) * _near(p) * 6.0)
@@ -193,10 +194,24 @@ func _boom(p: Vector2, vol: float, freq: float, rate: float) -> void:
 func _exit_tree() -> void: Sfx.engine(0.0); Sfx.ambience(0.0)
 func zoom() -> float: return camera.zoom.x
 func combat_speed() -> float: return speeds[speed_i]
+## The new splash's columns and slicks in view, gathered in one walk of the particles a frame for both layers that draw
+## them (each walk of nearly two thousand particles costs about a millisecond).
+var _sp_frame := -1
+var _sp_lists := [[], []]
+func splash_parts() -> Array:
+    var fr := Engine.get_process_frames()
+    if fr != _sp_frame:
+        _sp_frame = fr; _sp_lists = [[], []]
+        if sim.modern and sim.splash_new:
+            var vr: Rect2 = view_rect().grow(400)
+            for q in sim.parts:
+                if (q.t == BattleSim.P.COLUMN or q.t == BattleSim.P.LACE) and q.life >= 0.0 and vr.has_point(q.pos): _sp_lists[0 if q.t == BattleSim.P.COLUMN else 1].append(q)
+    return _sp_lists
 
 # ------------------------------------------------------------------ frame
 func _process(delta: float) -> void:
     sim.modern = Settings.fx_modern   # the effects style can change in the pause menu
+    sim.splash_new = Settings.splash != "classic"
     sim.fx_far = zoom() < 0.35   # far out, smoke is laid thinner in bigger puffs (BattleSim.fx_far)
     bloom.visible = sim.modern
     var dt = minf(delta, 0.05)
@@ -797,12 +812,12 @@ class Drawer extends Node2D:
     func _draw() -> void:
         match kind:
             "islands": _islands()
-            "below": _scars(); _wakes(); _parts(0); _wreckage(); _torpedoes()
+            "below": _scars(); _wakes(); _parts(0); _laces(); _wreckage(); _torpedoes()
             "bursts": _bursts()
             "wash": _wash()
             "washtop": _wash(true)
             "shadows": _shadows()
-            "above": _parts(1); _screens()
+            "above": _columns(); _parts(1); _screens()
             "light": _parts(2); _flares()
             "overlay": _overlay()
 
@@ -966,6 +981,81 @@ class Drawer extends Node2D:
         var len := clampf(sp * 0.07, q.size * 1.5, q.size * 22.0); var dir := v / maxf(sp, 0.001)
         draw_line(q.pos, q.pos - dir * len, col, maxf(q.size * 0.6, mn * 1.1))
         if glow: _puff(GameData.glow_tex(), q.pos, maxf(q.size * 2.5, 2.0 * mn), Color(col, col.a * 0.6))
+
+    ## The new splash (Settings.splash "new"; BattleSim.fx_splash_new). A column seen from above: its top, white, with a lit
+    ## crown and a shaded side, leaning downwind as it stands, and its shadow laid across the sea away from the sun as
+    ## long as it is tall; as it falls, a ragged curtain of spray ringing out and a low surge running on beyond it.
+    func _night_k(p: Vector2) -> float:
+        var sim: BattleSim = battle.sim
+        return 0.45 if (sim.wx.get("night", false) and not sim.star_lit(p)) else 1.0
+    static func _hash(a: float, b: float) -> float: return fposmod(sin(a * 12.9898 + b * 78.233) * 43758.5453, 1.0)
+    func _columns() -> void:
+        var sim: BattleSim = battle.sim
+        if not sim.modern: return
+        var z: float = battle.zoom(); var mn: float = 1.0 / z
+        var sun: Vector2 = BattleSim.SUN.normalized(); var wind: Vector2 = BattleSim.WIND.normalized()
+        for q in battle.splash_parts()[0]:
+            var e: float = q.life; var sz: float = q.size; var R: float = sz; var H: float = sz * 3.8; var stand: float = BattleSim.col_stand(sz)
+            var rise: float = minf(1.0, e / 1.6); var fallK: float = clampf((e - 1.6 - stand) / 2.4, 0.0, 1.0)
+            var h: float = H * sin(rise * PI * 0.5) * (1.0 - fallK)
+            var nk: float = _night_k(q.pos); var cl: Texture2D = GameData.fx_tex("cloud%d" % int(maxi(0, q.v) % 4))
+            var big: bool = R * z > 2.0     # far out a column is a few pixels: no shadow
+            var fine: bool = R * z > 5.0    # and only a column of some size on the screen has a crown, a curtain and a surge
+            # its shadow on the sea (a sun some 35 degrees up: the shadow is about 1.35 times the height)
+            if big and h > 1.0:   # an ellipse laid away from the sun, a soft rim round a firmer body
+                var L: float = h * 1.35; var sa: float = (1.0 if nk > 0.9 else 0.3) * minf(1.0, h / (H * 0.3))
+                for layer in [[1.18, 0.14], [1.0, 0.3]]:
+                    var pts := PackedVector2Array()
+                    for i in 20:
+                        var an: float = i * TAU / 20.0; var rag: float = 1.0 + 0.12 * (_hash(float(i), float(q.v)) - 0.5)
+                        pts.append(q.pos + (sun * L * 0.5) + (sun * cos(an) * L * 0.55 + Vector2(-sun.y, sun.x) * sin(an) * R * 0.8) * float(layer[0]) * rag)
+                    draw_colored_polygon(pts, Color(0.0, 0.03, 0.05, float(layer[1]) * sa))
+            # the curtain and the surge as it falls
+            if fine and fallK > 0.0:
+                var rr: float = R * (1.1 + 2.2 * fallK)
+                for i in 14:
+                    var an: float = i * TAU / 14.0 + float(q.v); var jag: float = _hash(float(i), float(q.v) + q.pos.x * 0.01)
+                    var r1: float = rr * (0.85 + 0.3 * jag)
+                    _rpuff(cl, q.pos + Vector2.from_angle(an) * r1, R * 0.36 * (1.0 - fallK * 0.5), an * 2.0, Color(0.93 * nk, 0.97 * nk, 0.96 * nk, 0.55 * (1.0 - fallK) * (0.5 + jag)))
+                var sk: float = clampf((e - 1.6 - stand) / 6.0, 0.0, 1.0)
+                if sk < 1.0:
+                    var r2: float = R * (2.0 + 5.0 * sk); var w: float = maxf(2.2 * (1.0 - sk) + 0.4, 1.0 * mn)
+                    for j in 24:
+                        if _hash(float(j), float(q.v) * 3.1 + floor(sk * 4.0)) < 0.35: continue   # broken, not a ring
+                        var a0: float = j * TAU / 24.0; var rj: float = r2 * (0.9 + 0.2 * _hash(float(j) + 7.0, float(q.v)))
+                        draw_arc(q.pos, rj, a0, a0 + TAU / 24.0, 4, Color(0.86 * nk, 0.93 * nk, 0.92 * nk, 0.28 * (1.0 - sk)), w * 0.8)
+            # the column's top, leaning downwind; a mist of spray about it
+            if h > 0.5:
+                var lean: Vector2 = wind * h * 0.08; var c: Vector2 = q.pos + lean; var r: float = R * (0.75 + 0.35 * rise) * (1.0 + 0.6 * fallK)
+                var a: float = clampf(h / (H * 0.15), 0.0, 1.0)
+                _rpuff(cl, c, r * 1.3, q.a, Color(0.62 * nk, 0.74 * nk, 0.76 * nk, 0.35 * a))
+                if fine:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
+                    for i in 9:
+                        var j: float = _hash(float(i) + 3.0, float(q.v) + q.pos.y * 0.013); var j2: float = _hash(float(i) + 11.0, q.pos.x * 0.017)
+                        var an: float = q.a + i * TAU / 9.0 + (j2 - 0.5) * 0.9
+                        _rpuff(GameData.fx_tex("cloud%d" % (i % 4)), c + Vector2.from_angle(an) * r * (0.2 + 0.45 * j), r * (0.3 + 0.35 * j2), an * 1.7, Color(0.9 * nk, 0.95 * nk, 0.95 * nk, (0.6 + 0.3 * j) * a))
+                _rpuff(cl, c, r * 0.8, q.a + 1.0, Color(0.95 * nk, 0.98 * nk, 0.97 * nk, 0.95 * a))
+                if fine:
+                    _rpuff(cl, c + sun * r * 0.25, r * 0.65, q.a + 2.0, Color(0.47 * nk, 0.58 * nk, 0.63 * nk, 0.4 * a))   # its shaded side
+                    _rpuff(cl, c - sun * r * 0.22, r * 0.45, q.a + 3.0, Color(nk, nk, nk, 0.7 * a))                    # its lit crown
+
+    ## What the new splash leaves on the sea: paler churned water, then a thin lace of foam with dark water between,
+    ## stretched downwind, drifting and fading (GameData.lace_tex). Drawn on the sea, under the ships.
+    func _laces() -> void:
+        var sim: BattleSim = battle.sim
+        if not sim.modern: return
+        var glow: Texture2D = GameData.glow_tex(); var wind: Vector2 = BattleSim.WIND.normalized()
+        for q in battle.splash_parts()[1]:
+            var e: float = q.life; var k: float = clampf(e / q.mx, 0.0, 1.0); var sz: float = q.size; var nk: float = _night_k(q.pos)
+            var ak: float = minf(1.0, e / 1.5) * (1.0 - k)
+            _puff(glow, q.pos, sz * (1.8 + 0.05 * e), Color(0.25 * nk, 0.55 * nk, 0.52 * nk, 0.3 * ak))   # aerated water, paler green
+            var t0: float = (1.6 + BattleSim.col_stand(sz)) * 0.8
+            if e > t0:
+                var la: float = minf(1.0, (e - t0) / 2.5) * pow(1.0 - k, 1.4) * 0.85; var r: float = sz * (3.0 + 2.5 * k)
+                if la > 0.01 and r * battle.zoom() > 1.0:
+                    draw_set_transform(q.pos, wind.angle() + q.a * 0.15, Vector2(1.45, 0.85))
+                    draw_texture_rect(GameData.lace_tex(maxi(0, q.v) % 3), Rect2(-r, -r, 2 * r, 2 * r), false, Color(0.92 * nk, 0.97 * nk, 0.95 * nk, la))
+                    draw_set_transform(Vector2.ZERO)
 
     ## Columns of water thrown up by shells and depth charges: one quad each, drawn by shaders/burst.gdshader (the
     ## progress, a seed and whether it is a depth charge ride in the quad's colour).

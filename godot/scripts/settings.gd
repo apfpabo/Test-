@@ -10,6 +10,11 @@ var ambience := 0.8
 var music := 0.6                 # the Music bus (three pieces chosen by the owner, 11 Nov 2026)
 var minimap := 1                  # 0 small, 1 medium, 2 large
 var fx_modern := true             # battle effects: modern (layered explosions, light, spray) or classic
+## Shell splashes in the modern effects (the owner's choice of 12 Nov 2026, with a way back): "new" (a column that stands
+## by its calibre and casts its shadow, a falling curtain, a lacy slick) or "classic" (the look before it, untouched;
+## the commit before the change is tagged splash-classic). SPLASH_DEFAULT is what a fresh install starts with.
+const SPLASH_DEFAULT := "new"
+var splash := SPLASH_DEFAULT
 var sensors := true               # show sensor ranges and the radar sweep (R on the chart and in battle)
 const MINIMAP_W := [190.0, 280.0, 400.0]
 ## Everything plays through this fixed output level: the owner found the game far too loud, so 100% on the sliders
@@ -30,7 +35,7 @@ func _ready() -> void:
 	if cf.load(PATH) == OK:
 		master = cf.get_value("sound", "master", master); effects = cf.get_value("sound", "effects", effects); music = cf.get_value("sound", "music", music)
 		ambience = cf.get_value("sound", "ambience", ambience); minimap = cf.get_value("battle", "minimap", minimap)
-		fx_modern = cf.get_value("battle", "fx_modern", fx_modern); sensors = cf.get_value("battle", "sensors", sensors)
+		fx_modern = cf.get_value("battle", "fx_modern", fx_modern); splash = String(cf.get_value("battle", "splash", splash)); sensors = cf.get_value("battle", "sensors", sensors)
 		if int(cf.get_value("sound", "scale", 1)) < 2:   # saved on the old, ten-times-louder scale: keep the same loudness
 			effects = minf(1.0, effects * 10.0); ambience = minf(1.0, ambience * 10.0)
 			save()
@@ -43,7 +48,7 @@ func apply() -> void:
 
 func save() -> void:
 	var cf := ConfigFile.new()
-	cf.set_value("sound", "scale", 2); cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("sound", "music", music); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern)
+	cf.set_value("sound", "scale", 2); cf.set_value("sound", "master", master); cf.set_value("sound", "effects", effects); cf.set_value("sound", "ambience", ambience); cf.set_value("sound", "music", music); cf.set_value("battle", "minimap", minimap); cf.set_value("battle", "fx_modern", fx_modern); cf.set_value("battle", "splash", splash)
 	cf.set_value("battle", "sensors", sensors)
 	cf.save(PATH)
 
@@ -68,6 +73,10 @@ func panel() -> Control:
 	var fo := OptionButton.new(); for n in ["Modern", "Classic"]: fo.add_item(n)
 	fo.selected = 0 if fx_modern else 1; fo.item_selected.connect(func(i): fx_modern = i == 0; save())
 	box.add_child(UI.row([fl, fo, UI.label("Classic is the earlier, simpler look.", UI.DIM, 12)]))
+	var spl := UI.label("Shell splashes", UI.INK, 14); spl.custom_minimum_size.x = 220
+	var spo := OptionButton.new(); for n in ["New", "Classic"]: spo.add_item(n)
+	spo.selected = 0 if splash == "new" else 1; spo.item_selected.connect(func(i): splash = "new" if i == 0 else "classic"; save())
+	box.add_child(UI.row([spl, spo, UI.label("New: tall columns with shadows, a falling curtain, a lacy slick. Classic: the look before.", UI.DIM, 12)]))
 	var sl2 := UI.label("Sensor ranges", UI.INK, 14); sl2.custom_minimum_size.x = 220
 	var so := OptionButton.new(); for n in ["Shown", "Hidden"]: so.add_item(n)
 	so.selected = 0 if sensors else 1; so.item_selected.connect(func(i): sensors = i == 0; save())

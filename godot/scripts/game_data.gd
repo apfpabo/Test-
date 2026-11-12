@@ -111,6 +111,26 @@ func fx_tex(n: String) -> Texture2D:
 ## shockwaves. Made once, in code.
 var _glow: Texture2D
 var _ring: Texture2D
+## The new splash's foam (Settings.splash): three laces of thin threads with dark water between and blots where it is
+## thicker, white on clear, fading to nothing at the edge. Made once each, in code (a few tens of milliseconds).
+var _laces: Array = []
+func lace_tex(i: int) -> Texture2D:
+	if _laces.is_empty():
+		for k in 3: _laces.append(_make_lace(11 + k * 13))
+	return _laces[i % 3]
+func _make_lace(sd: int) -> Texture2D:
+	var w := 192; var img := Image.create(w, w, false, Image.FORMAT_RGBA8)
+	var thr := FastNoiseLite.new(); thr.seed = sd; thr.noise_type = FastNoiseLite.TYPE_SIMPLEX; thr.frequency = 0.042
+	var blo := FastNoiseLite.new(); blo.seed = sd + 5; blo.noise_type = FastNoiseLite.TYPE_SIMPLEX; blo.frequency = 0.03
+	var edg := FastNoiseLite.new(); edg.seed = sd + 9; edg.noise_type = FastNoiseLite.TYPE_SIMPLEX; edg.frequency = 0.05
+	for y in w:
+		for x in w:
+			var dx := float(x) / w - 0.5; var dy := float(y) / w - 0.5; var r := sqrt(dx * dx + dy * dy) * 2.0
+			var thread := pow(1.0 - absf(thr.get_noise_2d(x, y)), 9.0)
+			var blot := maxf(0.0, blo.get_noise_2d(x, y) * 0.5 + 0.5 - 0.62) * 1.4
+			var edge := maxf(0.0, 1.0 - pow(r / (0.72 + 0.22 * (edg.get_noise_2d(x, y) * 0.5 + 0.5)), 3.0))
+			img.set_pixel(x, y, Color(0.91, 0.96, 0.94, clampf((thread * 0.95 + blot) * edge, 0.0, 1.0)))
+	return ImageTexture.create_from_image(img)
 func glow_tex() -> Texture2D:
 	if _glow == null: _glow = _radial([0.0, 0.12, 0.35, 0.65, 1.0], [1.0, 0.75, 0.32, 0.08, 0.0])
 	return _glow

@@ -235,6 +235,46 @@ func era_of(tech: Array) -> int:
     if era_count(tech, 3) < ERA4_GATE: return 3
     return 4
 func has_tech(t: String) -> bool: return G.tech.has(t)
+## Research by levels (the owner's request, 12 Nov 2026). A technology is researched at level I as before (its id in
+## G.tech); levels II and III are kept in the same list as "<id>+2" and "<id>+3" (BattleSim.tech_lv reads them), each
+## costing more and strengthening what the first level does by a step (TECH_UP says what). The three that only open
+## designs or weapons (TECH_MAX) have one level, vertical launch two. Eras count a technology once, at level I. Untuned.
+const TECH_MAX := {"nuclear": 1, "reactors": 1, "nukes": 1, "vls": 2}
+const TECH_LV_COST := [1.0, 1.25, 1.75]   # of the technology's cost, for levels I, II and III
+const TECH_UP := {
+    "radar": "+5% gun range and salvos 5% tighter", "sonar": "sonar reaches 20% farther", "homing": "homing torpedoes' seekers hear 15% farther",
+    "aa_prox": "anti-aircraft fire brings down 10% more", "dc": "damage control 10% faster", "amphib": "troops land 10% stronger",
+    "jets": "strike aircraft hit 5% more often", "missiles": "missiles reach 5% farther", "snorkel": "dived boats 5% faster",
+    "helo": "helicopters' sonar reaches 15% farther", "ecm": "8% more missiles decoyed", "ciws": "close-in mounts 10% surer against missiles",
+    "aegis": "SAM range +10%", "vls": "one more missile in every salvo", "datalink": "salvos 5% tighter, radar and anti-ship missiles 5% farther",
+    "netcentric": "salvos corrected 5% faster", "stealth": "found 5% later, enemy radar 5% shorter", "precision": "anti-ship missiles 10% farther",
+    "drones": "drones stay up a quarter longer"}
+func tech_max(id: String) -> int: return int(TECH_MAX.get(id, 3))
+func tech_lv(id: String) -> int: return BattleSim.tech_lv(G.tech, id)
+func tech_up(id: String) -> int: return BattleSim.tech_up(G.tech, id)
+## What the next level of a technology costs (0 if it is at its last).
+func tech_cost(t: Dictionary, lv: int = -1) -> int:
+    if lv < 0: lv = tech_lv(t.id) + 1
+    if lv > tech_max(t.id): return 0
+    return int(round(float(t.cost) * TECH_LV_COST[lv - 1]))
+## "" if the next level of `t` can be researched now, or why not.
+func can_research(t: Dictionary) -> String:
+    var lv := tech_lv(t.id)
+    if lv >= tech_max(t.id): return "Fully researched."
+    if lv == 0:
+        if int(t.era) > player_era(): return "Opens with %s" % String(C.ERA_NAME[str(int(t.era))]).split(" · ")[0]
+        var miss: Array = t.req.filter(func(r): return not G.tech.has(r))
+        if not miss.is_empty(): return "Requires " + ", ".join(miss.map(func(r): return C.TECH.filter(func(x): return x.id == r)[0].name))
+    if int(G.rp) < tech_cost(t): return "Needs %d research points." % tech_cost(t)
+    return ""
+## Research the next level of `t`; false if it cannot be done now.
+func research(t: Dictionary) -> bool:
+    if can_research(t) != "": return false
+    var lv := tech_lv(t.id) + 1
+    G.rp = int(G.rp) - tech_cost(t)
+    G.tech.append(t.id if lv == 1 else "%s+%d" % [t.id, lv])
+    log_ev("Researched %s%s" % [t.name, "" if lv == 1 else " (level %s)" % ["", "I", "II", "III"][lv]])
+    return true
 func player_era() -> int: return era_of(G.tech)
 ## Each power runs its own Quiet Race. Its research points grow every day at its own pace (faster at war); its era,
 ## and with it the ships, guns and defences it fields, follows its own points, not yours. Reaching the missile age
@@ -269,6 +309,12 @@ func enemy_tech(era: int) -> Array:
     if era >= 2: t.append_array(["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"])
     if era >= 3: t.append_array(["helo", "ecm", "ciws", "aegis", "vls", "reactors"])
     if era >= 4: t.append_array(["datalink", "netcentric", "stealth", "precision", "drones"])
+    # the powers improve what they have as you do: an era's technologies reach level II when the next era is open,
+    # and level III two eras on
+    for x in C.TECH:
+        if not t.has(x.id) or tech_max(x.id) < 2: continue
+        if era >= int(x.era) + 2: t.append(x.id + "+2")
+        if era >= int(x.era) + 3: t.append(x.id + "+3")
     return t
 func tech_ok(t, tech: Array) -> bool: return t == null or t == "" or tech.has(t)
 func design_ok(id: String, tech: Array) -> bool:
@@ -1602,7 +1648,7 @@ func signature() -> float:
     var k: float = SIG_SPEED[speed_order()]
     if dark(): k *= 0.6 if weather_here().night else 0.85
     if heard(): k *= 1.5
-    if has_tech("stealth"): k *= 0.75   # stealth shaping (Era IV)
+    if has_tech("stealth"): k *= 0.75 - 0.05 * tech_up("stealth")   # stealth shaping (Era IV)
     return k
 
 ## The weather where your squadron is (cached for the tick), and how far each side sees in it as a share of clear
@@ -1783,9 +1829,9 @@ func log_ev(t: String) -> void:
 ##   fleet: a scuttled squadron in shallow water: hulks to raise one at a time, as wrecks are raised after a battle
 const POI_GEN := 22
 const POI_TEXT2 := {
-	"den": "A cove with no harbour master, no customs and no questions. Munitions, electronics and medicine change hands here at prices no port would allow, and the men drinking ashore will sign on for anything.",
-	"island": "A scrap of rock with a jetty, a radio mast and a few huts, held by a garrison that hates being here. Guano, a coaling store and a listening post: worth something to whoever holds it.",
-	"fleet": "A squadron scuttled in shallow water at the armistice, its upperworks still showing at low tide. Some of the hulls could be pumped out and raised, if you have the steel and the patience.",
+    "den": "A cove with no harbour master, no customs and no questions. Munitions, electronics and medicine change hands here at prices no port would allow, and the men drinking ashore will sign on for anything.",
+    "island": "A scrap of rock with a jetty, a radio mast and a few huts, held by a garrison that hates being here. Guano, a coaling store and a listening post: worth something to whoever holds it.",
+    "fleet": "A squadron scuttled in shallow water at the armistice, its upperworks still showing at low tide. Some of the hulls could be pumped out and raised, if you have the steel and the patience.",
 }
 const DEN_SELL := 1.25
 const DEN_BUY := 0.8

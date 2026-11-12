@@ -528,6 +528,14 @@ const PING_HEAR := 2.5
 const HEARD_FOR := 12.0
 const RADAR_HEARD := 1.25   # a radiating set is picked up this many times as far as it sees, by a ship that has a set of her own
 var pings: Array = []       # {pos, r, max, side, who, echo}: rings on the water, for finding and for drawing
+## Research levels (the owner's request, 12 Nov 2026): a technology's further levels are carried in the same list as
+## "<id>+2" and "<id>+3", so `tech.has(id)` still means "researched". `tech_lv` is 0 to 3, `tech_up` the levels past
+## the first (0 to 2), by which each effect below grows a step.
+static func tech_lv(tech: Array, id: String) -> int:
+    if tech.has(id + "+3"): return 3
+    if tech.has(id + "+2"): return 2
+    return 1 if tech.has(id) else 0
+static func tech_up(tech: Array, id: String) -> int: return maxi(0, tech_lv(tech, id) - 1)
 func radar_fitted(s: CShip) -> bool: return not s.sub and (s.tech.has("radar") or upg(s, "radar") > 0)
 func has_sonar(s: CShip) -> bool: return s.sub or bool(s.d.get("sonar", false))
 func pinging(s: CShip) -> bool: return has_sonar(s) and s.sonar_on and active(s)
@@ -588,7 +596,7 @@ func radar_pos(o: CShip) -> Vector2:
 func radar_angle() -> float: return fposmod(t / RADAR_PERIOD, 1.0) * TAU
 ## How far a ship's sonar hears a submerged boat (a surface ship's active set, or a boat's own hydrophones); 0 if none.
 func sonar_range(o: CShip) -> float:
-    var base: float = 1500.0 * ((1.6 if sonar_tech else 1.0) * (1.4 if helo_tech else 1.0) if o.side == 0 else (1.6 if enemy_era >= 2 else 1.0) * (1.4 if enemy_era >= 3 else 1.0))
+    var base: float = 1500.0 * ((1.6 + 0.2 * tech_up(o.tech, "sonar") if sonar_tech else 1.0) * (1.4 + 0.15 * tech_up(o.tech, "helo") if helo_tech else 1.0) if o.side == 0 else (1.6 if enemy_era >= 2 else 1.0) * (1.4 if enemy_era >= 3 else 1.0))
     if o.sub: return base * 1.4
     return base * (1.0 + 0.3 * upg(o, "sonar")) if o.d.get("sonar", false) else 0.0
 ## Whether the lookouts of a side have a surface ship in sight by eye alone (no radar): within sight in this weather
@@ -620,7 +628,7 @@ func _radar_plot(dt: float) -> void:
 
 func sight(o: CShip) -> float:
     var v: float = float(wx.vis)
-    if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 if o.tech.has("datalink") else 1.0))
+    if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 + 0.05 * tech_up(o.tech, "datalink") if o.tech.has("datalink") else 1.0))
     return v
 func limited() -> bool: return float(wx.vis) > 0.0
 ## What a captain sends out (emission control). Other navies' captains choose, as you do for your own ships (a side
@@ -754,7 +762,7 @@ func visible_to(s: CShip, side: int) -> bool:
     for o in ships:
         if o.side != side or not active(o): continue
         var d2: float = o.pos.distance_squared_to(s.pos)
-        var rr: float = sight(o) * (0.75 if s.tech.has("stealth") else 1.0)   # (stealth shaping, Era IV: a smaller echo)
+        var rr: float = sight(o) * (0.75 - 0.05 * tech_up(s.tech, "stealth") if s.tech.has("stealth") else 1.0)   # (stealth shaping, Era IV: a smaller echo)
         if has_radar(o) and not submerged(o) and d2 < rr * rr: return true   # radar looks through the dark and through smoke
         if lim and d2 >= eye * eye: continue
         if not smoke_blocks(o.pos, s.pos): return true
@@ -828,10 +836,12 @@ func speed_mult(s: CShip) -> float:
     if s.rec.get("defects", []).has("shafts"): return _speed_mult(s) * 0.92   # a raised wreck's bent shafts (Campaign.DEFECTS)
     return _speed_mult(s)
 func _speed_mult(s: CShip) -> float:
-    return (1.0 - (0.05 * int(wx.sea) if s.d.t < 3000.0 and not submerged(s) else 0.015 * int(wx.sea))) * (1.2 if s.sub and s.tech.has("snorkel") and submerged(s) else 1.0) * s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
+    return (1.0 - (0.05 * int(wx.sea) if s.d.t < 3000.0 and not submerged(s) else 0.015 * int(wx.sea))) * (1.2 + 0.05 * tech_up(s.tech, "snorkel") if s.sub and s.tech.has("snorkel") and submerged(s) else 1.0) * s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
 
 func gun_range(s: CShip, w: Dictionary) -> float:
-    return w.range * ((1.15 if s.tech.has("radar") else 1.0) * (1.0 + 0.06 * upg(s, "radar")) if w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0) * (1.15 if w.kind == "ssm" and s.tech.has("datalink") else 1.0) * (1.4 if w.kind == "ssm" and s.tech.has("precision") else 1.0)
+    return w.range * ((1.15 + 0.05 * tech_up(s.tech, "radar") if s.tech.has("radar") else 1.0) * (1.0 + 0.06 * upg(s, "radar")) if w.kind == "gun" else 1.0) * (1.4 + 0.1 * tech_up(s.tech, "aegis") if w.kind == "sam" and s.tech.has("aegis") else 1.0) \
+        * (1.15 + 0.05 * tech_up(s.tech, "datalink") if w.kind == "ssm" and s.tech.has("datalink") else 1.0) * (1.4 + 0.1 * tech_up(s.tech, "precision") if w.kind == "ssm" and s.tech.has("precision") else 1.0) \
+        * (1.0 + 0.05 * tech_up(s.tech, "missiles") if w.kind == "ssm" or w.kind == "sam" else 1.0)
 
 func max_gun_range(s: CShip) -> float:
     var r = 0.0
@@ -1083,7 +1093,7 @@ func spot(s: CShip, tg: CShip, reload: float) -> void:
     elif wx.get("night", false) and not star_lit(tg.pos): keep = 0.78
     if not eye_sees(tg, s.side): keep = maxf(keep, 0.7 if has_radar(s) else 0.92)   # behind smoke or beyond sight: the plot alone
     if spotter_over(s.side, tg.pos): keep *= SPOT_HELP   # her floatplane is over the target, calling the fall of shot
-    if s.tech.has("netcentric"): keep *= 0.8   # cooperative engagement (Era IV): the squadron's picture, whoever spots
+    if s.tech.has("netcentric"): keep *= 0.8 - 0.05 * tech_up(s.tech, "netcentric")   # cooperative engagement (Era IV): the squadron's picture, whoever spots
     keep = clampf(keep * CREW[s.cq].spot, 0.2, 0.95)
     so.r = float(so.r) * keep; so.a = float(so.a) * keep
     # the target's helm and ours spoil the reckoning a little each time
@@ -1113,7 +1123,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
     var ang = s.a + m.ta; var off: float = (i - (n - 1) / 2.0) * float(w.get("gap", 0.0))
     var p = world_pt(s, m.slot.x, m.slot.y) + Vector2.from_angle(ang + PI / 2) * off
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
-    var fc = (0.6 if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.0 + (s.ld_spread - 1.0) * (1.0 + 0.5 * int(wx.sea))) * (1.0 + 0.7 * absf(s.list)) * (1.15 if s.side == 1 else 1.0) * (0.85 if s.tech.has("datalink") else 1.0)
+    var fc = (0.6 - 0.05 * tech_up(s.tech, "radar") if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.0 + (s.ld_spread - 1.0) * (1.0 + 0.5 * int(wx.sea))) * (1.0 + 0.7 * absf(s.list)) * (1.15 if s.side == 1 else 1.0) * (0.85 - 0.05 * tech_up(s.tech, "datalink") if s.tech.has("datalink") else 1.0)
     fc *= 1.0 + 0.1 * int(wx.sea)                                         # a moving platform
     if s.rec.get("defects", []).has("fc"): fc *= 1.15                     # a raised wreck's fire control, never quite true again
     if wx.night and not has_radar(s): fc *= 1.35                           # spotting the fall of shot by eye in the dark
@@ -1144,14 +1154,14 @@ func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     var en: float = maxf(150.0, p.distance_to(aim) - HOMER_SHORT) / w.speed   # a homer's seeker comes on short of the aim point
     for i in int(w.count):
         var a: float = base + (i - (w.count - 1) / 2.0) * 0.06
-        torps.append({"pos": p, "a": a, "speed": w.speed, "life": gun_range(s, w) / w.speed, "dmg": w.dmg, "side": s.side, "homing": w.get("homing", false), "arm": 150.0 / w.speed, "en": en, "who": s})
+        torps.append({"pos": p, "a": a, "speed": w.speed, "life": gun_range(s, w) / w.speed, "dmg": w.dmg, "side": s.side, "homing": w.get("homing", false), "arm": 150.0 / w.speed, "en": en, "who": s, "ear": homer_ear(s)})
     boom(p, 0.1, 900.0)
     if s.sub: s.reveal_t = 20.0
 
 func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
-    for i in int(w.count) + (1 if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
+    for i in int(w.count) + (1 + (1 if tech_lv(s.tech, "vls") >= 2 else 0) if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
         missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "delay": i * 2.0})
     if s.sub: s.reveal_t = 25.0
 
@@ -1210,7 +1220,7 @@ func launch_spotter(s: CShip) -> bool:
     var c: Array = [-float(s.d.L) * 0.42, 0.0] if drone else cats_of(s)[maxi(0, s.fp - 1)]; var cy: float = float(c[1])
     var a: float = s.a + signf(cy) * 0.32 if cy != 0.0 else s.a + PI / 2 * (1.0 if randf() < 0.5 else -1.0)   # along her catapult (a centreline one trained to the beam)
     s.fp -= 1
-    spotters.append({"ship": s, "side": s.side, "pos": world_pt(s, float(c[0]), cy), "a": a, "v": SPOT_V * 0.6, "t": 0.0, "home": false, "n": 1, "up": 1, "jet": false, "alt": 30.0, "ph": randf() * TAU, "drone": drone})
+    spotters.append({"ship": s, "side": s.side, "pos": world_pt(s, float(c[0]), cy), "a": a, "v": SPOT_V * 0.6, "t": 0.0, "home": false, "n": 1, "up": 1, "jet": false, "alt": 30.0, "ph": randf() * TAU, "drone": drone, "du": tech_up(s.tech, "drones") if drone else 0})
     boom(world_pt(s, float(c[0]), cy), 0.05, 700.0)
     if s.side == 0: say("The %s flies off her %s to spot for her guns." % [s.rec.name, "drone" if drone else "floatplane"], 1.8)
     return true
@@ -1235,7 +1245,7 @@ func _spotters(dt: float) -> void:
             if q.side == 0: say("A floatplane of ours is shot down.", 1.5)
             continue
         q.t = float(q.t) + dt; q.alt = minf(150.0, float(q.alt) + dt * 6.0); q.v = minf(SPOT_V, float(q.v) + dt * 4.0)
-        if float(q.t) > SPOT_ENDURE * (2.0 if q.get("drone", false) else 1.0) or not sh.alive or ((wx.night or wx.fog) and not q.get("drone", false)): q.home = true
+        if float(q.t) > SPOT_ENDURE * (2.0 + 0.5 * float(q.get("du", 0)) if q.get("drone", false) else 1.0) or not sh.alive or ((wx.night or wx.fog) and not q.get("drone", false)): q.home = true
         var goal: Vector2
         if q.home:
             if not sh.alive: goal = q.pos + Vector2.from_angle(q.a) * 500.0   # her ship is gone: she flies on until her fuel is out
@@ -1272,7 +1282,7 @@ func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
         sound("gun_" + m.w.size, p, {"S": 0.16, "M": 0.24, "L": 0.4, "H": 0.6}[m.w.size])
     else: aa_shot(s, m, p, sq.pos)
     part(P.FLAK, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 50.0, 0.6, 8.0)
-    if randf() < chance * (0.6 if sq.jet else 1.0) * (1.35 if s.tech.has("aa_prox") else 1.0):   # proximity fuzes
+    if randf() < chance * (0.6 if sq.jet else 1.0) * (1.35 + 0.1 * tech_up(s.tech, "aa_prox") if s.tech.has("aa_prox") else 1.0):   # proximity fuzes
         sq.n = maxi(0, int(sq.n) - 1); part(P.FALL, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 30.0, 1.4, 6.0)
 
 func update_weapons(s: CShip, dt: float) -> void:
@@ -1349,7 +1359,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var ms = nearest_missile(s.side, p, w.range)
                 if ms != null:
                     m.ta = ang_diff((ms.pos - p).angle(), s.a); m.cd = w.rel; aa_shot(s, m, p, ms.pos)
-                    if randf() < w.pd: kill_missile(ms)
+                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else 1.0): kill_missile(ms)
                     done = true
                 if not done:
                     var sq = nearest_air(s.side, p, w.range)
@@ -1451,6 +1461,8 @@ func drop_dcs(s: CShip) -> bool:
 ## friend's screws from an enemy's, so she is fired only where no friend will be nearer to her than the target is.
 const TORP_CLEAR := 60.0     # a captain holds his torpedoes if a friend's hull would come this near one of them (m)
 const HOMER_EAR := 1200.0    # how far a homing torpedo's seeker hears a ship ahead of her (m)
+## Her seeker's reach with the firer's homing research: a seventh farther for each level past the first.
+func homer_ear(s: CShip) -> float: return HOMER_EAR * (1.0 + 0.15 * (tech_up(s.tech, "homing") if s != null else 0))
 const HOMER_CONE := 0.7      # and how wide its cone is either side of her heading (radians)
 const HOMER_SHORT := 700.0   # her seeker is switched on this far short of the point she was aimed at (m)
 const DC_SHIP := 30.0        # a burst this near a surface ship's hull hurts her (shock under the keel)
@@ -1480,14 +1492,14 @@ func torp_fouls(s: CShip, p: Vector2, aim: Vector2, w: Dictionary, tgt: CShip = 
         if o == s or o == tgt or o.side != side or not active(o): continue
         if submerged(o) and not homer: continue   # a straight runner passes over a dived boat
         var ov: Vector2 = Vector2.from_angle(o.a) * o.v
-        if o.pos.distance_to(p) > run + o.v * run / speed + o.d.L + (HOMER_EAR if homer else 0.0): continue
+        if o.pos.distance_to(p) > run + o.v * run / speed + o.d.L + (homer_ear(s) if homer else 0.0): continue
         var dd := 0.0
         while dd <= run:
             var tt: float = dd / speed; var tp: Vector2 = p + dir * dd; var op: Vector2 = o.pos + ov * tt
             if hull_dist(o, op, tp) < TORP_CLEAR + dd * half_fan: return o
             if homer and dd >= en:
                 var rel := op - tp
-                if rel.length() < HOMER_EAR and absf(ang_diff(rel.angle(), dir.angle())) < HOMER_CONE:
+                if rel.length() < homer_ear(s) and absf(ang_diff(rel.angle(), dir.angle())) < HOMER_CONE:
                     var tg_d: float = (tgt.pos + Vector2.from_angle(tgt.a) * tgt.v * tt).distance_to(tp) if tgt != null else INF
                     if rel.length() < tg_d: return o
             dd += step
@@ -1707,7 +1719,7 @@ func counter_flood(s: CShip) -> bool:
     s.ballast = minf(0.5, s.ballast + absf(s.list) * 0.35); s.list *= 0.25; _log("counter-flooded")
     return true
 func systems_tick(s: CShip, dt: float) -> void:
-    var dc: float = (1.0 + 0.3 * s.sk.dc) * (1.3 if s.tech.has("dc") else 1.0) * CREW[s.cq].dc   # damage control schools, and the crew's own worth
+    var dc: float = (1.0 + 0.3 * s.sk.dc) * (1.3 + 0.1 * tech_up(s.tech, "dc") if s.tech.has("dc") else 1.0) * CREW[s.cq].dc   # damage control schools, and the crew's own worth
     if s.deck_out > 0.0:
         s.deck_out = maxf(0.0, s.deck_out - dt * dc * dc_k(s, "fire"))
         if s.deck_out <= 0.0 and s.side == 0: say("The %s's flight deck is patched: she can fly again." % s.rec.name, 2.5)
@@ -2112,7 +2124,7 @@ func launch_strike(s: CShip, tg: CShip) -> bool:
         if q.state != "ready" or q.n <= 0: continue
         var jet = s.tech.has("jets")
         air.append({"side": s.side, "home": s, "sq": q, "pos": world_pt(s, deck_span(s).y + 150.0, 0.0), "a": s.a, "n": q.n, "n0": q.n, "up": 0, "dk": q.n, "ops": 0, "wait": 0.0,
-            "type": "tb" if launched % 2 == 0 else "db", "jet": jet, "target": tg, "state": "form"})
+            "type": "tb" if launched % 2 == 0 else "db", "jet": jet, "ju": tech_up(s.tech, "jets"), "target": tg, "state": "form"})
         q.state = "out"; launched += 1
     if launched and s.side == 0: say(str(launched) + " squadron" + ("s" if launched > 1 else "") + " taking off.", 2.0)
     if launched and s.side == 1: say("Enemy aircraft are taking off!" if visible_to(s, 0) else "Enemy aircraft inbound!", 2.5)
@@ -2162,7 +2174,7 @@ func update_air(dt: float) -> void:
                 q.state = "home"; boom(q.pos, 0.1, 900.0)
             elif q.type == "db" and d < 120:
                 for k in int(q.n):
-                    var hit = randf() < (0.55 if q.jet else 0.4)
+                    var hit = randf() < (0.55 if q.jet else 0.4) + 0.05 * int(q.get("ju", 0))
                     var bp = tg.pos + Vector2((randf() - 0.5) * (tg.d.L * 0.4 if hit else 220.0), (randf() - 0.5) * (tg.d.B if hit else 220.0))
                     if hit: mark_hit(tg, bp, 3.0, true); hit_systems(tg, bp, 260 if q.jet else 230, "bomb"); damage(tg, 260 if q.jet else 230, "bomb"); fx_boom(bp, 26.0, 0.8)
                     else: fx_splash(bp, 22.0)
@@ -2343,7 +2355,7 @@ func step(dtv: float) -> void:
         # fires burn where they started, move with the ship and pour smoke downwind until damage control puts them out
         if s.hull / s.max_hull < 0.4 and s.fires.size() < 3 and randf() < dt * 0.01: mark_hit(s, s.pos + Vector2((randf() - 0.5) * s.d.L * 0.4, 0).rotated(s.a), 2.0, false)
         for i in range(s.fires.size() - 1, -1, -1):
-            var f: Dictionary = s.fires[i]; f.t -= dt * (1 + 0.3 * s.sk.dc) * (1.3 if s.tech.has("dc") else 1.0) * dc_k(s, "fire")
+            var f: Dictionary = s.fires[i]; f.t -= dt * (1 + 0.3 * s.sk.dc) * (1.3 + 0.1 * tech_up(s.tech, "dc") if s.tech.has("dc") else 1.0) * dc_k(s, "fire")
             if f.t <= 0: s.fires.remove_at(i); continue
             f.st -= dtv
             if f.st <= 0: f.st = 0.35; part(P.SMOKE, world_pt(s, f.x, f.y), 8.0 + randf() * 5.0, 3.0 + f.r * 2.5, Vector2.ZERO, true)
@@ -2381,7 +2393,7 @@ func step(dtv: float) -> void:
         var tp: Dictionary = torps[i]; tp.life -= dt; tp.arm -= dt; tp.en = float(tp.get("en", 0.0)) - dt
         if tp.homing and tp.arm <= 0 and tp.en <= 0:
             # the seeker hears the nearest ship in her cone, dived boats too, whatever her flag (see torp_fouls)
-            var tg: CShip = null; var bd := HOMER_EAR
+            var tg: CShip = null; var bd: float = float(tp.get("ear", HOMER_EAR))
             for o in ships:
                 if not active(o): continue
                 var rel: Vector2 = o.pos - tp.pos; var dd := rel.length()
@@ -2442,7 +2454,7 @@ func step(dtv: float) -> void:
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B) and m.target.tech.has("ecm") and not m.get("ecm_tried", false):
                 m.ecm_tried = true
-                if randf() < 0.25:   # electronic countermeasures: the seeker is decoyed and the missile runs on into the sea
+                if randf() < 0.25 + 0.08 * tech_up(m.target.tech, "ecm"):   # electronic countermeasures: the seeker is decoyed and the missile runs on into the sea
                     fx_splash(m.pos + Vector2.from_angle(m.a) * 80.0, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B):
                 mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")

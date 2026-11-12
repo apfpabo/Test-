@@ -436,7 +436,7 @@ func invade(s: Dictionary) -> Dictionary:
 	if breaks_armistice(s):
 		G.rep[s.fac] = G.rep.get(s.fac, 0) - 30; Campaign.incident(s.fac); Diplomacy.on_open_fire(s.fac)
 	Campaign.rep_note("Landings on what they hold")
-	var A: float = men * (1.25 if Campaign.has_tech("amphib") else 1.0)
+	var A: float = men * (1.25 + 0.1 * Campaign.tech_up("amphib") if Campaign.has_tech("amphib") else 1.0)
 	var odds := invade_odds(s)
 	var won := randf() < odds
 	var lost := int(round(men * clampf(D / maxf(1.0, A + D) * randf_range(0.5, 1.1) * (0.7 if won else 1.4), 0.03, 0.95)))
@@ -458,7 +458,7 @@ func invade(s: Dictionary) -> Dictionary:
 
 ## The chance a landing carries the place: your soldiers (a quarter better with amphibious warfare) against its defenders.
 func invade_odds(s: Dictionary) -> float:
-	var A: float = troops() * (1.25 if Campaign.has_tech("amphib") else 1.0)
+	var A: float = troops() * (1.25 + 0.1 * Campaign.tech_up("amphib") if Campaign.has_tech("amphib") else 1.0)
 	return clampf(A / maxf(1.0, A + defenders(s)) * 1.3 - 0.15, 0.05, 0.95)
 ## Soldiers put aboard in port (TROOP_COST each), as many as there are berths and money for. Returns how many.
 func embark(n: int) -> int:

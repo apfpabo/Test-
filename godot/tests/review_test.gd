@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing()
-	ok(sections == 18, "every section ran to its end (%d of 18)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels()
+	ok(sections == 19, "every section ran to its end (%d of 19)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1405,4 +1405,35 @@ func _ageing() -> void:
 	ok(dn.spot_cap(nb) == 1 and dn.spotter_why(nb) == "" and dn.launch_spotter(nb), "a destroyer with unmanned aircraft flies off a drone, by night")
 	dn.spotters[0].pos = dn.ships[1].pos + Vector2(500, 0)
 	ok(dn.spotter_over(0, dn.ships[1].pos), "and the drone sees in the dark, as a floatplane does not")
+	sections += 1
+
+## Research by levels (the owner's request, 12 Nov 2026).
+func _levels() -> void:
+	Campaign.new_game("commission"); var G: Dictionary = Campaign.G
+	var radar: Dictionary = Campaign.C.TECH.filter(func(x): return x.id == "radar")[0]
+	var jets: Dictionary = Campaign.C.TECH.filter(func(x): return x.id == "jets")[0]
+	G.rp = 0
+	ok(Campaign.can_research(radar).begins_with("Needs") and not Campaign.research(radar), "no research without the points")
+	ok(Campaign.can_research(jets).begins_with("Opens"), "an era not yet open says so (%s)" % Campaign.can_research(jets))
+	G.rp = 1000
+	ok(Campaign.research(radar) and Campaign.has_tech("radar") and Campaign.tech_lv("radar") == 1 and int(G.rp) == 1000 - int(radar.cost), "level I as before")
+	var c2 := Campaign.tech_cost(radar)
+	ok(c2 > int(radar.cost) and Campaign.research(radar) and Campaign.tech_lv("radar") == 2 and G.tech.has("radar+2"), "level II costs more (%d) and is kept as radar+2" % c2)
+	ok(Campaign.research(radar) and Campaign.tech_lv("radar") == 3 and Campaign.can_research(radar) == "Fully researched." and not Campaign.research(radar), "level III is the last")
+	ok(Campaign.era_count(G.tech, 1) == 1, "an era counts a technology once, whatever its level")
+	var nuc: Dictionary = Campaign.C.TECH.filter(func(x): return x.id == "nuclear")[0]
+	ok(Campaign.tech_max("nuclear") == 1 and Campaign.tech_cost(nuc, 2) == 0, "a technology that only opens designs has one level")
+	# the effects grow with the level: gun range and salvo spread
+	var sim := BattleSim.new()
+	sim.setup([Campaign.new_ship("ca_baltimore", "A", "player", [])], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], ["radar"], [], 0)
+	var s: BattleSim.CShip = sim.ships[0]; var w: Dictionary = {}
+	for m in s.mounts: if m.w.get("kind", "") == "gun": w = m.w; break
+	var r1: float = sim.gun_range(s, w)
+	s.tech = ["radar", "radar+2", "radar+3"]
+	ok(sim.gun_range(s, w) > r1 * 1.05, "radar level III reaches farther than level I (%.0f against %.0f m)" % [sim.gun_range(s, w), r1])
+	ok(BattleSim.tech_up(s.tech, "radar") == 2 and BattleSim.tech_up(["radar"], "radar") == 0 and BattleSim.tech_lv([], "radar") == 0, "levels read from the list")
+	# the powers improve what they have
+	ok(Campaign.enemy_tech(3).has("radar+2") and not Campaign.enemy_tech(2).has("radar+2") and Campaign.enemy_tech(4).has("radar+3") and not Campaign.enemy_tech(4).has("nuclear+2"), "the powers' levels follow their era")
+	Campaign.save(); Campaign.load_game()
+	ok(Campaign.tech_lv("radar") == 3, "levels survive a save")
 	sections += 1

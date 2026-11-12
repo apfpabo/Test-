@@ -10,7 +10,7 @@ var tgt: Dictionary
 func _ready() -> void:
     out = OS.get_cmdline_user_args()[0]
     seed(3); Campaign.new_game("commission"); var G: Dictionary = Campaign.G
-    G.credits = 400000; G.rp = 120; G.tech = ["radar", "amphib"]
+    G.credits = 400000; G.rp = 120; G.tech = ["radar", "radar+2", "amphib", "dc", "sonar"]
     G.fleet = [Campaign.new_ship("ca_baltimore", "Resolute", "player", G.tech), Campaign.new_ship("ap_haskell", "Pilgrim's Rest", "player", G.tech), Campaign.new_ship("ao_cimarron", "Wellhead", "player", G.tech),
         Campaign.new_ship("ae_hood", "Firebrand", "player", G.tech), Campaign.new_ship("ar_vulcan", "Artificer", "player", G.tech)]
     G.crew = Campaign.crew_need(); G.troops = 900; G.cargo.munitions = 120; G.cargo.steel = 80

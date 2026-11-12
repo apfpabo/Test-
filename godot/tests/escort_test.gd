@@ -6,7 +6,8 @@ func _ready() -> void:
 	Campaign.new_game("merchant")
 	var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var cv = null
 	for f in G.fleets: if f.kind == "convoy" and not Campaign.hostile_fleet(f): cv = f; break
-	var w := Campaign.nearest_water(cv.x + 8.0, cv.y, 80)   # close by, but afloat (the convoy may lie close under a coast). Not 30 units off: an escort no faster than her charge can never make that up, which is no fault of her station-keeping
+	var back := Vector2(cv.x, cv.y) - Vector2.from_angle(float(cv.get("h", 0.0))) * 8.0   # on station: astern of her, on her course (the world's draw decides which way she sails)
+	var w := Campaign.nearest_water(back.x, back.y, 80)   # close by, but afloat (the convoy may lie close under a coast). Not 30 units off: an escort no faster than her charge can never make that up, which is no fault of her station-keeping
 	P.x = w.x; P.y = w.y; P.escort = int(cv.id); P.repathT = 0.0
 	var met := []; Campaign.encounter.connect(func(f): met.append(f.id); Campaign.paused = false; f.cool = 30.0; P.cool = 30.0)
 	var worst := 0.0; var gone := false

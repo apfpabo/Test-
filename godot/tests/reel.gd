@@ -26,6 +26,18 @@ const CLIPS := {
 	"carrier_jets": {"player": ["cv_forrestal", "ddg_adams"], "enemy": ["ca_hipper"], "sep": 20000.0, "pre": 5.0, "wx": {}, "place": "ahead", "tech": ["radar", "jets", "missiles"],
 		"cuts": [[0.0, "me", 2.6, 60.0], [5.5, "deck", 3.6, 0.0], [9.5, "air", 1.6, 0.0]]},
 	# a fleet action: two battle lines with their cruisers and destroyers
+	# the super battleships (12 Nov 2026): A-150 and Montana against Yamato and Sovetsky Soyuz
+	"super": {"player": ["bb_a150", "bb_montana", "ca_desmoines", "dd_gearing"], "enemy": ["bb_yamato", "bb_soyuz", "ca_takao", "dd_kagero"], "sep": 3800.0, "pre": 70.0, "wx": {"sea": 1, "fog": false, "night": false, "moon": 0.5},
+		"cuts": [[0.0, "me", 2.3, 30.0], [4.0, "them", 2.2, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "me", 3.0, 0.0]]},
+	# two carriers working up a strike together, the deck runs busy, then the squadrons formed up overhead
+	"carrier_ops": {"player": ["cv_essex", "cv_essex", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_yamato", "ca_takao"], "sep": 15000.0, "pre": 25.0, "wx": {}, "place": "ahead",
+		"cuts": [[0.0, "deck", 5.0, 0.0], [4.5, "me", 2.0, 120.0], [9.0, "air", 2.2, 0.0]]},
+	# a strike arriving over an enemy squadron: the flak, the torpedo runs, bombs and water columns
+	"air_attack": {"player": ["cv_essex", "cv_essex", "cv_essex"], "enemy": ["bb_yamato", "ca_takao", "dd_kagero", "dd_kagero"], "sep": 9000.0, "pre": 700.0, "until": "strike_in", "wx": {}, "place": "ahead",
+		"cuts": [[0.0, "air", 2.2, 0.0], [3.5, "them", 1.6, 0.0], [8.0, "them", 2.6, 0.0], [11.5, "air", 1.8, 0.0]]},
+	# a fleet action in a rising sea at dusk: the lines in spray and gun flashes
+	"heavy_sea": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_littorio", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3200.0, "pre": 60.0, "wx": {"sea": 3, "fog": false, "night": false, "moon": 0.5},
+		"cuts": [[0.0, "me", 2.8, 20.0], [4.0, "them", 2.6, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.4, 0.0]]},
 	"fleet": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_scharnhorst", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3400.0, "pre": 60.0, "wx": {},
 		"cuts": [[0.0, "me", 2.6, 20.0], [4.0, "them", 2.4, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.2, 0.0]]},
 	# destroyers hunting a dived boat: she lies ahead of them, they find her with sonar and run in over her
@@ -38,6 +50,7 @@ const CLIPS := {
 var battle: Node
 var clip: Dictionary
 var t := 0.0
+var ui := false
 var length := 15.0
 var f := 0
 var cam_pos := Vector2.ZERO
@@ -45,6 +58,7 @@ func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
 	clip = CLIPS[a[0] if a.size() and CLIPS.has(a[0]) else "duel"]
 	if a.size() > 1: length = float(a[1])
+	ui = a.size() > 2 and a[2] == "ui"   # the interface on (the owner asked for each clip with it and without)
 	seed(11); Settings.sensors = false
 	GameData.pending = {"quiet": true, "player": clip.player, "enemy": clip.enemy, "enemy_fac": "directorate", "player_tech": clip.get("tech", ["radar"]), "enemy_tech": ["radar"], "islands": 0}
 	if not clip.wx.is_empty(): GameData.pending.weather = Weather.battle(clip.wx)
@@ -116,8 +130,8 @@ func _process(d: float) -> void:
 				if s.squads.is_empty(): continue
 				s.ai_off = true; s.throttle = 3; s.rudder = 0.0; sim.launch_strike(s, them[0])
 		sim.flag = null   # both sides fought by the simulation
-		battle.hud.visible = false; battle.speed_i = 1; battle.cam_free = true
-		battle.set_clean(true)   # no interface, no rings; shells, tracer, missiles and aircraft stay
+		battle.hud.visible = ui; battle.speed_i = 1; battle.cam_free = true
+		battle.set_clean(not ui)   # without: no interface, no rings; shells, tracer, missiles and aircraft stay
 		Sfx.music("")           # the game's own sounds only: a clip gets its music where it is posted
 		if clip.get("hunt", false):
 			for s in sim.ships:

@@ -3,6 +3,15 @@
 Decisions the agent has left for the owner, with what each choice would mean. Newest first. Strike one out (or move it
 to the roadmap) once it is decided.
 
+## 3. The Merchant's first freighter against torpedo boats (12 Nov 2026)
+
+Measured again with everything added since the last tuning round (no numbers changed): the Merchant, the safest start
+before, is now lost in three of four runs, each time to a few motor torpedo boats (with a corvette or destroyer) that
+catch her lone freighter when she tries to break off. Not caused by wear (tested). Choices: let a merchant break off
+from small raiders more often, give her first freighter a light gun or two, keep raiders' torpedo boats off the trade
+lanes for the first weeks, or keep it as a fair danger of the trade. The figures: [`TUNING_SHEET.md`](TUNING_SHEET.md),
+"Measured again".
+
 ## 1. Should the yard refuse a badly overweight fit? (12 Nov 2026)
 
 **What happens now.** A hull has a margin of 1.2% of her displacement for extra weight; past it she is slower, turns

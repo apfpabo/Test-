@@ -88,6 +88,34 @@ The same seeds, these three origins:
 
 All 32 runs: 11 lost by day 240 (12 before this change, 20 before any). Most navy captains now stay solvent. They are still lost more often than traders, now in battle rather than to bankruptcy. The Survivor lost on day 9 was caught by raiders before his first port.
 
+## Measured again: 12 Nov 2026, after the features since
+
+No numbers changed; the same 32 runs on the same seeds, now with everything added since the fourth change: ships that age
+and wear, wrecks raised, air raids from the land, points of interest, officers' tempers, Era IV, research by levels
+(the other powers' technologies now reach levels II and III as their eras advance), the super battleships, and the
+first-day changes since (Steer to meet, the autosave).
+
+| Origin | Lost on day, after the fourth change | Now | What sank them, now |
+|---|---|---|---|
+| The Merchant Captain | all four survived | 133, 66, survived, 31 | raiders, raiders, a bounty squadron (day 31, the day after the grace) |
+| The Hijacker | 231, 178, two survived | survived, 101, 58, survived | a patrol, the hunters |
+| The Smuggler | 214, three survived | all four survived | |
+| The Privateer | all four survived | all four survived | |
+| The Disgraced Officer | 87, three survived | 161, three survived | raiders |
+| The Survivor of the Lost Fleet | 227, 9, two survived | three survived, 53 | raiders |
+| The Defector | 183, 139, 81, survived | 116, survived, 54, 71 | the hunters, patrols |
+| The Academy Cast-Off | 47, 129, two survived | survived, 44, two survived | a bounty squadron |
+| **Runs lost of 32** | **11** | **11** | |
+
+**What stands out.** The total is unchanged, but the Merchant, the safest start before, now loses three runs of four. Each
+time a few motor torpedo boats, with a corvette or a destroyer, catch her lone freighter; she tries to break off, fails,
+and is sunk. To test whether ageing was the cause (wear slows a ship), the four Merchant seeds were run again with wear
+switched off: she was still lost three times (days 83, 149, 58). So it is not wear. The likeliest causes are the other
+powers' research levels (raiders' torpedoes and guns a step better) and chance: four seeds an origin is a small sample,
+and every new random draw since (points of interest, tempers) changes what each seed meets. For the owner: whether a
+merchant's first freighter should be able to outrun or outlast a few torpedo boats, or whether that is a fair danger
+of the trade.
+
 ## What stands out
 
 For the owner to judge. The four changes above are the only ones made. (The figures below were measured before the fourth change; the table above has the navy origins after it.)

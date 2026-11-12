@@ -989,8 +989,10 @@ class Drawer extends Node2D:
             var k: float = clampf(t / 1.5, 0.0, 1.0) * clampf((BattleSim.STAR_LIFE - t) / 5.0, 0.0, 1.0) * (0.85 + 0.15 * sin(tn * 23.0 + float(f.v)))
             _puff(glow, f.p, BattleSim.STAR_R * 1.25, Color(0.75, 0.8, 0.7, 0.2 * k))       # the pool of light on the sea
             _puff(glow, f.p, BattleSim.STAR_R * 0.5, Color(0.9, 0.92, 0.8, 0.16 * k))
-            _puff(glow, f.p, maxf(60.0, 14.0 * mn), Color(1.0, 0.98, 0.9, 0.95 * k))           # the flare itself
-            _puff(glow, f.p, maxf(18.0, 5.0 * mn), Color(1.0, 1.0, 1.0, k))
+            # the flare itself: a point of light hanging over the pool, the same few pixels at any zoom (it was at least 60 m
+            # across, and close in two or three of them whited out the screen through the bloom; 12 Nov 2026)
+            _puff(glow, f.p, 14.0 * mn, Color(1.0, 0.98, 0.9, 0.95 * k))
+            _puff(glow, f.p, 5.0 * mn, Color(1.0, 1.0, 1.0, k))
 
     ## Scars shells have left on the islands: churned, blackened earth (and scorched where an incendiary burned).
     func _scars() -> void:

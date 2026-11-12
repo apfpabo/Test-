@@ -1582,6 +1582,15 @@ func _governor(box: Control, p: Dictionary) -> void:
             box.add_child(UI.row([UI.label(sh.name, UI.INK, 14), UI.label("%s · %s class · hull %d%% · late of the %s" % [h.name, h.dn, int(float(sh.hullFrac) * 100), GameData.fac[sh.get("cameFrom", "freeport")].short], UI.DIM, 13),
                 UI.button("Commission her · bounty " + Campaign.fmt(b), func(): _toast(Flag.commission(p, sh)); _render_port(), true, G.credits < b or Campaign.can_add_ship(sh.type) != ""),
                 UI.button("Send her away", func(): p.volunteers.erase(sh); _render_port())]))
+    # your capital
+    box.add_child(UI.label("CAPITAL", UI.DIM, 12))
+    var cap = Flag.capital()
+    if cap != null and int(cap.id) == int(p.id): _p(box, "%s is your capital: it counts double for dues and the garrison it wants, and its yard lays down battleships and fleet carriers." % p.name, UI.GOLD, 14)
+    else:
+        var cw := Flag.can_capital(p)
+        var cb := UI.button("Make %s your capital · %s" % [p.name, Campaign.fmt(Flag.CAPITAL_COST)], func(): _toast(Flag.make_capital(p)); _render_port(), false, cw != "")
+        cb.tooltip_text = cw if cw != "" else "It counts double for dues and the garrison it wants, and its yard lays down battleships and fleet carriers. You can move it once in %d days." % Flag.CAPITAL_EVERY
+        box.add_child(cb)
     box.add_child(UI.button("Give the port up", func(): var t := Flag.abandon(p); cur_port = {}; close_panel(); _toast(t)))
 
 func _rerender() -> void:
@@ -2427,7 +2436,48 @@ func _chancery(box: Control) -> void:
         elif st == "recognised":
             var why := Flag.can_treaty(f)
             var b := UI.button("Treaty of non-aggression · " + Campaign.fmt(Flag.TREATY_COST), func(): _toast(Flag.sign_treaty(f)); _rerender(), false, why != ""); b.tooltip_text = why; row.append(b)
+        if st != "war":
+            var wd := Flag.can_declare(f)
+            var db := UI.button("Declare war", func(): _toast(Flag.declare_war(f)); _rerender(), false, wd != "")
+            db.tooltip_text = wd if wd != "" else "Your standing with them falls to war: their ships fight yours wherever they meet, and their friends may come in."
+            row.append(db)
         box.add_child(UI.row(row))
+    # coalitions
+    box.add_child(UI.label("COALITIONS", UI.DIM, 12))
+    _p(box, "Join one and its wars are yours: your standing with its enemies falls to war. In your wars its members may come in. Recognition by every member, standing %d with each and %s to join; leaving costs %d standing with each member." % [Flag.COALITION_REP, Campaign.fmt(Flag.COALITION_COST), Flag.COALITION_LEAVE], UI.DIM, 13)
+    for c in Flag.coalitions():
+        var ms: Array = Flag.members(c)
+        var row2: Array = [UI.label(c, UI.GOLD if Flag.coalition() == c else UI.INK, 14), UI.label(", ".join(ms.map(func(m): return GameData.fac[m].short)), UI.DIM, 13)]
+        if Flag.coalition() == c: row2.append(UI.button("Leave", func(): _toast(Flag.leave()); _rerender()))
+        else:
+            var jw := Flag.can_join(c)
+            var jb := UI.button("Join · " + Campaign.fmt(Flag.COALITION_COST), func(): _toast(Flag.join(c)); _rerender(), false, jw != ""); jb.tooltip_text = jw; row2.append(jb)
+        box.add_child(UI.row(row2))
+    # your own notices
+    box.add_child(UI.label("YOUR NOTICES", UI.DIM, 12))
+    for k in ["bounty", "patrol"]:
+        var n = Flag.notice(k)
+        var what: String = ("A bounty on the raiders about your ports: captains hunt them down, %s a flotilla from what you put up (%s), the rest back to you after %d days." % [Campaign.fmt(Flag.BOUNTY_EACH), Campaign.fmt(Flag.BOUNTY_POST), Flag.NOTICE_DAYS]) if k == "bounty" else ("A squadron hired to patrol off your capital for %d days (%s): it fights raiders and your enemies that come near." % [Flag.NOTICE_DAYS, Campaign.fmt(Flag.PATROL_HIRE)])
+        var row3: Array = [UI.label(what, UI.INK if n == null else UI.GOLD, 13)]
+        if n != null: row3.append(UI.label("posted · until %s%s" % [Campaign.date_str(int(n.until)), (" · %s left" % Campaign.fmt(int(n.purse))) if k == "bounty" else ""], UI.GREEN, 13))
+        else:
+            var pw := Flag.can_post(k)
+            var pb := UI.button("Post", func(): _toast(Flag.post(k)); _rerender(), false, pw != ""); pb.tooltip_text = pw; row3.append(pb)
+        row3[0].size_flags_horizontal = Control.SIZE_EXPAND_FILL; row3[0].autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        box.add_child(UI.row(row3))
+    # your flag's device
+    box.add_child(UI.label("YOUR FLAG", UI.DIM, 12))
+    var dv: Dictionary = Flag.device()
+    var fo := OptionButton.new(); fo.focus_mode = Control.FOCUS_NONE
+    for fn in Flag.FIELD_NAMES: fo.add_item(String(fn).capitalize())
+    fo.select(int(dv.field))
+    var co := OptionButton.new(); co.focus_mode = Control.FOCUS_NONE
+    for cn in Flag.CHARGES: co.add_item(String(cn).capitalize())
+    co.select(maxi(0, Flag.CHARGES.find(dv.charge)))
+    fo.item_selected.connect(func(i): Flag.set_device(i, Flag.CHARGES[co.selected]); _rerender())
+    co.item_selected.connect(func(i): Flag.set_device(fo.selected, Flag.CHARGES[i]); _rerender())
+    box.add_child(UI.row([Flags.icon("player", 30.0), UI.label("Field", UI.DIM, 13), fo, UI.label("Charge", UI.DIM, 13), co]))
+    _p(box, "It flies over your ports and squadron on the chart, and as the ensign at the stern of your ships in action.", UI.DIM, 12)
 
 ## A structure's panel: what it is, who holds it, its defences and output, and what you can do about it from here.
 func open_struct(s: Dictionary) -> void:

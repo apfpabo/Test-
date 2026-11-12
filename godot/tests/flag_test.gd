@@ -139,8 +139,43 @@ func _ready() -> void:
 	ok(G.fleet.size() == nf + 1 and port2.volunteers.is_empty(), "and is commissioned for a bounty")
 	port.fac = "player"; port.from = "directorate"; port.men = 300; port.took = G.day
 	if Flag.guard(port) == null: Flag.raise_guard(port)
+	# the third part: a capital, a device, notices, coalitions, a war declared
+	G.credits = 900000
+	print(Flag.make_capital(port))
+	ok(Flag.capital() == port and port.capital and Flag.weight(port) >= 2.0 * float(port.get("garrison", 1)), "%s is made your capital (weight %.1f)" % [port.name, Flag.weight(port)])
+	ok(Flag.can_capital(Flag.ports()[0]) != "" , "and the capital cannot be moved again at once")
+	Flag.set_device(2, "star")
+	ok(Flag.device().charge == "star" and int(Flag.device().field) == 2, "a device is chosen (crimson, a star)")
+	var cb0: float = G.credits; print(Flag.post("bounty"))
+	ok(Flag.notice("bounty") != null and is_equal_approx(float(G.credits), cb0 - Flag.BOUNTY_POST), "a bounty on raiders is posted")
+	var rf := {"id": G.nextId, "kind": "raiders", "fac": "raiders", "h": 0.0, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [Campaign.new_ship("dd", null, "raiders", [])], "cargo": {}, "x": port.sx + 20.0, "y": port.sy, "home": {"x": port.sx, "y": port.sy}, "name": "Raider flotilla"}
+	G.nextId += 1; G.fleets.append(rf); var tries3 := 0
+	while G.fleets.has(rf) and tries3 < 200: Flag._notices_day(); tries3 += 1
+	ok(not G.fleets.has(rf) and int(Flag.notice("bounty").purse) < Flag.BOUNTY_POST, "captains drawn by it run down a raider flotilla off your port (in %d days)" % tries3)
+	print(Flag.post("patrol"))
+	var hired: Array = G.fleets.filter(func(f4): return f4.get("hired", null) != null)
+	ok(hired.size() == 1 and hired[0].fac == "player", "a squadron is hired to patrol your waters")
+	var dd0: int = G.day; G.day = int(Flag.notice("patrol").until) + 1; Flag._notices_day(); G.day = dd0
+	ok(Flag.notice("patrol") == null and not G.fleets.has(hired[0]), "and paid off when its time is up")
+	var ent := "Oceanic Entente"
+	ok(Flag.can_join(ent) != "", "the Entente is not joined unrecognised: " + Flag.can_join(ent))
+	for m in Flag.members(ent): G.rep[m] = 40; G.flag.recog[m] = G.day
+	G.rep.erase("x")
+	print(Flag.join(ent))
+	ok(Flag.coalition() == ent, "recognised and liked by every member, you join the Entente")
+	var cfoe: String = ""
+	for f5 in Diplomacy.POWERS: if not Flag.members(ent).has(f5) and not Campaign.at_war(f5) and not Flag.treaty(f5): cfoe = f5; break
+	Diplomacy.declare(Flag.members(ent)[0], cfoe); Flag._coalition_day()
+	ok(Campaign.at_war(cfoe), "a member goes to war with the %s: so do you" % cfoe)
+	var lr: int = int(G.rep[Flag.members(ent)[0]]); print(Flag.leave())
+	ok(Flag.coalition() == "" and int(G.rep[Flag.members(ent)[0]]) == lr - Flag.COALITION_LEAVE, "leaving costs standing with the members")
+	var foe2: String = ""
+	for f6 in Diplomacy.POWERS: if Flag.can_declare(f6) == "": foe2 = f6; break
+	print(Flag.declare_war(foe2))
+	ok(Campaign.at_war(foe2), "your flag declares war on the %s" % foe2)
 	Campaign.save(); GameData.fac.player.name = "x"; var loaded := Campaign.load_game()
 	print("after load: ports ", Flag.ports().size(), " treaty ", Flag.treaty("concord"), " battery ", Flag.works(Flag.ports()[0], "battery") if Flag.ports().size() else -1, " guard ", Flag.guard(Flag.ports()[0]) != null if Flag.ports().size() else false)
+	ok(Flag.capital() != null and Flag.device().charge == "star", "the capital and the device survive a save")
 	ok(loaded and GameData.fac.player.name == "Meridian Company" and Flag.ports().size() == 1 and Flag.treaty("concord") and Flag.works(Flag.ports()[0], "battery") == 1 and Flag.guard(Flag.ports()[0]) != null, "flag, port, treaty, works and guard survive a save")
 	print(Flag.abandon(Flag.ports()[0])); ok(Flag.ports().is_empty(), "given up")
 	print("FLAG TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)

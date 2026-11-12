@@ -91,6 +91,7 @@ func _ready() -> void:
         editor = Editor.new(); editor.battle = self; hl.add_child(editor)
 
 const Editor = preload("res://scripts/battle_editor.gd")
+const Flags = preload("res://scripts/flags.gd")
 const PlaneArt = preload("res://scripts/plane_art.gd")
 var editor = null           # the editor's panel, in editor mode
 var clean := false          # H: nothing on the screen but the picture (for recording)
@@ -1440,6 +1441,15 @@ class Drawer extends Node2D:
                     var along: float = 7.0 if cy != 0.0 else 2.0   # out along her rail: on twin catapults, which splay outward, this keeps the two planes' wings clear of each other
                     var cp: Vector2 = sh.pos + Vector2(float(c[0]) + along * cos(ca - sh.a), cy + dsh + along * sin(ca - sh.a)).rotated(sh.a)
                     PlaneArt.draw(self, cp, ca, 1.0, false, sh.side, false, sun_s, 4.0, null, true)
+        # ensigns: each ship flies her flag at the stern (yours the device you chose), streaming aft, close in
+        if sim.modern and z0 >= 0.9:
+            for sh in sim.ships:
+                if not sh.alive or sh.sub or sh.view == null or (sh.side == 1 and (sim.limited() or not sim.screens.is_empty()) and not sim.visible_to(sh, 0)): continue
+                var stern: Vector2 = sh.pos + Vector2(-sh.d.L * 0.5 + 1.2, sh.view.deck_shift + sh.view.lean * 6.0).rotated(sh.a)
+                var flap: float = sin(Time.get_ticks_msec() * 0.006 + sh.pos.x) * 0.06
+                draw_set_transform(stern, sh.a + PI + flap, Vector2.ONE)
+                Flags.draw(self, "player" if sh.side == 0 else String(sh.pal), Rect2(0.4, -1.25, 4.0, 2.5))
+            draw_set_transform(Vector2.ZERO)
         for q in sim.spotters:
             if q.side == 1 and not sim.spotter_over(1, q.pos) and (sim.limited() or not sim.screens.is_empty()) and q.pos.distance_to(sim.flag.pos if sim.flag != null else q.pos) > 3000.0: continue
             if z0 < 0.3 or not sim.modern:

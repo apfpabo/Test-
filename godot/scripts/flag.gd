@@ -132,7 +132,7 @@ func _lose(p: Dictionary, to: String) -> void:
 # ------------------------------------------------------------------ the calendar
 func new_day() -> void:
 	var G := g()
-	if founded(): _chancery_day()
+	if founded(): _chancery_day(); _coalition_day(); _notices_day()
 	if ports().is_empty(): return
 	_works_day(); _convoys(); _volunteers()
 	if G.day % 30 == 0:
@@ -428,3 +428,157 @@ func commission(p: Dictionary, sh: Dictionary) -> String:
 	var G := g(); G.credits -= bounty(sh); p.volunteers.erase(sh); sh.erase("cameFrom"); sh.paid = bounty(sh); G.fleet.append(sh)
 	var note := Campaign.study_prize(sh)
 	return "The %s joins your squadron. She needs %d crew.%s" % [sh.name, int(Campaign.hull(sh).crew), (" " + note) if note != "" else ""]
+
+# ------------------------------------------------------------------ the third part (the owner's go-ahead, 11 Nov 2026)
+## A capital of your own: one of your ports, named in its Governor tab. It weighs double (dues, the garrison it wants,
+## its defenders), its yard lays down battleships and fleet carriers, and the chart rings it as the powers' capitals
+## are ringed. Moving it costs CAPITAL_COST and can be done once in CAPITAL_EVERY days.
+const CAPITAL_COST := 25000
+const CAPITAL_EVERY := 180
+func capital():
+	if not founded() or not g().flag.has("capital"): return null
+	for p in ports(): if int(p.id) == int(g().flag.capital): return p
+	return null
+func can_capital(p: Dictionary) -> String:
+	if p.fac != "player": return "Only a port of yours."
+	var c = capital()
+	if c != null and int(c.id) == int(p.id): return "It is your capital."
+	if c != null and int(g().day) - int(g().flag.get("capDay", -9999)) < CAPITAL_EVERY: return "You moved your capital less than half a year ago."
+	if float(g().credits) < CAPITAL_COST: return "Costs %s." % Campaign.fmt(CAPITAL_COST)
+	return ""
+func make_capital(p: Dictionary) -> String:
+	var why := can_capital(p)
+	if why != "": return why
+	var G := g(); var c = capital()
+	if c != null: c.capital = bool(c.get("cap0", false)); c.erase("cap0")
+	if not p.has("cap0"): p.cap0 = bool(p.capital)
+	p.capital = true; G.flag.capital = int(p.id); G.flag.capDay = int(G.day); G.credits -= CAPITAL_COST
+	Diplomacy.news("%s names %s its capital." % [flag_name(), p.name], true)
+	return "%s is your capital." % p.name
+
+## Your flag's device: a field colour and a charge (Flags.draw "player"), on your ports and fleets on the chart and as
+## an ensign at the stern of your ships in action.
+const FIELDS := [Color(0.86, 0.68, 0.24), Color(0.13, 0.22, 0.4), Color(0.55, 0.13, 0.13), Color(0.12, 0.38, 0.32), Color(0.1, 0.1, 0.12), Color(0.9, 0.9, 0.86)]
+const FIELD_NAMES := ["gold", "navy blue", "crimson", "sea green", "black", "white"]
+const CHARGES := ["anchor", "star", "compass", "bars", "ring", "cross"]
+func device() -> Dictionary:
+	var d = g().get("flag", {}).get("device", null) if not g().is_empty() else null
+	return d if d is Dictionary else {"field": 0, "charge": "anchor"}
+func set_device(field: int, charge: String) -> void:
+	if founded(): g().flag.device = {"field": clampi(field, 0, FIELDS.size() - 1), "charge": charge if CHARGES.has(charge) else "anchor"}
+
+## A place in the powers' coalitions (data/diplomacy.json). To join: recognised by every member, standing COALITION_REP
+## with each, at war with none of them, and COALITION_COST. Their wars become yours (your standing with their enemy falls
+## to war), and in yours they may come in. Leaving costs COALITION_LEAVE standing with each member; a member at war
+## with you puts you out.
+const COALITION_COST := 50000
+const COALITION_REP := 30
+const COALITION_LEAVE := 15
+func coalition() -> String: return str(g().flag.get("coalition", "")) if founded() else ""
+func coalitions() -> Array: return Diplomacy.D.get("coalitions", {}).keys().filter(func(k): return Diplomacy.D.coalitions[k] is Array)
+func members(c: String) -> Array: return Diplomacy.D.coalitions.get(c, []) if Diplomacy.D.coalitions.get(c) is Array else []
+func can_join(c: String) -> String:
+	if not founded(): return "You have no flag."
+	if coalition() != "": return "You are in the %s." % coalition()
+	for m in members(c):
+		if Campaign.at_war(m): return "You are at war with the %s." % GameData.fac[m].short
+		if not recognised(m): return "The %s does not recognise you." % GameData.fac[m].short
+		if int(g().rep.get(m, 0)) < COALITION_REP: return "Standing %d with the %s is wanted." % [COALITION_REP, GameData.fac[m].short]
+	if float(g().credits) < COALITION_COST: return "Costs %s." % Campaign.fmt(COALITION_COST)
+	return ""
+func join(c: String) -> String:
+	var why := can_join(c)
+	if why != "": return why
+	g().credits -= COALITION_COST; g().flag.coalition = c
+	Diplomacy.news("ALLIANCE. %s joins the %s." % [flag_name(), c], true)
+	return "You are a member of the %s. Its wars are yours now." % c
+func leave() -> String:
+	var c := coalition()
+	if c == "": return ""
+	for m in members(c): g().rep[m] = int(g().rep.get(m, 0)) - COALITION_LEAVE
+	Campaign.rep_note("Left the coalition")
+	g().flag.erase("coalition"); Diplomacy.news("%s leaves the %s." % [flag_name(), c], true)
+	return "You have left the %s: standing -%d with each of its members." % [c, COALITION_LEAVE]
+## War declared by your flag on a power (a tenth power among them).
+func can_declare(fac: String) -> String:
+	if not founded(): return "You have no flag."
+	if Campaign.at_war(fac): return "You are at war already."
+	if treaty(fac): return "You are bound by treaty with the %s." % GameData.fac[fac].short
+	if coalition() != "" and members(coalition()).has(fac): return "The %s is your ally." % GameData.fac[fac].short
+	return ""
+func declare_war(fac: String) -> String:
+	var why := can_declare(fac)
+	if why != "": return why
+	g().rep[fac] = mini(int(g().rep.get(fac, 0)), Campaign.WAR_STANDING); Campaign.rep_note("Your flag declared war")
+	Diplomacy.news("WAR. %s declares war on the %s." % [flag_name(), GameData.fac[fac].name], true)
+	return "You are at war with the %s." % GameData.fac[fac].name
+func _coalition_day() -> void:
+	var c := coalition()
+	if c == "": return
+	var G := g(); var ms := members(c)
+	for m in ms:
+		if Campaign.at_war(m):   # a member at war with you puts you out
+			G.flag.erase("coalition"); Diplomacy.news("The %s expels %s." % [c, flag_name()], true); return
+	for k in G.get("wars", {}).keys():   # their wars are yours
+		var xy: PackedStringArray = String(k).split("|")
+		for i in 2:
+			var a: String = xy[i]; var b: String = xy[1 - i]
+			if ms.has(a) and not ms.has(b) and b != "player" and not Campaign.at_war(b) and not treaty(b):
+				G.rep[b] = mini(int(G.rep.get(b, 0)), Campaign.WAR_STANDING); Campaign.rep_note("A coalition war")
+				Diplomacy.news("%s honours the %s and goes to war with the %s." % [flag_name(), c, GameData.fac[b].name], true)
+	for f in Diplomacy.POWERS:   # and in yours they may come in
+		if ms.has(f) or int(G.rep.get(f, 0)) > Campaign.WAR_STANDING: continue
+		for m in ms:
+			if Diplomacy.at_war(m, f) or Diplomacy.rel(m, f) >= float(Diplomacy.D.bands.cordial): continue
+			if randf() < 0.02: Diplomacy.declare(m, f)
+
+## Notices you post (a contract board of your own): a bounty on the raiders about your ports, paid to whatever captains
+## sink them (each day a flotilla within reach of a port of yours may be run down, and the bounty is drawn from what you
+## put up); and a squadron hired to patrol off your capital (or your first port) for NOTICE_DAYS.
+const NOTICE_DAYS := 60
+const BOUNTY_POST := 15000
+const BOUNTY_EACH := 4000
+const PATROL_HIRE := 20000
+func notices() -> Array:
+	if not founded(): return []
+	if not g().flag.has("notices"): g().flag.notices = []
+	return g().flag.notices
+func notice(kind: String):
+	for n in notices(): if n.kind == kind: return n
+	return null
+func can_post(kind: String) -> String:
+	if not founded() or ports().is_empty(): return "You need a port of your own."
+	if notice(kind) != null: return "Already posted."
+	if float(g().credits) < (BOUNTY_POST if kind == "bounty" else PATROL_HIRE): return "Not enough money."
+	return ""
+func post(kind: String) -> String:
+	var why := can_post(kind)
+	if why != "": return why
+	var G := g(); var n := {"kind": kind, "until": int(G.day) + NOTICE_DAYS}
+	if kind == "bounty":
+		G.credits -= BOUNTY_POST; n.purse = BOUNTY_POST
+	else:
+		G.credits -= PATROL_HIRE
+		var at: Dictionary = capital() if capital() != null else ports()[0]; var yf := yard_flag(at)
+		var f := {"id": G.nextId, "kind": "patrol", "fac": "player", "h": randf() * TAU, "v": 0.0, "tx": null, "ty": null, "cool": 0.0, "ships": [], "cargo": {},
+			"x": at.sx, "y": at.sy, "home": {"x": at.sx, "y": at.sy}, "hired": n.until, "name": "Hired squadron off %s" % at.name}
+		G.nextId += 1
+		f.ships = Campaign.build_by_budget(Campaign.C.PATROL_POOL[yf], 40000.0 * (1.0 + G.day / 250.0), 4, yf, G.tech)
+		if f.ships.is_empty(): f.ships.append(Campaign.new_ship("dd", null, yf, G.tech))
+		for sh in f.ships: sh.pal = "player"; sh.name = GameData.names.player.pick_random()
+		G.fleets.append(f); n.fleet = int(f.id)
+	notices().append(n)
+	return "Posted: %s, for %d days." % ["a bounty on the raiders about your ports" if kind == "bounty" else "a hired squadron patrolling your waters", NOTICE_DAYS]
+func _notices_day() -> void:
+	var G := g()
+	for n in notices().duplicate():
+		if int(G.day) > int(n.until) or (n.kind == "bounty" and int(n.purse) < BOUNTY_EACH):
+			if n.kind == "patrol": for f in G.fleets.duplicate(): if int(f.id) == int(n.get("fleet", -1)): G.fleets.erase(f)
+			if n.kind == "bounty" and int(n.purse) > 0: G.credits += int(n.purse)   # what was not paid out comes back
+			notices().erase(n); Campaign.toast.emit("Your notice has run its course: %s." % ("the bounty on raiders" if n.kind == "bounty" else "the hired squadron is paid off")); continue
+		if n.kind != "bounty" or randf() > 0.15: continue
+		for f in G.fleets.duplicate():
+			if f.kind != "raiders": continue
+			if not ports().any(func(p): return Campaign.mdist(f.x, f.y, p.sx, p.sy) < 600.0): continue
+			G.fleets.erase(f); n.purse = int(n.purse) - BOUNTY_EACH
+			Diplomacy.news("Captains drawn by your bounty run down a raider flotilla %s." % Diplomacy.where(f.x, f.y), true); break

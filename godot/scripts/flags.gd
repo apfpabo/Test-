@@ -59,10 +59,19 @@ static func draw(ci: CanvasItem, fac: String, r: Rect2, alpha := 1.0) -> void:
 			ci.draw_rect(r, A.call(INK))
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-h * 0.22, -h * 0.3), c + Vector2(h * 0.22, -h * 0.3), c]), A.call(Color(0.82, 0.63, 0.24)))
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-h * 0.22, h * 0.3), c + Vector2(h * 0.22, h * 0.3), c]), A.call(Color(0.82, 0.63, 0.24)))
-		"player":   # your own: gold, a dark anchor
-			ci.draw_rect(r, A.call(Color(0.86, 0.68, 0.24)))
-			ci.draw_line(c + Vector2(0, -h * 0.3), c + Vector2(0, h * 0.26), A.call(INK), maxf(1.0, h * 0.1)); ci.draw_line(c + Vector2(-h * 0.16, -h * 0.16), c + Vector2(h * 0.16, -h * 0.16), A.call(INK), maxf(1.0, h * 0.09))
-			ci.draw_arc(c + Vector2(0, h * 0.04), h * 0.24, 0.25, PI - 0.25, 10, A.call(INK), maxf(1.0, h * 0.09)); ci.draw_circle(c + Vector2(0, -h * 0.32), h * 0.07, A.call(INK))
+		"player":   # your own: the field and charge you chose (Flag.device; gold with a dark anchor until you choose)
+			var dv: Dictionary = Flag.device(); var field: Color = Flag.FIELDS[clampi(int(dv.field), 0, Flag.FIELDS.size() - 1)]
+			var ink: Color = INK if field.get_luminance() > 0.45 else WHITE
+			ci.draw_rect(r, A.call(field)); var lw: float = maxf(1.0, h * 0.09)
+			match String(dv.charge):
+				"star": _star(ci, c, h * 0.32, 5, A.call(ink), 0.42)
+				"compass": ci.draw_arc(c, h * 0.3, 0.0, TAU, 20, A.call(ink), maxf(1.0, h * 0.06)); _star(ci, c, h * 0.3, 8, A.call(ink), 0.32)
+				"bars": ci.draw_rect(Rect2(o + Vector2(0, h * 0.28), Vector2(w, h * 0.14)), A.call(ink)); ci.draw_rect(Rect2(o + Vector2(0, h * 0.58), Vector2(w, h * 0.14)), A.call(ink))
+				"ring": ci.draw_arc(c, h * 0.28, 0.0, TAU, 24, A.call(ink), maxf(1.0, h * 0.11))
+				"cross": ci.draw_rect(Rect2(o + Vector2(w * 0.3, 0), Vector2(h * 0.18, h)), A.call(ink)); ci.draw_rect(Rect2(o + Vector2(0, h * 0.41), Vector2(w, h * 0.18)), A.call(ink))
+				_:
+					ci.draw_line(c + Vector2(0, -h * 0.3), c + Vector2(0, h * 0.26), A.call(ink), maxf(1.0, h * 0.1)); ci.draw_line(c + Vector2(-h * 0.16, -h * 0.16), c + Vector2(h * 0.16, -h * 0.16), A.call(ink), lw)
+					ci.draw_arc(c + Vector2(0, h * 0.04), h * 0.24, 0.25, PI - 0.25, 10, A.call(ink), lw); ci.draw_circle(c + Vector2(0, -h * 0.32), h * 0.07, A.call(ink))
 		_:   # unclaimed: plain grey
 			ci.draw_rect(r, A.call(Color(0.5, 0.5, 0.47)))
 	ci.draw_rect(r, Color(0, 0, 0, 0.45 * alpha), false, maxf(r.size.y * 0.05, 0.02))   # a hairline edge, in the flag's own scale

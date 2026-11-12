@@ -39,9 +39,16 @@ Step 5 of the owner's plan: found your own flag and claim ports and territory. T
 
 Fleets of your flag have `fac == "player"`, `guardOf` or `convoyOf` (the port's id). `Diplomacy.clash_tick` makes them fight the powers you are at war with and pass the rest. `G.flag.recog`, `G.flag.treaty` (the day it ends), `G.flag.trade`; a port's `works` (days each is ready) and `volunteers`.
 
+## Third part (done, 11 Nov 2026, the owner's go-ahead)
+
+| | |
+| --- | --- |
+| A capital | Governor tab: name one of your ports (25,000; once in 180 days). It weighs double (dues, the garrison it wants, its defenders), its yard lays down battleships and fleet carriers, and the chart rings it. `Flag.capital`, `make_capital`; the port's own `capital` is set, its old value kept in `cap0`. |
+| Your device | Chancery: a field (gold, navy blue, crimson, sea green, black, white) and a charge (anchor, star, compass, bars, ring, cross), drawn by `Flags.draw("player")` from `Flag.device()`: on your ports and fleets on the chart, and as an ensign at the stern of your ships in action (every ship flies her flag's ensign close in). |
+| Coalitions | Chancery: join the Entente or the Compact (recognised by every member, standing 30 with each, 50,000). Their wars become yours (your standing with their enemy falls to war); in yours they may come in. Leaving costs 15 standing with each member; a member at war with you puts you out. `Flag.coalition`, `join`, `leave`, `_coalition_day`. |
+| War declared | Chancery: declare war on any power you are not bound to by treaty or alliance (`Flag.declare_war`). |
+| Your notices | Chancery: a bounty on the raiders about your ports (15,000 put up; captains run down a flotilla within reach of a port of yours now and then, 4,000 each; the rest back after 60 days), and a squadron hired to patrol off your capital for 60 days (20,000). `Flag.post`, `notices`, `_notices_day`. |
+
 ## Not yet
 
-- A contract board you post work on, and bounties of your own on raiders.
-- Alliances and wars declared between your flag and the powers as a tenth power in their coalitions.
-- A capital of your own, a flag device on the chart and in the paint of your ships.
 - Garrisons and works for the structures you hold (today only ports have works).

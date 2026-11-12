@@ -85,9 +85,12 @@ func _ready() -> void:
     if Guide.active(): guide_card = Guide.new(); guide_card.host = self; add_child(guide_card)   # the new captain's guide
     ui.move_child(cmdbar, -1)   # the Command tabs stay clickable over an open panel
     Campaign.toast.connect(_toast); Campaign.encounter.connect(_on_encounter); Campaign.reached_port.connect(open_port)
+    Tales.ready_tale.connect(func(_id): _open_tale())
+    if Tales.errors.size() > 0 and not Tales.warned: Tales.warned = true; _toast("Tale files: %d mistake(s). The first: %s" % [Tales.errors.size(), Tales.errors[0]])
     cam = Vector2(Campaign.G.player.x, Campaign.G.player.y)
     if Campaign.show_origin: Campaign.show_origin = false; Campaign.paused = true; _show_origin()
     elif Campaign.show_aftermath: Campaign.show_aftermath = false; _show_aftermath(Campaign.last_result)
+    elif Tales.st().open != "": _open_tale()   # a tale left open when the game was saved
     else: Campaign.paused = false
 
 var wx_img: Image
@@ -1390,6 +1393,34 @@ func _aftermath_done(r: Dictionary) -> void:
         if m.goal == "capture" and r.prizes.any(func(s): return s.name == m.target and s.get("taken", "") != "Taken"):
             _toast("Without the %s, what she carried is lost. Return to the %s for new orders." % [m.target, Campaign.story_office(G.mission.get("by", "concord"))]); G.mission = null; Campaign.log_ev("Mission failed: " + m.title)
     G.player.cool = 4.0; Campaign.save(); close_panel()
+    if Tales.after_battle(bool(r.get("victory", false))) != "": _open_tale()   # a tale's fight won: the tale goes on
+
+## A tale (scripts/tales.gd, the owner's text in data/tales): its scene's text, what its effects did, and a button for
+## each choice (one whose conditions are not met is shown greyed, with why). `port` is the harbour to open after it.
+func _open_tale(port = null) -> void:
+    var t: Dictionary = Tales.T.get(Tales.st().open, {})
+    if t.is_empty(): Tales.finish(); return
+    var out: Dictionary = Tales.enter()
+    var after := func():
+        close_panel()
+        if port != null: open_port(port, false)
+    open_panel(func(box):
+        if t.art != "": _banner(box, t.art, 150.0)
+        box.add_child(UI.title(t.title)); _p(box, Tales.text())
+        if not out.notes.is_empty(): _p(box, " · ".join(out.notes), UI.GOLD, 14)
+        if out.fight != null:
+            box.add_child(UI.button("Battle stations", func(): Tales.st().open = ""; Tales.st().scene = ""; Tales.st().done[t.id] = int(Campaign.G.day); _battle(out.fight), true))
+            return
+        var chs: Array = Tales.choices()
+        if chs.is_empty(): box.add_child(UI.button("Carry on", func(): Tales.finish(); Campaign.save(); after.call(), true))
+        for ch in chs:
+            var b := UI.button(ch.text, func():
+                Tales.choose(ch.to)
+                if Tales.st().open == "": Campaign.save(); after.call()
+                else: _open_tale(port), true, not ch.ok)
+            if not ch.ok: b.tooltip_text = "Needs: " + ch.why
+            box.add_child(b)
+    , true, 640.0, "tale")
 
 func open_survey(q: Dictionary) -> void:
     if q.type == "den" or q.type == "island" or q.type == "fleet": _open_site(q); return
@@ -1602,7 +1633,8 @@ func port_price(p: Dictionary, gid: String) -> int:
 func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p, gid) * 1.06 * (1.1 if Campaign.G.rep.get(p.fac, 0) < 0 else 1.0) * (1.15 if Campaign.restricted(p.fac) else 1.0) * (1.0 - float(Campaign.perk("trade", 0.0)))))
 func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93 * (0.9 if Campaign.restricted(p.fac) else 1.0) * (1.0 + float(Campaign.perk("trade", 0.0)))))
 
-func open_port(p: Dictionary) -> void:
+func open_port(p: Dictionary, tales := true) -> void:
+    if tales and Tales.on_arrive(p) != "": _open_tale(p); return   # a tale waiting in this harbour comes first; the port's page after it
     Sfx.cue("gong", 0.4)   # the bell: alongside
     if not Campaign.hostile(p.fac) and Campaign.G.day - p.get("offDay", -99) > 20: # the officers' mess turns over every few weeks
         p.offDay = Campaign.G.day; p.officers = [Campaign.new_officer(randi_range(1, 2)), Campaign.new_officer(randi_range(1, 3))]

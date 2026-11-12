@@ -1,0 +1,81 @@
+# Example tales, written by Claude to show the format (docs/WRITING_TALES.md).
+# They are drafts from the lore's hooks, not the owner's text: rewrite or delete them freely.
+# Every file in this folder ending in .txt is read when the game starts.
+
+=== requisitioned
+title: Space Requested
+when: arriving
+where: power concord
+needs: origin merchant, credits >= 2000
+chance: 30%
+repeat: no
+art: port
+
+--- start
+A harbour launch is waiting before your lines are even fast. The officer in it is polite, young and carries a typed
+letter: the Concord Admiralty "requests" the use of your after hold for eleven days, to carry crated spares to
+{port}'s outstation. Compensation will be paid "in due course".
+
+His sergeant is looking at your cargo manifest as though he has already read it.
+
+* Accept with good grace -> accept
+* [credits >= 2000] Find the paperwork mislaid, with a gift for the trouble (2,000) -> bribe
+* Refuse: you fly no navy's colours -> refuse
+
+--- accept
+The crates are aboard by evening. Eleven days become fourteen, and the compensation, when it comes, is a third of
+what the hold would have earned. But your name is now on a list in the right office.
+! credits +600
+! standing concord +6
+* Cast off -> end
+
+--- bribe
+The young officer looks hurt; his sergeant pockets the envelope. By morning the letter has been readdressed to a
+Syndicate tramp three berths down.
+! credits -2000
+* Cast off -> end
+
+--- refuse
+"As you wish, Captain." He writes something down. You will find the harbour master slower to answer your signals
+for a while.
+! standing concord -5
+* Cast off -> end
+
+
+=== lights_in_the_rain
+title: Lights in the Rain
+when: at sea
+where: sea Saffron Sea, sea Hesperian Ocean
+days: 15+
+chance: 4%
+repeat: every 90 days
+
+--- start
+In a rain squall after midnight the lookouts report a cluster of dim lights, low on the water, holding your course a
+mile off the port quarter. No running lights, no answer to the lamp. The wireless room hears short, clipped groups
+on a raiders' frequency: they are counting your ships.
+
+* Turn towards them and open fire before they choose the moment -> fight
+* Turn away into the squall and run dark -> run
+* [credits >= 3000] Signal an offer: a "toll" to pass unmolested (3,000) -> toll
+
+--- fight
+! fight raiders pt pt dd "Lantern Wolf" -> won
+
+--- won
+Among the wreckage your boats pick up an oilskin pouch: a list of ships and sailing dates, yours among them, and a
+name, "the Broker", that means nothing to you yet.
+! rp +8
+! flag broker_list
+* Carry on -> end
+
+--- run
+You come round into the thick of the squall at full speed. For an hour the lights hang on; then the rain takes
+them. The run costs fuel you had not meant to burn.
+! fuel -20
+* Carry on -> end
+
+--- toll
+A lamp blinks back an acceptance and a bearing. A launch takes the money; the lights fall astern and do not follow.
+! credits -3000
+* Carry on -> end

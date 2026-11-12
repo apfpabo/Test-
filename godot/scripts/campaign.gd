@@ -1305,6 +1305,7 @@ func new_day(moved: bool) -> void:
     Diplomacy.new_day()
     Structures.new_day()
     Flag.new_day()
+    Tales.new_day()
     _replenish()
     if G.get("test", false): _test_topup()
     if G.day % 3 == 0: save(false)   # autosave every few days at sea (written on a worker thread)

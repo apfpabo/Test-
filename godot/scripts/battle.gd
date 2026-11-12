@@ -151,7 +151,7 @@ func _veil_spots() -> void:
     var n := arr.size()
     while arr.size() < 24: arr.append(Vector4(0, 0, 0, 0))
     veil_mat.set_shader_parameter("spots", arr); veil_mat.set_shader_parameter("n_spots", n)
-    veil_mat.set_shader_parameter("screen", vs); veil_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
+    veil_mat.set_shader_parameter("screen", vs); veil_mat.set_shader_parameter("rt", BattleSim.rclock)
 func _recs(ids: Array, pal: String, tech: Array) -> Array:
     var out = []; var pool: Array = GameData.names.get(pal, GameData.names.player).duplicate(); pool.shuffle()
     for i in ids.size():
@@ -211,6 +211,8 @@ func splash_parts() -> Array:
 
 # ------------------------------------------------------------------ frame
 func _process(delta: float) -> void:
+    BattleSim.rclock += delta   # the drawing's own clock: it steps with each frame drawn, so a recording (slower than real time)
+                                # does not catch the flicker of flares and fires at random points (it strobed; 12 Nov 2026)
     sim.modern = Settings.fx_modern   # the effects style can change in the pause menu
     sim.splash_new = Settings.splash != "classic"
     sim.fx_far = zoom() < 0.35   # far out, smoke is laid thinner in bigger puffs (BattleSim.fx_far)
@@ -254,8 +256,8 @@ func _process(delta: float) -> void:
         elif sea >= 3: Sfx.layer("storm", 0.8); Sfx.layer("thunder", 0.7)
     var vs = get_viewport_rect().size
     water_mat.set_shader_parameter("cam", camera.position); water_mat.set_shader_parameter("zoom", zoom())
-    water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t); water_mat.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
-    for m in island_mats: m.set_shader_parameter("rt", Time.get_ticks_msec() / 1000.0)
+    water_mat.set_shader_parameter("screen", vs); water_mat.set_shader_parameter("t", sim.t); water_mat.set_shader_parameter("rt", BattleSim.rclock)
+    for m in island_mats: m.set_shader_parameter("rt", BattleSim.rclock)
     _veil_spots()
     for v in views: v.refresh()
     for n in layers: if layers[n] is Drawer: layers[n].queue_redraw()
@@ -618,7 +620,7 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
         if view.battle.zoom() * s.d.L < 25: return
         var h: float = view.heel()
         if not upper and absf(h) >= 0.08:   # the sea over her low side: green water on the deck and a line of foam where it stops
-            var lo: float = signf(h); var kk: float = view.battle.sim.sink_k(s); var tm: float = Time.get_ticks_msec() * 0.001
+            var lo: float = signf(h); var kk: float = view.battle.sim.sink_k(s); var tm: float = BattleSim.rclock
             var e: Array = view.edge; var foam := PackedVector2Array()
             var sea := Color(0.04, 0.17, 0.22, 0.62 + 0.3 * absf(h))
             var ins: Array = []
@@ -770,7 +772,7 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
     ## with its shadow on the deck and the sea. Drawn larger than life (about 14 m) so it reads at battle zoom.
     func _white_flag(s) -> void:
         # under way the wind over the deck comes from ahead, so the flag streams astern, out over the water
-        var tn := Time.get_ticks_msec() / 1000.0; var st := Vector2(-s.d.L / 2 + 1.5, 0.0)
+        var tn := BattleSim.rclock; var st := Vector2(-s.d.L / 2 + 1.5, 0.0)
         var tw := (BattleSim.WIND.normalized()).rotated(-s.a)
         var wind := (Vector2(-1, 0) * clampf(s.v / 6.0, 0.3, 1.0) + tw * 0.4).normalized()
         var side := Vector2(-wind.y, wind.x); var L := 8.0; var H := 5.5; var n := 9
@@ -790,7 +792,7 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
 class Fires extends Node2D:
     var view
     func _draw() -> void:
-        var s: BattleSim.CShip = view.s; var z: float = view.battle.zoom(); var tn = Time.get_ticks_msec() / 1000.0
+        var s: BattleSim.CShip = view.s; var z: float = view.battle.zoom(); var tn = BattleSim.rclock
         var puff = GameData.fx_tex("puff")
         for f in s.fires:
             var fl = 0.7 + 0.3 * sin(tn * 23 + f.x * 3) * sin(tn * 9 + f.y)
@@ -892,7 +894,7 @@ class Drawer extends Node2D:
 
     ## Sun glints twinkling in the churned water of a wake: points along the track that flash and fade.
     func _glints(pts: Array, B: float, now: float, foam: Texture2D) -> void:
-        var z: float = battle.zoom(); var tn := Time.get_ticks_msec() / 1000.0
+        var z: float = battle.zoom(); var tn := BattleSim.rclock
         for i in mini(pts.size(), 60):
             var q: Dictionary = pts[i]; var age: float = now - q.t
             if age > 12.0: break
@@ -1021,7 +1023,7 @@ class Drawer extends Node2D:
                 var foam_t: Texture2D = GameData.fx_tex("foam")
                 var rr: float = R * (0.8 + 1.6 * fallK)
                 for i in 9:
-                    var jag: float = _hash(float(i), float(q.v) + q.pos.x * 0.01); var j2: float = _hash(float(i) + 4.0, q.pos.y * 0.013)
+                    var jag: float = _hash(float(i), float(q.v) + float(q.side) * 0.71); var j2: float = _hash(float(i) + 4.0, float(q.side) * 0.53)
                     var an: float = float(q.v) * 1.3 + i * TAU / 9.0 + (j2 - 0.5) * 1.6
                     var r1: float = rr * (0.45 + 0.75 * jag)
                     _rpuff(foam_t, q.pos + Vector2.from_angle(an) * r1, R * (0.45 + 0.4 * j2) * (1.0 + 0.6 * fallK), an * 2.0, Color(0.9 * nk, 0.96 * nk, 0.95 * nk, 0.42 * (1.0 - fallK) * (0.4 + 0.6 * jag)))
@@ -1038,13 +1040,13 @@ class Drawer extends Node2D:
                 _rpuff(foam, c, r * 1.0, q.a + 2.3, Color(0.9 * nk, 0.96 * nk, 0.96 * nk, 0.42 * a))   # and nearer in, thicker
                 if fine:
                     for i in 14:   # streaks of water flung out from it: faint, soft and of every length, lit on the sun's side
-                        var j: float = _hash(float(i) + 21.0, float(q.v) + q.pos.y * 0.011); var an: float = q.a + i * TAU / 14.0 + (j - 0.5) * 0.35
+                        var j: float = _hash(float(i) + 21.0, float(q.v) + float(q.side) * 0.29); var an: float = q.a + i * TAU / 14.0 + (j - 0.5) * 0.35
                         var dir := Vector2.from_angle(an); var litk: float = clampf(0.6 - 0.4 * dir.dot(sun), 0.25, 1.0)
                         var r0: float = r * 0.35; var r1: float = r * (0.75 + 0.6 * j)
                         var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.26 * a * (1.0 - fallK))
                         draw_polygon(PackedVector2Array([c + dir * r0 + Vector2(-dir.y, dir.x) * r * 0.06, c + dir * r1, c + dir * r0 - Vector2(-dir.y, dir.x) * r * 0.06]), PackedColorArray([cb, Color(cb, 0.0), cb]))
                     for i in 9:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
-                        var j: float = _hash(float(i) + 3.0, float(q.v) + q.pos.y * 0.013); var j2: float = _hash(float(i) + 11.0, q.pos.x * 0.017)
+                        var j: float = _hash(float(i) + 3.0, float(q.v) + float(q.side) * 0.53); var j2: float = _hash(float(i) + 11.0, float(q.side) * 0.61)
                         var an: float = q.a + i * TAU / 9.0 + (j2 - 0.5) * 0.9
                         _rpuff(GameData.fx_tex("cloud%d" % (i % 4)), c + Vector2.from_angle(an) * r * (0.2 + 0.4 * j), r * (0.26 + 0.3 * j2), an * 1.7, Color(0.92 * nk, 0.97 * nk, 0.97 * nk, (0.7 + 0.3 * j) * a))
                 _rpuff(cl, c, r * 0.72, q.a + 1.0, Color(0.97 * nk, 0.99 * nk, 0.99 * nk, a))
@@ -1075,7 +1077,7 @@ class Drawer extends Node2D:
             drawn.append(b)
             var e: float = q.life; var bk: float = e / 5.0
             var rb: float = float(b[1]) * 1.5
-            draw_rect(Rect2(q.pos - Vector2(rb, rb), Vector2(rb, rb) * 2.0), Color(bk, fposmod(q.pos.x * 0.0131 + q.pos.y * 0.0077, 1.0), _night_k(q.pos), 1.0))
+            draw_rect(Rect2(q.pos - Vector2(rb, rb), Vector2(rb, rb) * 2.0), Color(bk, fposmod(float(q.side) * 0.0613, 1.0), _night_k(q.pos), 1.0))
 
     ## What the new splash leaves on the sea: paler churned water, then a thin lace of foam with dark water between,
     ## stretched downwind, drifting and fading (GameData.lace_tex). Drawn on the sea, under the ships.
@@ -1110,13 +1112,15 @@ class Drawer extends Node2D:
     func _flares() -> void:
         var sim: BattleSim = battle.sim
         if sim.flares.is_empty(): return
-        var glow: Texture2D = GameData.glow_tex(); var tn: float = Time.get_ticks_msec() / 1000.0; var mn: float = 1.0 / battle.zoom()
+        var glow: Texture2D = GameData.glow_tex(); var tn: float = BattleSim.rclock; var mn: float = 1.0 / battle.zoom()
         for f in sim.flares:
             var t: float = f.t
             if t <= 0.0: continue
-            var k: float = clampf(t / 1.5, 0.0, 1.0) * clampf((BattleSim.STAR_LIFE - t) / 5.0, 0.0, 1.0) * (0.85 + 0.15 * sin(tn * 23.0 + float(f.v)))
-            _puff(glow, f.p, BattleSim.STAR_R * 1.25, Color(0.75, 0.8, 0.7, 0.2 * k))       # the pool of light on the sea
-            _puff(glow, f.p, BattleSim.STAR_R * 0.5, Color(0.9, 0.92, 0.8, 0.16 * k))
+            var k0: float = clampf(t / 1.5, 0.0, 1.0) * clampf((BattleSim.STAR_LIFE - t) / 5.0, 0.0, 1.0)
+            var k: float = k0 * (0.88 + 0.12 * sin(tn * 23.0 + float(f.v)))   # the flare itself sputters
+            var kp: float = k0 * (0.96 + 0.04 * sin(tn * 5.0 + float(f.v)))     # the light it lays on the sea, all but steady
+            _puff(glow, f.p, BattleSim.STAR_R * 1.25, Color(0.75, 0.8, 0.7, 0.2 * kp))       # the pool of light on the sea
+            _puff(glow, f.p, BattleSim.STAR_R * 0.5, Color(0.9, 0.92, 0.8, 0.16 * kp))
             # the flare itself: a point of light hanging over the pool, the same few pixels at any zoom (it was at least 60 m
             # across, and close in two or three of them whited out the screen through the bloom; 12 Nov 2026)
             _puff(glow, f.p, 46.0 * mn, Color(1.0, 0.96, 0.82, 0.32 * k))   # its halo in the murk
@@ -1187,7 +1191,7 @@ class Drawer extends Node2D:
         draw_set_transform(m.pos + sun * alt * 0.5, m.a, Vector2(sc, sc))
         draw_colored_polygon(shape, Color(0, 0.03, 0.05, 0.3)); for w in wings: draw_colored_polygon(w, Color(0, 0.03, 0.05, 0.3))
         draw_set_transform(m.pos, m.a, Vector2(sc, sc))
-        var fl: float = 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.06 + m.pos.x)
+        var fl: float = 0.8 + 0.2 * sin(BattleSim.rclock * 60.0 + m.pos.x)
         # the flame: a white-hot core in a long orange tongue, and its glow on the smoke behind
         draw_texture_rect(GameData.glow_tex(), Rect2(-L / 2 - 9.0, -4.5, 11.0, 9.0), false, Color(1, 0.55, 0.2, 0.5 * fl))
         draw_colored_polygon(PackedVector2Array([Vector2(-L / 2, -0.42), Vector2(-L / 2 - 4.6 * fl, 0), Vector2(-L / 2, 0.42)]), Color(1, 0.62, 0.22, 0.9))
@@ -1211,7 +1215,7 @@ class Drawer extends Node2D:
         var vr: Rect2 = battle.view_rect().grow(400)
         var puff = GameData.fx_tex("puff"); var glow = GameData.glow_tex(); var ring = GameData.ring_tex()
         var clouds = [GameData.fx_tex("cloud0"), GameData.fx_tex("cloud1"), GameData.fx_tex("cloud2"), GameData.fx_tex("cloud3")]
-        var tn = Time.get_ticks_msec() / 1000.0; var sun: Vector2 = -BattleSim.SUN.normalized()
+        var tn = BattleSim.rclock; var sun: Vector2 = -BattleSim.SUN.normalized()
         if layer == 2 and sim.flash > 0.0: draw_rect(vr, Color(1, 0.78, 0.5, 0.12 * sim.flash * sim.flash))
         # far out, a puff of smoke is a few pixels across: its lit side and shadow are drawn only from close in, and a
         # particle under a quarter of a pixel is not drawn at all (a ten-ship action at the widest zoom spent ten
@@ -1300,7 +1304,7 @@ class Drawer extends Node2D:
         var vr: Rect2 = battle.view_rect().grow(300)
         var puff = GameData.fx_tex("puff"); var foam = GameData.fx_tex("foam")
         var clouds = [GameData.fx_tex("cloud0"), GameData.fx_tex("cloud1"), GameData.fx_tex("cloud2"), GameData.fx_tex("cloud3")]
-        var tn = Time.get_ticks_msec() / 1000.0
+        var tn = BattleSim.rclock
         for q in sim.parts:
             if q.life < 0 or not vr.has_point(q.pos): continue
             var k = q.life / q.mx; var cl: Texture2D = clouds[q.v]
@@ -1353,7 +1357,7 @@ class Drawer extends Node2D:
     ## the swell (warm-tinted for the enemy's, so they can still be picked out), under the ships, not over them.
     const TWAKE_B := 2.2   # a torpedo's wake is drawn as for a hull this wide (metres)
     func _torpedoes() -> void:
-        var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z; var tn = Time.get_ticks_msec() / 1000.0
+        var sim: BattleSim = battle.sim; var z: float = battle.zoom(); var mn = 1.0 / z; var tn = BattleSim.rclock
         if sim.modern:   # the wakes of torpedoes already gone, fading where they lie
             for tr in sim.twakes:
                 var pts: Array = []
@@ -1569,9 +1573,9 @@ class Drawer extends Node2D:
                     else: draw_rect(Rect2(-5, -1, 11, 2), col); draw_rect(Rect2(0, -7, 2.5, 14), col); draw_rect(Rect2(-5, -3, 1.5, 6), col)
                 else:   # close in: the aircraft themselves, in loose formation, with their shadows on the sea
                     var sc: float = maxf(1.0, 0.8 * mn)
-                    var wob: float = sin(Time.get_ticks_msec() * 0.0013 + k * 1.7) * 3.0
+                    var wob: float = sin(BattleSim.rclock * 1.3 + k * 1.7) * 3.0
                     var pp: Vector2 = q.pos + Vector2(-row * 26.0 * sc, sd * row * 22.0 * sc + wob).rotated(q.a)
-                    _aircraft(pp, q.a + sin(Time.get_ticks_msec() * 0.0009 + k) * 0.03, sc, q.jet, q.side, q.type == "tb", sun_s)
+                    _aircraft(pp, q.a + sin(BattleSim.rclock * 0.9 + k) * 0.03, sc, q.jet, q.side, q.type == "tb", sun_s)
         # aircraft going down: the machine itself, charred and tumbling, a little smaller as she drops towards the sea
         # (her fire and smoke are particles; BattleSim.fx_plane_down)
         if sim.modern and z0 >= 0.3:
@@ -1604,7 +1608,7 @@ class Drawer extends Node2D:
             for sh in sim.ships:
                 if not sh.alive or sh.sub or sh.view == null or (sh.side == 1 and (sim.limited() or not sim.screens.is_empty()) and not sim.visible_to(sh, 0)): continue
                 var stern: Vector2 = sh.pos + Vector2(-sh.d.L * 0.5 + 1.2, sh.view.deck_shift + sh.view.lean * 6.0).rotated(sh.a)
-                var flap: float = sin(Time.get_ticks_msec() * 0.006 + sh.pos.x) * 0.06
+                var flap: float = sin(BattleSim.rclock * 6.0 + sh.pos.x) * 0.06
                 draw_set_transform(stern, sh.a + PI + flap, Vector2.ONE)
                 Flags.draw(self, "player" if sh.side == 0 else String(sh.pal), Rect2(0.4, -1.25, 4.0, 2.5))
             draw_set_transform(Vector2.ZERO)

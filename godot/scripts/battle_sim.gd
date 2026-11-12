@@ -200,6 +200,7 @@ func has_torps(s: CShip) -> bool:
 var hold_fire := false            # squadron order: every ship but the flagship holds her fire (to stay unseen at night, or save shells)
 var t = 0.0        # battle clock
 var vt = 0.0       # visual clock
+static var rclock := 0.0   # the battle screen's drawing clock (seconds of frames drawn), for flicker and sway
 var end_t = 0.0
 var end_msg = false
 var last_hit = 0.0
@@ -1106,14 +1107,14 @@ func fx_splash_new(p: Vector2, size: float) -> void:
         if merged.life > 1.6: merged.life = 1.6   # standing again, from the top of its rise: no shrinking, no jump
         merged.mx = col_life(merged.size)
     else:
-        var c := part(P.COLUMN, p, col_life(size), size, Vector2.ZERO, true); c.v = randi() % 4; c.a = randf() * TAU
+        var c := part(P.COLUMN, p, col_life(size), size, Vector2.ZERO, true); c.v = randi() % 4; c.a = randf() * TAU; c.side = randi() % 997   # (side: its own seed for the drawing; it drifts with the wind, so its place cannot be one)
     var fl: Part = _near_part(P.LACE, p, size, 2.7, 5.0)   # a salvo's shells, tens of metres apart, sink one stretch of sea
     if fl != null:
         var d: float = fl.pos.distance_to(p)
         fl.pos = fl.pos.lerp(p, 0.35)   # centred among the shells that made it
         fl.size = minf(maxf(fl.size, size) * 1.02 + d * 0.1, maxf(fl.size, size) * 1.25)   # (it grew to swallow the salvo)
         fl.life = minf(fl.life, 2.0)   # the bowl held deep while the shells keep coming; its slick starts when they stop
-    else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU
+    else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997
     for i in 3 + int(size * 0.25):   # droplets thrown out at the first instant
         var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.6 + randf() * 0.7, size * (0.18 + randf() * 0.16), rdir() * (size * 1.2 + randf() * size * 3.0)); q.drag = 0.18
 func fx_splash(p: Vector2, size: float) -> void:

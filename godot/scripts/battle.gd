@@ -516,8 +516,8 @@ class ShipView extends Node2D:
     func build() -> void:
         var id: String = s.rec.type; var info: Dictionary = GameData.sprites.ships[id]
         spr = info.spr; size_m = Vector2(info.w, info.h)
-        for i in 25:   # the deck edge, sampled along her length: for the list and the sea coming over her side
-            var hx: float = lerpf(-float(s.d.L) * 0.53, float(s.d.L) * 0.53, i / 24.0); edge.append(Vector2(hx, battle.sim.hull_half(s.d, hx)))
+        for i in 41:   # the deck edge, sampled along her length: for the list and the sea coming over her side
+            var hx: float = lerpf(-float(s.d.L) * 0.5, float(s.d.L) * 0.5, i / 40.0); edge.append(Vector2(hx, battle.sim.hull_half(s.d, hx)))
         var keel = Keel.new(); keel.view = self; add_child(keel)
         base = _sprite(GameData.ship_tex(id, s.pal, "base"), 1.0 / spr)
         lit_base = ShaderMaterial.new(); lit_base.shader = battle.light_shader; base.material = lit_base

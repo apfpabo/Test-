@@ -174,6 +174,10 @@ const WEAPONS = {
   g381:  { name: '15-inch triple',             size: 'H', kind: 'gun', dmg: 250, range: 5700, rel: 30,  speed: 410, spread: .007, barrels: 3, aa: 0,   price: 78000, tw: 12.4, tl: 15.5, bl: 16, bw: .95, gap: 3 },
   g406:  { name: '16-inch triple',             size: 'H', kind: 'gun', dmg: 285, range: 6000, rel: 30,  speed: 420, spread: .007, barrels: 3, aa: 0,   price: 85000, tw: 13, tl: 17, bl: 17,  bw: 1,  gap: 3.1 },
   g460:  { name: '18-inch triple',             size: 'H', kind: 'gun', dmg: 360, range: 6600, rel: 40,  speed: 430, spread: .007, barrels: 3, aa: 0,   price: 120000, tw: 15, tl: 21, bl: 18.5, bw: 1.15, gap: 3.6 },
+  // the super battleships' guns (the owner's request, 12 Nov 2026)
+  g381q: { name: '15-inch quadruple',          size: 'H', kind: 'gun', dmg: 250, range: 5700, rel: 34,  speed: 410, spread: .007, barrels: 4, aa: 0,   price: 98000, tw: 14.6, tl: 16.5, bl: 16, bw: .95, gap: 2.7 },
+  g406t: { name: '16-inch twin',               size: 'H', kind: 'gun', dmg: 285, range: 6000, rel: 28,  speed: 420, spread: .007, barrels: 2, aa: 0,   price: 62000, tw: 11.4, tl: 15.5, bl: 17,  bw: 1,  gap: 3.4 },
+  g510t: { name: '20-inch twin',               size: 'H', kind: 'gun', dmg: 450, range: 7000, rel: 48,  speed: 440, spread: .007, barrels: 2, aa: 0,   price: 150000, tw: 15.5, tl: 22, bl: 20.5, bw: 1.3, gap: 5.2 },
   aa20:  { name: 'Oerlikon 20 mm',              size: 'A', kind: 'aa',  dmg: 3,   range: 700,  rel: .5,  aa: .01, pd: .015, barrels: 1, price: 500 },
   aa40:  { name: 'Bofors 40 mm quad',          size: 'A', kind: 'aa',  dmg: 6,   range: 1200, rel: 1,   aa: .025, pd: .05, barrels: 4, price: 1800 },
   ciws:  { name: 'CIWS gatling',               size: 'A', kind: 'aa',  dmg: 4,   range: 1500, rel: .4,  aa: .03, pd: .2,  barrels: 1, price: 14000, tech: 'ciws' },
@@ -401,8 +405,13 @@ const DESIGN_LIST = [
     p: { bow: .34, run: .2, stern: 'c', deck: 'teak', house: [[2, 54, 16]], sup: [[28, 16, 15, 5], [-24, 12, 10, 2]], fun: [[8, 4, 3.2], [-8, 4, 3.2]], mast: [[20, 't'], [-18, 'p']], boats: [[-34, 1]], cat: [[-104, 0]], crane: [[-96, 0]] },
     slots: [sl('H', 64, 0, FWD, 'g381'), sl('H', 48, 0, FWD, 'g381'), sl('H', -50, 0, AFT, 'g381'), ...pair('M', 34, 12.4, 'g152'), ...pair('M', -36, 12.6, 'g152'), ...pair('S', 14, 14.2, 'g102'), ...pair('S', 0, 14.6, 'g102'), ...pair('S', -14, 14.2, 'g102'), ...pair('A', 22, 10.4, 'aa20'), ...pair('A', -25, 10.6, 'aa20')] },
   { id: 'bb_yamato', cls: 'bb', yard: 'seto', dn: 'Amaterasu', model: 'Yamato-class battleship', year: 1941, era: 1, L: 263, B: 38.9, t: 65000, kn: 27, td: 700, armor: 410, crew: 2500, price: 210000,
-    p: { bow: .4, run: .2, stern: 'c', deck: 'teak', house: [[-4, 58, 19]], sup: [[14, 20, 18, 6], [-26, 12, 12, 2]], fun: [[-6, 5.6, 4.2]], mast: [[-16, 'p']], boats: [[-74, 2]], cat: [[-114, -8], [-114, 8]], crane: [[-122, 0]] },
-    slots: [sl('H', 66, 0, FWD, 'g460'), sl('H', 46, 0, FWD, 'g460'), sl('H', -57, 0, AFT, 'g460'), sl('M', 30, 0, FWD, 'g152'), sl('M', -40, 0, AFT, 'g152'), ...pair('M', 8, 15.2, 'g127'), ...pair('M', -6, 15.8, 'g127'), ...pair('M', -20, 15.8, 'g127'), ...pair('A', 22, 13, 'aa40'), ...pair('A', -31, 14.6, 'aa40'), ...pair('A', -48, 12.8, 'aa20')] },
+    // after the owner's picture (12 Nov 2026): steel fore and aft with teak between, a fine wedge of a bow, the guns further
+    // aft, and the great round superstructure ringed with 5-inch and AA mounts. Slots keep their count and order (saved
+    // fits are by index): the new AA mounts are added at the end.
+    p: { bow: .32, run: .2, bowK: [0.5, 0.45], stern: 'c', teak: [-70, 89, 6, -8], house: [[-14, 50, 24]], sup: [[-6, 26, 19, 6], [-30, 14, 13, 3]], fun: [[-20, 5.8, 4.4]], mast: [[-32, 'p']], boats: [[-80, 2]], cat: [[-112, -8], [-112, 8]], crane: [[-122, 0]],
+      tubs: [[8, 12, 1.6], [8, -12, 1.6], [-40, 12, 1.6], [-40, -12, 1.6]] },
+    slots: [sl('H', 60, 0, FWD, 'g460'), sl('H', 39, 0, FWD, 'g460'), sl('H', -60, 0, AFT, 'g460'), sl('M', 19, 0, FWD, 'g152'), sl('M', -45, 0, AFT, 'g152'), ...pair('M', 2, 16.6, 'g127'), ...pair('M', -12, 17.2, 'g127'), ...pair('M', -26, 16.6, 'g127'), ...pair('A', 12, 15.8, 'aa40'), ...pair('A', -36, 15.6, 'aa40'), ...pair('A', -50, 13, 'aa20'),
+      ...pair('A', 6, 12.4, 'aa20'), ...pair('A', -5, 12.8, 'aa20'), ...pair('A', -19, 12.8, 'aa20'), ...pair('A', -31, 12, 'aa20'), ...pair('A', 22, 15.4, 'aa20'), ...pair('A', -6, 18, 'aa20'), ...pair('A', -20, 18, 'aa20')] },
   { id: 'bb_iowa', cls: 'bb', yard: 'tidewater', dn: 'Constellation', model: 'Iowa-class battleship', year: 1943, era: 1, L: 270.4, B: 33, t: 45000, kn: 33, td: 1100, armor: 307, crew: 2700, price: 160000,
     p: { bow: .4, run: .2, stern: 'c', deck: 'teak', house: [[-15, 79, 17]], sup: [[12, 25, 15, 5], [-42, 20, 12, 2]], fun: [[-3, 5, 3.4], [-27, 5, 3.4]], mast: [[5, 't'], [-29, 'p']], boats: [[-47, 1]], cat: [[-122, -6], [-122, 6]], crane: [[-131, 0]], tubs: [[104, 0, 1.9], [26, 5, 1.6], [26, -5, 1.6], [-15, 6, 1.6], [-15, -6, 1.6]] },
     slots: [sl('H', 56, 0, FWD, 'g406'), sl('H', 34, 0, FWD, 'g406'), sl('H', -65, 0, AFT, 'g406'), ...pair('M', 18, 12.2, 'g127'), ...pair('M', 6, 13.6, 'g127'), ...pair('M', -10, 13.6, 'g127'), ...pair('M', -24, 13.6, 'g127'), ...pair('M', -38, 12.6, 'g127'), ...pair('A', 42, 11.4, 'aa40'), ...pair('A', -53, 11, 'aa40'), ...pair('A', -96, 9, 'aa40')] },
@@ -415,6 +424,32 @@ const DESIGN_LIST = [
   { id: 'bb_scharnhorst', cls: 'bb', name: 'Fast Battleship', yard: 'ostsee', dn: 'Markgraf', model: 'Scharnhorst-class battleship', year: 1938, era: 1, L: 234.9, B: 30, t: 32100, kn: 31, td: 950, armor: 350, crew: 1669, price: 105000,
     p: { bow: .36, run: .22, stern: 'c', deck: 'teak', house: [[-2, 66, 15]], sup: [[32, 20, 14, 5], [-30, 16, 11, 3]], fun: [[7, 4.6, 3.6]], mast: [[26, 't'], [-22, 'p']], boats: [[-18, 2]], cat: [[-8, 0]], crane: [[-13, -9.5], [-13, 9.5]] },
     slots: [sl('H', 68, 0, FWD, 'g283'), sl('H', 52, 0, FWD, 'g283'), sl('H', -58, 0, AFT, 'g283'), ...pair('M', 24, 12.2, 'g150t'), ...pair('M', -24, 12.4, 'g150t'), ...pair('M', 8, 13.2, 'g150s'), ...pair('S', -4, 13.2, 'g102t'), ...pair('S', -38, 11.4, 'g102t'), ...pair('A', 40, 9.6, 'aa40'), ...pair('A', -46, 10, 'aa40'), ...pair('M', 16, 12.8, 'g150s')] },   // her model had four single 150s, not two: the second pair is added last, so saved ships' fits keep their places
+  // ---------------------------------------------------------------- super battleships (Era II; the owner's request, 12 Nov 2026): the
+  // designs drawn up for the 1940s and never finished, built in this world once the armistice left the yards free
+  { id: 'bb_montana', cls: 'bb', yard: 'tidewater', dn: 'Paramount', model: 'Montana-class battleship', year: 1947, era: 2, L: 281, B: 36.9, t: 60500, kn: 28, td: 1150, armor: 409, crew: 2355, price: 250000,
+    p: { bow: .4, run: .2, stern: 'c', deck: 'teak', house: [[-4, 74, 18]], sup: [[22, 24, 16, 5], [-30, 16, 12, 2]], fun: [[5, 5, 3.6], [-14, 5, 3.6]], mast: [[14, 't'], [-24, 'p']], boats: [[-44, 1]], cat: [[-128, -6], [-128, 6]], crane: [[-136, 0]], tubs: [[108, 0, 1.9], [-100, 0, 1.9]] },
+    slots: [sl('H', 76, 0, FWD, 'g406'), sl('H', 54, 0, FWD, 'g406'), sl('H', -58, 0, AFT, 'g406'), sl('H', -80, 0, AFT, 'g406'), ...pair('M', 30, 13, 'g127'), ...pair('M', 16, 14.6, 'g127'), ...pair('M', 2, 15.4, 'g127'), ...pair('M', -12, 15.4, 'g127'), ...pair('M', -26, 14.2, 'g127'), ...pair('A', 42, 11.6, 'aa40'), ...pair('A', -40, 12.4, 'aa40'), ...pair('A', -96, 9.6, 'aa40')] },
+  { id: 'bb_alsace', cls: 'bb', yard: 'tirreno', dn: 'Imperatrice', model: 'Alsace-class battleship (project)', year: 1947, era: 2, L: 265, B: 35.5, t: 45000, kn: 32, td: 1050, armor: 330, crew: 2100, price: 200000,
+    p: { bow: .38, run: .2, stern: 'c', deck: 'lino', house: [[-2, 62, 17]], sup: [[24, 18, 15, 6], [-22, 12, 10, 2]], fun: [[-4, 4.8, 3.8]], mast: [[-12, 'p']], boats: [[-30, 2]], cat: [[-108, 0]], crane: [[-100, -8]] },
+    slots: [sl('H', 72, 0, FWD, 'g381q'), sl('H', 52, 0, FWD, 'g381q'), sl('H', -60, 0, AFT, 'g381q'), sl('M', -42, 0, AFT, 'g152'), ...pair('M', -28, 12.6, 'g152'), ...pair('S', 18, 14.2, 'g102t'), ...pair('S', 6, 14.8, 'g102t'), ...pair('S', -8, 14.8, 'g102t'), ...pair('A', 34, 11, 'aa40'), ...pair('A', -18, 14.4, 'aa40'), ...pair('A', -78, 10.4, 'aa20')] },
+  { id: 'bb_soyuz', cls: 'bb', yard: 'neva', dn: 'Gosudar', model: 'Sovetsky Soyuz-class battleship', year: 1948, era: 2, L: 269.4, B: 37, t: 59150, kn: 28, td: 1100, armor: 420, crew: 1784, price: 230000,
+    // after the owner's picture: a long forecastle with both forward turrets well back, a tall superstructure with one funnel
+    // casing over two uptakes, the 6-inch twins about it, and a hangar and catapult on the quarterdeck
+    p: { bow: .4, run: .2, bowK: [0.28, 0.4], stern: 'c', house: [[-24, 66, 18], [-98, 13, 12]], sup: [[-2, 18, 16, 6], [-46, 14, 11, 3]], fun: [[-28, 4.6, 3.4], [-37, 4.6, 3.4]], mast: [[-2, 't'], [-50, 'p']], boats: [[-58, 2]], cat: [[-118, 0]], crane: [[-88, -10], [-88, 10]] },
+    slots: [sl('H', 40, 0, FWD, 'g406'), sl('H', 19, 0, FWD, 'g406'), sl('H', -70, 0, AFT, 'g406'), ...pair('M', 2, 13.4, 'g152t'), ...pair('M', -20, 14.4, 'g152t'), ...pair('M', -42, 13.4, 'g152t'), ...pair('S', 10, 16, 'g102t'), ...pair('S', -10, 16.6, 'g102t'), ...pair('S', -31, 16.6, 'g102t'), ...pair('A', 30, 11.6, 'aa40'), ...pair('A', -55, 12.4, 'aa40'), ...pair('A', -84, 10, 'aa20')] },
+  { id: 'bb_h39', cls: 'bb', yard: 'ostsee', dn: 'Landgraf', model: 'H-39 design battleship', year: 1947, era: 2, L: 277.8, B: 37, t: 52600, kn: 30, td: 1100, armor: 300, crew: 2600, price: 215000,
+    p: { bow: .36, run: .22, stern: 'c', deck: 'teak', house: [[-2, 78, 18]], sup: [[32, 22, 16, 5], [-34, 16, 12, 3]], fun: [[6, 5.4, 4.2]], mast: [[26, 't'], [-26, 'p']], boats: [[-22, 2]], cat: [[-6, 0]], crane: [[-14, -12], [-14, 12]] },
+    slots: [sl('H', 82, 0, FWD, 'g406t'), sl('H', 64, 0, FWD, 'g406t'), sl('H', -64, 0, AFT, 'g406t'), sl('H', -82, 0, AFT, 'g406t'), ...pair('M', 34, 14, 'g150t'), ...pair('M', 16, 15.8, 'g150t'), ...pair('M', -32, 14.6, 'g150t'), ...pair('S', 2, 16.2, 'g102t'), ...pair('S', -16, 16.2, 'g102t'), ...pair('A', 48, 11, 'aa40'), ...pair('A', -48, 12, 'aa40')] },
+  { id: 'bb_lion', cls: 'bb', yard: 'clydemouth', dn: 'Leviathan', model: 'Lion-class battleship', year: 1947, era: 2, L: 239.3, B: 32, t: 40550, kn: 30, td: 1000, armor: 381, crew: 1680, price: 175000,
+    p: { bow: .34, run: .22, stern: 't', tw: .45, deck: 'teak', house: [[-2, 64, 16]], sup: [[28, 20, 15, 5], [-28, 16, 11, 3]], fun: [[9, 4.2, 3.3], [-12, 4.2, 3.3]], mast: [[20, 't'], [-22, 't']], boats: [[0, 3]] },
+    slots: [sl('H', 64, 0, FWD, 'g406'), sl('H', 46, 0, FWD, 'g406'), sl('H', -56, 0, AFT, 'g406'), ...pair('M', 30, 12.4, 'g130t'), ...pair('M', 18, 13.4, 'g130t'), ...pair('M', -20, 13.4, 'g130t'), ...pair('M', -32, 12.4, 'g130t'), ...pair('A', 40, 10, 'aa40'), ...pair('A', 0, 13.4, 'aa40'), ...pair('A', -44, 10.4, 'aa40')] },
+  { id: 'bb_a150', cls: 'bb', name: 'Super Battleship', yard: 'seto', dn: 'Susanoo', model: 'A-150 design (\'Super Yamato\')', year: 1949, era: 2, L: 280, B: 36, t: 70000, kn: 30, td: 1250, armor: 460, crew: 3200, price: 300000,
+    // after the owner's drawing: four twin 20-inch turrets, a 6-inch triple fore and aft of the superstructure, and rows of
+    // 100 mm twin mounts down both sides of it; teak between steel ends
+    p: { bow: .32, run: .2, bowK: [0.5, 0.45], stern: 'c', teak: [-73, 91, 6, -8], house: [[-2, 52, 20]], sup: [[2, 24, 15, 6], [-20, 12, 12, 3]], fun: [[-10, 5.6, 4.4]], mast: [[-22, 'p']], boats: [[-86, 2]], cat: [[-120, -8], [-120, 8]], crane: [[-130, 0]] },
+    slots: [sl('H', 64, 0, FWD, 'g510t'), sl('H', 43, 0, FWD, 'g510t'), sl('H', -47, 0, AFT, 'g510t'), sl('H', -68, 0, AFT, 'g510t'), sl('M', 27, 0, FWD, 'g152'), sl('M', -31, 0, AFT, 'g152'),
+      ...pair('S', 22, 15, 'g102t'), ...pair('S', 14, 15.6, 'g102t'), ...pair('S', 6, 15.6, 'g102t'), ...pair('S', -2, 15.6, 'g102t'), ...pair('S', -10, 15.6, 'g102t'), ...pair('S', -18, 15.6, 'g102t'), ...pair('S', -26, 15, 'g102t'),
+      ...pair('A', 18, 10.6, 'aa40'), ...pair('A', 8, 10.8, 'aa40'), ...pair('A', -2, 10.8, 'aa40'), ...pair('A', -12, 10.8, 'aa40'), ...pair('A', -24, 10.6, 'aa40'), ...pair('A', -84, 12, 'aa20')] },
   // ---------------------------------------------------------------- missile destroyers (Era II)
   { id: 'ddg_adams', cls: 'ddg', yard: 'tidewater', dn: 'Sentry', model: 'Charles F. Adams-class destroyer', year: 1960, era: 2, L: 133.2, B: 14.3, t: 3277, kn: 33, td: 720, armor: 15, crew: 333, price: 75000,
     p: { bow: .34, run: .22, stern: 't', tw: .5, sup: [[30, 18, 10, 3], [-24, 10, 7, 1]], fun: [[14, 2.4, 1.8], [-6, 2.4, 1.8]], mast: [[22, 'l'], [0, 'l']], boats: [[6, 1]] },
@@ -827,11 +862,16 @@ function hullPath(g, d, inset = 0) {
     else { g.moveTo(h, 0); g.bezierCurveTo(h * 0.96, -b * 0.7, h * 0.78, -b, h * 0.5, -b); g.lineTo(-h * 0.45, -b); g.bezierCurveTo(-h * 0.82, -b, -h, -b * 0.4, -h, 0); g.bezierCurveTo(-h, b * 0.4, -h * 0.82, b, -h * 0.45, b); g.lineTo(h * 0.5, b); g.bezierCurveTo(h * 0.78, b, h * 0.96, b * 0.7, h, 0); }
     g.closePath(); return;
   }
+  if (p.outline) {   // traced from a drawing: straight lines through the points, drawn in by the inset
+    const kx = h / (d.L / 2), ky = b / (d.B / 2), o = p.outline;
+    g.moveTo(o[0][0] * kx, -o[0][1] * ky); for (const [x, y] of o) g.lineTo(x * kx, -y * ky);
+    for (let i = o.length - 1; i >= 0; i--) g.lineTo(o[i][0] * kx, o[i][1] * ky); g.closePath(); return; }
   const fe = (p.bow || .33) * d.L, fr = (p.run || .2) * d.L, xb = h - fe, xs = -h + fr, tw = p.stern === 't' ? (p.tw || .5) : 0;
-  g.moveTo(h, 0); g.bezierCurveTo(h - fe * 0.12, -b * 0.42, xb + fe * 0.5, -b, xb, -b); g.lineTo(xs, -b);
+  const bk = p.bowK || [0.42, 0.5];   // the bow's fullness: smaller is a finer, straighter wedge (Yamato's)
+  g.moveTo(h, 0); g.bezierCurveTo(h - fe * 0.12, -b * bk[0], xb + fe * bk[1], -b, xb, -b); g.lineTo(xs, -b);
   if (tw) { g.bezierCurveTo(xs - fr * 0.6, -b, -h, -b * Math.min(1, tw + 0.3), -h, -b * tw); g.lineTo(-h, b * tw); g.bezierCurveTo(-h, b * Math.min(1, tw + 0.3), xs - fr * 0.6, b, xs, b); }
   else { g.bezierCurveTo(xs - fr * 0.55, -b, -h, -b * 0.6, -h, 0); g.bezierCurveTo(-h, b * 0.6, xs - fr * 0.55, b, xs, b); }
-  g.lineTo(xb, b); g.bezierCurveTo(xb + fe * 0.5, b, h - fe * 0.12, b * 0.42, h, 0); g.closePath();
+  g.lineTo(xb, b); g.bezierCurveTo(xb + fe * bk[1], b, h - fe * 0.12, b * bk[0], h, 0); g.closePath();
 }
 // Fill the current path with a gentle across-the-beam gradient: lighter on the crown, darker at the edges.
 function crownFill(g, col, half, lift = 0) {
@@ -858,7 +898,12 @@ function occupied(d, x, y, pad) { // true where guns, superstructure, funnels or
   for (const [bx] of p.boats || []) if (Math.abs(x - bx) < 10 && Math.abs(Math.abs(y) - d.B * 0.31) < 3) return true;
   return false;
 }
-function insideHull(d, x, y, pad) { const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr = (d.p.run || .2) * d.L; let half = d.B / 2;
+// A hull traced from a drawing (p.outline: the starboard half as [x, y] in metres from bow to stern, mirrored to port):
+// its half-breadth at x, by straight lines between the traced points.
+function outlineHalf(d, x) { const o = d.p.outline; if (x >= o[0][0]) return o[0][1]; if (x <= o[o.length - 1][0]) return o[o.length - 1][1];
+  for (let i = 1; i < o.length; i++) if (x >= o[i][0]) { const [x0, y0] = o[i - 1], [x1, y1] = o[i]; return x0 === x1 ? Math.max(y0, y1) : y1 + (y0 - y1) * (x - x1) / (x0 - x1); } return 0; }
+function insideHull(d, x, y, pad) { if (d.p && d.p.outline) return Math.abs(y) < outlineHalf(d, x) - pad;
+  const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr = (d.p.run || .2) * d.L; let half = d.B / 2;
   if (x > h - fe) half *= Math.sqrt(Math.max(0, (h - x) / fe)); else if (x < -h + fr) half *= Math.max(d.p.stern === 't' ? (d.p.tw || .5) : 0, Math.sqrt(Math.max(0, (x + h) / fr))); return Math.abs(y) < half - pad; }
 function detailDeck(g, d, P, deckCol, inset) {
   const r = rng(seedOf(d.id)), L = d.L, B = d.B, h = L / 2, b = B / 2, p = d.p;
@@ -907,7 +952,18 @@ function drawPlan(g, d, P, part = 'all') {
   hullPath(g, d); g.fillStyle = shade(P.hull, -0.12); g.fill(); g.lineWidth = 0.3; g.strokeStyle = edge; g.stroke();
   const inset = Math.min(0.7, B * 0.045); hullPath(g, d, inset); crownFill(g, deckCol, b);
   g.save(); hullPath(g, d, inset); g.clip();
-  if (p.deck === 'teak') { g.strokeStyle = 'rgba(40,28,10,.13)'; g.lineWidth = 0.08; g.beginPath(); for (let y = -b; y <= b; y += 0.55) { g.moveTo(-h, y); g.lineTo(h, y); } g.stroke();
+  if (p.teak) {   // a steel deck with teak laid between two stations (Yamato, the A-150): planks only on the wood
+    const [xa, xf] = p.teak, ka = p.teak[2] || 0, kf = p.teak[3] || 0;   // ka, kf: how far the boundary's middle stands from where it meets the side (a chevron, as Yamato's)
+    const band = () => { g.beginPath(); g.moveTo(xa, -b); g.lineTo(xa + ka, 0); g.lineTo(xa, b); g.lineTo(xf, b); g.lineTo(xf + kf, 0); g.lineTo(xf, -b); g.closePath(); };
+    const x0 = Math.min(xa, xa + ka) - 1, x1 = Math.max(xf, xf + kf) + 1;
+    g.save(); band(); g.fillStyle = TEAK; g.fill(); g.clip();
+    g.fillStyle = 'rgba(0,0,0,.1)'; g.fillRect(x0, -b, x1 - x0, B * 0.06); g.fillRect(x0, b - B * 0.06, x1 - x0, B * 0.06);
+    g.strokeStyle = 'rgba(40,28,10,.13)'; g.lineWidth = 0.08; g.beginPath(); for (let y = -b; y <= b; y += 0.55) { g.moveTo(x0, y); g.lineTo(x1, y); } g.stroke();
+    g.strokeStyle = 'rgba(40,28,10,.1)'; g.beginPath(); for (let y = -b, i = 0; y <= b; y += 0.55, i++) for (let x = x0 + (i % 4) * 2.1; x < x1; x += 8.4) { g.moveTo(x, y); g.lineTo(x, y + 0.55); } g.stroke();
+    g.restore();   // (back to the hull clip)
+    g.strokeStyle = 'rgba(0,0,0,.07)'; g.lineWidth = 0.1; g.beginPath(); for (let x = -h; x < h; x += 6) if (x < x0 || x > x1) { g.moveTo(x, -b); g.lineTo(x, b); } g.stroke();
+    band(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.18; g.stroke(); }
+  else if (p.deck === 'teak') { g.strokeStyle = 'rgba(40,28,10,.13)'; g.lineWidth = 0.08; g.beginPath(); for (let y = -b; y <= b; y += 0.55) { g.moveTo(-h, y); g.lineTo(h, y); } g.stroke();
     g.strokeStyle = 'rgba(40,28,10,.1)'; g.beginPath(); for (let y = -b, i = 0; y <= b; y += 0.55, i++) for (let x = -h + (i % 4) * 2.1; x < h; x += 8.4) { g.moveTo(x, y); g.lineTo(x, y + 0.55); } g.stroke(); }
   else { g.strokeStyle = 'rgba(0,0,0,.07)'; g.lineWidth = 0.1; g.beginPath(); for (let x = -h; x < h; x += 6) { g.moveTo(x, -b); g.lineTo(x, b); } g.moveTo(-h, 0); g.lineTo(h, 0); g.stroke(); }
   g.restore();

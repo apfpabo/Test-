@@ -784,7 +784,7 @@ func nearest_any(from: Vector2, side: int) -> CShip:
 ## further and no yard will send her to sea. What is carried high (AA, directors, radar) counts more towards
 ## topweight: a top-heavy ship rolls, and her salvos spread, worst in a sea.
 const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
-    "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500,
+    "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500, "g381q": 2000, "g406t": 1150, "g510t": 2700,
     "aa20": 1, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}
 const HEIGHT := {"A": 1.5, "V": 0.8, "T": 0.9}        # how high a mount sits, guns on the deck being 1
 const TOP_SLACK := 1.10                                # topweight a hull bears before it tells
@@ -895,11 +895,50 @@ func heavy_guns(s: CShip) -> bool:
     for m in s.mounts: if m.w.kind == "gun" and (m.w.size == "L" or m.w.size == "H"): return true
     return false
 
+## Her half-breadth at x (metres from amidships), on the very curves her plan was drawn with (`hullPath` in
+## src/game.html: Bézier bow and stern, `bowK`, a transom, or a hull traced from a drawing, `p.outline`), so that what
+## is worked out from it (her side when she lists, the sea over her deck, spray, hits at the edge) meets the picture.
+## It was a square-root rule, close for the old bows but well off a fine one (the owner saw daylight between the deck
+## and the side of the A-150's bow when she listed, 12 Nov 2026). Sampled once per design.
+static var _halves := {}
 func hull_half(d: Dictionary, x: float) -> float:
-    var h: float = d.L / 2; var fe: float = d.p.get("bow", 0.33) * d.L; var fr: float = d.p.get("run", 0.2) * d.L; var half: float = d.B / 2
-    if x > h - fe: half *= sqrt(maxf(0.0, (h - x) / fe))
-    elif x < -h + fr: half *= maxf(d.p.get("tw", 0.5) if d.p.get("stern", "c") == "t" else 0.15, sqrt(maxf(0.0, (x + h) / fr)))
-    return half
+    var p: Dictionary = d.get("p", {})
+    if d.get("kind", "") == "sub" or p.is_empty():   # submarines keep their own rounded form
+        var h0: float = d.L / 2; var fe0: float = p.get("bow", 0.33) * d.L; var fr0: float = p.get("run", 0.2) * d.L; var half: float = d.B / 2
+        if x > h0 - fe0: half *= sqrt(maxf(0.0, (h0 - x) / fe0))
+        elif x < -h0 + fr0: half *= maxf(p.get("tw", 0.5) if p.get("stern", "c") == "t" else 0.15, sqrt(maxf(0.0, (x + h0) / fr0)))
+        return half
+    var key: String = String(d.get("id", "")) + ":" + str(d.L) + ":" + str(d.B)
+    var tab: PackedVector2Array = _halves.get(key, PackedVector2Array())
+    if tab.is_empty(): tab = _hull_table(d); _halves[key] = tab
+    if x >= tab[0].x: return tab[0].y if x <= tab[0].x + 0.01 else 0.0
+    for i in range(1, tab.size()):
+        if x >= tab[i].x:
+            var a: Vector2 = tab[i - 1]; var c: Vector2 = tab[i]
+            return c.y if is_equal_approx(a.x, c.x) else lerpf(c.y, a.y, (x - c.x) / (a.x - c.x))
+    return tab[tab.size() - 1].y if x >= tab[tab.size() - 1].x - 0.01 else 0.0
+static func _bez(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t: float) -> Vector2:
+    var u := 1.0 - t; return u * u * u * p0 + 3.0 * u * u * t * p1 + 3.0 * u * t * t * p2 + t * t * t * p3
+## The starboard edge from bow to stern as (x, half-breadth), x falling.
+static func _hull_table(d: Dictionary) -> PackedVector2Array:
+    var p: Dictionary = d.p; var h: float = d.L / 2; var b: float = d.B / 2; var out := PackedVector2Array()
+    if p.has("outline"):
+        for q in p.outline: out.append(Vector2(float(q[0]), float(q[1])))
+        return out
+    var fe: float = float(p.get("bow", 0.33)) * d.L; var fr: float = float(p.get("run", 0.2)) * d.L; var xb: float = h - fe; var xs: float = -h + fr
+    var tw: float = float(p.get("tw", 0.5)) if p.get("stern", "c") == "t" else 0.0
+    var bk: Array = p.get("bowK", [0.42, 0.5])
+    for i in 33: out.append(_bez(Vector2(h, 0), Vector2(h - fe * 0.12, b * float(bk[0])), Vector2(xb + fe * float(bk[1]), b), Vector2(xb, b), i / 32.0))
+    for i in 33:
+        if tw > 0.0: out.append(_bez(Vector2(xs, b), Vector2(xs - fr * 0.6, b), Vector2(-h, b * minf(1.0, tw + 0.3)), Vector2(-h, b * tw), i / 32.0))
+        else: out.append(_bez(Vector2(xs, b), Vector2(xs - fr * 0.55, b), Vector2(-h, b * 0.6), Vector2(-h, 0), i / 32.0))
+    # a Bézier need not run monotonically in x at its ends: keep the edge falling, taking the widest where it doubles back
+    var mono := PackedVector2Array([out[0]])
+    for i in range(1, out.size()):
+        var q: Vector2 = out[i]; var last: Vector2 = mono[mono.size() - 1]
+        if q.x < last.x - 0.001: mono.append(q)
+        else: mono[mono.size() - 1] = Vector2(last.x, maxf(last.y, q.y))
+    return mono
 
 # ------------------------------------------------------------------ effects
 func part(type: int, p: Vector2, mx: float, size: float, vel := Vector2.ZERO, wind := false, life := 0.0) -> Part:

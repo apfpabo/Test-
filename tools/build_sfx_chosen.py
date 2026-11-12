@@ -1,4 +1,4 @@
-# The sounds the owner chose on the listening page (11 Nov 2026): the recorded sonar ping, the battle-stations siren,
+# The sounds the owner chose on the listening pages (11 Nov 2026; and 12 Nov: coins, the yard's press, the typewriter, a ship's horn): the recorded sonar ping, the battle-stations siren,
 # the gong, the paper for pages, the propeller aircraft, fire, rain, thunder, storm wind and the bubbles of a ship
 # going down. Built into godot/assets/sfx/ beside the others; their sources are added to CREDITS.md.
 #
@@ -18,9 +18,15 @@ SOURCES = {   # file: (url, title, author, licence, page)
     'rain_night.ogg': (OGA + 'Dark_Rainy_Night%28ambience%29.ogg', 'rain and thunders', 'kindland', 'CC0', 'https://opengameart.org/content/rain-and-thunders'),
     'storm_siren.ogg': (OGA + 'storm_3_siren.ogg', 'Storm & Siren', 'TinyWorlds', 'CC0', 'https://opengameart.org/content/storm-siren'),
     'bubbles.wav': (OGA + 'bubbles-loop1-amp.wav', 'Bubble Sound Effects', 'BMacZero', 'CC0', 'https://opengameart.org/content/bubble-sound-effects'),
+    # chosen on the second listening page (12 Nov 2026, "Iron Meridian Sound Gaps")
+    'coin.wav': (OGA + 'hjm-coin_clicker_1.wav', 'Coin Sounds', 'Varkalandar', 'CC BY 3.0', 'https://opengameart.org/content/coin-sounds-0'),
+    'mech.7z': (OGA + 'mechanical_pack_vol_1.7z', 'JC Sounds: Mechanical Pack Vol 1', 'JC Sounds', 'CC BY 4.0', 'https://opengameart.org/content/jc-sounds-mechanical-pack-vol-1'),
+    'typewriter.wav': (OGA + 'typewriter1.wav', 'Typewriter sounds', 'Cassie-OrbitGames', 'CC0', 'https://opengameart.org/content/typewriter-sounds'),
+    'sndfx.zip': (OGA + 'sndfx.zip', 'War on Water: SNDFX', 'yd', 'CC0', 'https://opengameart.org/content/war-on-water-sndfx'),
 }
 USED = {'ping': 'sonar_ping.mp3', 'siren': 'siren.mp3', 'gong': 'sfx100.zip', 'paper': 'sfx100.zip', 'rain_loop': 'sfx_loops.zip', 'prop_loop': 'prop.ogg', 'fire_loop': 'fire.ogg',
-        'thunder_loop': 'rain_night.ogg', 'storm_loop': 'storm_siren.ogg', 'bubbles_loop': 'bubbles.wav'}
+        'thunder_loop': 'rain_night.ogg', 'storm_loop': 'storm_siren.ogg', 'bubbles_loop': 'bubbles.wav',
+        'coins': 'coin.wav', 'refit': 'mech.7z', 'typewriter': 'typewriter.wav', 'horn': 'sndfx.zip'}
 RATE = 32000
 def fetch(dl):
     ctx = ssl.create_default_context(cafile='/root/.ccr/ca-bundle.crt') if os.path.exists('/root/.ccr/ca-bundle.crt') else ssl.create_default_context()
@@ -28,7 +34,9 @@ def fetch(dl):
         p = os.path.join(dl, name)
         if os.path.exists(p): continue
         with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (game asset build)'}), context=ctx, timeout=180) as r: open(p, 'wb').write(r.read())
-    for z in ['sfx100.zip', 'sfx_loops.zip']: zipfile.ZipFile(os.path.join(dl, z)).extractall(os.path.join(dl, 'x_' + z[:-4]))
+    for z in ['sfx100.zip', 'sfx_loops.zip', 'sndfx.zip']: zipfile.ZipFile(os.path.join(dl, z)).extractall(os.path.join(dl, 'x_' + z[:-4]))
+    import py7zr
+    with py7zr.SevenZipFile(os.path.join(dl, 'mech.7z')) as z: z.extractall(os.path.join(dl, 'x_mech'))
 def find(dl, sub, name):
     for root, _, files in os.walk(os.path.join(dl, sub)):
         if name in files: return os.path.join(root, name)
@@ -67,13 +75,17 @@ def main():
     made['thunder_loop'] = level(loop(load(os.path.join(dl, 'rain_night.ogg'), 20.0, 62.0), 2.0), -22.0)   # forty seconds of rain with thunder in it
     made['storm_loop'] = level(loop(highpass(load(os.path.join(dl, 'storm_siren.ogg'), 40.0, 72.0), 60.0), 2.0), -22.0)   # after the siren in the recording has died away
     made['bubbles_loop'] = level(loop(load(os.path.join(dl, 'bubbles.wav')), 0.5), -22.0)
+    made['coins'] = fade(level(load(os.path.join(dl, 'coin.wav')), -24.0), 0.002, 0.15)                    # a trade: coins into the till
+    made['refit'] = fade(level(load(find(dl, 'x_mech', 'Single_Mechanical Pack Vol 1_Large Mechanical Press Hit_01.wav')), -21.0), 0.002, 0.3)   # yard work done
+    made['typewriter'] = fade(level(load(os.path.join(dl, 'typewriter.wav')), -24.0), 0.002, 0.1)          # the game saved: a line in the log
+    made['horn'] = fade(level(load(find(dl, 'x_sndfx', 'friendlyship.ogg')), -21.0), 0.01, 0.6)          # a ship joins the squadron
     for name, x in made.items(): print('%-13s %.2f s' % (name, len(x) / RATE)); write(out, name, x)
-    cp = os.path.join(out, 'CREDITS.md'); txt = open(cp).read(); mark = '\n## Chosen by the owner, 11 Nov 2026\n'
+    cp = os.path.join(out, 'CREDITS.md'); txt = open(cp).read(); mark = '\n## Chosen by the owner, 11 and 12 Nov 2026\n'
     txt = txt.split(mark)[0].rstrip('\n') + '\n'
     lines = [mark.strip('\n'), '', 'Built by `tools/build_sfx_chosen.py`.', '', '| File here | Source | Author | Licence |', '| --- | --- | --- | --- |']
     for f, s in USED.items():
         url, title, author, lic, page = SOURCES[s]; lines.append('| `%s` | [%s](%s) | %s | %s |' % (f, title, page, author, lic))
-    lines += ['', 'CC BY 3.0: https://creativecommons.org/licenses/by/3.0/']
+    lines += ['', 'CC BY 3.0: https://creativecommons.org/licenses/by/3.0/ · CC BY 4.0: https://creativecommons.org/licenses/by/4.0/']
     open(cp, 'w').write(txt + '\n' + '\n'.join(lines) + '\n')
     print('built', len(made), 'chosen sounds into', out)
 if __name__ == '__main__': main()

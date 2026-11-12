@@ -89,7 +89,7 @@ func _ready() -> void:
 		if ResourceLoader.exists(mpath):
 			var ms = load(mpath); ms.loop = false; _mus_streams[k] = ms
 	# the sounds the owner chose (11 Nov 2026): one-shots (`cue`) and loops that follow what is on the screen (`layer`)
-	for n in ["siren", "gong", "paper"]:
+	for n in ["siren", "gong", "paper", "coins", "refit", "typewriter", "horn"]:   # (the last four chosen on 12 Nov 2026)
 		var st = load("res://assets/sfx/%s.ogg" % n) if ResourceLoader.exists("res://assets/sfx/%s.ogg" % n) else null
 		if st != null: _cues[n] = st
 	for n in LAYERS:
@@ -280,7 +280,7 @@ var _cues := {}                  # one-shot sounds by name: siren (battle statio
 const LAYERS := {"prop": false, "fire": false, "bubbles": false, "rain": true, "thunder": true, "storm": true}
 var _layers := {}
 var _layer_want := {}
-## A one-shot: "siren", "gong" or "paper".
+## A one-shot: "siren", "gong", "paper", "coins" (a trade), "refit" (yard work done), "typewriter" (saved), "horn" (a ship joins).
 func cue(name: String, vol := 0.5) -> void:
 	if muted or not _cues.has(name): return
 	_play(_cues[name], vol, 1.0)

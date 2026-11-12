@@ -26,7 +26,7 @@ Built by `tools/build_sfx.py` from these recordings (trimmed, mixed, filtered an
 
 CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ · CC0: https://creativecommons.org/publicdomain/zero/1.0/
 
-## Chosen by the owner, 11 Nov 2026
+## Chosen by the owner, 11 and 12 Nov 2026
 
 Built by `tools/build_sfx_chosen.py`.
 
@@ -42,5 +42,9 @@ Built by `tools/build_sfx_chosen.py`.
 | `thunder_loop` | [rain and thunders](https://opengameart.org/content/rain-and-thunders) | kindland | CC0 |
 | `storm_loop` | [Storm & Siren](https://opengameart.org/content/storm-siren) | TinyWorlds | CC0 |
 | `bubbles_loop` | [Bubble Sound Effects](https://opengameart.org/content/bubble-sound-effects) | BMacZero | CC0 |
+| `coins` | [Coin Sounds](https://opengameart.org/content/coin-sounds-0) | Varkalandar | CC BY 3.0 |
+| `refit` | [JC Sounds: Mechanical Pack Vol 1](https://opengameart.org/content/jc-sounds-mechanical-pack-vol-1) | JC Sounds | CC BY 4.0 |
+| `typewriter` | [Typewriter sounds](https://opengameart.org/content/typewriter-sounds) | Cassie-OrbitGames | CC0 |
+| `horn` | [War on Water: SNDFX](https://opengameart.org/content/war-on-water-sndfx) | yd | CC0 |
 
-CC BY 3.0: https://creativecommons.org/licenses/by/3.0/
+CC BY 3.0: https://creativecommons.org/licenses/by/3.0/ · CC BY 4.0: https://creativecommons.org/licenses/by/4.0/

@@ -1172,7 +1172,7 @@ func _save_slots(saving: bool) -> void:
         box.add_child(UI.title("Save the campaign" if saving else "Load a saved game"))
         if saving:
             var le := LineEdit.new(); le.text = "%s, %s" % [Origins.INFO.get(String(G.get("origin", "")), {}).get("label", "Campaign"), Campaign.date_str(int(G.day))]; le.custom_minimum_size.x = 420
-            box.add_child(UI.row([UI.label("Name", UI.INK, 14), le, UI.button("Save", func(): Campaign.slot_save(le.text); _toast("Saved: " + le.text); _save_slots(true), true)]))
+            box.add_child(UI.row([UI.label("Name", UI.INK, 14), le, UI.button("Save", func(): Sfx.cue("typewriter", 0.5); Campaign.slot_save(le.text); _toast("Saved: " + le.text); _save_slots(true), true)]))
         else: _p(box, "Loading leaves the campaign you are playing as it was last saved (the autosave runs every few days).", UI.DIM, 13)
         var sl: Array = Campaign.slots()
         if sl.is_empty(): _p(box, "No saved games yet.", UI.DIM, 14)
@@ -1180,7 +1180,7 @@ func _save_slots(saving: bool) -> void:
             var info := UI.label("%s\n%s · %s · %s · %d ship%s%s" % [m.name, m.date, Origins.INFO.get(String(m.origin), {}).get("label", m.origin), Campaign.fmt(float(m.credits)), int(m.ships), "" if int(m.ships) == 1 else "s", (" · " + Time.get_datetime_string_from_unix_time(int(m.saved)).replace("T", " ").substr(0, 16)) if m.has("saved") else ""], UI.INK, 13)
             info.custom_minimum_size.x = 360
             var id: String = m.id
-            var act := UI.button("Overwrite", func(): Campaign.slot_save(String(m.name)); _toast("Saved: " + String(m.name)); _save_slots(true)) if saving else UI.button("Load", func():
+            var act := UI.button("Overwrite", func(): Sfx.cue("typewriter", 0.5); Campaign.slot_save(String(m.name)); _toast("Saved: " + String(m.name)); _save_slots(true)) if saving else UI.button("Load", func():
                 if Campaign.slot_load(id): get_tree().change_scene_to_file("res://scenes/world_map.tscn")
                 else: _toast("That save cannot be read."), true)
             box.add_child(UI.row([info, act, UI.button("Delete", func(): Campaign.slot_delete(id); _save_slots(saving))]))
@@ -1306,6 +1306,7 @@ func _trade(f: Dictionary) -> void:
     , true, 860)
 
 func _deal(f: Dictionary, gid: String, n: int, price: int, buying: bool) -> void:
+    if n != 0: Sfx.cue("coins", 0.45)   # coins into the till (the owner's pick, 12 Nov 2026)
     var G: Dictionary = Campaign.G
     if n <= 0: return
     if buying: G.credits -= n * price; G.cargo[gid] += n; f.cargo[gid] = int(f.cargo.get(gid, 0)) - n; f.cash = int(f.cash) + n * price
@@ -1394,13 +1395,14 @@ func _show_aftermath(r: Dictionary) -> void:
                 var who: String = ("your " if w.own else "enemy ") + h2.name.to_lower()
                 if w.taken != "": _p(box, "%s · %s · %s" % [w.rec.name, who, w.taken], UI.GREEN); continue
                 var why: String = Campaign.can_recover(w)
-                var b := UI.button("Raise her · %d t steel, %s" % [int(c.steel), Campaign.fmt(int(c.credits))], func(): _toast(Campaign.recover(w)); _show_aftermath(r), false, why != "")
+                var b := UI.button("Raise her · %d t steel, %s" % [int(c.steel), Campaign.fmt(int(c.credits))], func(): Sfx.cue("horn", 0.45); _toast(Campaign.recover(w)); _show_aftermath(r), false, why != "")
                 if why != "": b.tooltip_text = why
                 box.add_child(UI.row([UI.label("%s · %s" % [w.rec.name, who]), b]))
         box.add_child(UI.button("Return to the chart", func(): _aftermath_done(r), true))
     , true)
 
 func _take_prize(s: Dictionary) -> void:
+    Sfx.cue("horn", 0.45)   # a ship joins the squadron
     var G: Dictionary = Campaign.G; var r: Dictionary = Campaign.last_result
     s.taken = "Taken"; var ns = s.duplicate(true); ns.erase("taken"); ns.pal = "player"; ns.id = str(randi()); ns.xp = 0.0; G.fleet.append(ns); G.kills += 1   # a prize crew is a scratch crew: green
     _toast("%s sails under your flag. She needs %d crew." % [s.name, GameData.hulls[s.type].crew])
@@ -1464,11 +1466,11 @@ func _open_site(q: Dictionary) -> void:
                 _p(box, "Prices here against %s's market: the den pays a quarter more for munitions, electronics and medicine, and sells them a fifth cheaper.%s" % [p.name, " The %s will hear of it." % GameData.fac[p.fac].short if p.fac != "freeport" and GameData.fac.has(p.fac) and p.fac != "player" else ""], UI.DIM, 13)
                 var held := []
                 for gid in Campaign.DEN_GOODS: if float(G.cargo.get(gid, 0.0)) >= 1.0: held.append("%d t %s" % [int(G.cargo[gid]), gid])
-                box.add_child(UI.button("Sell %s" % (", ".join(held) if not held.is_empty() else "(nothing to sell)"), func(): _toast(Campaign.den_sell(q)); _open_site(q), false, held.is_empty()))
+                box.add_child(UI.button("Sell %s" % (", ".join(held) if not held.is_empty() else "(nothing to sell)"), func(): Sfx.cue("coins", 0.45); _toast(Campaign.den_sell(q)); _open_site(q), false, held.is_empty()))
                 var row := []
                 for gid in Campaign.DEN_GOODS:
                     var pr := int(round(Campaign.den_price(q, gid) * Campaign.DEN_BUY))
-                    row.append(UI.button("Buy 10 %s · %d a ton" % [gid, pr], func(): _toast(Campaign.den_buy(q, gid, 10)); _open_site(q), false, G.credits < pr * 10))
+                    row.append(UI.button("Buy 10 %s · %d a ton" % [gid, pr], func(): Sfx.cue("coins", 0.45); _toast(Campaign.den_buy(q, gid, 10)); _open_site(q), false, G.credits < pr * 10))
                 box.add_child(UI.row(row))
                 box.add_child(UI.button("Hire 50 hands · %s" % Campaign.fmt(750), func(): _toast(Campaign.den_hire(50)); _open_site(q), false, G.credits < 750))
             "island":
@@ -1483,7 +1485,7 @@ func _open_site(q: Dictionary) -> void:
                 _p(box, "Raised, a ship comes back at a fifth of her hull with one or two lasting defects (a yard can rebuild them away). Steel comes from your holds (%d tons aboard)." % int(G.cargo.get("steel", 0.0)), UI.DIM, 13)
                 for i in q.hulks.size():
                     var h: Dictionary = GameData.hulls[q.hulks[i]]; var w: Dictionary = Campaign.fleet_wreck(q, i); var c: Dictionary = Campaign.recover_cost(w.rec); var why := Campaign.can_recover(w)
-                    var b := UI.button("Raise her · %d t steel, %s" % [int(c.steel), Campaign.fmt(int(c.credits))], func(): _toast(Campaign.raise_hulk(q, i)); _open_site(q), false, why != "")
+                    var b := UI.button("Raise her · %d t steel, %s" % [int(c.steel), Campaign.fmt(int(c.credits))], func(): Sfx.cue("horn", 0.45); _toast(Campaign.raise_hulk(q, i)); _open_site(q), false, why != "")
                     b.tooltip_text = why; box.add_child(UI.row([UI.label("%s · %s class" % [h.name, h.dn], UI.INK, 14), b] + ([UI.label(why, UI.DIM, 12)] if why != "" else [])))
         box.add_child(UI.button("Leave", close_panel)))
 
@@ -1624,6 +1626,7 @@ func sell_value(s: Dictionary) -> int:
     return int(floor(v * 0.45 * (0.4 + 0.6 * s.hullFrac)))
 ## Commissions a new ship from a yard for the price given: she joins the squadron with her standard fit.
 func buy_ship(t: String, pr: int) -> Dictionary:
+    Sfx.cue("horn", 0.45)   # a ship joins the squadron (the yard, a sister ship)
     var G: Dictionary = Campaign.G
     G.credits -= pr; var s: Dictionary = Campaign.new_ship(t, null, "player", G.tech); s.paid = pr; s.built = int(G.day); G.fleet.append(s)   # new from the yard: no age
     return s
@@ -1662,6 +1665,7 @@ func refit_cost(s: Dictionary, plan: Array, arm = null) -> Array:
     if s.has("paid"): refund = mini(refund, int(float(s.paid) * 0.5) + buy)
     return [buy, refund]
 func apply_refit(s: Dictionary, plan: Array, arm = null) -> void:
+    Sfx.cue("refit", 0.5)   # the yard's work done
     var c := refit_cost(s, plan, arm)
     Campaign.G.credits -= c[0] - c[1]; var moved := refit_tons(s, plan, arm); s.fit = plan.duplicate()
     if arm != null:
@@ -1797,6 +1801,7 @@ func _market(box: Control, p: Dictionary) -> void:
     _p(box, "Prices follow the world: wars, sieges, convoys that arrive or are lost, and the works that feed a flag. Your own trading moves them too.", UI.DIM, 13)
 
 func _buy(p: Dictionary, gid: String, n: int) -> void:
+    if n != 0: Sfx.cue("coins", 0.45)   # coins into the till (the owner's pick, 12 Nov 2026)
     var G: Dictionary = Campaign.G; var bp = buy_price(p, gid)
     var free: int = Campaign.fuel_room() if gid == "fuel" else Campaign.cargo_cap() - Campaign.cargo_used()
     var want: int = free if n < 0 else mini(n, free)
@@ -1809,6 +1814,7 @@ func _buy(p: Dictionary, gid: String, n: int) -> void:
     _render_port()
 
 func _sell(p: Dictionary, gid: String, n: int) -> void:
+    if n != 0: Sfx.cue("coins", 0.45)   # coins into the till (the owner's pick, 12 Nov 2026)
     var G: Dictionary = Campaign.G; var held = int(floor(G.cargo[gid])); var k = held if n < 0 else mini(n, held); var got = 0
     for i in k: got += sell_price(p, gid); p.drift[gid] = maxf(-0.5, p.drift[gid] - 0.003)
     G.credits += got; G.cargo[gid] -= k; _render_port()
@@ -2331,7 +2337,7 @@ func _rebuild(box: Control, s: Dictionary, plan: Array, arm: Dictionary) -> void
     var age: float = Campaign.age_years(s); var rc: int = Campaign.reconstruct_cost(s)
     var why := Campaign.can_reconstruct(s)
     _p(box, "She is %d years old. A reconstruction takes her to pieces and rebuilds her: her machinery, wiring and fittings are renewed, so she wears as a ship two years old (wear now %d%%, at least %d%% after an overhaul). It costs %s and leaves her crew to work her up from %d%% readiness." % [int(age), int(Campaign.wear(s) * 100), int(Campaign.wear_floor(s) * 100), Campaign.fmt(rc), int(Campaign.RDY_MIN * 100)], UI.DIM, 13)
-    var b := UI.button("Reconstruct her · " + Campaign.fmt(rc), func(): _toast(Campaign.reconstruct(s)); _render_port(), false, why != "")
+    var b := UI.button("Reconstruct her · " + Campaign.fmt(rc), func(): Sfx.cue("refit", 0.5); _toast(Campaign.reconstruct(s)); _render_port(), false, why != "")
     box.add_child(UI.row([b] + ([UI.label(why, UI.DIM, 12)] if why != "" else [])))
     var yard: Array = yard_of(cur_port) if not cur_port.is_empty() else []
     if yard.has(s.type):
@@ -2407,7 +2413,7 @@ func _systems(box: Control, s: Dictionary) -> void:
         var up2: Dictionary = s.up.duplicate(); up2[k] = lvl + 1
         var heavy: bool = not BattleSim.loading(d, s.fit, up2, s.get("arm", {})).ok and BattleSim.system_tons(d, k) > 0.0
         var b := UI.button("Fit Mk %s · %s" % ["I" if lvl == 0 else "II", Campaign.fmt(cost)], func():
-            G.credits -= cost; s.up[k] = lvl + 1; Campaign.refit_done(s, BattleSim.system_tons(d, k)); _toast("%s: %s Mk %s fitted. Readiness %d%%." % [s.name, u.name, "I" if lvl == 0 else "II", int(round(Campaign.readiness(s) * 100))]); _render_port(), false, locked or heavy or G.credits < cost)
+            Sfx.cue("refit", 0.5); G.credits -= cost; s.up[k] = lvl + 1; Campaign.refit_done(s, BattleSim.system_tons(d, k)); _toast("%s: %s Mk %s fitted. Readiness %d%%." % [s.name, u.name, "I" if lvl == 0 else "II", int(round(Campaign.readiness(s) * 100))]); _render_port(), false, locked or heavy or G.credits < cost)
         b.custom_minimum_size.x = 170   # one width down the list
         var why := ""   # said beside the button, not only in its tooltip (UI review, 12 Nov 2026)
         if locked: why = "needs " + String(Campaign.C.TECH.filter(func(x): return x.id == needs).map(func(x): return x.name).front() if Campaign.C.TECH.any(func(x): return x.id == needs) else needs)

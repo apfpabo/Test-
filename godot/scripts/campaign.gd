@@ -1000,7 +1000,9 @@ const BOUNTY_CEIL := 2500000.0
 const HUNT_K := 1.5
 const HUNT_FLOOR := 20000.0
 const HUNT_GRACE := 40
-func bounty_grace(f: Dictionary) -> bool: return f.get("kind", "") == "bounty" and int(G.get("day", 0)) <= BOUNTY_GRACE
+## Raider flotillas keep the same grace (tuning round 1, the owner's choice B, 12 Nov 2026: four of eleven Merchants lost
+## in 16 runs were caught by raiders on days 29-38).
+func bounty_grace(f: Dictionary) -> bool: return (f.get("kind", "") == "bounty" or f.get("kind", "") == "raiders") and int(G.get("day", 0)) <= BOUNTY_GRACE
 
 func spawn_fleet(kind: String, fac: String, initial := false, mission = null) -> Dictionary:
     var P: Dictionary = G.player; var era = fac_era(mission.fac if mission != null else fac); var tl = enemy_tech(era); var scale = 1.0 + G.day / 120.0
@@ -1018,7 +1020,7 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
             var g: Array = C.RAIDER_GROUNDS.pick_random(); pos = water_point(8, Vector2(g[0], g[1]), g[2])
         else:
             var p: Dictionary = G.ports.filter(func(q): return q.fac != "enclave").pick_random(); pos = water_point(8, Vector2(p.sx, p.sy), 420)
-        if mission != null or (initial and kind != "bounty") or mdist(pos.x, pos.y, P.x, P.y) > 300: break   # (a bounty squadron never starts on top of a new captain)
+        if mission != null or (initial and kind != "bounty" and kind != "raiders") or mdist(pos.x, pos.y, P.x, P.y) > 300: break   # (a bounty squadron or raider flotilla never starts on top of a new captain)
     f.x = pos.x; f.y = pos.y; f.home = {"x": pos.x, "y": pos.y}
     if mission != null:
         f.kind = "mission"; f.name = mission.title; f.mission = true

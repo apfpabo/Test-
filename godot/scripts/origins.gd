@@ -63,12 +63,13 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			st.fleet = [["fr_victory", "Southern Trader", {}]]; st.credits = 45000; st.port = "Cape Ombra"
 			st.cargo = {"fuel": 120, "food": 60, "steel": 60, "electronics": 20}
 			st.rep = {"combine": 15, "freeport": 15}
-			st.perks = {"trade": 0.06}
+			st.perks = {"trade": 0.06, "evade": 25}   # (tuning round 1, the owner's choice A, 12 Nov 2026: a merchant master knows when to run; she broke off from torpedo boats one time in ten)
 		"survivor":
 			st.fleet = [[N.dd, null, {"hull": 0.45}]]; st.credits = 14000; st.officer = 3; st.port = N.neutral; st.crew = 0.85   # (tuning, 11 Nov 2026: 6,000 and 70% crew left him broke within a fortnight)
 			st.cargo = {"fuel": 60, "food": 40}
 			st.rep = {navy: 0, en: -40, "freeport": 10, "enclave": 10}
-			st.perks = {"hunted": [{"fac": en, "name": GameData.fac[en].short + " hunter group", "days": 180, "max": 1, "every": 0.025, "budget": 50000}]}
+			st.perks = {"hunted": [{"fac": en, "name": GameData.fac[en].short + " hunter group", "days": 180, "max": 1, "every": 0.025, "budget": 50000}],
+				"pension": [{"name": "Back pay from the " + GameData.fac[navy].short + " navy", "pay": 2000, "days": 180}]}   # (tuning round 1, the owner's choice C, 12 Nov 2026: repairing his ship ate his purse)
 		"privateer":
 			st.fleet = [["dd_soldati", null, {}]]; st.credits = 20000; st.officer = 2; st.port = "Puerto Corvo"
 			st.rep = {"republic": 30, "directorate": -40, "concord": -5, "pacific": -5, "combine": -5}

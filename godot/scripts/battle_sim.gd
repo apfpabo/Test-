@@ -728,7 +728,7 @@ func _ew_tick(dt: float) -> void:
     for o in ships: if o.chaff_t > 0.0: o.chaff_t -= dt
 func fire_chaff(s: CShip, threat: Vector2) -> void:
     if s.chaff <= 0 or s.chaff_t > 0.0: return
-    s.chaff -= 1; s.chaff_t = CHAFF_COOL
+    s.chaff -= 1; s.chaff_t = CHAFF_COOL; sound("gun_S", s.pos, 0.18)   # the launcher's report
     var side_v := Vector2.from_angle((threat - s.pos).angle() + PI / 2) * (1.0 if randf() < 0.5 else -1.0)
     var at: Vector2 = s.pos + side_v * (120.0 + s.d.B * 2.0)
     decoys.append({"pos": at, "t": CHAFF_LIFE, "side": s.side})
@@ -1067,6 +1067,7 @@ func _young_near(type: int, p: Vector2, size: float, young: float) -> Part:
 ## with a splash and a burning slick. The classic style keeps the old puff.
 var falling: Array = []     # {p, v, t, T, a, spin, jet, side}: aircraft going down
 func fx_plane_down(p: Vector2, vel: Vector2, jet := false, side := 0) -> void:
+    sound("hit", p, 0.22)   # she blows up in the air
     if not modern: part(P.FALL, p, 1.4, 6.0); return
     part(P.CORE, p, 0.16, 6.0); part(P.GLOW, p, 0.9, 30.0)
     for i in 3:
@@ -2747,7 +2748,7 @@ func step(dtv: float) -> void:
             else: alive = tg is CShip and engageable(tg)
         if m.kind == "ssm" and m.has("lure"):   # her seeker has taken a chaff cloud for the ship: she runs on to it and into the sea
             var lp: Vector2 = m.lure
-            if m.pos.distance_to(lp) < 30.0: fx_splash(m.pos, 14.0); _log("missile decoyed by chaff"); missiles.remove_at(i); continue
+            if m.pos.distance_to(lp) < 30.0: fx_splash(m.pos, 14.0); sound("splash", m.pos, 0.3); _log("missile decoyed by chaff"); missiles.remove_at(i); continue
             m.a += clampf(ang_diff((lp - m.pos).angle(), m.a), -2.2 * dt, 2.2 * dt); alive = false; tg = null
         if m.kind == "ssm" and not alive and not m.has("lure"):
             m.target = nearest_enemy(m.pos, m.side, 6000.0, func(o: CShip) -> bool: return not submerged(o)); alive = m.target != null
@@ -2772,7 +2773,7 @@ func step(dtv: float) -> void:
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B) and m.target.tech.has("ecm") and not m.get("ecm_tried", false):
                 m.ecm_tried = true
                 if randf() < (0.25 + 0.08 * tech_up(m.target.tech, "ecm")) * (1.3 if jam_mult(m.target) < 1.0 else 1.0) - float(m.get("sk", 0.0)):   # electronic countermeasures: the seeker is decoyed and the missile runs on into the sea
-                    fx_splash(m.pos + Vector2.from_angle(m.a) * 80.0, 14.0); missiles.remove_at(i); continue
+                    fx_splash(m.pos + Vector2.from_angle(m.a) * 80.0, 14.0); sound("splash", m.pos, 0.3); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B):
                 mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")
                 fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); sound("hit_big", m.pos, 0.55); missiles.remove_at(i); continue
@@ -2787,7 +2788,7 @@ func step(dtv: float) -> void:
             part(P.FIRE, m.pos - Vector2.from_angle(m.a) * 2.0, 0.12, 2.5 if m.kind == "ssm" else 1.6)
             if randf() < dtv * 10: part(P.SMOKE, m.pos - Vector2.from_angle(m.a) * 4.0, 2.5, 3.0, Vector2.ZERO, true)
         if m.life <= 0:
-            if m.kind == "ssm": fx_splash(m.pos, 14.0)
+            if m.kind == "ssm": fx_splash(m.pos, 14.0); sound("splash", m.pos, 0.3)
             missiles.remove_at(i)
     update_air(dt)
     _spotters(dt)

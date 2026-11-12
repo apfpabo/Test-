@@ -336,7 +336,7 @@ func fit_mounts(s: CShip) -> void:
     var best := -1
     for m in s.mounts: if m.w.kind == "gun": best = maxi(best, GUN_SIZES.find(m.w.size))
     s.main_sz = GUN_SIZES[maxi(best, 0)]
-    var ld := loading(d, rec.fit, s.up); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
+    var ld := loading(d, rec.fit, s.up, rec.get("arm", {})); s.ld_speed = ld.speed; s.ld_turn = ld.turn; s.ld_spread = ld.spread
 # ------------------------------------------------------------------ the editor (owner's request: a mode to stage and record actions)
 ## In editor mode the action never ends by itself, every ship is in sight unless `reveal` is put off, and ships can
 ## be put on the sea, taken off it, refitted, commanded and set on one another whatever their flags.
@@ -805,7 +805,27 @@ static func system_tons(d: Dictionary, k: String) -> float: return float(UPGRADE
 ## The weight ledger of a ship with this fit and these systems: tons carried against her standard fit and margin,
 ## topweight against standard, and what follows for her speed, helm and gunnery. `ok` is false if no yard would
 ## pass her.
-static func loading(d: Dictionary, fit: Array, up: Dictionary) -> Dictionary:
+## Armour added (or landed, negative) in a refit, by place (`add`: mm on belt, deck, tur), as tons and topweight. Steel
+## at 7.85 t a cubic metre: the belt both sides of her citadel, about a hundredth of her length deep (2 to 4.5 m); the
+## deck over the citadel, her beam wide; a main turret's face, sides and roof, about 80 square metres a turret.
+static func armour_tons(d: Dictionary, add: Dictionary) -> Dictionary:
+    var A := armour_of(d); var cl: float = float(A.cit) * float(d.L); var bh: float = clampf(0.012 * float(d.L), 2.0, 4.5)
+    var turrets := 0
+    for sl in d.slots: if sl.s == "H" or sl.s == "L": turrets += 1
+    var t := {"belt": 2.0 * cl * bh * float(add.get("belt", 0.0)) / 1000.0 * 7.85, "deck": cl * float(d.B) * 0.85 * float(add.get("deck", 0.0)) / 1000.0 * 7.85,
+        "tur": turrets * 80.0 * float(add.get("tur", 0.0)) / 1000.0 * 7.85}
+    t.total = float(t.belt) + float(t.deck) + float(t.tur)
+    t.top = float(t.belt) * 0.25 + float(t.deck) * 0.55 + float(t.tur) * 1.0
+    return t
+## The steps a refit may add or land on each place: a twentieth of what she was built with (at least 5 mm), up to six
+## steps on and three off.
+static func armour_step(d: Dictionary, k: String) -> float:
+    return maxf(5.0, round(float(armour_of(d)[k]) * 0.05 / 5.0) * 5.0)
+const ARM_UP := 6
+const ARM_DOWN := 3
+const ARMOUR_PER_TON := 45   # what a ton of armour plate costs, fitted (beside the yard's labour)
+
+static func loading(d: Dictionary, fit: Array, up: Dictionary, arm: Dictionary = {}) -> Dictionary:
     var std := 0.0; var std_top := 0.0; var now := 0.0; var top := 0.0
     var parts := {"Heavy guns": 0.0, "Medium and light guns": 0.0, "Anti-aircraft": 0.0, "Torpedoes": 0.0, "Missiles": 0.0, "Systems": 0.0}
     for i in d.slots.size():
@@ -820,6 +840,8 @@ static func loading(d: Dictionary, fit: Array, up: Dictionary) -> Dictionary:
     for k in up:
         if not UPGRADES.has(k): continue
         var t := system_tons(d, k) * int(up[k]); now += t; top += t * float(UPGRADES[k].get("top", 0.3)); parts["Systems"] += t
+    if not arm.is_empty():   # armour added or landed in a refit (armour by place)
+        var at := armour_tons(d, arm); now += float(at.total); top += float(at.top); parts["Armour"] = float(at.total)
     var disp := maxf(maxf(float(d.t), std * 6.0), 300.0)   # (boats too small for these shares are reckoned as larger)
     var margin := maxf(8.0, 0.012 * disp); var limit := 0.03 * disp
     var over_t := now - std - margin; var over := maxf(0.0, over_t) / disp

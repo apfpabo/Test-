@@ -52,3 +52,44 @@ They are held to the same rules, and they refit: about three patrol ships in ten
 
 - Armour by place (belt, deck, turrets), machinery chosen for a design speed, and trim fore and aft: left open by the owner, who is not sure how far into realism to go.
 - No new construction to your own design.
+
+## Armour, reconstruction and sister ships (12 Nov 2026)
+
+The owner gave the go-ahead to extending refits instead of building a free designer.
+
+**Armour by place.** On the refit page, plate can be added to or landed from three places, in steps of a twentieth of
+what she was built with (at least 5 mm), up to six steps on and three off:
+
+- the belt
+- the armoured deck
+- the main turrets' faces
+
+How it is weighed:
+
+- **Steel weight:** 7.85 t per cubic metre.
+- **Belt:** both sides of her citadel, about a hundredth of her length deep (2 to 4.5 m). 10 mm more on an Iowa is 82 t.
+- **Deck:** the citadel's length by 85% of her beam. 10 mm more on an Iowa is 357 t.
+- **Turrets:** 80 m² for each main turret.
+- **Topweight factors:** belt 0.25, deck 0.55, turrets 1.0.
+- **Code:** `BattleSim.armour_tons`, `armour_step`, `ARM_UP`, `ARM_DOWN`; the ledger's fourth argument (`loading(d, fit, up, arm)`).
+
+Cost and effect:
+
+- New plate costs `ARMOUR_PER_TON` (45) a ton, plus the yard's 12 a ton labour. Plate landed is scrap: only the labour is paid.
+- It is kept on the ship record as `arm` (mm added per place). `BattleSim.armour_of(d, rec)` adds it, so she fights with it.
+
+**Reconstruction.** A ship ten years old or more can be rebuilt (`Campaign.reconstruct`):
+
+- She then wears as a ship two years old: `built` is set two years back, so her wear floor and rate fall.
+- Cost: a third of her design's price.
+- Her readiness falls to `RDY_MIN`.
+
+**Sister ships.** At a yard that builds her design, a new ship of the same design can be ordered built to the fit planned
+on the page: weapons, armour, and the systems her sister carries. The price (`world_map.sister_price`) is the yard's price
+plus:
+
+- the plan's weapons beyond the standard fit,
+- the plate added,
+- the systems.
+
+Checks: review_test `_rebuilds`. `tests/shot_refit.tscn` pictures `refit_armour.png` and `refit_rebuild.png`. Untuned.

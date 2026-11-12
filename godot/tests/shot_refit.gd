@@ -38,4 +38,14 @@ func _process(_d: float) -> void:
         print("plan over %.0f t, ok %s, speed %.2f, spread %.2f" % [ld.over_t, ld.ok, ld.speed, ld.spread])
         map.refit_warn = String(s.id); map._render_port()
     if f == 50: map._panel_scroll.scroll_vertical = 1400
-    if f == 54: _shot("refit_warn"); get_tree().quit()
+    if f == 54: _shot("refit_warn")
+    if f == 56:   # armour by place, reconstruction, a sister ship: a battleship in a yard that builds her
+        var G: Dictionary = Campaign.G; var yp: Dictionary = {}
+        for q in G.ports: if map.yard_of(q).has("bb_iowa") and not Campaign.hostile(q.fac): yp = q; break
+        var b: Dictionary = Campaign.new_ship("bb_iowa", "Wisconsin Bay", "player", G.tech); b.built = int(G.day) - 365 * 12; G.fleet.insert(0, b)
+        map.close_panel(); map.open_port(yp, false); map.port_tab = "refit"; map.refit_idx = 0; map.refit_warn = ""
+        map.refit_arm[b.id] = {"belt": 30.0, "deck": 15.0}; map._render_port()
+    if f == 60: map._panel_scroll.scroll_vertical = 1100
+    if f == 64: _shot("refit_armour")
+    if f == 66: map._panel_scroll.scroll_vertical = 4000
+    if f == 70: _shot("refit_rebuild"); get_tree().quit()

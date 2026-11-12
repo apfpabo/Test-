@@ -364,7 +364,7 @@ func crew_name(s: Dictionary) -> String: return String(BattleSim.CREW[BattleSim.
 ## ledger out every tick. Call ship_refitted(s) whenever her weapons or systems change.
 func load_speed(s: Dictionary) -> float:
     var v = s.get("ldv")
-    if v == null: v = float(BattleSim.loading(hull(s), s.fit, s.get("up", {})).speed); s.ldv = v
+    if v == null: v = float(BattleSim.loading(hull(s), s.fit, s.get("up", {}), s.get("arm", {})).speed); s.ldv = v
     return float(v)
 func ship_refitted(s: Dictionary) -> void: s.erase("ldv")
 ## How much of her readiness a refit costs: the crew must work up what has been changed. Moving a twentieth of her
@@ -604,6 +604,21 @@ func wear_floor(s: Dictionary) -> float: return minf(0.3, age_years(s) * 0.012)
 func overhaul_cost(s: Dictionary) -> int: return int(ceil(float(hull(s).price) * OVERHAUL_K * maxf(0.0, wear(s) - wear_floor(s)) * (1.0 + age_years(s) / 20.0)))
 func overhaul(s: Dictionary) -> void:
     G.credits -= overhaul_cost(s); s.wear = wear_floor(s)
+## Reconstruction (docs/REFIT.md; the owner's go-ahead, 12 Nov 2026): an old ship rebuilt in a yard wears as one two
+## years old. A third of her design's price; she must be ten years old or more; her crew works her up from RDY_MIN.
+const RECON_AGE := 10.0
+const RECON_K := 0.33
+func reconstruct_cost(s: Dictionary) -> int: return int(round(float(hull(s).price) * RECON_K / 100.0) * 100)
+func can_reconstruct(s: Dictionary) -> String:
+    if age_years(s) < RECON_AGE: return "only a ship ten years old or more is worth rebuilding"
+    if G.credits < reconstruct_cost(s): return "you need %s more" % fmt(reconstruct_cost(s) - G.credits)
+    return ""
+func reconstruct(s: Dictionary) -> String:
+    if can_reconstruct(s) != "": return can_reconstruct(s)
+    G.credits -= reconstruct_cost(s); s.built = int(G.day) - 730; s.wear = wear_floor(s); s.rdy = RDY_MIN
+    if s.has("paid"): s.paid = float(s.paid) + reconstruct_cost(s)
+    log_ev("Reconstructed: " + String(s.name))
+    return "%s is rebuilt: she wears as a ship two years old. Her crew must work her up again." % s.name
 func _wear_day() -> void:
     for s in all_ships(): s.wear = minf(1.0, wear(s) + WEAR_DAY * (1.0 + age_years(s) * AGE_WEAR))
 ## Ships laid up: [{ship, port (id), since (day)}].

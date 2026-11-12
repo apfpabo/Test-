@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour()
-	ok(sections == 20, "every section ran to its end (%d of 20)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds()
+	ok(sections == 21, "every section ran to its end (%d of 21)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1484,4 +1484,41 @@ func _armour() -> void:
 		var r: Dictionary = mk.call(0.2, Vector2(float(tur.slot.x), float(tur.slot.y)))
 		if r.get("place", "") == "tur" and r.kind == "pen": got = true; break
 	ok(got and tur.dead, "a shell through a turret's face puts it out of action")
+	sections += 1
+
+## Refits by place and rebuilding (docs/REFIT.md): armour plate in a refit, weighed and paid for; reconstruction; a
+## sister ship built to a plan.
+func _rebuilds() -> void:
+	Campaign.new_game("commission"); var G: Dictionary = Campaign.G; G.credits = 2000000
+	var WM = load("res://scripts/world_map.gd").new()
+	var iowa: Dictionary = GameData.hulls["bb_iowa"]
+	var t1: Dictionary = BattleSim.armour_tons(iowa, {"belt": 10}); var t2: Dictionary = BattleSim.armour_tons(iowa, {"deck": 10})
+	ok(float(t1.total) > 50 and float(t1.total) < 120 and float(t2.total) > 250 and float(t2.total) < 500, "10 mm more belt on an Iowa weighs %d t, 10 mm more deck %d t" % [int(t1.total), int(t2.total)])
+	var fit: Array = BattleSim.default_fit(iowa, [])
+	var l0: Dictionary = BattleSim.loading(iowa, fit, {}); var l1: Dictionary = BattleSim.loading(iowa, fit, {}, {"deck": 30})
+	ok(float(l1.tons) > float(l0.tons) + 900 and float(l1.top) > float(l0.top) and float(l1.speed) < float(l0.speed), "30 mm more deck: %d t, slower (%.3f)" % [int(float(l1.tons) - float(l0.tons)), float(l1.speed)])
+	var l2: Dictionary = BattleSim.loading(iowa, fit, {}, {"belt": -15})
+	ok(float(l2.tons) < float(l0.tons) and float(l2.speed) >= float(l0.speed), "belt plate landed: lighter")
+	var s: Dictionary = Campaign.new_ship("bb_iowa", "Test", "player", []); G.fleet.append(s)
+	var c0 := float(G.credits); var cost: Array = WM.refit_cost(s, s.fit, {"belt": 15})
+	WM.apply_refit(s, s.fit.duplicate(), {"belt": 15})
+	ok(s.get("arm", {}).get("belt", 0.0) == 15.0 and float(G.credits) < c0 and float(cost[0]) > 0 and Campaign.readiness(s) < 1.0, "a refit adds 15 mm of belt for %d and some readiness" % int(cost[0]))
+	ok(int(BattleSim.armour_of(iowa, s).belt) == 322, "her belt is now 322 mm")
+	var sim := BattleSim.new(); sim.setup([s], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], [], [], 0)
+	ok(absf(float(sim.ships[0].ar.belt) - 322.0) < 1.0, "and she goes into action with it")
+	WM.apply_refit(s, s.fit.duplicate(), {})
+	ok(not s.has("arm"), "landing it again leaves her as built")
+	# reconstruction: an old ship only
+	var old: Dictionary = Campaign.new_ship("bb_nelson", "Old", "player", []); old.built = int(G.day) - 365 * 15; old.wear = 0.6; G.fleet.append(old)
+	ok(Campaign.can_reconstruct(s) != "" and Campaign.can_reconstruct(old) == "", "a new ship is not rebuilt; an old one can be")
+	var floor0: float = Campaign.wear_floor(old); Campaign.reconstruct(old)
+	ok(Campaign.age_years(old) < 2.1 and Campaign.wear_floor(old) < floor0 and Campaign.readiness(old) <= Campaign.RDY_MIN + 0.001, "rebuilt: she wears as a ship two years old")
+	# a sister ship built to a plan
+	var p: Dictionary = {}
+	for q in G.ports: if WM.yard_of(q).has("bb_iowa"): p = q; break
+	if not p.is_empty():
+		var plan: Array = s.fit.duplicate(); var pr: int = WM.sister_price(p, s, plan, {"deck": 10})
+		ok(pr > WM.ship_price(p, "bb_iowa"), "a sister ship with more deck armour costs more than the yard's price (%d)" % pr)
+	else: ok(true, "(no yard builds the Iowa in this world)")
+	WM.free()
 	sections += 1

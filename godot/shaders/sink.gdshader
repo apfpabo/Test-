@@ -18,7 +18,7 @@ float height(vec2 p, float k, float seed) {
 	float r0 = length(p), r = r0 / rag;   // the lip is ragged; the bowl inside it is smooth (a ragged bowl showed spokes)
 	float depth = 0.6 * (1.0 - k) * (1.0 - k);   // a shallow dimple for the size of the column over it (the owner, 12 Nov 2026)
 	float bowl = -depth * pow(max(0.0, 1.0 - r0 * r0), 1.6) * smoothstep(1.06, 0.9, r0);   // eased into the lip: no dark crease inside it
-	float lip = 0.2 * (1.0 - k) * exp(-pow((r - 1.02) / 0.13, 2.0)) * (0.7 + 0.6 * fbm(p * 3.0 + seed));
+	float lip = 0.18 * (1.0 - k) * exp(-pow((r - 1.03) / 0.17, 2.0)) * (0.75 + 0.5 * fbm(p * 3.0 + seed));   // (a little broader and softer at the owner's word)
 	float rip = 0.06 * (1.0 - k) * sin((r - 1.0) * 14.0 - k * 9.0) * exp(-max(r - 1.0, 0.0) * 3.5) * smoothstep(1.02, 1.25, r);   // eased in: no crease at the edge
 	float chop = 0.015 * (fbm(p * 4.0 + seed * 3.0) - 0.5) * smoothstep(1.3, 0.6, r);   // the disturbed surface inside
 	return bowl + lip + rip + chop;
@@ -35,7 +35,7 @@ void fragment() {
 	vec3 l = normalize(vec3(-normalize(sun), 1.15));                         // the sun some 40 degrees up
 	float flat_l = l.z;
 	float shade = dot(n, l) - flat_l;                                       // lighter or darker than the open sea
-	float fade = smoothstep(1.5, 1.15, length(p)) * (1.0 - smoothstep(0.5, 1.0, k));
+	float fade = smoothstep(1.5, 1.05, length(p)) * (1.0 - smoothstep(0.5, 1.0, k));
 	vec4 o = vec4(0.0);
 	// shadowed slopes darken the sea, lit ones brighten it towards the sky's reflection
 	if (shade < 0.0) o = vec4(0.0, 0.03, 0.05, clamp(-shade * 2.6, 0.0, 0.45));

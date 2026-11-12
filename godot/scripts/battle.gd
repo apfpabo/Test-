@@ -997,7 +997,7 @@ class Drawer extends Node2D:
         var z: float = battle.zoom(); var mn: float = 1.0 / z
         var sun: Vector2 = BattleSim.SUN.normalized(); var wind: Vector2 = BattleSim.WIND.normalized()
         for q in battle.splash_parts()[0]:
-            var e: float = q.life; var sz: float = q.size; var R: float = sz; var H: float = sz * 3.8; var stand: float = BattleSim.col_stand(sz)
+            var e: float = q.life; var sz: float = q.size; var R: float = sz * 1.4; var H: float = sz * 4.6; var stand: float = BattleSim.col_stand(sz)
             var rise: float = minf(1.0, e / 1.6); var fallK: float = clampf((e - 1.6 - stand) / 2.4, 0.0, 1.0)
             var h: float = H * sin(rise * PI * 0.5) * (1.0 - fallK)
             var nk: float = _night_k(q.pos); var cl: Texture2D = GameData.fx_tex("cloud%d" % int(maxi(0, q.v) % 4))
@@ -1012,20 +1012,19 @@ class Drawer extends Node2D:
                         var an: float = i * TAU / 20.0; var rag: float = 1.0 + 0.12 * (_hash(float(i), float(q.v)) - 0.5)
                         pts.append(q.pos + (sun * L * 0.5) + (sun * cos(an) * L * 0.55 + Vector2(-sun.y, sun.x) * sin(an) * R * 0.8) * float(layer[0]) * rag)
                     draw_colored_polygon(pts, Color(0.0, 0.03, 0.05, float(layer[1]) * sa))
-            # the curtain and the surge as it falls
+            # the curtain and the surge as it falls: water dropping back in ragged sheets and a spreading skirt of foam, at
+            # uneven angles and distances (an even ring of puffs and a dashed ring read as drawn, not as water)
             if fine and fallK > 0.0:
-                var rr: float = R * (1.1 + 2.2 * fallK)
-                for i in 14:
-                    var an: float = i * TAU / 14.0 + float(q.v); var jag: float = _hash(float(i), float(q.v) + q.pos.x * 0.01)
-                    var r1: float = rr * (0.85 + 0.3 * jag)
-                    _rpuff(cl, q.pos + Vector2.from_angle(an) * r1, R * 0.36 * (1.0 - fallK * 0.5), an * 2.0, Color(0.93 * nk, 0.97 * nk, 0.96 * nk, 0.55 * (1.0 - fallK) * (0.5 + jag)))
+                var foam_t: Texture2D = GameData.fx_tex("foam")
+                var rr: float = R * (0.8 + 1.6 * fallK)
+                for i in 9:
+                    var jag: float = _hash(float(i), float(q.v) + q.pos.x * 0.01); var j2: float = _hash(float(i) + 4.0, q.pos.y * 0.013)
+                    var an: float = float(q.v) * 1.3 + i * TAU / 9.0 + (j2 - 0.5) * 1.6
+                    var r1: float = rr * (0.45 + 0.75 * jag)
+                    _rpuff(foam_t, q.pos + Vector2.from_angle(an) * r1, R * (0.45 + 0.4 * j2) * (1.0 + 0.6 * fallK), an * 2.0, Color(0.9 * nk, 0.96 * nk, 0.95 * nk, 0.42 * (1.0 - fallK) * (0.4 + 0.6 * jag)))
                 var sk: float = clampf((e - 1.6 - stand) / 6.0, 0.0, 1.0)
-                if sk < 1.0:
-                    var r2: float = R * (2.0 + 5.0 * sk); var w: float = maxf(2.2 * (1.0 - sk) + 0.4, 1.0 * mn)
-                    for j in 24:
-                        if _hash(float(j), float(q.v) * 3.1 + floor(sk * 4.0)) < 0.35: continue   # broken, not a ring
-                        var a0: float = j * TAU / 24.0; var rj: float = r2 * (0.9 + 0.2 * _hash(float(j) + 7.0, float(q.v)))
-                        draw_arc(q.pos, rj, a0, a0 + TAU / 24.0, 4, Color(0.86 * nk, 0.93 * nk, 0.92 * nk, 0.28 * (1.0 - sk)), w * 0.8)
+                if sk < 1.0:   # the skirt: soft foam spreading round the fall, thinning as it goes
+                    _rpuff(foam_t, q.pos, R * (1.4 + 2.2 * sk), float(q.v) + sk, Color(0.86 * nk, 0.94 * nk, 0.93 * nk, 0.3 * (1.0 - sk) * smoothstep(0.0, 0.15, sk + 0.05)))
             # the column's top, leaning downwind (the owner found the soft puffs alone read as a cloud): jets of water flung
             # out from it, a crown of thrown water with the droplets showing in it, lit hard on the sun's side and shaded on
             # the other, and a spray of droplets about it rather than a soft mist
@@ -1038,8 +1037,8 @@ class Drawer extends Node2D:
                     for i in 14:   # streaks of water flung out from it: faint, soft and of every length, lit on the sun's side
                         var j: float = _hash(float(i) + 21.0, float(q.v) + q.pos.y * 0.011); var an: float = q.a + i * TAU / 14.0 + (j - 0.5) * 0.35
                         var dir := Vector2.from_angle(an); var litk: float = clampf(0.6 - 0.4 * dir.dot(sun), 0.25, 1.0)
-                        var r0: float = r * 0.35; var r1: float = r * (0.75 + 0.6 * j) * (1.0 + 0.4 * fallK)
-                        var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.26 * a)
+                        var r0: float = r * 0.35; var r1: float = r * (0.75 + 0.6 * j)
+                        var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.26 * a * (1.0 - fallK))
                         draw_polygon(PackedVector2Array([c + dir * r0 + Vector2(-dir.y, dir.x) * r * 0.06, c + dir * r1, c + dir * r0 - Vector2(-dir.y, dir.x) * r * 0.06]), PackedColorArray([cb, Color(cb, 0.0), cb]))
                     for i in 9:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
                         var j: float = _hash(float(i) + 3.0, float(q.v) + q.pos.y * 0.013); var j2: float = _hash(float(i) + 11.0, q.pos.x * 0.017)

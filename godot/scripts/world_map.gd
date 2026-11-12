@@ -371,6 +371,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         var G: Dictionary = Campaign.G; var z: float = map.zoom; var P: Dictionary = G.player; var vs: Vector2 = map.get_viewport_rect().size
         var hw = vs.x / 2 / z; var b: float = map.boost()
         for p in G.pois:
+            if z < 0.32: break   # at the widest zoom the sites only crowded the coasts (UI review, 12 Nov 2026)
             var x: float = map.rx(p.x)
             if absf(x - map.cam.x) > hw + 50 or absf(p.y - map.cam.y) > vs.y / 2 / z + 50: continue
             var ready: bool = G.day >= p.next; var s = 6.0 / z; var col = Color(0.89, 0.7, 0.24, 1.0 if ready else 0.35)
@@ -455,7 +456,9 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             var x: float = map.rx(s.x)
             if absf(x - map.cam.x) > hw + 60 or absf(s.y - map.cam.y) > hh + 60: continue
             var mine: bool = s.fac == "player"; var mil: bool = Structures.kind(s).military
-            if not mine and z < (0.3 if mil else 0.45): continue
+            # far out only what matters: your own, then an enemy's military works at war, then others' military, then the rest
+            # (UI review, 12 Nov 2026: at the widest zoom every farm and radar station made a band of marks along the coasts)
+            if not mine and z < (0.7 if not mil else (0.3 if (s.fac != "" and Campaign.at_war(s.fac)) else 0.45)): continue
             var c := Vector2(x, s.y)
             if s.kind == "battery" and s.fac != "" and not mine and not Structures.silenced(s) and Campaign.at_war(s.fac):
                 var rr := Structures.battery_units(); var n := 40

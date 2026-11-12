@@ -20,6 +20,7 @@ func _ready() -> void:
 func _step() -> int: return int(Campaign.G.guide.get("step", -1)) if Campaign.G.has("guide") else -1
 func _process(_d: float) -> void:
 	f += 1
+	if f == 3 and map.panel_open: map.close_panel()   # the origin's opening page: put to sea, so the pictures show the cards (the guide steps aside under a panel)
 	if f == 5: ok(map.guide_card != null and _step() == 0, "a new captain gets the guide on the chart"); _shot("1_look")
 	if f == 8: map.zoom *= 1.5
 	if f == 80: ok(_step() == 1, "zooming the chart moves it on (step %d)" % _step()); _shot("2_fleet")

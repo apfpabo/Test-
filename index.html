@@ -1319,7 +1319,7 @@ function drawPlanTop(g, d, P) {
     g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU);
     if (HM.on) pfill(g, null, hf); else { crownFill(g, S, ry, 0.02); g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.08; g.stroke(); g.strokeStyle = shade(S, -0.22); g.lineWidth = 0.12; g.beginPath(); g.ellipse(x, y, rx * 0.92, ry * 0.88, 0, 0, TAU); g.stroke(); }
     g.beginPath(); g.ellipse(x - rx * 0.06, y, rx * 0.78, ry * 0.72, 0, 0, TAU);
-    if (HM.on) pfill(g, null, hf - 2.5);
+    if (HM.on) pfill(g, null, hf - 0.15);   // (level with the rim: a 2.5 m pit let the rim slide into the opening when she listed; the owner saw it, 12 Nov 2026)
     else { g.fillStyle = '#1b1d1e'; g.fill(); g.strokeStyle = 'rgba(80,84,86,.5)'; g.lineWidth = 0.08; g.beginPath(); for (let k = -0.6; k <= 0.6; k += 0.3) { g.moveTo(x + rx * k * 0.8, y - ry * 0.68 * Math.sqrt(1 - k * k)); g.lineTo(x + rx * k * 0.8, y + ry * 0.68 * Math.sqrt(1 - k * k)); } g.stroke();
       g.fillStyle = shade(S, -0.4); for (const sy of [-0.35, 0.35]) { g.beginPath(); g.arc(x + rx * 0.86, y + sy * ry, Math.max(0.15, ry * 0.1), 0, TAU); g.fill(); } }
   });

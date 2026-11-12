@@ -35,6 +35,6 @@ func _process(_d: float) -> void:
         map.open_port(port); map.port_tab = "governor"; map._render_port()
     if f == 56: _shot("flag_governor")
     if f == 58: map.close_panel(); map.cur_port = {}
-    if f == 64: map._cmd_tab("holdings")
+    if f == 64: map._blocking = false; map.close_panel(); map.cmd_tab = "holdings"; map.show_command()   # (straight to the drawer: a contact that came up while the clock ran used to keep the tab from opening)
     if f == 74: _shot("flag_chancery"); map.close_panel()
     if f == 84: _shot("flag_chart"); get_tree().quit()

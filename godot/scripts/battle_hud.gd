@@ -191,8 +191,14 @@ func _draw() -> void:
                 if battle.sel.has(s): draw_rect(Rect2(10, ry - 13, 300, step), Color(GOLD, 0.16)); draw_rect(Rect2(10, ry - 13, 3, step), GOLD)
                 if s.ord != "": own = " · " + String({"engage": "engaging", "escort": "on the flag", "line": "line ahead", "abreast": "line abreast", "screen": "screen", "retreat": "withdrawing", "goto": "to a point", "torp": "torpedo attack"}.get(s.ord, s.ord))
                 if s.hold: own += " · holding fire"
-            _text(Vector2(16, ry), ("★ " if s == sim.flag else "") + s.rec.name + " · " + s.d.name + (" · sunk" if not s.alive else (" · withdrew" if s.escaped else (" · struck" if s.struck else own))), GOLD if (side == 0 and battle.sel.has(s)) else col)
-            if sim.active(s): _bar(Vector2(240, ry - 9), 60, 5, s.hull / s.max_hull, RED if side else GREEN)
+            var row_t: String = ("★ " if s == sim.flag else "") + s.rec.name + " · " + s.d.name + (" · sunk" if not s.alive else (" · withdrew" if s.escaped else (" · struck" if s.struck else own)))
+            _text(Vector2(16, ry), row_t, GOLD if (side == 0 and battle.sel.has(s)) else col)
+            # her hull as a bar and a figure, in a column clear of the longest name (UI review: a name with an order ran into the bar)
+            if sim.active(s):
+                var bx: float = maxf(240.0, 16.0 + font.get_string_size(row_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 10.0)
+                var hf: float = s.hull / s.max_hull
+                _bar(Vector2(bx, ry - 9), 60, 5, hf, RED if side else GREEN)
+                _text(Vector2(bx + 66, ry), "%d%%" % int(round(hf * 100)), Color(INK, 0.6) if hf > 0.4 else RED, 11)
             ry += step
         ry += 8
     # flagship panel

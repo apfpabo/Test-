@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew()
-	ok(sections == 22, "every section ran to its end (%d of 22)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew(); _slots_keys()
+	ok(sections == 23, "every section ran to its end (%d of 23)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1558,4 +1558,30 @@ func _ew() -> void:
 		if mq.has("lure"): lured += 1
 	ok(lured > 12 and lured < 40, "chaff leads %d of 60 missiles off" % lured)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
+	sections += 1
+
+## Save slots and key bindings (12 Nov 2026).
+func _slots_keys() -> void:
+	Campaign.new_game("merchant"); var G: Dictionary = Campaign.G
+	for m in Campaign.slots(): Campaign.slot_delete(m.id)
+	G.credits = 12345
+	var id := Campaign.slot_save("My first save!")
+	ok(id == "my_first_save" and Campaign.slots().size() == 1 and int(Campaign.slots()[0].credits) == 12345, "a named save is listed with its purse")
+	G.credits = 1; Campaign.G.day = 50; Campaign.save()
+	ok(Campaign.slot_load(id) and int(Campaign.G.credits) == 12345 and int(Campaign.G.day) == 1, "loading it brings the campaign back as it was saved")
+	ok(Campaign.load_game() and int(Campaign.G.credits) == 12345, "and it is now the running campaign")
+	Campaign.slot_save("Second"); ok(Campaign.slots().size() == 2 and Campaign.slots()[0].name == "Second", "newest first")
+	Campaign.slot_delete(id); ok(Campaign.slots().size() == 1, "a save deleted is gone")
+	Campaign.slot_delete("second")
+	# keys
+	Settings.reset_keys()
+	ok(Settings.key("battle", KEY_T) == KEY_T and Settings.bound("battle", KEY_T) == KEY_T, "with no bindings a key is itself")
+	Settings.rebind("battle", KEY_T, KEY_L)
+	ok(Settings.key("battle", KEY_L) == KEY_T and Settings.key("battle", KEY_T) == KEY_NONE, "torpedoes moved to L: L fires them, T does nothing")
+	Settings.rebind("battle", KEY_T, KEY_Q)
+	ok(Settings.key("battle", KEY_Q) == KEY_T and Settings.bound("battle", KEY_Q) == KEY_L, "giving it Q swaps: missiles take L")
+	ok(Settings.key("chart", KEY_Q) == KEY_Q, "the chart's keys are its own")
+	var cf := ConfigFile.new(); cf.load(Settings.PATH)
+	ok(int(cf.get_value("keys", "battle", {}).get(KEY_T, 0)) == KEY_Q, "the bindings are saved")
+	Settings.reset_keys(); ok(Settings.binds.battle.is_empty(), "reset")
 	sections += 1

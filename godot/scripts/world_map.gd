@@ -221,8 +221,8 @@ func _process(delta: float) -> void:
     var G: Dictionary = Campaign.G
     _weather_frame()
     if not panel_open:
-        var pan = Vector2((1 if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D) else 0) - (1 if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A) else 0),
-            (1 if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S) else 0) - (1 if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W) else 0))
+        var pan = Vector2((1 if Input.is_key_pressed(KEY_RIGHT) or Settings.held("chart", KEY_D) else 0) - (1 if Input.is_key_pressed(KEY_LEFT) or Settings.held("chart", KEY_A) else 0),
+            (1 if Input.is_key_pressed(KEY_DOWN) or Settings.held("chart", KEY_S) else 0) - (1 if Input.is_key_pressed(KEY_UP) or Settings.held("chart", KEY_W) else 0))
         if pan != Vector2.ZERO: free_cam = true; cam += pan * 600 * dt / zoom
         if not Campaign.paused:
             for i in Campaign.map_speed:
@@ -968,13 +968,14 @@ func _unhandled_input(e: InputEvent) -> void:
         if not drag.moved and d.length() < 6: return
         drag.moved = true; free_cam = true; cam = drag.cam - d / zoom
     elif e is InputEventKey and e.pressed and not e.echo:
-        match e.keycode:
+        var kc: int = e.keycode if e.keycode in [KEY_HOME, KEY_EQUAL, KEY_MINUS, KEY_KP_ADD, KEY_KP_SUBTRACT] else Settings.key("chart", e.keycode)   # the player's key bindings
+        match kc:
             KEY_SPACE: Campaign.paused = not Campaign.paused; _user_pause = Campaign.paused
             KEY_H:   # nothing on the screen but the chart, for recording (H again brings it back)
                 ui.visible = not ui.visible
             KEY_R: Settings.sensors = not Settings.sensors; Settings.save(); _toast("Sensor ranges " + ("shown: how far you see, and how far off you are found." if Settings.sensors else "hidden.") + " (R)")
             KEY_Q, KEY_E:   # the telegraph: Q slower, E faster
-                var i: int = Campaign.SPEED_ORDER.find(Campaign.speed_order()) + (1 if e.keycode == KEY_E else -1)
+                var i: int = Campaign.SPEED_ORDER.find(Campaign.speed_order()) + (1 if kc == KEY_E else -1)
                 _set_speed(Campaign.SPEED_ORDER[clampi(i, 0, Campaign.SPEED_ORDER.size() - 1)])
             KEY_1: _speed(1)
             KEY_2: _speed(2)
@@ -1158,9 +1159,33 @@ func _pause_menu() -> void:
         var snd := UI.button("Sound: off (click to turn on)" if Sfx.muted else "Sound: on (click to mute)", func(): pass)
         snd.pressed.connect(func(): Sfx.muted = not Sfx.muted; snd.text = "Sound: off (click to turn on)" if Sfx.muted else "Sound: on (click to mute)")
         box.add_child(snd)
+        box.add_child(UI.button("Save as…", func(): _save_slots(true)))
+        box.add_child(UI.button("Load a saved game", func(): _save_slots(false)))
         box.add_child(UI.button("Save & exit to title", func(): Campaign.save(); get_tree().change_scene_to_file("res://scenes/main_menu.tscn")))
         box.add_child(UI.button("Save & quit to desktop", func(): Campaign.save(); get_tree().quit()))
     , false, 420)
+
+## Save slots (Campaign.slot_*): a name for a new one, and the list of those saved, each to load, overwrite or delete.
+func _save_slots(saving: bool) -> void:
+    var G: Dictionary = Campaign.G
+    open_panel(func(box):
+        box.add_child(UI.title("Save the campaign" if saving else "Load a saved game"))
+        if saving:
+            var le := LineEdit.new(); le.text = "%s, %s" % [Origins.INFO.get(String(G.get("origin", "")), {}).get("label", "Campaign"), Campaign.date_str(int(G.day))]; le.custom_minimum_size.x = 420
+            box.add_child(UI.row([UI.label("Name", UI.INK, 14), le, UI.button("Save", func(): Campaign.slot_save(le.text); _toast("Saved: " + le.text); _save_slots(true), true)]))
+        else: _p(box, "Loading leaves the campaign you are playing as it was last saved (the autosave runs every few days).", UI.DIM, 13)
+        var sl: Array = Campaign.slots()
+        if sl.is_empty(): _p(box, "No saved games yet.", UI.DIM, 14)
+        for m in sl:
+            var info := UI.label("%s\n%s · %s · %s · %d ship%s%s" % [m.name, m.date, Origins.INFO.get(String(m.origin), {}).get("label", m.origin), Campaign.fmt(float(m.credits)), int(m.ships), "" if int(m.ships) == 1 else "s", (" · " + Time.get_datetime_string_from_unix_time(int(m.saved)).replace("T", " ").substr(0, 16)) if m.has("saved") else ""], UI.INK, 13)
+            info.custom_minimum_size.x = 360
+            var id: String = m.id
+            var act := UI.button("Overwrite", func(): Campaign.slot_save(String(m.name)); _toast("Saved: " + String(m.name)); _save_slots(true)) if saving else UI.button("Load", func():
+                if Campaign.slot_load(id): get_tree().change_scene_to_file("res://scenes/world_map.tscn")
+                else: _toast("That save cannot be read."), true)
+            box.add_child(UI.row([info, act, UI.button("Delete", func(): Campaign.slot_delete(id); _save_slots(saving))]))
+        box.add_child(UI.button("Back", _pause_menu))
+    , false, 720)
 
 func _pause_settings() -> void:
     open_panel(func(box):

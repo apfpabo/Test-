@@ -2144,10 +2144,54 @@ func save(now := true) -> void:
     else: _save_task = WorkerThreadPool.add_task(_write_save.bind(g), false, "autosave")
 func _save_wait() -> void:
     if _save_task >= 0: WorkerThreadPool.wait_for_task_completion(_save_task); _save_task = -1
-func _write_save(g: Dictionary) -> void:
+func _write_save(g: Dictionary, path := SAVE_PATH) -> void:
     _strip_routes(g.player)
     for f in g.fleets: _strip_routes(f)
-    var fa = FileAccess.open(SAVE_PATH, FileAccess.WRITE); fa.store_string(JSON.stringify(g))
+    var fa = FileAccess.open(path, FileAccess.WRITE); fa.store_string(JSON.stringify(g))
+
+# ------------------------------------------------------------------ save slots (12 Nov 2026)
+## Named saves beside the running campaign's own file (SAVE_PATH, which the autosave and every save write): each slot
+## is a copy of the state in user://saves/<id>.json, with a small <id>.meta.json for the list (its name, the date in the
+## game, the origin, the purse, the ships, when it was saved). Loading a slot makes it the running campaign.
+const SLOT_DIR := "user://saves"
+func slot_id(name: String) -> String:
+    var id := ""
+    for ch in name.to_lower().strip_edges():
+        if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"): id += ch
+        elif ch == " " or ch == "-" or ch == "_": id += "_"
+    return id.substr(0, 40) if id != "" else "save"
+func slot_save(name: String) -> String:
+    if G.is_empty(): return ""
+    _save_wait(); DirAccess.make_dir_recursive_absolute(SLOT_DIR)
+    var id := slot_id(name)
+    _write_save(G.duplicate(true), "%s/%s.json" % [SLOT_DIR, id])
+    var meta := {"id": id, "name": name.strip_edges() if name.strip_edges() != "" else id, "day": int(G.day), "date": date_str(int(G.day)), "origin": String(G.get("origin", "")),
+        "credits": int(G.credits), "ships": all_ships().size(), "flagship": String(G.fleet[0].name) if not G.fleet.is_empty() else "", "saved": Time.get_unix_time_from_system(), "v": SAVE_VERSION}
+    var fm = FileAccess.open("%s/%s.meta.json" % [SLOT_DIR, id], FileAccess.WRITE); fm.store_string(JSON.stringify(meta))
+    save()   # and the running campaign's own file, as ever
+    return id
+## The saved slots, newest first.
+func slots() -> Array:
+    var out := []
+    var d := DirAccess.open(SLOT_DIR)
+    if d == null: return out
+    for f in d.get_files():
+        if not f.ends_with(".meta.json"): continue
+        var m = JSON.parse_string(FileAccess.get_file_as_string(SLOT_DIR + "/" + f))
+        if m is Dictionary and FileAccess.file_exists("%s/%s.json" % [SLOT_DIR, m.get("id", "")]): out.append(m)
+    out.sort_custom(func(a, b): return float(a.get("saved", 0)) > float(b.get("saved", 0)))
+    return out
+func slot_load(id: String) -> bool:
+    _save_wait()
+    var path := "%s/%s.json" % [SLOT_DIR, id]
+    if not FileAccess.file_exists(path): return false
+    var txt := FileAccess.get_file_as_string(path)
+    var d = JSON.parse_string(txt)
+    if not (d is Dictionary) or int(d.get("v", 0)) < SAVE_VERSION: return false
+    var fa = FileAccess.open(SAVE_PATH, FileAccess.WRITE); fa.store_string(txt); fa = null   # it becomes the running campaign
+    return load_game()
+func slot_delete(id: String) -> void:
+    DirAccess.remove_absolute("%s/%s.json" % [SLOT_DIR, id]); DirAccess.remove_absolute("%s/%s.meta.json" % [SLOT_DIR, id])
 
 func _strip_routes(o: Dictionary) -> void:
     for k in ["remI", "remN", "remX", "remY", "remT", "msp", "mtr", "prT", "prR", "jam", "jams"]: o.erase(k)   # worked out again as needed

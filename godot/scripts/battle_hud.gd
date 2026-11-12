@@ -143,7 +143,7 @@ func _draw() -> void:
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
     # orders and help
     # squadron orders, in a row: the standing order in gold
-    var orders = [["1", "Engage", "engage"], ["2", "Form on flag", "escort"], ["4", "Line ahead", "line"], ["6", "Line abreast", "abreast"], ["7", "Screen", "screen"], ["3", "Withdraw", "retreat"]]
+    var orders = [[kn(KEY_1), "Engage", "engage"], [kn(KEY_2), "Form on flag", "escort"], [kn(KEY_4), "Line ahead", "line"], [kn(KEY_6), "Line abreast", "abreast"], [kn(KEY_7), "Screen", "screen"], [kn(KEY_3), "Withdraw", "retreat"]]
     var ox := 16.0
     var nsel: int = battle._sel().size()
     _text(Vector2(ox, 28), ("PICKED · %d" % nsel) if nsel > 0 else "SQUADRON", GOLD if nsel > 0 else DIM, 11); ox += 74.0
@@ -152,12 +152,12 @@ func _draw() -> void:
         var wd: float = font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
         draw_rect(Rect2(ox, 13, wd, 21), Color(GOLD, 0.16) if on else Color(1, 1, 1, 0.04)); if on: draw_rect(Rect2(ox, 13, wd, 21), Color(GOLD, 0.7), false, 1)
         _text(Vector2(ox + 8, 28), lbl, GOLD if on else Color(INK, 0.6)); ox += wd + 6.0
-    var hl := "5 Hold fire" + (" · HOLDING" if sim.hold_fire else "")
+    var hl := kn(KEY_5) + " Hold fire" + (" · HOLDING" if sim.hold_fire else "")
     var hw: float = font.get_string_size(hl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
     draw_rect(Rect2(ox + 10, 13, hw, 21), Color(RED, 0.2) if sim.hold_fire else Color(1, 1, 1, 0.04)); if sim.hold_fire: draw_rect(Rect2(ox + 10, 13, hw, 21), Color(RED, 0.8), false, 1)
     _text(Vector2(ox + 18, 28), hl, RED if sim.hold_fire else Color(INK, 0.6))
     var smk: bool = sim.ships.any(func(x): return x.side == 0 and x.smoke_on); ox += hw + 16.0
-    var sl := "8 Smoke · K yours" + (" · LAYING" if smk else "")
+    var sl := kn(KEY_8) + " Smoke · " + kn(KEY_K) + " yours" + (" · LAYING" if smk else "")
     var sw: float = font.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 16.0
     draw_rect(Rect2(ox, 13, sw, 21), Color(GOLD, 0.16) if smk else Color(1, 1, 1, 0.04)); if smk: draw_rect(Rect2(ox, 13, sw, 21), Color(GOLD, 0.7), false, 1)
     _text(Vector2(ox + 8, 28), sl, GOLD if smk else Color(INK, 0.6))
@@ -170,7 +170,8 @@ func _draw() -> void:
     var mp := get_local_mouse_position(); var over: bool = mp.y > 72.0 and mp.y < 136.0 and mp.x < W * 0.9
     var want: float = 0.45 if (sim.t < 30.0 or battle.paused or over) else 0.13
     keys_a = lerpf(keys_a, want, 0.15)
-    for ln in _wrap(("Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire" + " · " + "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · Y radar · U sonar (right-click a ship of yours for both) · R sensors · P pause · Esc menu · M mute").split(" · "), W - 32.0, 12):
+    var kk := func(c: int) -> String: return kn(c)
+    for ln in _wrap(("Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · %s/%s engines · %s/%s rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire" % [kk.call(KEY_W), kk.call(KEY_S), kk.call(KEY_A), kk.call(KEY_D)] + " · " + "Right-drag: pan · %s: recentre · %s autofire" % [kk.call(KEY_SPACE), kk.call(KEY_X)] + (" (ON)" if sim.autofire else "") + (" · %s torpedoes · %s missiles · %s air strike · %s dive · %s next ship · %s shells · %s depth charges · %s hide the interface · %s smoke · %s star shell · %s damage control · %s flood magazine · %s counter-flood · %s torpedo attack · %s rejoin · %s light ships %s heavy %s none" % [kk.call(KEY_T), kk.call(KEY_Q), kk.call(KEY_F), kk.call(KEY_C), kk.call(KEY_TAB), kk.call(KEY_V), kk.call(KEY_Z), kk.call(KEY_H), kk.call(KEY_K), kk.call(KEY_G), kk.call(KEY_B), kk.call(KEY_N), kk.call(KEY_J), kk.call(KEY_9), kk.call(KEY_0), kk.call(KEY_F1), kk.call(KEY_F2), kk.call(KEY_F3)]) + " · Shift+click picks a ship · Ctrl+click sends those picked · %s radar · %s sonar (right-click a ship of yours for both) · %s sensors · %s pause · Esc menu · %s mute" % [kk.call(KEY_Y), kk.call(KEY_U), kk.call(KEY_R), kk.call(KEY_P), kk.call(KEY_M)]).split(" · "), W - 32.0, 12):
         _text(Vector2(16, hy), ln, Color(INK, keys_a), 12); hy += 15.0
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
@@ -575,3 +576,6 @@ func _draw_tip(t: String) -> void:
     p.x = clampf(p.x, 8, size.x - w - 24); p.y = clampf(p.y, 8, size.y - hgt - 24)
     draw_rect(Rect2(p, Vector2(w + 16, hgt + 14)), Color(0.04, 0.08, 0.1, 0.96)); draw_rect(Rect2(p, Vector2(w + 16, hgt + 14)), Color(GOLD, 0.6), false, 1)
     draw_multiline_string(font, p + Vector2(8, 8 + fs), t, HORIZONTAL_ALIGNMENT_LEFT, w, fs, -1, INK)
+
+## A battle action's key as the player has it (Settings.binds), for the readouts.
+func kn(c: int) -> String: return OS.get_keycode_string(Settings.bound("battle", c))

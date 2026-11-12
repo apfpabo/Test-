@@ -221,8 +221,8 @@ func _process(delta: float) -> void:
     sim.msg_t -= dt # messages fade on the real clock, whatever the battle speed
     sim.mouse_world = world.get_global_mouse_position()
     var r = 0.0
-    if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): r -= 1.0
-    if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): r += 1.0
+    if Settings.held("battle", KEY_A) or Input.is_key_pressed(KEY_LEFT): r -= 1.0
+    if Settings.held("battle", KEY_D) or Input.is_key_pressed(KEY_RIGHT): r += 1.0
     sim.player_rudder = r
     if not paused and not sim.finished:
         var cs = combat_speed(); var n = maxi(1, int(round(cs))); var v = dt * minf(1.0, cs)
@@ -319,7 +319,8 @@ func _unhandled_input(e: InputEvent) -> void:
         drag.moved = true; cam_free = true
         camera.position = (drag.cam - dlt / zoom()).clamp(Vector2.ZERO, Vector2(sim.AW, sim.AH))
     elif e is InputEventKey and e.pressed and not e.echo:
-        _key(e.keycode)
+        if e.keycode in [KEY_UP, KEY_DOWN, KEY_ESCAPE, KEY_HOME, KEY_EQUAL, KEY_MINUS, KEY_KP_ADD, KEY_KP_SUBTRACT, KEY_PERIOD, KEY_COMMA, KEY_F9]: _key(e.keycode)
+        else: _key(Settings.key("battle", e.keycode))   # the player's key bindings (Settings.binds)
 
 ## The ships picked out that can still take an order (the flagship is yours to steer and takes none).
 func _sel() -> Array:

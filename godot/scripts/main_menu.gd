@@ -51,6 +51,7 @@ func _home() -> void:
     var btns := [
         UI.button("Continue campaign", func():
             if Campaign.load_game(): get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true, not can_go),
+        UI.button("Load a saved game", func(): go(_load_page)),
         UI.button("New campaign", func(): go(_new_campaign), not can_go),
         UI.button("Quick battle", func(): get_tree().change_scene_to_file("res://scenes/skirmish.tscn")),
         UI.button("Editor", func():   # a sea to stage and record actions on: nothing to do with a campaign or a quick battle
@@ -60,9 +61,23 @@ func _home() -> void:
         UI.button("Settings", func(): go(func(): _settings(pc, home)))]
     for b in btns: b.custom_minimum_size = Vector2(0, 42); b.add_theme_font_size_override("font_size", 17); box.add_child(b)
     if not can_go: btns[0].visible = false
+    if Campaign.slots().is_empty(): btns[1].visible = false
     # required by the CC BY licences of the music (4.0), the engine-room recording (4.0) and the propeller loop (3.0); the other sounds are CC0 (assets/sfx/CREDITS.md)
     var cr := UI.label("Music: 'Lost Frontier', 'Long Note Two' and 'Steel and Seething' by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 (levelled and faded). Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Propeller aircraft: 'Airplane Prop Loop' by AntumDeluge (CC BY 3.0; levelled and looped). Other sound effects are CC0, by thimras, qubodup, Joth, rubberduck, rango-mango, Spiceman, aquinn, AntumDeluge, kindland, TinyWorlds and BMacZero on OpenGameArt.", Color(UI.DIM, 0.7), 11, true)
     cr.custom_minimum_size.x = 500; box.add_child(cr)
+
+## The saved games (Campaign.slots): load one, or delete it.
+func _load_page() -> void:
+    for c in pc.get_children(): c.queue_free()
+    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box); home = box
+    box.add_child(UI.title("Load a saved game"))
+    for m in Campaign.slots():
+        var id: String = m.id
+        var info := UI.label("%s\n%s · %s · %s · %d ship%s" % [m.name, m.date, Origins.INFO.get(String(m.origin), {}).get("label", m.origin), Campaign.fmt(float(m.credits)), int(m.ships), "" if int(m.ships) == 1 else "s"], UI.INK, 14)
+        info.custom_minimum_size.x = 380
+        box.add_child(UI.row([info, UI.button("Load", func():
+            if Campaign.slot_load(id): get_tree().change_scene_to_file("res://scenes/world_map.tscn"), true), UI.button("Delete", func(): Campaign.slot_delete(id); _load_page())]))
+    box.add_child(UI.button("Back", _home))
 
 ## Who were you? The eight origins, and test mode.
 func _new_campaign() -> void:

@@ -371,6 +371,8 @@ func _ship_menu(s: BattleSim.CShip, at: Vector2) -> void:
     ship_menu.add_separator(s.rec.name)
     if sim.radar_fitted(s): ship_menu.add_item("Radar: switch off (seen by eye alone; her set is not picked up)" if s.radar_on else "Radar: switch on", 1)
     else: ship_menu.add_item("No radar" if not s.sub else "No radar (a boat listens)", 90); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
+    if sim.can_jam(s): ship_menu.add_item("Jammer: switch off" if s.jam_on else "Jammer: switch on (enemy radar sees her and those near her shorter; heard far off)", 7)
+    if s.chaff > 0 or sim.can_jam(s): ship_menu.add_item("Chaff: %d rounds (fired by itself at a missile coming in)" % s.chaff, 92); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
     if sim.has_sonar(s): ship_menu.add_item("Sonar: go passive (listen only; nothing hears her)" if s.sonar_on else "Sonar: start pinging (finds dived boats; gives her away)", 2)
     else: ship_menu.add_item("No sonar", 91); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
     ship_menu.add_separator("The squadron")
@@ -386,6 +388,8 @@ func _sensor_cmd(id: int, s) -> void:
         3, 4:
             for o in all: o.radar_on = id == 4
             sim.say("All ships: radar %s." % ("on" if id == 4 else "off"), 1.6)
+        7:
+            if s != null: s.jam_on = not s.jam_on; sim.say("%s: jammer %s." % [s.rec.name, "on" if s.jam_on else "off"], 1.6)
         5, 6:
             for o in all:
                 if sim.has_sonar(o): o.sonar_on = id == 6; o.ping_t = randf() * 2.0

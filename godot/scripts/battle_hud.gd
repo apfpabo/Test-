@@ -228,6 +228,7 @@ func _draw() -> void:
         if f.mag_fire > 0: sysl.append("MAGAZINE FIRE %d s · N floods it" % int(f.mag_fire))
         if absf(f.list) >= 0.15: sysl.append("list %d%% to %s · J counter-floods" % [int(absf(f.list) * 100), "starboard" if f.list > 0 else "port"])
         if f.ballast > 0.01: sysl.append("flooded to stay level: %d%% slower" % int(round(f.ballast * 30)))
+        if f.jam_on and sim.can_jam(f): sysl.append("JAMMING · heard far off")
         if f.dc_pri != "": sysl.append("damage control: " + String(BattleSim.DC_PRI[f.dc_pri]))
         if f.eng_out > 0: sysl.append("engines out %d s" % int(f.eng_out))
         elif f.eng < 0.95: sysl.append("power %d%%" % int(f.eng * 100))

@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds()
-	ok(sections == 21, "every section ran to its end (%d of 21)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew()
+	ok(sections == 22, "every section ran to its end (%d of 22)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1521,4 +1521,41 @@ func _rebuilds() -> void:
 		ok(pr > WM.ship_price(p, "bb_iowa"), "a sister ship with more deck armour costs more than the yard's price (%d)" % pr)
 	else: ok(true, "(no yard builds the Iowa in this world)")
 	WM.free()
+	sections += 1
+
+## Electronic war (docs/SENSORS.md): jamming shortens enemy radar and is heard far off; a sea-skimmer is not seen by a SAM
+## ship until close; a high diver is flown at a ship with close-in guns and no SAMs; chaff leads seekers off.
+func _ew() -> void:
+	var tech := ["radar", "missiles", "ciws", "ecm"]
+	var sim := BattleSim.new()
+	sim.setup([Campaign.new_ship("ddg_burke", "A", "player", tech)], [Campaign.new_ship("ddg_sovremenny", "B", "directorate", tech)], tech, tech, 0)
+	var a: BattleSim.CShip = sim.ships[0]; var b: BattleSim.CShip = sim.ships[1]
+	sim.flag = null; Weather.force = {"sea": 0, "fog": false, "night": true, "moon": 0.0}
+	ok(a.chaff == BattleSim.CHAFF_ROUNDS and sim.can_jam(a), "a ship with ECM carries chaff and a jammer")
+	a.pos = Vector2.ZERO; b.pos = Vector2(sim.sight(b) * 0.8, 0)
+	a.jam_on = true; sim._ew_tick(0.1)
+	ok(is_equal_approx(sim.jam_mult(a), BattleSim.JAM_K) and is_equal_approx(sim.jam_mult(b), 1.0), "the jammer covers her own side only")
+	ok(sim._radar_heard(a, 1), "a jammer is heard by the enemy")
+	a.jam_on = false; sim._ew_tick(0.1)
+	var q := {"pos": Vector2(5000, 0), "side": 1, "kind": "ssm", "delay": 0.0, "prof": "skim"}
+	sim.missiles = [q]
+	ok(sim.nearest_missile(0, Vector2.ZERO, 9000.0, true) == null, "a SAM ship cannot see a sea-skimmer 5 km out")
+	q.pos = Vector2(1500, 0)
+	ok(sim.nearest_missile(0, Vector2.ZERO, 9000.0, true) == q, "it can at 1.5 km")
+	q.prof = "high"; q.pos = Vector2(5000, 0)
+	ok(sim.nearest_missile(0, Vector2.ZERO, 9000.0, true) == q, "a high diver is seen far out")
+	sim.missiles = []
+	var c := BattleSim.new(); c.setup([Campaign.new_ship("ddg_burke", "A", "player", tech)], [Campaign.new_ship("dd_gearing", "G", "directorate", ["radar"])], tech, ["radar"], 0)
+	var gearing: BattleSim.CShip = c.ships[1]
+	for m in gearing.mounts: if m.w.kind == "aa": m.wid = "ciws"
+	ok(c.missile_profile(c.ships[0], gearing) == "high" and c.missile_profile(c.ships[0], b) == "skim", "a high dive at a ship with close-in guns and no SAMs; low at one with SAMs")
+	# chaff: a missile closing on a ship beside a cloud is led off some of the time
+	var lured := 0
+	for i in 60:
+		sim.decoys = [{"pos": a.pos + Vector2(0, 200), "t": 20.0, "side": 0}]; a.chaff_t = 99.0
+		var mq := {"pos": Vector2(1200, 0), "a": PI, "v": 250.0, "speed": 250.0, "life": 30.0, "dmg": 100, "side": 1, "target": a, "kind": "ssm", "delay": 0.0, "prof": "skim", "sk": 0.0, "age": 1.0}
+		sim.missiles = [mq]; sim.step(0.02)
+		if mq.has("lure"): lured += 1
+	ok(lured > 12 and lured < 40, "chaff leads %d of 60 missiles off" % lured)
+	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	sections += 1

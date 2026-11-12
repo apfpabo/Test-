@@ -3,6 +3,36 @@
 Decisions the agent has left for the owner, with what each choice would mean. Newest first. Strike one out (or move it
 to the roadmap) once it is decided.
 
+## 4. Tuning, round 1: three proposals (12 Nov 2026)
+
+The owner asked for proposals to pick from while he plays. None is made yet. Each comes with what it would change and
+the agent's prediction. The figures are from [`TUNING_SHEET.md`](TUNING_SHEET.md) and from 12 further Merchant runs.
+
+**A. The Merchant can run.** She now breaks off from torpedo boats one time in ten: the odds rest on the speed
+difference, and a 15-knot freighter against 40-knot boats gets the floor of 10%. The Smuggler has a +15 evasion perk;
+the Merchant has none.
+
+- **Change:** give the Merchant `evade: 25` ("a merchant master knows when to run"). Break-off against a torpedo-boat flotilla rises to about 35%.
+- **Prediction:** she was lost in 11 of 16 runs, nearly all in her first fight. Losses would fall to about 5–7 of 16.
+- **Where:** `Origins.build`.
+
+**B. A new captain's grace covers raiders too.** Bounty squadrons keep their distance for the first 30 days. Four of the
+eleven Merchant losses came on days 29–38, three of them to raider flotillas.
+
+- **Change:** raider flotillas also keep their distance from a new captain for the first 30 days (`bounty_grace` widened to raiders).
+- **Prediction:** losses before day 40 fall from 4 of 16 Merchant runs to about 1. The Academy Cast-Off (lost on day 44) and the Survivor gain too.
+- **Where:** `Campaign.bounty_grace`, `BOUNTY_GRACE`.
+
+**C. The Survivor's back pay.** The Survivor starts with a destroyer at 45% hull, and repairing her eats his purse. He
+had about 7,000 left on day 30 and 3,300 on day 120, and one run was lost on day 53.
+
+- **Change:** his navy pays what it owes him: 2,000 every 30 days for 180 days, as the Disgraced Officer's pension does (2,500 for 360 days).
+- **Prediction:** about 9,000 more by day 120; his purse rises instead of falling. Battles would still decide whether he survives.
+- **Where:** `Origins.build` (`perks.pension`).
+
+The agent's suggestion: all three. A and C each touch one origin; B touches every start for one month. To pick, say
+which letters. The agent then runs the 32 tuning runs again and reports.
+
 ## 3. The Merchant's first freighter against torpedo boats (12 Nov 2026)
 
 Measured again with everything added since the last tuning round (no numbers changed): the Merchant, the safest start

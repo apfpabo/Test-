@@ -43,3 +43,49 @@ Your own rings only (owner's request, 10 Nov 2026); R toggles them.
 ## For the owner
 
 - Wartime sonar could be made directional (a beam the escort has to sweep, and a blind arc astern), and wartime submarines could be given a short-range surface radar. Both would change how submarine actions play, so they are left for you to decide.
+
+## Electronic war (12 Nov 2026)
+
+The owner approved this from the comparison with Sea Power and NEBULOUS. Everything here needs the ECM research
+(`BattleSim.can_jam`); submarines and motor torpedo boats carry none of it.
+
+### Jamming
+
+A ship's `jam_on` turns her jammer on.
+
+- **Cover:** enemy radar sees her, and every ship of her side within `JAM_COVER` (2.5 km), at `JAM_K` (0.6) of its reach (`jam_mult`, used in `visible_to`).
+- **Seekers:** an active seeker coming at a ship under that cover is 30% more easily led off, by the ECM roll and by chaff.
+- **Cost:** a jammer is heard by any enemy set at `JAM_HEARD` (1.6) times its sight (`_radar_heard`), farther than a radar.
+- **Other navies:** their captains jam once enemy radar has found them and there is a contact or missiles coming (`_emcon`).
+- **Your ships:** switched from the ship menu (right-click). The flagship panel shows JAMMING.
+
+### Chaff
+
+Each ship carries `CHAFF_ROUNDS` (6).
+
+- **When it fires:** by itself, when an anti-ship missile comes within `CHAFF_AT` (3 km), no more than once every `CHAFF_COOL` (10 s) (`fire_chaff`).
+- **The cloud:** it hangs off her beam for `CHAFF_LIFE` (30 s), drawn as a drifting grey cloud.
+- **The lure:** a missile closing within 1.5 km of her, with a cloud of her side within 700 m of her, is led off with chance `CHAFF_LURE` (0.4), less for a better seeker.
+- **Better seekers:** the firer's `sk` is 0.1 per level of precision strike, plus 0.1 for cooperative engagement. Seeker quality also lowers the old ECM decoy roll.
+- **A missile led off:** she runs on to the cloud and into the sea.
+
+### Missile profiles
+
+Each anti-ship missile is flown either as a sea-skimmer or as a high diver (`missile_profile`).
+
+- **Sea-skimmer:** cannot be engaged by a SAM until she is within `SKIM_SEEN` (2.2 km) of the ship.
+- **High diver:** seen far out, but close-in guns hit her at `HIGH_PD` (0.7) of their chance.
+- **Which one is chosen:** a high dive at a ship with close-in guns and no SAMs; low over the sea otherwise.
+
+### Not done
+
+Radar modes, such as search against fire-control radar or a narrow search sector, are not done. They would add switching
+for little in a game at this scale. This is for the owner to judge.
+
+### Checks and measurements
+
+- **Checks:** review_test `_ew`.
+- **Measurement:** `tests/ew_measure.tscn` plays missile ships against each other with and without ECM.
+  - 4 seeds: Burke and Sovremenny pairs fired 68 rounds of chaff, which led off 2 missiles; Adams and Kashin pairs fired 65 rounds, which led off 14.
+  - Battle lengths were about the same with and without ECM.
+- Untuned.

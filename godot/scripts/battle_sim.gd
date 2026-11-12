@@ -80,6 +80,9 @@ class CShip:
     var reveal_t = 0.0
     var radar_on := true    # her search radar radiating (off: she sees by eye alone, and no one hears her set)
     var sonar_on := true    # her active sonar pinging (off: she only listens; a boat starts so)
+    var jam_on := false     # her jammer radiating (ECM research): enemy radar sees her side shorter, but it is heard far off (docs/SENSORS.md)
+    var chaff := 0          # rounds of chaff aboard (ECM research): a cloud that a missile's seeker may take for her
+    var chaff_t := 0.0      # until her launcher is ready again (s)
     var ping_t := 0.0       # until her next ping
     var held_t := 99.0      # a submerged boat: seconds since a ping last found her
     var heard_t := 99.0     # seconds since an enemy heard her ping (it gives her away)
@@ -377,6 +380,7 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     var ak: float = (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac); var a0 := armour_of(d, rec)
     s.ar = {"belt": a0.belt * ak, "deck": a0.deck * ak, "tur": a0.tur * ak}; s.armor = s.ar.belt
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
+    s.chaff = CHAFF_ROUNDS if tech.has("ecm") and not s.sub and d.kind != "pt" else 0
     s.sonar_on = not s.sub; s.ping_t = randf() * PING_PERIOD   # a boat listens and keeps quiet until told to ping
     s.cq = crew_level(float(rec.get("xp", 1.0)))
     # what she is loaded with tells at sea, whoever's she is (owner's decision: other navies are held to the same rules)
@@ -687,12 +691,58 @@ func _emcon(dt: float) -> void:
                 if not dark or seen: s.radar_on = true
                 elif has_contact: s.radar_on = nearest_enemy(s.pos, side, max_gun_range(s) * 1.05, func(o: CShip) -> bool: return visible_to(o, side)) != null
                 else: s.radar_on = s == picket and fmod(t, 90.0) < 20.0
+            if can_jam(s):   # a captain jams once the enemy's radar has found his side, or his missiles are coming
+                var lit := false
+                for o in ships: if o.side != side and active(o) and has_radar(o) and o.pos.distance_to(s.pos) < sight(o) * 1.1: lit = true; break
+                s.jam_on = lit and (has_contact or missiles.any(func(q): return q.side != side and q.kind == "ssm"))
+
+# ------------------------------------------------------------------ electronic war (docs/SENSORS.md; 12 Nov 2026)
+## Jamming: a ship with ECM research can jam. Enemy radar then sees her, and every ship of hers within JAM_COVER of
+## her, at JAM_K of its reach (it burns through closer in), and an active seeker coming at a jammed ship is the more
+## easily led off; but a jammer is heard by any enemy set at JAM_HEARD times its sight, as loud as a radar and more.
+const JAM_K := 0.6
+const JAM_COVER := 2500.0
+const JAM_HEARD := 1.6
+## Chaff: a cloud fired off her beam when a missile comes within CHAFF_AT; while it hangs (CHAFF_LIFE) a seeker closing
+## on her may take it for her (CHAFF_LURE, less for a better seeker). CHAFF_ROUNDS a ship, one every CHAFF_COOL seconds.
+const CHAFF_ROUNDS := 6
+const CHAFF_AT := 3000.0
+const CHAFF_LIFE := 30.0
+const CHAFF_COOL := 10.0
+const CHAFF_LURE := 0.4
+## Missile profiles: a sea-skimmer stays under the radar horizon until SKIM_SEEN from a ship (no SAM can be laid on her
+## before); a high diver is seen far off but comes down steeply, where close-in guns hit her at HIGH_PD of their chance.
+const SKIM_SEEN := 2200.0
+const HIGH_PD := 0.7
+var decoys: Array = []   # chaff clouds: {pos, t, side}
+var _jammers: Array = []
+func jam_mult(s: CShip) -> float:
+    for j in _jammers: if j.side == s.side and j.pos.distance_squared_to(s.pos) < JAM_COVER * JAM_COVER: return JAM_K
+    return 1.0
+func can_jam(s: CShip) -> bool: return s.tech.has("ecm") and not s.sub and s.d.kind != "pt"
+func _ew_tick(dt: float) -> void:
+    _jammers = ships.filter(func(o): return o.jam_on and active(o) and can_jam(o))
+    for i in range(decoys.size() - 1, -1, -1):
+        decoys[i].t -= dt
+        if decoys[i].t <= 0.0: decoys.remove_at(i)
+    for o in ships: if o.chaff_t > 0.0: o.chaff_t -= dt
+func fire_chaff(s: CShip, threat: Vector2) -> void:
+    if s.chaff <= 0 or s.chaff_t > 0.0: return
+    s.chaff -= 1; s.chaff_t = CHAFF_COOL
+    var side_v := Vector2.from_angle((threat - s.pos).angle() + PI / 2) * (1.0 if randf() < 0.5 else -1.0)
+    var at: Vector2 = s.pos + side_v * (120.0 + s.d.B * 2.0)
+    decoys.append({"pos": at, "t": CHAFF_LIFE, "side": s.side})
+    for k in 5: part(P.FLAK, at + rdir() * randf() * 40.0, 2.5 + randf(), 18.0 + randf() * 10.0)
+    for k in 4: part(P.GUNSMOKE, at + rdir() * randf() * 50.0, 10.0 + randf() * 6.0, 26.0 + randf() * 12.0, rdir() * 3.0, true)   # the cloud drifting
+    if s.side == 0 and s.rec != null: say("%s fires chaff." % s.rec.name, 1.2)
+    _log("chaff")
 
 ## Is a ship's radiating radar picked up by a side? By any of its ships that carries a set (on or off), within
 ## RADAR_HEARD times the distance her radar sees.
 func _radar_heard(s: CShip, side: int) -> bool:
-    if not has_radar(s) or submerged(s): return false
-    var r: float = sight(s) * RADAR_HEARD
+    var jam: bool = s.jam_on and can_jam(s)
+    if (not has_radar(s) and not jam) or submerged(s): return false
+    var r: float = sight(s) * (JAM_HEARD if jam else RADAR_HEARD)
     for o in ships: if o.side == side and active(o) and radar_fitted(o) and o.pos.distance_squared_to(s.pos) < r * r: return true
     return false
 # ------------------------------------------------------------------ star shell
@@ -773,7 +823,7 @@ func visible_to(s: CShip, side: int) -> bool:
     for o in ships:
         if o.side != side or not active(o): continue
         var d2: float = o.pos.distance_squared_to(s.pos)
-        var rr: float = sight(o) * (0.75 - 0.05 * tech_up(s.tech, "stealth") if s.tech.has("stealth") else 1.0)   # (stealth shaping, Era IV: a smaller echo)
+        var rr: float = sight(o) * (0.75 - 0.05 * tech_up(s.tech, "stealth") if s.tech.has("stealth") else 1.0) * jam_mult(s)   # (stealth shaping, Era IV: a smaller echo; a jammer covering her)
         if has_radar(o) and not submerged(o) and d2 < rr * rr: return true   # radar looks through the dark and through smoke
         if lim and d2 >= eye * eye: continue
         if not smoke_blocks(o.pos, s.pos): return true
@@ -1346,9 +1396,20 @@ func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
     for i in int(w.count) + (1 + (1 if tech_lv(s.tech, "vls") >= 2 else 0) if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
-        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "delay": i * 2.0})
+        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "delay": i * 2.0,
+            "prof": missile_profile(s, tg), "sk": 0.1 * (tech_lv(s.tech, "precision") if s.tech.has("precision") else 0) + (0.1 if s.tech.has("netcentric") else 0.0)})
     if s.sub: s.reveal_t = 25.0
 
+## How a missile is flown at a ship: low over the sea, unless the target carries close-in guns (a steep dive is harder
+## for them to follow) and no long-range SAMs (which a high diver would meet far out).
+func missile_profile(s: CShip, tg: CShip) -> String:
+    if tg == null: return "skim"
+    var ciws := false; var sam := false
+    for m in tg.mounts:
+        if m.dead: continue
+        if m.wid == "ciws": ciws = true
+        if m.w.kind == "sam": sam = true
+    return "high" if ciws and not sam else "skim"
 func fire_sam(s: CShip, m: Mount, tg) -> void:
     if not use_round(m): return
     var p = world_pt(s, m.slot.x, m.slot.y); var tp: Vector2 = tg.pos
@@ -1450,6 +1511,7 @@ func nearest_missile(side: int, p: Vector2, rng: float, for_sam := false):
         if q.side == side or q.kind != "ssm" or q.delay > 0: continue
         if for_sam and q.get("engaged", 0) >= 2: continue
         var dd: float = p.distance_to(q.pos)
+        if q.get("prof", "skim") == "skim" and dd > SKIM_SEEN: continue   # under the radar horizon: not seen yet
         if dd < bd: bd = dd; best = q
     return best
 
@@ -1543,7 +1605,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var ms = nearest_missile(s.side, p, w.range)
                 if ms != null:
                     m.ta = ang_diff((ms.pos - p).angle(), s.a); m.cd = w.rel; aa_shot(s, m, p, ms.pos)
-                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else 1.0): kill_missile(ms)
+                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else 1.0) * (HIGH_PD if ms.get("prof", "skim") == "high" else 1.0): kill_missile(ms)
                     done = true
                 if not done:
                     var sq = nearest_air(s.side, p, w.range)
@@ -2514,7 +2576,7 @@ func step(dtv: float) -> void:
     t += dt; vt += dtv
     small_craft = [false, false]
     for s in ships: if active(s) and (s.d.kind == "pt" or s.d.kind == "sub"): small_craft[s.side] = true
-    _radar_plot(dt); _smoke_tick(dt); _star_tick(dt); _sonar_tick(dt); _emcon(dt)
+    _radar_plot(dt); _smoke_tick(dt); _star_tick(dt); _sonar_tick(dt); _emcon(dt); _ew_tick(dt)
     for s in ships:
         if not s.alive: s.sink += dtv; continue
         if s.escaped: continue
@@ -2683,8 +2745,21 @@ func step(dtv: float) -> void:
         if tg != null:
             if m.kind == "sam": alive = (tg is Dictionary and ((tg.has("n") and tg.up > 0) or (tg.get("kind", "") == "ssm" and not tg.get("dead", false))))
             else: alive = tg is CShip and engageable(tg)
-        if m.kind == "ssm" and not alive:
+        if m.kind == "ssm" and m.has("lure"):   # her seeker has taken a chaff cloud for the ship: she runs on to it and into the sea
+            var lp: Vector2 = m.lure
+            if m.pos.distance_to(lp) < 30.0: fx_splash(m.pos, 14.0); _log("missile decoyed by chaff"); missiles.remove_at(i); continue
+            m.a += clampf(ang_diff((lp - m.pos).angle(), m.a), -2.2 * dt, 2.2 * dt); alive = false; tg = null
+        if m.kind == "ssm" and not alive and not m.has("lure"):
             m.target = nearest_enemy(m.pos, m.side, 6000.0, func(o: CShip) -> bool: return not submerged(o)); alive = m.target != null
+        if m.kind == "ssm" and alive:
+            var tg2: CShip = m.target; var dd2: float = m.pos.distance_to(tg2.pos)
+            if dd2 < CHAFF_AT: fire_chaff(tg2, m.pos)
+            if dd2 < 1500.0 and not m.get("chaff_tried", false):   # closing: is there a cloud beside her the seeker may prefer?
+                for dc in decoys:
+                    if dc.side == tg2.side and dc.pos.distance_to(tg2.pos) < 700.0:
+                        m.chaff_tried = true
+                        if randf() < (CHAFF_LURE - float(m.get("sk", 0.0))) * (1.3 if jam_mult(tg2) < 1.0 else 1.0): m.lure = dc.pos
+                        break
         if alive:
             var tpos: Vector2 = m.target.pos; var turn = 4.0 if m.kind == "sam" else 2.2
             m.a += clampf(ang_diff((tpos - m.pos).angle(), m.a), -turn * dt, turn * dt)
@@ -2696,7 +2771,7 @@ func step(dtv: float) -> void:
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B) and m.target.tech.has("ecm") and not m.get("ecm_tried", false):
                 m.ecm_tried = true
-                if randf() < 0.25 + 0.08 * tech_up(m.target.tech, "ecm"):   # electronic countermeasures: the seeker is decoyed and the missile runs on into the sea
+                if randf() < (0.25 + 0.08 * tech_up(m.target.tech, "ecm")) * (1.3 if jam_mult(m.target) < 1.0 else 1.0) - float(m.get("sk", 0.0)):   # electronic countermeasures: the seeker is decoyed and the missile runs on into the sea
                     fx_splash(m.pos + Vector2.from_angle(m.a) * 80.0, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B):
                 mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")

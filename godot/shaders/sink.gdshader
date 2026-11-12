@@ -16,7 +16,7 @@ float height(vec2 p, float k, float seed) {
 	float ang = atan(p.y, p.x);
 	float rag = 1.0 + 0.09 * (noise(vec2(cos(ang), sin(ang)) * 2.3 + seed) - 0.5) + 0.04 * (noise(vec2(cos(ang), sin(ang)) * 6.0 + seed * 2.0) - 0.5);
 	float r0 = length(p), r = r0 / rag;   // the lip is ragged; the bowl inside it is smooth (a ragged bowl showed spokes)
-	float depth = (1.0 - k) * (1.0 - k);
+	float depth = 0.6 * (1.0 - k) * (1.0 - k);   // a shallow dimple for the size of the column over it (the owner, 12 Nov 2026)
 	float bowl = -depth * pow(max(0.0, 1.0 - r0 * r0), 1.6) * smoothstep(1.06, 0.9, r0);   // eased into the lip: no dark crease inside it
 	float lip = 0.2 * (1.0 - k) * exp(-pow((r - 1.02) / 0.13, 2.0)) * (0.7 + 0.6 * fbm(p * 3.0 + seed));
 	float rip = 0.06 * (1.0 - k) * sin((r - 1.0) * 14.0 - k * 9.0) * exp(-max(r - 1.0, 0.0) * 3.5) * smoothstep(1.02, 1.25, r);   // eased in: no crease at the edge
@@ -38,12 +38,12 @@ void fragment() {
 	float fade = smoothstep(1.5, 1.15, length(p)) * (1.0 - smoothstep(0.5, 1.0, k));
 	vec4 o = vec4(0.0);
 	// shadowed slopes darken the sea, lit ones brighten it towards the sky's reflection
-	if (shade < 0.0) o = vec4(0.0, 0.03, 0.05, clamp(-shade * 3.0, 0.0, 0.55));
+	if (shade < 0.0) o = vec4(0.0, 0.03, 0.05, clamp(-shade * 2.6, 0.0, 0.45));
 	else o = vec4(vec3(0.55, 0.76, 0.8) * light, clamp(shade * 2.6, 0.0, 0.45));
 	// deep water in the bowl: darker, a little greener, as the sea is where it is deeper and stirred
 	float deep = clamp(-h, 0.0, 1.0);
 	o.rgb = mix(o.rgb, vec3(0.0, 0.05, 0.06), deep * 0.5 * (1.0 - o.a));
-	o.a = max(o.a, deep * 0.28);
+	o.a = max(o.a, deep * 0.2);
 	// foam on the lip, where it is highest, broken up
 	float lipf = smoothstep(0.12, 0.2, h) * smoothstep(0.55, 0.8, fbm(p * 6.0 + seed * 5.0));
 	o.rgb = mix(o.rgb, vec3(0.88, 0.95, 0.94) * light, lipf * 0.8); o.a = max(o.a, lipf * 0.55);

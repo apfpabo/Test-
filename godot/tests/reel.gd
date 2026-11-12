@@ -175,7 +175,7 @@ func _process(d: float) -> void:
 		var tg = _ship(1)                                  # there as the camera rolls: ours, from 8 km off, took fourteen seconds to arrive)
 		if tg != null:
 			var off := Vector2(170.0, -260.0) if (f / 180) % 2 == 0 else Vector2(-210.0, 160.0)   # in the frame with her
-			sim.flares.append({"p": tg.pos + off, "t": 1.6, "v": randi() % 4})
+			sim.flares.append({"p": tg.pos + off, "t": 0.02, "v": randi() % 4})   # just bursting: it brightens over a second and a half, as one fired does (a lit one popped in)
 	t += d
 	if clip.get("hunt", false):   # a depth-charge hunt: the boat stays down and silent, and nobody hides the picture in smoke
 		for s in sim.ships:

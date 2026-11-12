@@ -160,7 +160,10 @@ static func tabs(items: Array, cur: String, cb: Callable) -> Control:
 
 static func row(children: Array) -> HBoxContainer:
 	var r := HBoxContainer.new(); r.add_theme_constant_override("separation", 8)
-	for c in children: r.add_child(c)
+	for c in children:
+		# a button keeps its own height beside a tall column of text (they stretched into tall boxes: UI review, 12 Nov 2026)
+		if c is BaseButton and c.size_flags_vertical == Control.SIZE_FILL: c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		r.add_child(c)
 	return r
 
 static func bar(f: float, w := 80.0, col := GREEN) -> Control:

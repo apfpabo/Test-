@@ -96,7 +96,7 @@ func _process(dt: float) -> void:
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE if card.modulate.a == 0.0 else Control.MOUSE_FILTER_STOP
 	if in_battle: card.position = Vector2((vs.x - card.size.x) * 0.5, vs.y - card.size.y - 24.0)
 	elif after: card.position = Vector2(vs.x - card.size.x - 16.0, 56.0)
-	else: card.position = Vector2(vs.x - card.size.x - 16.0, vs.y - card.size.y - 140.0)
+	else: card.position = Vector2(vs.x - card.size.x - 16.0, vs.y - card.size.y - 140.0 - (48.0 if host.dock.visible else 0.0))   # above the dock button when it shows
 	if not card.visible: return
 	t_step += dt
 	if (not in_battle and bool(Campaign.G.guide.get("after", false))) or _done(): return

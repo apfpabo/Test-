@@ -79,7 +79,8 @@ func _ready() -> void:
     overlay = Overlay.new(); overlay.map = self; overlay.set_anchors_preset(Control.PRESET_FULL_RECT); overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(overlay)
     _build_top(); _build_toasts(); _build_orders(); _build_telegraph(); _build_cmdbar()
     dock = UI.button("Dock", _on_dock, true); dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM); dock.position = Vector2(-80, -60); dock.visible = false; ui.add_child(dock)
-    dock.set_anchor_and_offset(SIDE_LEFT, 0.5, -90); dock.set_anchor_and_offset(SIDE_RIGHT, 0.5, 90); dock.set_anchor_and_offset(SIDE_TOP, 1.0, -64); dock.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -26)
+    # above the engines box at the right, as wide as it (UI review, 12 Nov 2026: in the middle the Command drawer covered it)
+    dock.set_anchor_and_offset(SIDE_RIGHT, 1.0, -14); dock.set_anchor_and_offset(SIDE_LEFT, 1.0, -360); dock.set_anchor_and_offset(SIDE_TOP, 1.0, -180); dock.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -140)
     panel_layer = Control.new(); panel_layer.set_anchors_preset(Control.PRESET_FULL_RECT); panel_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(panel_layer)
     if Guide.active(): guide_card = Guide.new(); guide_card.host = self; add_child(guide_card)   # the new captain's guide
     ui.move_child(cmdbar, -1)   # the Command tabs stay clickable over an open panel
@@ -356,15 +357,12 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         if air > maxf(eye, rad) + 1.0:   # a carrier's search aircraft look farther still, when they can fly
             for i in 90: if i % 2 == 0: draw_arc(c, air, i * TAU / 90, (i + 1) * TAU / 90, 3, Color(blue, 0.4), 1.2 / z)
             rows.append([air, "YOUR SEARCH AIRCRAFT SEE %d KM" % int(air * Campaign.KM_PER_UNIT), blue])
-        var fnt: Font = ThemeDB.fallback_font; var used := []
+        var used := []; map.sensor_labels.clear()   # the captions go to the chart's labels, the least of them (UI review)
         for row in rows:
-            var w := fnt.get_string_size(row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
             var up := true   # two rings of nearly one size: the second label goes under its ring
             for u in used: if absf(float(u) - float(row[0])) * z < 16.0: up = false
             used.append(row[0])
-            draw_set_transform(c + Vector2(0, -float(row[0]) - 6.0 / z) if up else c + Vector2(0, float(row[0]) + 14.0 / z), 0.0, Vector2.ONE / z)
-            draw_string(fnt, Vector2(-w / 2.0, 0), row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(row[2], 0.8))
-        draw_set_transform(Vector2.ZERO)
+            map.sensor_labels.append([c + Vector2(0, -float(row[0]) - 6.0 / z) if up else c + Vector2(0, float(row[0]) + 14.0 / z), row[1], Color(row[2], 0.8)])
     func _reach_ring(c: Vector2, r: float, col: Color) -> void:
         if r <= Campaign.CONTACT + 0.5: return
         var z: float = map.zoom; var n := 48
@@ -446,6 +444,7 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
         draw_arc(Vector2(P.x, P.y), ring_r, 0, TAU, 32, Color("#e3b23c"), 2.0 / z)
         if z >= 0.32: _reach_ring(Vector2(P.x, P.y), Campaign.strike_reach(G.fleet, Weather.air_ok(Campaign.weather_here(), Campaign.has_tech("jets"))) * Campaign.ck_you(Campaign.weather_here()), Color(0.89, 0.7, 0.24, 0.4))
         if Settings.sensors and z >= 0.12 and G.fleet.size(): _sensors(Vector2(P.x, P.y))
+        else: map.sensor_labels.clear()
         if G.fleet.size(): _fleet(G.fleet, "player", Vector2(P.x, P.y), P.h, "player")
 
     ## Land structures: map symbols at normal zoom, drawn installations close in, and the reach of batteries that
@@ -574,10 +573,40 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
 
 class Overlay extends Control:    # text on the chart, at fixed pixel sizes
     var map
+    # Labels are gathered, then drawn greatest first, and a lesser one that would print over one already placed is left
+    # out (UI review, 12 Nov 2026: by a busy harbour the names of its works, fleets and sites lay on top of each other).
+    # `pr` is the priority of the labels that follow: -1 is drawn whatever (the graticule, sea names, the cursor's place).
+    var pr := -1
+    var _labels := []
     func _t(p: Vector2, s: String, col: Color, size := 13, align := HORIZONTAL_ALIGNMENT_CENTER, w := 300.0) -> void:
         var x = p.x - (w / 2 if align == HORIZONTAL_ALIGNMENT_CENTER else 0.0)
-        draw_string(ThemeDB.fallback_font, Vector2(x, p.y), s, align, w, size, col)
+        var tw: float = minf(w, ThemeDB.fallback_font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+        var x0: float = p.x - tw / 2 if align == HORIZONTAL_ALIGNMENT_CENTER else x
+        _labels.append([pr, _labels.size(), Rect2(x0 - 2, p.y - size * 0.8, tw + 4, size * 1.05), Vector2(x, p.y), s, align, w, size, col])
     func _draw() -> void:
+        _labels.clear(); pr = -1
+        _draw_chart()
+        _labels.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and a[1] < b[1]))
+        var grid := {}   # placed labels by 96 × 32 px cell, so each test looks only at its neighbours
+        for l in _labels:
+            var r: Rect2 = l[2]
+            if l[0] >= 0:
+                var cx0 := int(floor(r.position.x / 96.0)); var cx1 := int(floor(r.end.x / 96.0)); var cy0 := int(floor(r.position.y / 32.0)); var cy1 := int(floor(r.end.y / 32.0))
+                var hit := false
+                for cx in range(cx0, cx1 + 1):
+                    for cy in range(cy0, cy1 + 1):
+                        for q in grid.get(Vector2i(cx, cy), []):
+                            if (q as Rect2).intersects(r): hit = true; break
+                        if hit: break
+                    if hit: break
+                if hit: continue
+                for cx in range(cx0, cx1 + 1):
+                    for cy in range(cy0, cy1 + 1):
+                        var k := Vector2i(cx, cy)
+                        if not grid.has(k): grid[k] = []
+                        grid[k].append(r)
+            draw_string(ThemeDB.fallback_font, l[3], l[4], l[5], l[6], l[7], l[8])
+    func _draw_chart() -> void:
         var G: Dictionary = Campaign.G; var z: float = map.zoom; var vs = size; var P: Dictionary = G.player; var b: float = map.boost()
         # graticule labels
         var hw = vs.x / 2 / z; var g0 = int(floor((map.cam.x - hw) / 200.0)) - 1; var g1 = int(ceil((map.cam.x + hw) / 200.0)) + 1
@@ -603,6 +632,7 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
                 var sp: Vector2 = map.to_screen(Vector2(st.x, st.y))
                 if sp.x < -150 or sp.x > vs.x + 150: continue
                 _t(sp + Vector2(0, -10), st.name.to_upper() if z < 2.0 else st.name, Color(0.62, 0.8, 0.88, 0.75), 11 if z < 2.0 else 13)
+        pr = 4
         for p in G.pois:
             if z <= 0.45: break
             var sp: Vector2 = map.to_screen(Vector2(p.x, p.y))
@@ -616,40 +646,49 @@ class Overlay extends Control:    # text on the chart, at fixed pixel sizes
             var off: float = map.struct_r(s) * z * 0.95 + 6.0 if z >= 3.0 else 14.0
             var col: Color = Color("#e3b23c") if mine else (Color(0.75, 0.75, 0.7, 0.85) if s.fac == "" else Color(GameData.fac[s.fac].map))
             var st: String = " · silenced" if Structures.silenced(s) and not mine else ""
-            _t(sp + Vector2(0, off + 10), s.name, Color(0.92, 0.92, 0.88, 0.9), 11)
+            pr = 5 if mine else 3; _t(sp + Vector2(0, off + 10), s.name, Color(0.92, 0.92, 0.88, 0.9), 11)
+            pr = 4 if mine else 2
             if z >= 1.6: _t(sp + Vector2(0, off + 23), Structures.owner_name(s) + st, col, 10)
         for p in G.ports:
             if not (z > 0.28 or p.capital): continue
             var sp: Vector2 = map.to_screen(Vector2(p.x, p.y))
             if sp.x < -150 or sp.x > vs.x + 150: continue
             var s = 7.0 if p.capital else 5.5; var closed = Campaign.hostile(p.fac)
-            _t(sp - Vector2(0, s + 5), p.name, Color("#eef0ec"), 15 if p.capital else 13)
+            pr = 9; _t(sp - Vector2(0, s + 5), p.name, Color("#eef0ec"), 15 if p.capital else 13)
+            pr = 8
             if z > 0.45 and z < 2.2: map.Flags.draw(self, p.fac, Rect2(sp + Vector2(-s - 22, -7), Vector2(17, 11)))   # its flag beside the mark
             if z > 0.45: _t(sp + Vector2(0, s + 15), GameData.fac[p.fac].short + (" · capital" if p.capital else "") + (" · closed to you" if closed else ""), Color("#d9614a") if closed else Color(GameData.fac[p.fac].map), 11)
         for f in G.fleets:
+            pr = 5
             if not f.get("vis", true):
                 if Campaign.ghost(f) and z >= 0.32:
                     var gsp: Vector2 = map.to_screen(Vector2(f.seenX, f.seenY)); var ago: int = int(G.day) - int(f.seenDay)
                     if gsp.x > -150 and gsp.x < vs.x + 150: _t(gsp + Vector2(0, 26), "%s · last seen %s" % [f.name, "today" if ago <= 0 else ("yesterday" if ago == 1 else "%d days ago" % ago)], Color(0.62, 0.66, 0.68, 0.75), 11)
                 continue
-            var hos = Campaign.hostile_fleet(f)
+            var hos = Campaign.hostile_fleet(f); pr = 7 if (hos or f.get("mission", false) or f.kind == "bounty") else 6
             if not (z >= 0.6 or hos or f.get("mission", false) or f.kind == "bounty"): continue
             var sp: Vector2 = map.to_screen(Vector2(f.x, f.y))
             if sp.x < -150 or sp.x > vs.x + 150 or z < 0.32: continue
             var col = Color("#e3b23c") if (f.get("mission", false) or int(f.get("contract", 0)) > 0) else Color(GameData.fac[f.fac].map)
             var txt: String = (f.captain + " · " + Campaign.fmt(f.reward)) if f.kind == "bounty" else (f.name + " (%d)" % f.ships.size())
             _t(sp + Vector2(0, 18 * b + 12), ("◎ " if P.follow == f.id else ("⚓ escorted · " if P.get("escort") == f.id else "")) + txt, col, 12)
+        pr = 8
         for m in Diplomacy.marks():
             var sp: Vector2 = map.to_screen(Vector2(m[0], m[1]))
             if sp.x > -150 and sp.x < vs.x + 150 and (z > 0.2 or m.size() > 3): _t(sp + Vector2(0, -16 - (24.0 if m.size() > 3 else 11.0)), ("Destination: " if m.size() > 3 else "Contract: ") + m[2], Color("#e3b23c"), 14 if m.size() > 3 else 12)
         var psp: Vector2 = map.to_screen(Vector2(P.x, P.y))
         var lab_off: float = 21 * b
         if G.fleet.size(): lab_off = minf(lab_off, maxf(14.0, map.marks._layout(G.fleet)[0][3] * z * 0.75) + 4.0)
-        _t(psp + Vector2(0, lab_off + 13), "Your squadron · %d kn%s" % [int(round(P.v / 0.8)), " · escorting" if P.get("escort") != null else ""], Color("#e3b23c"), 12)
+        var np_l = Campaign.nearest_port(28.0)   # lying in a harbour: below the harbour's own flag line, not on top of it
+        if np_l != null and map.to_screen(Vector2(np_l.x, np_l.y)).distance_to(psp) < 40.0: lab_off = maxf(lab_off, 34.0)
+        pr = 10; _t(psp + Vector2(0, lab_off + 13), "Your squadron · %d kn%s" % [int(round(P.v / 0.8)), " · escorting" if P.get("escort") != null else ""], Color("#e3b23c"), 12)
         if P.get("tx") != null and P.get("route") != null:
             var end: Vector2 = P.route[-1] + Vector2(P.x, P.y) - Vector2(P.rx, P.ry)
             var days: float = Campaign.route_remaining(P) / maxf(0.5, Campaign.player_speed()) * 0.1
-            _t(map.to_screen(end) + Vector2(0, 20), "under a day" if days < 1 else "≈ %d days" % int(ceil(days)), Color(0.89, 0.91, 0.89, 0.75), 11)
+            pr = 7; _t(map.to_screen(end) + Vector2(0, 20), "under a day" if days < 1 else "≈ %d days" % int(ceil(days)), Color(0.89, 0.91, 0.89, 0.75), 11)
+        pr = 1
+        for sl in map.sensor_labels: _t(map.to_screen(sl[0]), sl[1], sl[2], 11)
+        pr = -1
         var mp: Vector2 = map.to_world(get_local_mouse_position())
         _t(Vector2(vs.x - 160, vs.y - 14), "%.1f°%s %.1f°%s" % [absf(Campaign.y_lat(mp.y)), "N" if Campaign.y_lat(mp.y) >= 0 else "S", absf(Campaign.x_lon(mp.x)), "E" if Campaign.x_lon(mp.x) >= 0 else "W"], Color(0.62, 0.67, 0.67), 12, HORIZONTAL_ALIGNMENT_RIGHT, 150)
 
@@ -826,8 +865,10 @@ func _cmd_tab(key: String) -> void:
 # ------------------------------------------------------------------ the engine-room telegraph (bottom right)
 var tele_btns := {}
 var tele_info: Label
+var tele_panel: PanelContainer
+var sensor_labels := []   # [world point, text, colour]: the sensor rings' captions, set by Marks, drawn by Overlay
 func _build_telegraph() -> void:
-    var pc := PanelContainer.new(); ui.add_child(pc)
+    var pc := PanelContainer.new(); ui.add_child(pc); tele_panel = pc
     var sb := StyleBoxFlat.new(); sb.bg_color = Color(UI.PANEL, 0.9); sb.border_color = UI.LINE; sb.set_border_width_all(1); sb.border_width_top = 2
     sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 6; sb.content_margin_bottom = 8; sb.set_corner_radius_all(3)
     pc.add_theme_stylebox_override("panel", sb)
@@ -877,6 +918,9 @@ func _update_dock() -> void:
     var coming: bool = G0.fleets.any(func(f): return f.get("answering", false))
     distress_btn.visible = not panel_open and Campaign.dead_in_water() and G0.player.get("towed") == null and not coming
     if panel_open: dock.visible = false; return
+    if is_instance_valid(tele_panel) and tele_panel.size.y > 0:   # keep it just above the engines box, however tall that is
+        var vy: float = get_viewport_rect().size.y; var top: float = tele_panel.position.y - vy - 8.0
+        dock.offset_bottom = top; dock.offset_top = top - 40.0
     var np = Campaign.nearest_port(28.0); var poi = null if np != null else Campaign.nearest_poi(22.0)
     var base = null
     if np == null and poi == null:
@@ -1289,9 +1333,9 @@ func _show_aftermath(r: Dictionary) -> void:
         var sv: Dictionary = r.get("salvage", {})
         if not sv.is_empty() and r.sunk.size():
             var got := []
-            if int(sv.steel) > 0: got.append("%d tons of steel" % int(sv.steel))
-            if int(sv.munitions) > 0: got.append("%d tons of munitions" % int(sv.munitions))
-            if int(sv.fuel) > 0: got.append("%d tons of fuel oil" % int(sv.fuel))
+            if int(sv.steel) > 0: got.append("%d ton%s of steel" % [int(sv.steel), "" if int(sv.steel) == 1 else "s"])
+            if int(sv.munitions) > 0: got.append("%d ton%s of munitions" % [int(sv.munitions), "" if int(sv.munitions) == 1 else "s"])
+            if int(sv.fuel) > 0: got.append("%d ton%s of fuel oil" % [int(sv.fuel), "" if int(sv.fuel) == 1 else "s"])
             if int(sv.coin) > 0: got.append("fittings worth %s" % Campaign.fmt(int(sv.coin)))
             if int(sv.rp) > 0: got.append("%d RP from equipment ahead of yours" % int(sv.rp))
             box.add_child(UI.label("SALVAGE", UI.DIM, 12))
@@ -1408,9 +1452,9 @@ func _fleet_table(box: Control, at_port: bool) -> void:
         # two lines to a ship, so the buttons are never pushed off the panel by a long name
         var nm := UI.label(("★ " if i == 0 else "") + s.name, UI.GOLD if i == 0 else UI.INK); nm.custom_minimum_size.x = 190
         var rd: float = Campaign.readiness(s)
-        box.add_child(UI.row([nm, UI.label("%s · %s class (%s) · %s kn · %s crew" % [h.name, h.dn, GameData.makers[h.yard].short, str(h.kn), Campaign.crew_name(s)], UI.DIM, 13), UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),
+        box.add_child(_flow([nm, UI.label("%s · %s class (%s) · %s kn · %s crew" % [h.name, h.dn, GameData.makers[h.yard].short, str(h.kn), Campaign.crew_name(s)], UI.DIM, 13), UI.row([UI.label("Hull", UI.DIM, 13), _hull_bar(s.hullFrac), UI.label("%d%%" % int(s.hullFrac * 100), UI.DIM, 13),   # (kept together when the row wraps)
             UI.label("Readiness %d%%" % int(rd * 100), UI.GREEN if rd > 0.8 else (UI.GOLD if rd > 0.55 else UI.RED), 13),
-            _wear_label(s)]))
+            _wear_label(s)])]))
         var items = [_captain_pick(s)]
         var rb := UI.button("In reserve ✓" if s.get("reserve", false) else "Hold in reserve", func(): s.reserve = not s.get("reserve", false); _rerender()); rb.tooltip_text = "A ship in reserve stands off when the squadron fights: she takes no part and no damage. Useful for transports, oilers and cripples."
         items.append(rb)
@@ -1435,9 +1479,18 @@ func _fleet_table(box: Control, at_port: bool) -> void:
             items.append(UI.button("Keep her", func(): _scuttle_id = ""; _rerender()))
         else: items.append(UI.button("Scuttle", func(): _scuttle_id = str(s.id); _rerender(), false, G.fleet.size() < 2))
         if i: items.append(UI.button("Make flagship", func(): G.fleet.erase(s); G.fleet.push_front(s); _rerender()))
-        box.add_child(UI.row(items))
+        box.add_child(_flow(items))
     _laid_section(box, at_port)
     _division_section(box)
+
+## A row that wraps when the panel is narrow (the fleet list: in the Command drawer its rows made the drawer as wide
+## as the screen; UI review, 12 Nov 2026).
+func _flow(children: Array) -> HFlowContainer:
+    var f := HFlowContainer.new(); f.add_theme_constant_override("h_separation", 8); f.add_theme_constant_override("v_separation", 6)
+    for c in children:
+        if c is Control: c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        f.add_child(c)
+    return f
 
 ## Age and wear for the fleet list: gold from a third worn, red from two thirds.
 func _wear_label(s: Dictionary) -> Label:
@@ -1769,7 +1822,7 @@ func show_command() -> void:
     else: Sfx.cue("paper", 0.45)
     if is_instance_valid(drawer): drawer.queue_free()
     drawer_tab = cmd_tab
-    var vs := get_viewport_rect().size; var w := clampf(vs.x * 0.42, 560.0, 720.0)   # a drawer, not a screen: under half the chart's width
+    var vs := get_viewport_rect().size; var w := clampf(vs.x * 0.46, 600.0, 760.0)   # a drawer, not a screen: under half the chart's width, and one width for every page
     var pc := PanelContainer.new(); pc.mouse_filter = Control.MOUSE_FILTER_STOP; ui.add_child(pc); ui.move_child(pc, cmdbar.get_index())
     pc.set_anchor_and_offset(SIDE_LEFT, 0, 14); pc.set_anchor_and_offset(SIDE_BOTTOM, 1, -58); pc.set_anchor_and_offset(SIDE_TOP, 1, -98)   # just above the tabs
     pc.grow_vertical = Control.GROW_DIRECTION_BEGIN; pc.custom_minimum_size.x = w
@@ -2180,9 +2233,12 @@ func _systems(box: Control, s: Dictionary) -> void:
         var heavy: bool = not BattleSim.loading(d, s.fit, up2).ok and BattleSim.system_tons(d, k) > 0.0
         var b := UI.button("Fit Mk %s · %s" % ["I" if lvl == 0 else "II", Campaign.fmt(cost)], func():
             G.credits -= cost; s.up[k] = lvl + 1; Campaign.refit_done(s, BattleSim.system_tons(d, k)); _toast("%s: %s Mk %s fitted. Readiness %d%%." % [s.name, u.name, "I" if lvl == 0 else "II", int(round(Campaign.readiness(s) * 100))]); _render_port(), false, locked or heavy or G.credits < cost)
-        if locked: b.tooltip_text = "Mk II needs the research: " + needs
-        elif heavy: b.tooltip_text = "She cannot carry it as she is fitted: land some weight first."
-        box.add_child(UI.row([name_l, mk, eff, b]))
+        b.custom_minimum_size.x = 170   # one width down the list
+        var why := ""   # said beside the button, not only in its tooltip (UI review, 12 Nov 2026)
+        if locked: why = "needs " + String(Campaign.C.TECH.filter(func(x): return x.id == needs).map(func(x): return x.name).front() if Campaign.C.TECH.any(func(x): return x.id == needs) else needs)
+        elif heavy: why = "too heavy as she is fitted"
+        b.tooltip_text = ("Mk II needs the research: " + needs) if locked else ("She cannot carry it as she is fitted: land some weight first." if heavy else "")
+        box.add_child(UI.row([name_l, mk, eff, b] + ([UI.label(why, UI.RED if heavy else UI.DIM, 12)] if why != "" else [])))
 
 ## A card for the weapon planned in one mount: its picture in the builder's style, its figures, and how it compares
 ## with the weapon fitted there now.
@@ -2245,6 +2301,7 @@ func _fits(wid: String, slot: String) -> bool:
     if gs.has(slot): return gs.has(w.size) and gs.find(w.size) <= gs.find(slot) and gs.find(w.size) >= gs.find(slot) - 1
     return w.size == slot
 
+var _dismiss_id := ""   # the officer whose Dismiss asks for confirmation
 func _officers(box: Control, p: Dictionary) -> void:
     var G: Dictionary = Campaign.G
     if not p.is_empty():
@@ -2271,11 +2328,18 @@ func _officers(box: Control, p: Dictionary) -> void:
         box.add_child(UI.label("%s · level %d · %s%s · %s · XP %d/%d" % [o.name, o.lvl, Campaign.temper(o), (" · %d point%s to spend" % [o.pts, "s" if o.pts > 1 else ""]) if o.pts else "", ("Commands " + sh.name) if sh != null else "Ashore, no command", o.xp, o.lvl * 100], UI.GOLD if o.pts else UI.INK))
         var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 14)
         var fc = _face(o); if fc != null: row.add_child(fc)
+        var skills := []
         for k in Campaign.C.SKILLS:
             var key: String = k
-            row.add_child(UI.label("%s %s%s" % [Campaign.C.SKILLS[k][0], "■".repeat(o.sk[k]), "□".repeat(3 - o.sk[k])], UI.DIM, 13))
-            if o.pts and o.sk[k] < 3: row.add_child(UI.button("+", func(): o.sk[key] += 1; o.pts -= 1; _rerender()))
-        row.add_child(UI.button("Dismiss", func(): G.officers.erase(o); _rerender()))
+            skills.append(UI.label("%s %s%s" % [Campaign.C.SKILLS[k][0], "■".repeat(o.sk[k]), "□".repeat(3 - o.sk[k])], UI.DIM, 13))
+            if o.pts and o.sk[k] < 3: skills.append(UI.button("+", func(): o.sk[key] += 1; o.pts -= 1; _rerender()))
+        var fl := _flow(skills); fl.size_flags_horizontal = Control.SIZE_EXPAND_FILL; fl.size_flags_vertical = Control.SIZE_SHRINK_CENTER; row.add_child(fl)
+        # dismissing is for good: it asks once more, as scuttling does (UI review, 12 Nov 2026)
+        if _dismiss_id == str(o.id):
+            var cf := UI.button("Confirm: dismiss " + String(o.name).split(" ")[0], func(): _dismiss_id = ""; G.officers.erase(o); _rerender(), true); cf.size_flags_vertical = Control.SIZE_SHRINK_CENTER; row.add_child(cf)
+            var kp := UI.button("Keep", func(): _dismiss_id = ""; _rerender()); kp.size_flags_vertical = Control.SIZE_SHRINK_CENTER; row.add_child(kp)
+        else:
+            var db := UI.button("Dismiss", func(): _dismiss_id = str(o.id); _rerender()); db.size_flags_vertical = Control.SIZE_SHRINK_CENTER; row.add_child(db)
         box.add_child(row)
     _p(box, ". ".join(Campaign.C.SKILLS.values().map(func(v): return v[0] + ": " + v[1].to_lower())) + ".", UI.DIM, 13)
 
@@ -2298,16 +2362,19 @@ func _research(box: Control) -> void:
                 var have := Campaign.era_count(G.tech, shown_era); var gate: int = Campaign.era_gate(shown_era)
                 var nxt: String = String(Campaign.C.ERA_NAME[str(shown_era + 1)]).split(" · ")[0]
                 _p(box, ("%s is open." % nxt) if have >= gate and pe >= shown_era else ("%s opens when you have researched %d of these %s technologies: %d of %d so far." % [nxt, gate, String(Campaign.C.ERA_NAME[str(shown_era)]).split(" · ")[0], mini(have, gate), gate]), UI.GOLD if have < gate and pe == shown_era else UI.DIM, 13)
-        var done: bool = G.tech.has(t.id); var ok: bool = t.req.all(func(r): return G.tech.has(r)) and int(t.era) <= pe
+        var lv: int = Campaign.tech_lv(t.id); var mx: int = Campaign.tech_max(t.id); var why: String = Campaign.can_research(t)
         var col = VBoxContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        col.add_child(UI.label("%s · era %d" % [t.name, t.era], UI.GREEN if done else (UI.INK if ok else UI.DIM)))
+        var pips := "" if mx < 2 else "  " + "●".repeat(lv) + "○".repeat(mx - lv)   # levels researched of the technology's levels
+        col.add_child(UI.label("%s · era %d%s" % [t.name, t.era, pips], UI.GREEN if lv >= mx else (UI.GOLD if lv > 0 else (UI.INK if why == "" or why.begins_with("Needs") else UI.DIM))))
         col.add_child(UI.label(t.desc, UI.DIM, 13, true))
+        if mx > 1: col.add_child(UI.label(("Level II: %s." if mx == 2 else "Levels II and III: %s each.") % String(Campaign.TECH_UP.get(t.id, "")), Color(UI.DIM, 0.85), 12, true))
         var act: Control
-        if done: act = UI.label("Researched", UI.GREEN, 13)
-        elif ok: act = UI.button("Research · %d RP" % t.cost, func():
-            G.rp -= t.cost; G.tech.append(t.id); _toast("Research complete: %s." % t.name); Campaign.log_ev("Researched " + t.name); _rerender(), false, G.rp < t.cost)
-        elif int(t.era) > pe: act = UI.label("Opens with %s" % String(Campaign.C.ERA_NAME[str(int(t.era))]).split(" · ")[0], UI.DIM, 13)
-        else: act = UI.label("Requires " + ", ".join(t.req.map(func(r): return Campaign.C.TECH.filter(func(x): return x.id == r)[0].name)), UI.DIM, 13)
+        if lv >= mx: act = UI.label("Researched" if mx == 1 else "Level " + ["", "I", "II", "III"][mx], UI.GREEN, 13)
+        elif why == "" or why.begins_with("Needs"):
+            var nxt: int = lv + 1
+            act = UI.button(("Research" if nxt == 1 else "Level " + ["", "I", "II", "III"][nxt]) + " · %d RP" % Campaign.tech_cost(t), func():
+                if Campaign.research(t): _toast("Research complete: %s%s." % [t.name, "" if nxt == 1 else ", level " + ["", "I", "II", "III"][nxt]]); _rerender(), false, why != "")
+        else: act = UI.label(why, UI.DIM, 13)
         box.add_child(UI.row([col, act]))
 
 func _contracts(box: Control, p: Dictionary) -> void:

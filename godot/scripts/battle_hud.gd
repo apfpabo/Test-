@@ -13,6 +13,7 @@ const GREEN := Color(0.5, 0.75, 0.56)
 const PANEL := Color(0.055, 0.1, 0.12, 0.9)
 
 var menu: Control
+var keys_a := 0.45   # how bright the list of keys is drawn
 var _tip := ""   # explanation for whatever the mouse is over, drawn last
 const TIPS := {
     "crew": "Crew fit for duty. Losses slow the guns' reloading, damage control and the ship's speed.",
@@ -164,8 +165,13 @@ func _draw() -> void:
     var clock = "%d:%02d" % [int(sim.t / 60), int(fmod(sim.t, 60))]
     # the keys, wrapped to the width of the window (it ran off the right-hand edge of anything narrower than 2,000 px)
     var hy := 86.0
+    # after the opening half-minute they fade back, to come up again while paused or with the mouse over them (UI review,
+    # 12 Nov 2026: three lines of keys sat bright over the sea for the whole action); the place they take does not change
+    var mp := get_local_mouse_position(); var over: bool = mp.y > 72.0 and mp.y < 136.0 and mp.x < W * 0.9
+    var want: float = 0.45 if (sim.t < 30.0 or battle.paused or over) else 0.13
+    keys_a = lerpf(keys_a, want, 0.15)
     for ln in _wrap(("Battle clock " + clock + " · time ×" + str(int(battle.combat_speed() * BattleSim.BT)) + " (−/=) · W/S engines · A/D rudder · Ctrl+click: waypoint (Ctrl+right-click clears) · click enemy to engage · hold on water to fire there · right-click water: cease fire" + " · " + "Right-drag: pan · Space: recentre · X autofire" + (" (ON)" if sim.autofire else "") + " · T torpedoes · Q missiles · F air strike · C dive · Tab next ship · V shells · Z depth charges · H hide the interface · K smoke · G star shell · B damage control · N flood magazine · J counter-flood · 9 torpedo attack · 0 rejoin · F1 light ships F2 heavy F3 none · Shift+click picks a ship · Ctrl+click sends those picked · Y radar · U sonar (right-click a ship of yours for both) · R sensors · P pause · Esc menu · M mute").split(" · "), W - 32.0, 12):
-        _text(Vector2(16, hy), ln, Color(INK, 0.45), 12); hy += 15.0
+        _text(Vector2(16, hy), ln, Color(INK, keys_a), 12); hy += 15.0
     if sim.limited() or sim.wx.night or int(sim.wx.sea) >= 2 or sim.wx.fog:
         var mine_radar: bool = sim.ships.any(func(x): return x.side == 0 and sim.active(x) and sim.has_radar(x))
         _text(Vector2(16, hy), "%s%s" % [sim.wx.text, (" · lookouts see %.1f km%s · a ship that fires or burns shows at twice that" % [float(sim.wx.vis) / 1000.0, (" · your radar %.1f km" % (float(sim.wx.radar) / 1000.0)) if mine_radar else " · no radar"]) if sim.limited() else " · gunnery suffers"], GOLD, 12)
@@ -200,7 +206,9 @@ func _draw() -> void:
         var line = f.d.dn + " class · " + ["All stop", "Slow ahead", "Half ahead", "Full ahead", "Flank speed"][f.throttle] + " · %d kn · course %03d° · rudder " % [int(round(f.v / BattleSim.KN)), hdg] + (("%d° " % absi(rud)) + ("port" if rud < 0 else "stbd") if rud else "amidships")
         if f.sub: line += " · SUBMERGED" if sim.submerged(f) else (" · diving" if f.want_dive else " · surfaced")
         line += " · %s crew" % String(BattleSim.CREW[f.cq].name)
-        _text(Vector2(x + 10, y + 46), line, DIM, 12)
+        var lfs := 12   # kept inside the panel (UI review, 12 Nov 2026: a submarine's or a long class name ran past its edge)
+        while lfs > 9 and font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x > w - 20: lfs -= 1
+        _text(Vector2(x + 10, y + 46), line, DIM, lfs)
         _text(Vector2(x + 10, y + 64), "Hull", DIM, 12); _bar(Vector2(x + 60, y + 56), 350, 7, f.hull / f.max_hull, GREEN)
         _text(Vector2(x + 10, y + 78), "Armour", DIM, 12); _bar(Vector2(x + 60, y + 72), 350, 5, f.armor / maxf(1.0, f.d.armor), Color(0.62, 0.67, 0.67))
         # damaged subsystems, shown only when something is wrong
@@ -214,7 +222,11 @@ func _draw() -> void:
         if f.jam > 0: sysl.append("rudder jammed %d s" % int(f.jam))
         if f.fc < 0.95: sysl.append("director %d%%" % int(f.fc * 100))
         if f.steer < 0.8: sysl.append("steering %d%%" % int(f.steer * 100))
-        if sysl.size(): _text(Vector2(x + 10, y - 3), " · ".join(sysl), Color(0.85, 0.38, 0.29) if f.mag_fire > 0 or f.eng_out > 0 else GOLD, 12, HORIZONTAL_ALIGNMENT_LEFT, w - 10)
+        if sysl.size():   # a tab on the panel's top edge, so it reads as the flagship's and not as loose text between panels
+            var sysl_t: String = " · ".join(sysl); var bad: bool = f.mag_fire > 0 or f.eng_out > 0
+            var tw: float = minf(w, font.get_string_size(sysl_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 16.0)
+            draw_rect(Rect2(x, y - 15, tw, 15), PANEL); draw_rect(Rect2(x, y - 15, tw, 15), Color(RED if bad else GOLD, 0.55), false, 1)
+            _text(Vector2(x + 8, y - 3), sysl_t, Color(0.85, 0.38, 0.29) if bad else GOLD, 12, HORIZONTAL_ALIGNMENT_LEFT, w - 10)
         var groups = {}
         for m in f.mounts: if not groups.has(m.w.name): groups[m.w.name] = []
         for m in f.mounts: groups[m.w.name].append(m)

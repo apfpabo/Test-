@@ -72,7 +72,13 @@ func _new_campaign() -> void:
     var grid = GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 8); grid.add_theme_constant_override("v_separation", 8); box.add_child(grid)
     for key in Origins.LIST:
         var info: Dictionary = Origins.INFO[key]
-        var b = Button.new(); b.text = info.label + "\n\n" + info.short; b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; b.custom_minimum_size = Vector2(212, 150); b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+        # a card: the origin's name as its heading, the line about it under, both from the top (UI review, 12 Nov 2026:
+        # the name was set like the text and each card's text was centred on its own, so no two cards lined up)
+        var b = Button.new(); b.custom_minimum_size = Vector2(212, 150); b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+        var inner := VBoxContainer.new(); inner.add_theme_constant_override("separation", 6); inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12); b.add_child(inner)
+        var hd := UI.label(String(info.label).trim_prefix("The ").to_upper(), UI.GOLD, 15); hd.add_theme_font_override("font", UI.font("cond")); hd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; hd.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.add_child(hd)
+        var bd := UI.label(info.short, UI.INK, 14, true); bd.custom_minimum_size.x = 0; bd.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.add_child(bd)
         b.pressed.connect(func(): go(func(): _origin(pc, box, key))); grid.add_child(b)
     var tm := CheckBox.new(); tm.text = "Test mode: every technology researched, every design in every shipyard, unlimited money and research points"; tm.button_pressed = test_mode
     tm.toggled.connect(func(on): test_mode = on); box.add_child(tm)

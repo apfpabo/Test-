@@ -31,10 +31,10 @@ const CLIPS := {
 		"cuts": [[0.0, "me", 2.3, 30.0], [4.0, "them", 2.2, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "me", 3.0, 0.0]]},
 	# two carriers working up a strike together, the deck runs busy, then the squadrons formed up overhead
 	"carrier_ops": {"player": ["cv_essex", "cv_essex", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_yamato", "ca_takao"], "sep": 15000.0, "pre": 25.0, "wx": {}, "place": "ahead",
-		"cuts": [[0.0, "deck", 5.0, 0.0], [4.5, "me", 2.0, 120.0], [9.0, "air", 2.2, 0.0]]},
+		"cuts": [[0.0, "deck", 5.0, 0.0], [4.5, "me", 2.4, 120.0], [9.0, "air", 3.4, 0.0]]},
 	# a strike arriving over an enemy squadron: the flak, the torpedo runs, bombs and water columns
 	"air_attack": {"player": ["cv_essex", "cv_essex", "cv_essex"], "enemy": ["bb_yamato", "ca_takao", "dd_kagero", "dd_kagero"], "sep": 9000.0, "pre": 700.0, "until": "strike_in", "wx": {}, "place": "ahead",
-		"cuts": [[0.0, "air", 2.2, 0.0], [3.5, "them", 1.6, 0.0], [8.0, "them", 2.6, 0.0], [11.5, "air", 1.8, 0.0]]},
+		"cuts": [[0.0, "air", 3.6, 0.0], [3.5, "them", 2.8, 0.0], [8.0, "them", 3.6, 0.0], [11.5, "air", 3.2, 0.0]]},
 	# a fleet action in a rising sea at dusk: the lines in spray and gun flashes
 	"heavy_sea": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_littorio", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3200.0, "pre": 60.0, "wx": {"sea": 3, "fog": false, "night": false, "moon": 0.5},
 		"cuts": [[0.0, "me", 2.8, 20.0], [4.0, "them", 2.6, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.4, 0.0]]},

@@ -33,7 +33,8 @@ func _process(d: float) -> void:
 		map.ui.visible = ui; map._speed(8); Campaign.paused = false
 		map.free_cam = true; map.cam = Vector2(Campaign.G.player.x, Campaign.G.player.y); map.zoom = 0.72
 	if f < 3: return
-	if map.panel_open: map.close_panel()   # contacts and harbours are not stopped for: the clock keeps running
+	Campaign.G.player.cool = 1.0e6   # no contacts while the camera rolls: a panel would close the globe
+	if map.panel_open: map.close_panel()
 	Campaign.paused = false
 	t += d
 	var P: Dictionary = Campaign.G.player
@@ -43,5 +44,6 @@ func _process(d: float) -> void:
 	elif t < 10.0:
 		if not map.globe.is_open(): map.zoom = 0.22; map.globe.open()
 	else:
+		if not map.globe.is_open(): map.globe.open()
 		map.globe.spin = Vector2(0.22, 0.0); map.globe.k = lerpf(map.globe.k, 1.25, 0.01)
 	if t >= length: get_tree().quit()

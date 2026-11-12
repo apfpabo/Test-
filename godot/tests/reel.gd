@@ -144,6 +144,7 @@ func _process(d: float) -> void:
 			for s in cvs:   # the carriers hold their course into the wind and send everything they have
 				s.ai_off = true; s.throttle = 3; s.rudder = 0.0
 				if not clip.get("split", false) or s == cvs[0]: sim.launch_strike(s, them[0])   # (split: the first one's strike is already on its way)
+				else: for q in s.squads: if q.state == "ready": q.state = "held"   # her captain would fly them off in the run-up: held for the camera
 		sim.flag = null   # both sides fought by the simulation
 		battle.hud.visible = ui; battle.speed_i = 1; battle.cam_free = true
 		battle.set_clean(not ui)   # without: no interface, no rings; shells, tracer, missiles and aircraft stay
@@ -159,7 +160,11 @@ func _process(d: float) -> void:
 	if f < 3: return
 	if f == 3 and clip.get("split", false):   # the other carrier flies off her strike as the camera rolls on her
 		var them1 = _ship(1)
-		for s in sim.ships: if s.side == 0 and not s.squads.is_empty() and s.deck_ops.is_empty() and them1 != null: sim.launch_strike(s, them1)
+		for s in sim.ships:
+			if s.side != 0 or them1 == null: continue
+			var held := false
+			for q in s.squads: if q.state == "held": q.state = "ready"; held = true
+			if held: sim.launch_strike(s, them1)
 	if f == 3 and clip.has("storm_at"): sim.wx = Weather.battle(clip.storm_at); battle.apply_weather()   # the storm breaks as the camera rolls
 	if clip.get("stars", false) and f % 180 == 3:   # the target's escorts keep star shell burning over and beside her (their own, so it is
 		var tg = _ship(1)                                  # there as the camera rolls: ours, from 8 km off, took fourteen seconds to arrive)

@@ -41,9 +41,10 @@ const CLIPS := {
 	# the owner's request (12 Nov 2026): night, a storm, star shell, and carriers' jets going in on a battleship. Aircraft
 	# cannot take off in a storm, so the strike is flown off in the heavy sea before it and goes in as the storm breaks
 	# ("storm_at" puts the weather the camera rolls in); both sides light the action with star shell ("stars")
-	"night_storm": {"player": ["cv_forrestal", "cv_forrestal", "bb_iowa", "dd_gearing", "dd_gearing"], "enemy": ["bb_yamato", "ca_takao", "dd_kagero", "dd_kagero"], "sep": 8500.0, "pre": 700.0, "until": "strike_in",
+	"night_storm": {"player": ["cv_forrestal", "cv_forrestal", "dd_gearing", "dd_gearing", "dd_gearing"], "enemy": ["bb_yamato", "dd_kagero", "dd_kagero"], "sep": 9000.0, "pre": 900.0,
+		"until": "strike_d", "until_d": 3800.0, "split": true, "screen": true,
 		"wx": {"sea": 2, "fog": false, "night": true, "moon": 0.25}, "storm_at": {"sea": 3, "fog": false, "night": true, "moon": 0.25}, "stars": true, "place": "ahead", "tech": ["radar", "jets", "missiles"],
-		"cuts": [[0.0, "air", 3.0, 0.0], [3.5, "them", 2.3, 0.0], [7.5, "them", 3.2, 0.0], [11.0, "them", 1.8, 0.0]]},
+		"cuts": [[0.0, "deck", 2.2, 0.0], [4.5, "them", 2.4, 0.0], [10.5, "them", 1.1, 0.0]]},
 	"fleet": {"player": ["bb_iowa", "bb_kgv", "ca_baltimore", "ca_baltimore", "dd_fletcher", "dd_fletcher"], "enemy": ["bb_bismarck", "bb_scharnhorst", "ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "sep": 3400.0, "pre": 60.0, "wx": {},
 		"cuts": [[0.0, "me", 2.6, 20.0], [4.0, "them", 2.4, 0.0], [8.0, "mid", 0.3, 0.0], [11.0, "them", 3.2, 0.0]]},
 	# destroyers hunting a dived boat: she lies ahead of them, they find her with sonar and run in over her
@@ -84,6 +85,8 @@ func _ready_to_roll(sim, n: int) -> bool:
 			for tp in sim.torps: for s in sim.ships: if s.side != tp.side and s.alive and s.pos.distance_to(tp.pos) < 330.0: return true
 		"strike_in":
 			for q in sim.air: if q.side == 0 and q.state == "out" and q.up > 0 and q.target != null and q.pos.distance_to(q.target.pos) < 1700.0: return true
+		"strike_d":   # the first strike's dive bombers this far from their target
+			for q in sim.air: if q.side == 0 and q.type == "db" and q.state == "out" and q.up > 0 and q.target != null and q.pos.distance_to(q.target.pos) < float(clip.until_d): return true
 		"landing":
 			if n < 200: for s in sim.ships: if s.side == 1: s.god = true
 			for q in sim.air: if q.side == 0 and q.state == "land": for s in sim.ships: if not s.deck_ops.is_empty() and s.deck_ops[0].k == "ld": return true
@@ -132,9 +135,15 @@ func _process(d: float) -> void:
 		if String(clip.get("place", "")) == "ahead":   # the enemy far up the screen, coming on
 			for i in me.size(): me[i].pos = c + Vector2(i * 500.0 * (1 if i % 2 else -1), i * 250.0)
 			for i in them.size(): them[i].pos = c + Vector2(i * 450.0, -clip.sep - i * 300.0); them[i].a = -up
-			for s in me:   # the carriers hold their course into the wind and send everything they have
-				if s.squads.is_empty(): continue
-				s.ai_off = true; s.throttle = 3; s.rudder = 0.0; sim.launch_strike(s, them[0])
+			var cvs: Array = me.filter(func(x): return not x.squads.is_empty())
+			if clip.get("screen", false) and cvs.size() > 0:   # destroyers screening the carrier the camera opens on, close about her
+				var cv = cvs[cvs.size() - 1]; var k := 0
+				for x in me:
+					if not x.squads.is_empty(): continue
+					x.pos = cv.pos + [Vector2(-320, -420), Vector2(330, -380), Vector2(0, -700)][k % 3]; x.a = up; k += 1
+			for s in cvs:   # the carriers hold their course into the wind and send everything they have
+				s.ai_off = true; s.throttle = 3; s.rudder = 0.0
+				if not clip.get("split", false) or s == cvs[0]: sim.launch_strike(s, them[0])   # (split: the first one's strike is already on its way)
 		sim.flag = null   # both sides fought by the simulation
 		battle.hud.visible = ui; battle.speed_i = 1; battle.cam_free = true
 		battle.set_clean(not ui)   # without: no interface, no rings; shells, tracer, missiles and aircraft stay
@@ -148,11 +157,14 @@ func _process(d: float) -> void:
 			sim.step(0.02); n += 1
 			if n % 3 == 0: sim.fx(0.06)
 	if f < 3: return
+	if f == 3 and clip.get("split", false):   # the other carrier flies off her strike as the camera rolls on her
+		var them1 = _ship(1)
+		for s in sim.ships: if s.side == 0 and not s.squads.is_empty() and s.deck_ops.is_empty() and them1 != null: sim.launch_strike(s, them1)
 	if f == 3 and clip.has("storm_at"): sim.wx = Weather.battle(clip.storm_at); battle.apply_weather()   # the storm breaks as the camera rolls
 	if clip.get("stars", false) and f % 180 == 3:   # the target's escorts keep star shell burning over and beside her (their own, so it is
 		var tg = _ship(1)                                  # there as the camera rolls: ours, from 8 km off, took fourteen seconds to arrive)
 		if tg != null:
-			var off := Vector2(700.0, -500.0) if (f / 180) % 2 == 0 else Vector2(-600.0, 400.0)
+			var off := Vector2(170.0, -260.0) if (f / 180) % 2 == 0 else Vector2(-210.0, 160.0)   # in the frame with her
 			sim.flares.append({"p": tg.pos + off, "t": 1.6, "v": randi() % 4})
 	t += d
 	if clip.get("hunt", false):   # a depth-charge hunt: the boat stays down and silent, and nobody hides the picture in smoke

@@ -991,6 +991,7 @@ class Drawer extends Node2D:
             _puff(glow, f.p, BattleSim.STAR_R * 0.5, Color(0.9, 0.92, 0.8, 0.16 * k))
             # the flare itself: a point of light hanging over the pool, the same few pixels at any zoom (it was at least 60 m
             # across, and close in two or three of them whited out the screen through the bloom; 12 Nov 2026)
+            _puff(glow, f.p, 46.0 * mn, Color(1.0, 0.96, 0.82, 0.32 * k))   # its halo in the murk
             _puff(glow, f.p, 14.0 * mn, Color(1.0, 0.98, 0.9, 0.95 * k))
             _puff(glow, f.p, 5.0 * mn, Color(1.0, 1.0, 1.0, k))
 
@@ -1443,6 +1444,12 @@ class Drawer extends Node2D:
                     var wob: float = sin(Time.get_ticks_msec() * 0.0013 + k * 1.7) * 3.0
                     var pp: Vector2 = q.pos + Vector2(-row * 26.0 * sc, sd * row * 22.0 * sc + wob).rotated(q.a)
                     _aircraft(pp, q.a + sin(Time.get_ticks_msec() * 0.0009 + k) * 0.03, sc, q.jet, q.side, q.type == "tb", sun_s)
+        # aircraft going down: the machine itself, charred and tumbling, a little smaller as she drops towards the sea
+        # (her fire and smoke are particles; BattleSim.fx_plane_down)
+        if sim.modern and z0 >= 0.3:
+            for w in sim.falling:
+                var kf: float = clampf(float(w.t) / float(w.T), 0.0, 1.0)
+                PlaneArt.draw(self, w.p, float(w.a), maxf(1.0, 0.8 * mn) * (1.0 - 0.35 * kf), bool(w.jet), int(w.side), false, sun_s, 30.0 * (1.0 - kf), Color(0.17, 0.15, 0.13))
         # machines taking off and landing, one at a time: down the deck and up to the formation ahead, or round
         # from the formation astern, onto the deck and forward to the lift
         for cv in sim.ships:

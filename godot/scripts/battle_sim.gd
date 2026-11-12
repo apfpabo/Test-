@@ -974,6 +974,35 @@ func _young_near(type: int, p: Vector2, size: float, young: float) -> Part:
 
 ## An explosion. Modern: a white-hot core, rolling fireballs, a shockwave ring, debris streaking out, embers drifting
 ## downwind and a pool of light on the water and hulls around it. Classic: a soft flash and smoke.
+## An aircraft shot down (the owner asked for more than an orange puff, 12 Nov 2026): a flash and a fireball where she
+## was hit, pieces and burning fuel flung on along her line of flight, a burst of black smoke; then the wreck falls for
+## a few seconds, tumbling, burning and trailing smoke (`falling`, drawn by the battle screen), and goes into the sea
+## with a splash and a burning slick. The classic style keeps the old puff.
+var falling: Array = []     # {p, v, t, T, a, spin, jet, side}: aircraft going down
+func fx_plane_down(p: Vector2, vel: Vector2, jet := false, side := 0) -> void:
+    if not modern: part(P.FALL, p, 1.4, 6.0); return
+    part(P.CORE, p, 0.16, 6.0); part(P.GLOW, p, 0.9, 30.0)
+    for i in 3:
+        var fb = part(P.FIREBALL, p + rdir() * 2.0, 0.7 + randf() * 0.5, 4.5 + randf() * 3.0, vel * 0.35 + rdir() * (4.0 + randf() * 8.0)); fb.size *= 1.5
+        fb.a = randf() * TAU; fb.spin = (randf() - 0.5) * 3.0; fb.drag = 0.6
+    for i in 9:   # the pieces carry on with her speed and spread
+        var d = part(P.DEBRIS, p, 0.5 + randf() * 1.0, 0.35 + randf() * 0.45, vel * (0.4 + randf() * 0.5) + rdir() * (15.0 + randf() * 45.0)); d.drag = 0.4
+    for i in 5:
+        var e = part(P.EMBER, p + rdir() * 3.0, 1.2 + randf() * 1.4, 0.7 + randf() * 0.6, vel * 0.3 + rdir() * (6.0 + randf() * 14.0), true); e.drag = 0.5
+    var sm = part(P.SOOT, p, 2.6, 10.5, vel * 0.15, true); sm.a = randf() * TAU
+    falling.append({"p": p, "v": vel * 0.55, "t": 0.0, "T": 2.4 + randf() * 1.8, "a": vel.angle(), "spin": (randf() - 0.5) * 5.0, "jet": jet, "side": side, "sm": 0.0})
+func _falling(dt: float) -> void:
+    for i in range(falling.size() - 1, -1, -1):
+        var w: Dictionary = falling[i]
+        w.t = float(w.t) + dt; w.p += w.v * dt; w.v *= maxf(0.0, 1.0 - 0.35 * dt); w.a = float(w.a) + float(w.spin) * dt
+        w.sm = float(w.sm) - dt
+        if float(w.sm) <= 0.0 and modern:   # fire and a ribbon of smoke behind her as she goes down
+            w.sm = 0.07
+            var q = part(P.SMOKE, w.p, 2.2 + randf(), 2.2 + randf() * 1.2, Vector2.ZERO, true); q.a = randf() * TAU
+            part(P.FIRE, w.p, 0.25, 1.6 + randf())
+        if float(w.t) >= float(w.T):   # into the sea
+            fx_splash(w.p, 7.0); part(P.OIL, w.p, 25.0, 9.0); part(P.FIRE, w.p, 3.5, 3.0); part(P.SMOKE, w.p, 5.0, 5.0, Vector2.ZERO, true)
+            falling.remove_at(i)
 func fx_boom(p: Vector2, size: float, mx := 0.6) -> void:
     part(P.BOOM, p, mx, size)
     if modern:
@@ -1298,7 +1327,7 @@ func _spotters(dt: float) -> void:
     for i in range(spotters.size() - 1, -1, -1):
         var q: Dictionary = spotters[i]; var sh: CShip = q.ship
         if int(q.n) <= 0:   # shot down
-            part(P.FALL, q.pos, 1.6, 7.0); fx_splash(q.pos, 5.0); spotters.remove_at(i)
+            fx_plane_down(q.pos, Vector2.from_angle(float(q.a)) * float(q.get("v", 40.0)), false, int(q.side)); spotters.remove_at(i)
             if q.side == 0: say("A floatplane of ours is shot down.", 1.5)
             continue
         q.t = float(q.t) + dt; q.alt = minf(150.0, float(q.alt) + dt * 6.0); q.v = minf(SPOT_V, float(q.v) + dt * 4.0)
@@ -1340,7 +1369,7 @@ func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
     else: aa_shot(s, m, p, sq.pos)
     part(P.FLAK, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 50.0, 0.6, 8.0)
     if randf() < chance * (0.6 if sq.jet else 1.0) * (1.35 + 0.1 * tech_up(s.tech, "aa_prox") if s.tech.has("aa_prox") else 1.0):   # proximity fuzes
-        sq.n = maxi(0, int(sq.n) - 1); part(P.FALL, sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 30.0, 1.4, 6.0)
+        sq.n = maxi(0, int(sq.n) - 1); fx_plane_down(sq.pos + Vector2(randf() - 0.5, randf() - 0.5) * 30.0, Vector2.from_angle(float(sq.get("a", 0.0))) * (220.0 if sq.jet else 75.0) * 0.6, bool(sq.jet), int(sq.side))
 
 func update_weapons(s: CShip, dt: float) -> void:
     var is_player = s == flag; var sm = submerged(s)
@@ -2507,7 +2536,7 @@ func step(dtv: float) -> void:
             if m.kind == "sam" and d < 40:
                 if randf() < m.p:
                     if m.target.get("kind", "") == "ssm": kill_missile(m.target)
-                    else: m.target.n = maxi(0, int(m.target.n) - mini(2, int(m.target.up))); part(P.FALL, tpos, 1.4, 6.0)   # only machines in the air can be hit
+                    else: m.target.n = maxi(0, int(m.target.n) - mini(2, int(m.target.up))); fx_plane_down(tpos, Vector2.from_angle(float(m.target.get("a", 0.0))) * (220.0 if m.target.get("jet", false) else 75.0) * 0.6, bool(m.target.get("jet", false)), int(m.target.get("side", 0)))   # only machines in the air can be hit
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B) and m.target.tech.has("ecm") and not m.get("ecm_tried", false):
                 m.ecm_tried = true
@@ -2584,6 +2613,7 @@ func trail_point(s: CShip) -> Dictionary:
 ## Visual effects advance once per frame, in visual seconds.
 func fx(dtv: float) -> void:
     _scars_fx(dtv)
+    _falling(dtv)
     _wrecks(dtv)
     if modern:   # a badly hurt ship trails oil, and one sinking leaves her boats, rafts and wreckage on the water
         for s in ships:

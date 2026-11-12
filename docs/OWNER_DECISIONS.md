@@ -5,15 +5,17 @@ to the roadmap) once it is decided.
 
 ## 1. Should the yard refuse a badly overweight fit? (12 Nov 2026)
 
-**What happens now.** The yard refuses a fit only past a hard limit (`BattleSim.loading`, `ok`), well beyond the hull's
-margin. Up to that limit it lets almost anything through at a cost. In the refit reel, a 20-inch twin was tried in the
+**What happens now.** A hull has a margin of 1.2% of her displacement for extra weight; past it she is slower, turns
+worse and rolls more. The yard refuses a fit only when it is more than a further 3% of her displacement over that
+margin, or her topweight passes 130% (`BattleSim.loading`, `ok`). For the Iowa (45,000 t) that is a 540 t margin and
+then 1,350 t more. In the refit reel, a 20-inch twin was tried in the
 Iowa's aft turret: 1,251 t over her margin, 6% slower, 4% slower on the helm, salvos spread 39% wider in a calm sea,
 and the yard still passed it.
 
 **The choices.**
 - **Keep it as it is.** The player may make bad ships; the ledger shows the price plainly. (Rule the Waves lets you build
   an unbalanced design and lets the sea punish it.)
-- **Refuse sooner.** Lower the hard limit, for example to the margin plus half again, so a fit like the 20-inch aft is
+- **Refuse sooner.** Lower the limit, for example to 1.5% over the margin instead of 3%, so a fit like the 20-inch aft is
   refused with the reason shown. Safer, but less freedom.
 - **Warn and ask.** Let it through, but only after a "This fit is far over her margin: confirm anyway?" step.
 

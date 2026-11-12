@@ -135,6 +135,7 @@ class CShip:
     var dc_held_at := -99.0     # when she last held a pattern for a friend (a measure: see sys_log)
     var fp := 0                 # floatplanes aboard on her catapults (see launch_spotter)
     var blown := false          # lost to her own magazine: nothing left to raise (Campaign wrecks)
+    var tm := "steady"          # her captain's temper: "bold", "steady" or "cautious" (Campaign.TEMPERS, temper_k)
     var fp_t := 0.0             # until her captain will next think of flying one off
     var jam_r = 0.0        # where it jammed
     var fc = 1.0           # fire control: salvo spread grows as it falls
@@ -1366,8 +1367,9 @@ func update_weapons(s: CShip, dt: float) -> void:
                 # straight-running torpedoes pass over a submerged boat; acoustic homers can go after one that is held on sonar
                 var homer: bool = w.get("homing", false)
                 var ok_t = func(x: CShip) -> bool: return not submerged(x) or homer
-                var tg: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and ok_t.call(s.target)) else nearest_enemy(s.pos, s.side, rng * 0.75, ok_t)
-                if tg == null or p.distance_to(tg.pos) > rng * 0.75: continue
+                var reach_k: float = temper_k(s, 0.9, 0.75, 0.6)   # how far off her captain will fire (a bold one sooner, a cautious one only close in)
+                var tg: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and ok_t.call(s.target)) else nearest_enemy(s.pos, s.side, rng * reach_k, ok_t)
+                if tg == null or p.distance_to(tg.pos) > rng * reach_k: continue
                 var lp = lead_point(p, tg, w.speed); var want = ang_diff((lp - p).angle(), s.a)
                 var ac = arc_check(m.slot, want)
                 if ac.x == 0: m.ta += ang_diff(ac.y, m.ta) * minf(1.0, dt * 2); continue
@@ -1589,7 +1591,7 @@ func damage(s: CShip, dmg: float, type: String) -> void:
         _: hd = dmg
     if type != "magazine": hd *= 1 - 0.07 * s.sk.dc   # damage control cannot save a ship whose magazine has gone up
     s.hull -= hd; s.dmg_taken += hd; last_hit = t
-    if s.side == 1 and not s.flee and s.hull / s.max_hull < 0.25 and randf() < 0.3: s.flee = true
+    if s.side == 1 and not s.flee and s.hull / s.max_hull < temper_k(s, 0.1, 0.25, 0.45) and randf() < temper_k(s, 0.2, 0.3, 0.5): s.flee = true   # a bold captain fights on, a cautious one breaks off early
     if s.hull <= 0:
         s.hull = 0; s.alive = false; s.sink = 0.001
         part(P.OIL, s.pos, 60.0, s.d.L * 0.45)
@@ -1915,11 +1917,16 @@ func keep_station(s: CShip, off: Vector2) -> void:
     s.throttle = 4; s.v_cmd = maxf(0.0, flag.v + clampf(along * 0.035, -5.0, 5.0))
     if flag.v < 1.0 and dd < 120.0: s.v_cmd = 0.0   # she has stopped and we are on station: stop too
 
+## Her captain's temper as a factor: one value for a bold captain, one for a steady one, one for a cautious one.
+func temper_k(s: CShip, bold: float, steady: float, cautious: float) -> float: return bold if s.tm == "bold" else (cautious if s.tm == "cautious" else steady)
 func ai_ship(s: CShip, dt: float) -> void:
     if s.struck: s.throttle = 0; s.rudder = 0; return
     s.v_cmd = -1.0; s.brake = -1.0
+    # a cautious captain of yours, badly hurt and left to fight as he sees fit, takes his ship out of it
+    if s.side == 0 and s != flag and s.tm == "cautious" and s.hull / s.max_hull < 0.35 and ord_of(s) == "engage":
+        s.ord = "retreat"; say("The %s's captain takes her out of the fight: she is badly hurt." % s.rec.name, 2.0)
     # smoke: a ship that is running, or badly hurt with the enemy in sight, covers herself (and those behind her)
-    if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else ord_of(s) == "retreat") or s.hull / s.max_hull < 0.4):
+    if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else ord_of(s) == "retreat") or s.hull / s.max_hull < temper_k(s, 0.2, 0.4, 0.6)):
         if nearest_enemy(s.pos, s.side, 10000.0) != null: make_smoke(s, true)
     if s.sub: s.want_dive = nearest_enemy(s.pos, s.side, 8000.0) != null
     var o: String = ord_of(s)
@@ -2005,7 +2012,7 @@ func ai_ship(s: CShip, dt: float) -> void:
     elif s.sub or s.d.kind == "pt": pref = 6000.0 if s.torp_run_t > 0 else 2600.0
     elif has_kind(s, "ssm"): pref = 9000.0
     else: pref = max_gun_range(s) * 0.78
-    if s.d.kind != "carrier" and s.d.kind != "merchant": pref *= maxf(0.5, 1 - t / 1500.0)
+    if s.d.kind != "carrier" and s.d.kind != "merchant": pref *= maxf(0.5, 1 - t / 1500.0) * temper_k(s, 0.75, 1.0, 1.2)   # a bold captain closes, a cautious one keeps the range open
     s.torp_run_t -= dt; s.side_t -= dt
     if s.side_t <= 0:
         s.side_t = 40.0 + randf() * 30.0

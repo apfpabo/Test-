@@ -126,8 +126,8 @@ func _fight(f: Dictionary) -> void:
 		if sh.side == 0:
 			sh.cf = cfg.get("crew_frac", 1.0) * (0.7 + 0.3 * Campaign.readiness(sh.rec))
 			if cfg.get("no_fuel", false): sh.fuel_k = 0.25
-			for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk
-		else: sh.sk = {"gun": mini(2, int(G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
+			for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk; sh.tm = Campaign.temper(o)
+		else: sh.sk = {"gun": mini(2, int(G.day / 80)), "helm": 0, "dc": 0, "ord": 0}; sh.tm = Campaign.pick_temper()
 	sim.flag = null
 	if st.battles % 3 == 1: sim.order = "line"
 	if st.battles % 5 == 2: sim.hold_fire = true

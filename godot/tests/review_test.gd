@@ -1375,4 +1375,21 @@ func _ageing() -> void:
 	G.credits = 900000.0; G.cargo.steel = float(Campaign.recover_cost(Campaign.fleet_wreck(sf, 0).rec).steel) + 5.0; G.fleet = [Campaign.new_ship("cl_cleveland", "C", "player", [])]; G.crew = 5000
 	print("  ", Campaign.raise_hulk(sf, 0))
 	ok(sf.hulks.size() == nh - 1 and G.fleet.size() == 2 and String(G.fleet[1].type) == t0, "a hulk is raised from it")
+	# officers with character: bold, steady or cautious, and it tells in how the ship is fought
+	ok(Campaign.TEMPERS.has(Campaign.temper(Campaign.new_officer(2))) and Campaign.temper({"name": "old"}) == "steady", "a new officer has a temper; one from before is steady")
+	var dist := {}
+	for tmk in ["bold", "cautious"]:
+		var tot := 0.0
+		for rep in 3:
+			seed(70 + rep)
+			var ts := _sim(["cl_cleveland", "dd_fletcher"], ["cl_agano"]); var me = ts.ships[1]; me.tm = tmk; ts.flag = ts.ships[0]; ts.flag.ai_off = true
+			for x in ts.ships: x.hold = true
+			ts.hold_fire = true
+			for i in 4000: ts.step(0.05)
+			tot += me.pos.distance_to(ts.ships[2].pos)
+		dist[tmk] = tot / 3.0
+	ok(float(dist.bold) < float(dist.cautious) * 0.9, "a bold captain closes the enemy, a cautious one keeps the range open (%.0f m against %.0f m)" % [float(dist.bold), float(dist.cautious)])
+	var cs := _sim(["cl_cleveland", "dd_fletcher"], ["cl_agano"]); var cm = cs.ships[1]; cm.tm = "cautious"; cs.flag = cs.ships[0]; cm.hull = cm.max_hull * 0.3
+	cs.ai_ship(cm, 0.1)
+	ok(cm.ord == "retreat", "a cautious captain of yours, badly hurt, takes his ship out of the fight")
 	sections += 1

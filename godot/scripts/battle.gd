@@ -41,8 +41,12 @@ func _ready() -> void:
             if sh.side == 0:
                 sh.cf = cfg.get("crew_frac", 1.0) * (0.7 + 0.3 * Campaign.readiness(sh.rec))   # a tired ship fights as if short-handed
                 if cfg.get("no_fuel", false): sh.fuel_k = 0.25   # dry bunkers: emergency reserves give steerage way, little more
-                for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk
-            else: sh.sk = {"gun": mini(2, int(Campaign.G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
+                for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk; sh.tm = Campaign.temper(o)
+            else:
+                sh.sk = {"gun": mini(2, int(Campaign.G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
+                # their captains have tempers too: a bounty squadron's or a hunter group's are bold, a convoy's escorts careful
+                var fk: String = String(Campaign._fleet(cfg.get("fleet_id", -1)).get("kind", "")) if Campaign._fleet(cfg.get("fleet_id", -1)) != null else ""
+                sh.tm = Campaign.pick_temper(0.6, 0.1) if (fk == "bounty" or fk == "hunter" or fk == "mission") else (Campaign.pick_temper(0.1, 0.5) if fk == "convoy" else Campaign.pick_temper())
         if cfg.get("no_fuel", false): sim.say("Bunkers are dry: your ships can make steerage way on emergency reserves, little more.", 4.0)
     else:
         sim.setup(_recs(mine, "player", pt), _recs(theirs, efac, et), pt, et, cfg.get("islands", randi_range(0, 4)))

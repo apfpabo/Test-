@@ -513,8 +513,17 @@ func enemies_of(f: String) -> Array: return Diplomacy.enemies(f)
 func officer_of(rec: Dictionary):
     for o in G.officers: if o.ship == rec.id: return o
     return null
+## Officers with character (Starsector's personalities; the owner's go-ahead, 11 Nov 2026): each is bold, steady or
+## cautious, and it tells in how her ship is fought (BattleSim.temper_k). An officer from before has none: steady.
+const TEMPERS := {"bold": "Bold: closes the range, fires torpedoes from further off, fights on badly hurt",
+    "steady": "Steady: fights the ship as the book says",
+    "cautious": "Cautious: keeps the range open, holds torpedoes until close in, makes smoke early and pulls out badly hurt"}
+func pick_temper(bold := 0.3, cautious := 0.25) -> String:
+    var r := randf()
+    return "bold" if r < bold else ("cautious" if r < bold + cautious else "steady")
+func temper(o: Dictionary) -> String: return String(o.get("temper", "steady"))
 func new_officer(lvl: int) -> Dictionary:
-    var o = {"id": str(randi()), "name": C.OFFICER_FIRST.pick_random() + " " + C.OFFICER_LAST.pick_random(), "lvl": lvl, "xp": 0, "pts": 0, "sk": {"gun": 0, "helm": 0, "dc": 0, "ord": 0}, "ship": null}
+    var o = {"id": str(randi()), "name": C.OFFICER_FIRST.pick_random() + " " + C.OFFICER_LAST.pick_random(), "lvl": lvl, "xp": 0, "pts": 0, "sk": {"gun": 0, "helm": 0, "dc": 0, "ord": 0}, "ship": null, "temper": pick_temper()}
     for i in lvl:
         var k = ["gun", "helm", "dc", "ord"].pick_random()
         if o.sk[k] < 3: o.sk[k] += 1

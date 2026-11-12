@@ -1928,7 +1928,7 @@ func _captain_pick(s: Dictionary) -> OptionButton:
     var ob = OptionButton.new(); ob.add_item("(no captain)"); ob.set_item_metadata(0, "")
     var G: Dictionary = Campaign.G; var sel = 0
     for o in G.officers:
-        ob.add_item("%s · L%d" % [o.name, o.lvl]); ob.set_item_metadata(ob.item_count - 1, o.id)
+        ob.add_item("%s · L%d · %s" % [o.name, o.lvl, Campaign.temper(o)]); ob.set_item_metadata(ob.item_count - 1, o.id)
         if o.ship == s.id: sel = ob.item_count - 1
     ob.selected = sel
     ob.item_selected.connect(func(i):
@@ -2254,7 +2254,8 @@ func _officers(box: Control, p: Dictionary) -> void:
             var o: Dictionary = p.officers[i]; var cost: int = 3000 * o.lvl
             var sk = []
             for k in Campaign.C.SKILLS: if o.sk[k]: sk.append("%s %d" % [Campaign.C.SKILLS[k][0], o.sk[k]])
-            box.add_child(UI.row([UI.label("%s · level %d" % [o.name, o.lvl], UI.INK), UI.label((" · ".join(sk) if sk.size() else "Green, but eager") + " · salary %d a day" % (40 * o.lvl), UI.DIM, 13),
+            var tl := UI.label(Campaign.temper(o).capitalize(), UI.GOLD, 13); tl.tooltip_text = Campaign.TEMPERS[Campaign.temper(o)]; tl.mouse_filter = Control.MOUSE_FILTER_PASS
+            box.add_child(UI.row([UI.label("%s · level %d" % [o.name, o.lvl], UI.INK), tl, UI.label((" · ".join(sk) if sk.size() else "Green, but eager") + " · salary %d a day" % (40 * o.lvl), UI.DIM, 13),
                 UI.button("Sign on · " + Campaign.fmt(cost), func():
                     G.credits -= cost; p.officers.erase(o); var free = null
                     for s in Campaign.all_ships():
@@ -2267,7 +2268,7 @@ func _officers(box: Control, p: Dictionary) -> void:
     for o in G.officers:
         var sh = null
         for s in Campaign.all_ships(): if s.id == o.ship: sh = s
-        box.add_child(UI.label("%s · level %d%s · %s · XP %d/%d" % [o.name, o.lvl, (" · %d point%s to spend" % [o.pts, "s" if o.pts > 1 else ""]) if o.pts else "", ("Commands " + sh.name) if sh != null else "Ashore, no command", o.xp, o.lvl * 100], UI.GOLD if o.pts else UI.INK))
+        box.add_child(UI.label("%s · level %d · %s%s · %s · XP %d/%d" % [o.name, o.lvl, Campaign.temper(o), (" · %d point%s to spend" % [o.pts, "s" if o.pts > 1 else ""]) if o.pts else "", ("Commands " + sh.name) if sh != null else "Ashore, no command", o.xp, o.lvl * 100], UI.GOLD if o.pts else UI.INK))
         var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 14)
         var fc = _face(o); if fc != null: row.add_child(fc)
         for k in Campaign.C.SKILLS:

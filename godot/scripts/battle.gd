@@ -1047,6 +1047,24 @@ class Drawer extends Node2D:
         var glow: Texture2D = GameData.glow_tex(); var wind: Vector2 = BattleSim.WIND.normalized()
         for q in battle.splash_parts()[1]:
             var e: float = q.life; var k: float = clampf(e / q.mx, 0.0, 1.0); var sz: float = q.size; var nk: float = _night_k(q.pos)
+            # the sea sinks where the shot went in (the owner's reference, 12 Nov 2026): a shallow bowl round the splash,
+            # darker water inside, its wall on the sun's side in shade and the far wall catching the light, a broken bright
+            # lip; it spreads a little and the sea fills it again over some five seconds
+            var bk: float = clampf(e / 5.0, 0.0, 1.0)
+            if bk < 1.0 and sz * battle.zoom() > 1.5:
+                var rb: float = sz * (1.25 + 1.5 * sqrt(bk)); var ba: float = minf(1.0, e / 0.15) * (1.0 - smoothstep(0.45, 1.0, bk))
+                var sunv: Vector2 = BattleSim.SUN.normalized(); var sa: float = sunv.angle()
+                var disc := PackedVector2Array()
+                for i in 28:
+                    var an: float = i * TAU / 28.0
+                    disc.append(q.pos + Vector2.from_angle(an) * rb * (1.0 + 0.05 * (_hash(float(i), float(q.v)) - 0.5)))
+                draw_colored_polygon(disc, Color(0.0, 0.05, 0.08, 0.32 * ba * nk))                                      # the bowl, darker water
+                draw_arc(q.pos, rb * 0.86, sa + PI - 1.5, sa + PI + 1.5, 18, Color(0.0, 0.03, 0.05, 0.3 * ba), rb * 0.26)   # its wall towards the sun, in shade
+                draw_arc(q.pos, rb * 0.97, sa - 1.3, sa + 1.3, 18, Color(0.62 * nk, 0.82 * nk, 0.86 * nk, 0.38 * ba), maxf(rb * 0.05, 1.0 / battle.zoom()))   # the far wall in the light
+                for j in 16:   # the lip, broken: bright where the sea spills back in
+                    if _hash(float(j), float(q.v) + 5.0) < 0.45: continue
+                    var a0: float = j * TAU / 16.0
+                    draw_arc(q.pos, rb * 1.01, a0, a0 + TAU / 22.0, 3, Color(0.85 * nk, 0.94 * nk, 0.94 * nk, 0.45 * ba), maxf(rb * 0.035, 1.0 / battle.zoom()))
             var ak: float = minf(1.0, e / 1.5) * (1.0 - k)
             _puff(glow, q.pos, sz * (1.8 + 0.05 * e), Color(0.25 * nk, 0.55 * nk, 0.52 * nk, 0.3 * ak))   # aerated water, paler green
             var t0: float = (1.6 + BattleSim.col_stand(sz)) * 0.8

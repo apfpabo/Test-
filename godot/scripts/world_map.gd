@@ -377,7 +377,11 @@ class Marks extends Node2D:       # ports, sites, wakes, routes and fleets
             if absf(x - map.cam.x) > hw + 50 or absf(p.y - map.cam.y) > vs.y / 2 / z + 50: continue
             var ready: bool = G.day >= p.next; var s = 6.0 / z; var col = Color(0.89, 0.7, 0.24, 1.0 if ready else 0.35)
             draw_polyline(PackedVector2Array([Vector2(x, p.y - s), Vector2(x + s, p.y), Vector2(x, p.y + s), Vector2(x - s, p.y), Vector2(x, p.y - s)]), col, 1.5 / z)
-            if p.type == "wreck": draw_line(Vector2(x - s * 0.5, p.y), Vector2(x + s * 0.5, p.y), col, 1.5 / z)
+            match String(p.type):
+                "wreck": draw_line(Vector2(x - s * 0.5, p.y), Vector2(x + s * 0.5, p.y), col, 1.5 / z)
+                "den": draw_circle(Vector2(x, p.y), s * 0.28, col)
+                "island": draw_colored_polygon(PackedVector2Array([Vector2(x, p.y - s * 0.45), Vector2(x + s * 0.4, p.y + s * 0.3), Vector2(x - s * 0.4, p.y + s * 0.3)]), Color(0.89, 0.7, 0.24) if p.get("fac", "") == "player" else Color(col, col.a * 0.6))
+                "fleet": draw_line(Vector2(x - s * 0.5, p.y - s * 0.18), Vector2(x + s * 0.5, p.y - s * 0.18), col, 1.5 / z); draw_line(Vector2(x - s * 0.5, p.y + s * 0.18), Vector2(x + s * 0.5, p.y + s * 0.18), col, 1.5 / z)
         _structures(hw, vs.y / 2 / z)
         for p in G.ports:
             var x: float = map.rx(p.x)
@@ -1339,9 +1343,44 @@ func _aftermath_done(r: Dictionary) -> void:
     G.player.cool = 4.0; Campaign.save(); close_panel()
 
 func open_survey(q: Dictionary) -> void:
+    if q.type == "den" or q.type == "island" or q.type == "fleet": _open_site(q); return
     open_panel(func(box):
-        box.add_child(UI.title("Survey: " + q.name)); _p(box, q.get("text", Campaign.C.POI_TEXT[q.type]))
+        box.add_child(UI.title("Survey: " + q.name)); _p(box, Campaign.poi_text(q))
         box.add_child(UI.row([UI.button("Send the divers down", func(): _do_survey(q), true, Campaign.G.day < q.next), UI.button("Leave", close_panel)])))
+
+## The new kinds of site (Campaign: points of interest): a smugglers' den, a contested island, a scuttled fleet.
+func _open_site(q: Dictionary) -> void:
+    var G: Dictionary = Campaign.G
+    open_panel(func(box):
+        box.add_child(UI.title(q.name)); _p(box, Campaign.poi_text(q))
+        match String(q.type):
+            "den":
+                var p: Dictionary = Campaign.den_port(q)
+                _p(box, "Prices here against %s's market: the den pays a quarter more for munitions, electronics and medicine, and sells them a fifth cheaper.%s" % [p.name, " The %s will hear of it." % GameData.fac[p.fac].short if p.fac != "freeport" and GameData.fac.has(p.fac) and p.fac != "player" else ""], UI.DIM, 13)
+                var held := []
+                for gid in Campaign.DEN_GOODS: if float(G.cargo.get(gid, 0.0)) >= 1.0: held.append("%d t %s" % [int(G.cargo[gid]), gid])
+                box.add_child(UI.button("Sell %s" % (", ".join(held) if not held.is_empty() else "(nothing to sell)"), func(): _toast(Campaign.den_sell(q)); _open_site(q), false, held.is_empty()))
+                var row := []
+                for gid in Campaign.DEN_GOODS:
+                    var pr := int(round(Campaign.den_price(q, gid) * Campaign.DEN_BUY))
+                    row.append(UI.button("Buy 10 %s · %d a ton" % [gid, pr], func(): _toast(Campaign.den_buy(q, gid, 10)); _open_site(q), false, G.credits < pr * 10))
+                box.add_child(UI.row(row))
+                box.add_child(UI.button("Hire 50 hands · %s" % Campaign.fmt(750), func(): _toast(Campaign.den_hire(50)); _open_site(q), false, G.credits < 750))
+            "island":
+                var owner: String = q.get("fac", "")
+                if owner == "player": _p(box, "Yours since %s: %s and %d RP a month, paid on the 30th." % [Campaign.date_str(int(q.get("took", G.day))), Campaign.fmt(Campaign.ISLAND_PAY), Campaign.ISLAND_RP], UI.GOLD, 14)
+                else:
+                    _p(box, "Held by the %s: a garrison of about %d. You carry %s soldiers: the odds of a landing are %d%%. Landing on it is an act the %s will not forgive (standing -20)." % [GameData.fac[owner].name if GameData.fac.has(owner) else owner, int(q.get("garrison", 100)), Campaign.fmt(Structures.troops()), int(Campaign.island_odds(q) * 100), GameData.fac[owner].short if GameData.fac.has(owner) else owner], UI.INK, 14)
+                    var why := Campaign.can_take_island(q)
+                    var b := UI.button("Land your troops", func(): _toast(Campaign.take_island(q)); _open_site(q), true, why != ""); b.tooltip_text = why; box.add_child(b)
+            "fleet":
+                if q.hulks.is_empty(): _p(box, "Nothing worth raising is left.", UI.DIM)
+                _p(box, "Raised, a ship comes back at a fifth of her hull with one or two lasting defects (a yard can rebuild them away). Steel comes from your holds (%d tons aboard)." % int(G.cargo.get("steel", 0.0)), UI.DIM, 13)
+                for i in q.hulks.size():
+                    var h: Dictionary = GameData.hulls[q.hulks[i]]; var w: Dictionary = Campaign.fleet_wreck(q, i); var c: Dictionary = Campaign.recover_cost(w.rec); var why := Campaign.can_recover(w)
+                    var b := UI.button("Raise her · %d t steel, %s" % [int(c.steel), Campaign.fmt(int(c.credits))], func(): _toast(Campaign.raise_hulk(q, i)); _open_site(q), false, why != "")
+                    b.tooltip_text = why; box.add_child(UI.row([UI.label("%s · %s class" % [h.name, h.dn], UI.INK, 14), b] + ([UI.label(why, UI.DIM, 12)] if why != "" else [])))
+        box.add_child(UI.button("Leave", close_panel)))
 
 func _do_survey(q: Dictionary) -> void:
     var out = Campaign.do_survey(q)

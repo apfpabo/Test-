@@ -1350,4 +1350,29 @@ func _ageing() -> void:
 	G.spotted = {}; G.raided = {}
 	for i in 20: Structures._air_raids()
 	ok(G.raided.is_empty(), "an airfield that has not found you sends nothing")
+	# points of interest: each new world scatters more, and three kinds are new
+	Campaign.new_game("commission"); G = Campaign.G
+	var gen: Array = G.pois.filter(func(q): return q.get("gen", false))
+	var kinds := {}
+	for q in gen: kinds[q.type] = true
+	ok(gen.size() >= 15 and kinds.has("den") and kinds.has("island") and kinds.has("fleet"), "a new world has %d more sites, dens, islands and scuttled fleets among them" % gen.size())
+	ok(gen.all(func(q): return not Campaign.on_land(q.x, q.y)), "all of them at sea")
+	var den: Dictionary = gen.filter(func(q): return q.type == "den")[0]
+	G.cargo.munitions = 20.0; var cr0: float = G.credits; print("  ", Campaign.den_sell(den))
+	ok(float(G.credits) - cr0 > 20.0 * Campaign.den_price(den, "munitions") * 1.2 and float(G.cargo.munitions) < 1.0, "a den buys munitions a quarter above the market")
+	var isl: Dictionary = gen.filter(func(q): return q.type == "island")[0]
+	ok(Campaign.can_take_island(isl) != "", "an island is not taken without troops")
+	G.tech = ["amphib"]; G.fleet = [Campaign.new_ship("ap_haskell", "T1", "player", []), Campaign.new_ship("ap_haskell", "T2", "player", [])]; G.crew = Campaign.crew_need()
+	var took := false
+	for i in 20:
+		G.troops = Structures.troop_capacity(); print("  ", Campaign.take_island(isl))
+		if isl.fac == "player": took = true; break
+	ok(took, "with troops it is taken")
+	var rp0: int = int(G.rp); cr0 = G.credits; G.day = 59; G.cargo.food = 900.0; G.cargo.fuel = 900.0; Campaign.new_day(false)
+	ok(int(G.rp) >= rp0 + Campaign.ISLAND_RP, "and it pays each month (RP %d to %d)" % [rp0, int(G.rp)])
+	var sf: Dictionary = gen.filter(func(q): return q.type == "fleet")[0]; var nh: int = sf.hulks.size(); var t0: String = sf.hulks[0]
+	ok(Campaign.fleet_wreck(sf, 0).rec.type == t0 and Campaign.fleet_wreck(sf, 0).rec.type == t0, "a scuttled fleet's hulks keep their designs between looks")
+	G.credits = 900000.0; G.cargo.steel = float(Campaign.recover_cost(Campaign.fleet_wreck(sf, 0).rec).steel) + 5.0; G.fleet = [Campaign.new_ship("cl_cleveland", "C", "player", [])]; G.crew = 5000
+	print("  ", Campaign.raise_hulk(sf, 0))
+	ok(sf.hulks.size() == nh - 1 and G.fleet.size() == 2 and String(G.fleet[1].type) == t0, "a hulk is raised from it")
 	sections += 1

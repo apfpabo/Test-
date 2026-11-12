@@ -840,6 +840,7 @@ func new_game(start_key: String, navy := "concord", test := false) -> void:
     # the clock starts at eight in the morning where you lie, not at midnight by the chart's meridian (the first
     # actions of a campaign used to be night actions, fought without radar)
     G.dayF = fposmod((8.0 - x_lon(p0.sx) / 15.0) / 24.0, 1.0)
+    _gen_pois()
     for i in 40: maintain_fleets(true)
     show_origin = Origins.INFO.has(start_key)
     toast.emit(date_str(1) + ". You put to sea from " + p0.name + ". Click the chart to set a course (Ctrl+Click adds waypoints, right-click a fleet for orders); scroll to zoom out to the whole world.")
@@ -1238,6 +1239,7 @@ func new_day(moved: bool) -> void:
     rep_note("Beyond the limits of -100 and 100 (not counted)")
     for pn in perk("pension", []):   # monthly pay an origin brings with it (a pensioned officer's half pay, a defector's retainer), for its days
         if G.day <= int(pn.days) and G.day % 30 == 0: G.credits += int(pn.pay); toast.emit("%s: %s." % [pn.name, fmt(int(pn.pay))])
+    _islands_day()
     maintain_fleets(false)
     Diplomacy.new_day()
     Structures.new_day()
@@ -1754,9 +1756,123 @@ func log_ev(t: String) -> void:
     G.log.append([G.day, t])
     if G.log.size() > 40: G.log.pop_front()
 
+# ------------------------------------------------------------------ points of interest, procedural and new kinds
+## The owner's go-ahead (11 Nov 2026), after the creative direction: "procedural and hand-crafted points of interest
+## (wreck fields, black sites, contested islands, smuggling dens)" and scuttled fleets. Beside the 20 hand-made sites
+## (wreck, base, site), each new world scatters POI_GEN more off the coasts, and three kinds are new:
+##   den: a smugglers' den, a market outside the law (buys munitions, electronics and medicine dear, sells them cheap,
+##        rough hands to hire; the nearest power thinks a little worse of you for it, unless it is the freeports')
+##   island: a contested islet a power holds with a small garrison; land troops and take it, and it pays you each
+##        month until its owner, if at war with you, comes to take it back
+##   fleet: a scuttled squadron in shallow water: hulks to raise one at a time, as wrecks are raised after a battle
+const POI_GEN := 22
+const POI_TEXT2 := {
+	"den": "A cove with no harbour master, no customs and no questions. Munitions, electronics and medicine change hands here at prices no port would allow, and the men drinking ashore will sign on for anything.",
+	"island": "A scrap of rock with a jetty, a radio mast and a few huts, held by a garrison that hates being here. Guano, a coaling store and a listening post: worth something to whoever holds it.",
+	"fleet": "A squadron scuttled in shallow water at the armistice, its upperworks still showing at low tide. Some of the hulls could be pumped out and raised, if you have the steel and the patience.",
+}
+const DEN_SELL := 1.25
+const DEN_BUY := 0.8
+const DEN_GOODS := ["munitions", "electronics", "medicine"]
+const ISLAND_PAY := 1500
+const ISLAND_RP := 2
+func poi_text(q: Dictionary) -> String: return q.get("text", POI_TEXT2.get(q.type, C.POI_TEXT.get(q.type, "")))
+func _gen_pois() -> void:
+    var kinds := ["wreck", "wreck", "wreck", "den", "den", "den", "island", "island", "island", "fleet", "fleet", "base", "site"]
+    var made := 0; var tries := 0
+    while made < POI_GEN and tries < 400:
+        tries += 1
+        var p: Dictionary = G.ports.pick_random()
+        var at := water_point(8, Vector2(p.sx, p.sy) + Vector2.from_angle(randf() * TAU) * randf_range(120.0, 380.0), 60.0)
+        if on_land(at.x, at.y) or G.pois.any(func(o): return mdist(o.x, o.y, at.x, at.y) < 90.0) or G.ports.any(func(o): return mdist(o.sx, o.sy, at.x, at.y) < 60.0): continue
+        var k: String = kinds.pick_random(); var off: String = p.name
+        var q := {"id": G.pois.size(), "type": k, "x": at.x, "y": at.y, "next": 0, "gen": true}
+        match k:
+            "wreck": q.name = "Wreck field off %s" % off
+            "den": q.name = ["Smugglers' cove off %s", "The den at %s", "Free traders' anchorage, %s"].pick_random() % off
+            "island":
+                q.name = ["%s Rock", "Isle off %s", "%s Skerry"].pick_random() % off
+                q.fac = p.fac if p.fac != "player" and p.fac != "enclave" else "freeport"; q.garrison = randi_range(80, 220)
+            "fleet":
+                q.name = "Scuttled squadron off %s" % off; q.hulks = []
+                for i in randi_range(2, 4): q.hulks.append(String(new_ship(["dd", "dd", "cl", "ca", "bb", "ss"].pick_random(), null, "raiders", enemy_tech(2)).type))   # (the designs settled now: a hulk does not change her class between visits)
+            "base": q.name = "Abandoned base off %s" % off
+            _: q.name = "Silent station off %s" % off
+        G.pois.append(q); made += 1
+## The smugglers' den: what it pays and asks for a good, against the nearest harbour's market.
+func den_port(q: Dictionary) -> Dictionary:
+    var best = null; var bd := INF
+    for p in G.ports:
+        var d := mdist(p.sx, p.sy, q.x, q.y)
+        if d < bd: bd = d; best = p
+    return best
+func den_price(q: Dictionary, gid: String) -> int:
+    var p := den_port(q); var base := 1.0
+    for g in C.GOODS: if g.id == gid: base = float(g.base)
+    return maxi(1, int(round(base * float(p.mod.get(gid, 1.0)) * (1.0 + float(p.drift.get(gid, 0.0))))))
+func _den_frown(q: Dictionary) -> void:
+    var p := den_port(q)
+    if p.fac != "freeport" and p.fac != "player" and p.fac != "raiders": G.rep[p.fac] = int(G.rep.get(p.fac, 0)) - 1; rep_note("Dealing at a smugglers' den")
+func den_sell(q: Dictionary) -> String:
+    var got := 0; var sold := []
+    for gid in DEN_GOODS:
+        var n := int(floor(float(G.cargo.get(gid, 0.0))))
+        if n <= 0: continue
+        got += int(round(den_price(q, gid) * DEN_SELL)) * n; G.cargo[gid] = float(G.cargo[gid]) - n; sold.append("%d tons of %s" % [n, gid])
+    if sold.is_empty(): return "You have nothing the den wants."
+    G.credits += got; _den_frown(q)
+    return "Sold %s for %s, no questions asked." % [", ".join(sold), fmt(got)]
+func den_buy(q: Dictionary, gid: String, n: int) -> String:
+    var pr := int(round(den_price(q, gid) * DEN_BUY)); var room := cargo_cap() - cargo_used(); n = mini(n, room)
+    if n <= 0: return "Your holds are full."
+    n = mini(n, int(float(G.credits) / pr))
+    if n <= 0: return "Not enough money."
+    G.credits -= pr * n; G.cargo[gid] = float(G.cargo.get(gid, 0.0)) + n; _den_frown(q)
+    return "Bought %d tons of %s at %d a ton." % [n, gid, pr]
+func den_hire(n: int) -> String:
+    var cost := 15 * n
+    if float(G.credits) < cost: return "Not enough money."
+    G.credits -= cost; G.crew += n
+    return "%d hands sign on for %s. They are rough, and they will be green." % [n, fmt(cost)]
+## A contested island: the odds of taking it with the troops you carry, and the landing.
+func island_odds(q: Dictionary) -> float:
+    var t := float(Structures.troops()); return t / maxf(1.0, t + float(q.get("garrison", 100)) * 1.5)
+func can_take_island(q: Dictionary) -> String:
+    if q.get("fac", "") == "player": return "It is yours."
+    if Structures.troops() <= 0: return "You have no troops embarked."
+    return ""
+func take_island(q: Dictionary) -> String:
+    var why := can_take_island(q)
+    if why != "": return why
+    var odds := island_odds(q); var t := Structures.troops(); var lost: int
+    var owner: String = q.get("fac", "")
+    if owner != "" and owner != "raiders": G.rep[owner] = int(G.rep.get(owner, 0)) - 20; rep_note("Landing on an island of theirs")
+    if randf() < odds:
+        lost = int(t * randf_range(0.05, 0.2)); G.troops = maxi(0, int(G.troops) - lost); q.from = owner; q.fac = "player"; q.took = int(G.day)
+        return "Your troops take %s (%d lost). It pays %s and %d RP a month." % [q.name, lost, fmt(ISLAND_PAY), ISLAND_RP]
+    lost = int(t * randf_range(0.3, 0.6)); G.troops = maxi(0, int(G.troops) - lost); q.garrison = maxi(20, int(q.get("garrison", 100)) - int(lost * 0.4))
+    return "The landing is thrown back: %d of your soldiers are lost. The garrison holds, weaker for it." % lost
+func _islands_day() -> void:
+    for q in G.pois:
+        if q.get("fac", "") != "player": continue
+        if G.day % 30 == 0: G.credits += ISLAND_PAY; G.rp += ISLAND_RP
+        var from: String = q.get("from", "")
+        if from != "" and from != "raiders" and at_war(from) and randf() < 0.004:
+            q.fac = from; q.garrison = randi_range(80, 200); toast.emit("%s is retaken by the %s." % [q.name, GameData.fac[from].short]); log_ev("Lost " + q.name)
+## A scuttled fleet: one of its hulks, raised as a wreck is (recover_cost, DEFECTS).
+func fleet_wreck(q: Dictionary, i: int) -> Dictionary:
+    var rec := new_ship(String(q.hulks[i]), null, "raiders", enemy_tech(2))
+    return {"rec": rec, "own": false, "taken": ""}
+func raise_hulk(q: Dictionary, i: int) -> String:
+    var w := fleet_wreck(q, i); var why := can_recover(w)
+    if why != "": return why
+    var out := recover(w); q.hulks.remove_at(i)
+    return out
+
 # ------------------------------------------------------------------ surveys
 func do_survey(poi: Dictionary) -> Dictionary:
     var out = {"lines": [], "ambush": null}
+    if POI_TEXT2.has(poi.type): out.lines.append(poi_text(poi)); return out   # (a den, an island or a scuttled fleet is not surveyed: see its own panel)
     if G.day < poi.next: out.lines.append("Your divers have picked this site over recently. Come back in %d days." % (poi.next - G.day)); return out
     poi.next = G.day + 60
     var roll = randf(); var rp = 0; var coin = 0

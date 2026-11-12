@@ -36,7 +36,7 @@ func _ready() -> void:
 	Campaign.toast.connect(func(t: String): st.toasts += 1; if verbose: print("  [%d] %s" % [int(Campaign.G.day), t]))
 	Campaign.encounter.connect(_met)
 	Campaign.reached_port.connect(_dock)
-	Campaign.reached_site.connect(func(q: Dictionary): Campaign.do_survey(q))
+	Campaign.reached_site.connect(_site)
 	_begin()
 	var t0 := Time.get_ticks_msec()
 	while day0 + int(Campaign.G.day) < days:
@@ -62,6 +62,18 @@ func _ready() -> void:
 	print("SOAK TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
 
+## A site reached: the old kinds are surveyed; at the new ones the captain sells at a den, lands on an island if he
+## carries troops, and raises a hulk of a scuttled fleet if he can.
+func _site(q: Dictionary) -> void:
+	match String(q.type):
+		"den": Campaign.den_sell(q); Campaign.den_buy(q, "medicine", 5); st["dens"] = int(st.get("dens", 0)) + 1
+		"island": if Campaign.can_take_island(q) == "": Campaign.take_island(q); st["landings"] = int(st.get("landings", 0)) + 1
+		"fleet":
+			if not q.hulks.is_empty():
+				Campaign.G.cargo.steel = maxf(float(Campaign.G.cargo.steel), float(Campaign.recover_cost(Campaign.fleet_wreck(q, 0).rec).steel))
+				if Campaign.can_recover(Campaign.fleet_wreck(q, 0)) == "": Campaign.raise_hulk(q, 0); st["raised"] = int(st.get("raised", 0)) + 1
+		_: Campaign.do_survey(q)
+
 func _begin() -> void:
 	Campaign.new_game(origin, navy); Campaign.paused = false; last_day = -1
 	if st.campaigns > 1: did = {"again": true}   # the scripted events are for the first campaign; later ones just sail and fight
@@ -74,6 +86,11 @@ func _pick_course() -> void:
 			if not f.get("vis", true) or not Campaign.hostile_fleet(f) or Campaign.mdist(f.x, f.y, P.x, P.y) > 500.0: continue
 			if prey == null or Campaign.mdist(f.x, f.y, P.x, P.y) < Campaign.mdist(prey.x, prey.y, P.x, P.y): prey = f
 		if prey != null: P.follow = int(prey.id); P.repathT = 0.0; P.destPort = null; chase_day = int(G.day); return
+	if randf() < 0.25:   # now and then a site of interest nearby: a den, an island, a scuttled fleet, a wreck field
+		var sites: Array = G.pois.filter(func(q): return int(G.day) >= int(q.next) and Campaign.mdist(q.x, q.y, P.x, P.y) > 15.0 and Campaign.mdist(q.x, q.y, P.x, P.y) < 1500.0)
+		if not sites.is_empty():
+			var q: Dictionary = sites.pick_random()
+			if Campaign.set_course(P, q.x, q.y): P.destPort = null; return
 	var open: Array = G.ports.filter(func(p): return not Campaign.hostile(p.fac) and Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	if open.is_empty(): open = G.ports.filter(func(p): return Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	open.sort_custom(func(x, y): return Campaign.mdist(x.sx, x.sy, P.x, P.y) < Campaign.mdist(y.sx, y.sy, P.x, P.y))
@@ -239,6 +256,8 @@ func _daily() -> void:
 	if float(G.cargo.food) < Campaign.food_use() * 15.0: G.cargo.food = Campaign.food_use() * 45.0
 	if int(G.crew) < Campaign.crew_need() / 2: G.crew = Campaign.crew_need()
 	G.credits = maxf(float(G.credits), 100000.0)
+	for q in G.pois:   # lying at a site: visit it (the chart's dock button does this for a player)
+		if Campaign.mdist(q.x, q.y, P.x, P.y) < 15.0 and int(G.day) >= int(q.next): _site(q); q.next = maxi(int(q.next), int(G.day) + 30)
 	if not did.has("again"): _events(day)
 
 func _add(types: Array) -> void:

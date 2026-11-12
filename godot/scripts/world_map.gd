@@ -2165,8 +2165,12 @@ func _refit(box: Control) -> void:
     th.mouse_filter = Control.MOUSE_FILTER_STOP; th.tooltip_text = "Click a mount on the plan to choose it."; box.add_child(th)
     box.add_child(UI.label("%s · %s · %s class (%s) · %s t · %s kn · belt %d mm · Hull %d" % [s.name, d.name, d.dn, GameData.makers[d.yard].short, Campaign.fmt(d.t), str(d.kn), d.armor, d.hull], UI.INK, 15))
     var sizes = {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / PD", "T": "Torpedo", "V": "Launch cells"}
-    var body = HBoxContainer.new(); body.add_theme_constant_override("separation", 18)
-    var rows = VBoxContainer.new(); body.add_child(rows)
+    # side by side on a wide window; on a narrow one (a portrait screen, a small window, a scaled-up interface) the weapon
+    # card goes above the list, where it was cut off at the right
+    var narrow: bool = get_viewport_rect().size.x < 1150.0
+    var body: BoxContainer = VBoxContainer.new() if narrow else HBoxContainer.new(); body.add_theme_constant_override("separation", 18)
+    var rows = VBoxContainer.new()
+    if not narrow: body.add_child(rows)
     for i in d.slots.size():
         var sl: Dictionary = d.slots[i]; var cur: String = plan[i] if plan[i] != null else ""; var fitted: String = s.fit[i] if s.fit[i] != null else ""
         var lab: String = sizes[sl.s] + (" · fwd" if sl.x > 10 else (" · aft" if sl.x < -10 else " · mid"))
@@ -2183,6 +2187,7 @@ func _refit(box: Control) -> void:
         var info = UI.button("Details", func(): refit_sel = idx; _render_port(), i == refit_sel)
         rows.add_child(UI.row([l, ob, info]))
     body.add_child(_weapon_card(s, plan, refit_sel))
+    if narrow: body.add_child(rows)
     box.add_child(body)
     var ld: Dictionary = BattleSim.loading(d, plan, s.get("up", {}))
     _weights(box, d, ld)

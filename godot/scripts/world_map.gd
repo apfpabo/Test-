@@ -2287,17 +2287,17 @@ func _research(box: Control) -> void:
     if pr: box.add_child(UI.button(("The Enclaves trade research data" if cur_port.fac == "enclave" else "The Admiralty sells research") + ": buy 10 RP · " + Campaign.fmt(pr), func(): G.credits -= pr; G.rp += 10; _rerender(), false, G.credits < pr))
     _p(box, "You: %s." % Campaign.C.ERA_NAME[str(Campaign.player_era())])
     var eras := []
-    for f in Campaign.RESEARCH_PACE: if GameData.fac.has(f): eras.append("%s %s" % [GameData.fac[f].short, ["I", "II", "III"][Campaign.fac_era(f) - 1]])
+    for f in Campaign.RESEARCH_PACE: if GameData.fac.has(f): eras.append("%s %s" % [GameData.fac[f].short, ["I", "II", "III", "IV"][Campaign.fac_era(f) - 1]])
     _p(box, "Each power runs its own Quiet Race; their fleets carry what their own research has reached. Eras now: " + " · ".join(eras) + ".", UI.DIM, 13)
     var pe := Campaign.player_era(); var shown_era := 0
     for t in Campaign.C.TECH:
         if int(t.era) != shown_era:   # each era: a header, and how far you are from opening the next
             shown_era = int(t.era)
             box.add_child(UI.label(String(Campaign.C.ERA_NAME[str(shown_era)]).to_upper() + ("" if pe >= shown_era else "  ·  NOT YET OPEN"), UI.DIM, 12))
-            if shown_era < 3:
-                var have := Campaign.era_count(G.tech, shown_era)
+            if shown_era < 4:
+                var have := Campaign.era_count(G.tech, shown_era); var gate: int = Campaign.era_gate(shown_era)
                 var nxt: String = String(Campaign.C.ERA_NAME[str(shown_era + 1)]).split(" · ")[0]
-                _p(box, ("%s is open." % nxt) if have >= Campaign.ERA_GATE and pe >= shown_era else ("%s opens when you have researched %d of these %s technologies: %d of %d so far." % [nxt, Campaign.ERA_GATE, String(Campaign.C.ERA_NAME[str(shown_era)]).split(" · ")[0], mini(have, Campaign.ERA_GATE), Campaign.ERA_GATE]), UI.GOLD if have < Campaign.ERA_GATE and pe == shown_era else UI.DIM, 13)
+                _p(box, ("%s is open." % nxt) if have >= gate and pe >= shown_era else ("%s opens when you have researched %d of these %s technologies: %d of %d so far." % [nxt, gate, String(Campaign.C.ERA_NAME[str(shown_era)]).split(" · ")[0], mini(have, gate), gate]), UI.GOLD if have < gate and pe == shown_era else UI.DIM, 13)
         var done: bool = G.tech.has(t.id); var ok: bool = t.req.all(func(r): return G.tech.has(r)) and int(t.era) <= pe
         var col = VBoxContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         col.add_child(UI.label("%s · era %d" % [t.name, t.era], UI.GREEN if done else (UI.INK if ok else UI.DIM)))

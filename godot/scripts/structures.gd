@@ -196,7 +196,7 @@ func jets() -> bool: return Campaign.has_tech("jets")
 func plane_cost() -> int: return int(D.jet_cost if jets() else D.plane_cost)
 ## Cost to bring every air group up to strength.
 ## A cruiser's or battleship's floatplanes: one a catapult; lost ones are replaced in port with the carriers' aircraft.
-func floatplanes_max(rec: Dictionary) -> int: return Campaign.hull(rec).get("p", {}).get("cat", []).size()
+func floatplanes_max(rec: Dictionary) -> int: return 1 if BattleSim.drone_ship(Campaign.hull(rec), g().get("tech", [])) else Campaign.hull(rec).get("p", {}).get("cat", []).size()   # (a drone, Era IV)
 func floatplanes(rec: Dictionary) -> int: return mini(int(rec.get("fp", floatplanes_max(rec))), floatplanes_max(rec))
 func replace_cost() -> int:
 	var n := 0

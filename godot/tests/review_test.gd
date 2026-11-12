@@ -1392,4 +1392,17 @@ func _ageing() -> void:
 	var cs := _sim(["cl_cleveland", "dd_fletcher"], ["cl_agano"]); var cm = cs.ships[1]; cm.tm = "cautious"; cs.flag = cs.ships[0]; cm.hull = cm.max_hull * 0.3
 	cs.ai_ship(cm, 0.1)
 	ok(cm.ord == "retreat", "a cautious captain of yours, badly hurt, takes his ship out of the fight")
+	# Era IV, the Network age (the owner's go-ahead): its gate, the other navies' pace, and what each technology does
+	ok(Campaign.era_of(Campaign.enemy_tech(3)) == 3 and Campaign.era_of(Campaign.enemy_tech(4)) == 4, "the other navies' Era III stays Era III; their Era IV is Era IV")
+	var t3: Array = Campaign.enemy_tech(3); t3.append("datalink")
+	ok(Campaign.era_of(t3) == 4 and Campaign.design_ok("ddg_zumwalt", t3 + ["stealth"]) and not Campaign.design_ok("ddg_zumwalt", Campaign.enemy_tech(3)), "five Era III technologies open Era IV, and stealth shaping its stealth destroyer")
+	var e4 := _sim(["ddg_burke"], ["ddg_sovremenny"]); var ab = e4.ships[0]
+	ab.tech = []; var rng0: float = e4.gun_range(ab, GameData.weapons["ssm"])
+	ab.tech = ["precision"]; var rng1: float = e4.gun_range(ab, GameData.weapons["ssm"])
+	ok(rng1 > rng0 * 1.35, "precision strike: anti-ship missiles reach 40%% farther (%.0f to %.0f m)" % [rng0, rng1])
+	var dn := _sim(["ddg_burke"], ["ddg_sovremenny"], Weather.battle({"sea": 0, "fog": false, "night": true, "moon": 0.2}))
+	var nb = dn.ships[0]; nb.tech = ["drones"]; nb.fp = dn.spot_cap(nb)
+	ok(dn.spot_cap(nb) == 1 and dn.spotter_why(nb) == "" and dn.launch_spotter(nb), "a destroyer with unmanned aircraft flies off a drone, by night")
+	dn.spotters[0].pos = dn.ships[1].pos + Vector2(500, 0)
+	ok(dn.spotter_over(0, dn.ships[1].pos), "and the drone sees in the dark, as a floatplane does not")
 	sections += 1

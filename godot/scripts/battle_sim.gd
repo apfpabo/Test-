@@ -363,7 +363,9 @@ func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) ->
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
     s.eng = 1.0 - 0.2 * clampf(float(rec.get("wear", 0.0)), 0.0, 1.0)   # worn machinery (Campaign.WEAR_ENG): damage control can bring it to 0.8 at best, as for a hit
-    s.fp = clampi(int(rec.get("fp", d.get("p", {}).get("cat", []).size())), 0, d.get("p", {}).get("cat", []).size()); s.fp_t = 20.0 + randf() * 40.0
+    s.tech = tech
+    var cap: int = 1 if drone_ship(d, tech) else d.get("p", {}).get("cat", []).size()
+    s.fp = clampi(int(rec.get("fp", cap)), 0, cap); s.fp_t = 20.0 + randf() * 40.0
     s.v = d.kn * KN * 0.6; s.max_hull = d.hull * (1.0 + 0.08 * upg(s, "hull")) * (0.85 if rec.get("defects", []).has("hull") else 1.0); s.hull = s.max_hull * rec.hullFrac; s.armor = d.armor * (1.0 + 0.1 * upg(s, "hull")) * (0.6 + 0.4 * rec.hullFrac)
     s.pref_side = 1 if randf() < 0.5 else -1; s.tech = tech; s.sub = d.kind == "sub"
     s.sonar_on = not s.sub; s.ping_t = randf() * PING_PERIOD   # a boat listens and keeps quiet until told to ping
@@ -752,7 +754,8 @@ func visible_to(s: CShip, side: int) -> bool:
     for o in ships:
         if o.side != side or not active(o): continue
         var d2: float = o.pos.distance_squared_to(s.pos)
-        if has_radar(o) and not submerged(o) and d2 < sight(o) * sight(o): return true   # radar looks through the dark and through smoke
+        var rr: float = sight(o) * (0.75 if s.tech.has("stealth") else 1.0)   # (stealth shaping, Era IV: a smaller echo)
+        if has_radar(o) and not submerged(o) and d2 < rr * rr: return true   # radar looks through the dark and through smoke
         if lim and d2 >= eye * eye: continue
         if not smoke_blocks(o.pos, s.pos): return true
     return false
@@ -828,7 +831,7 @@ func _speed_mult(s: CShip) -> float:
     return (1.0 - (0.05 * int(wx.sea) if s.d.t < 3000.0 and not submerged(s) else 0.015 * int(wx.sea))) * (1.2 if s.sub and s.tech.has("snorkel") and submerged(s) else 1.0) * s.fuel_k * (1 + 0.04 * upg(s, "eng")) * (1 + 0.06 * s.sk.helm) * (0.75 + 0.25 * s.cf) * (0.6 + 0.4 * s.hull / s.max_hull) * (0.0 if s.eng_out > 0 else 0.25 + 0.75 * s.eng)
 
 func gun_range(s: CShip, w: Dictionary) -> float:
-    return w.range * ((1.15 if s.tech.has("radar") else 1.0) * (1.0 + 0.06 * upg(s, "radar")) if w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0) * (1.15 if w.kind == "ssm" and s.tech.has("datalink") else 1.0)
+    return w.range * ((1.15 if s.tech.has("radar") else 1.0) * (1.0 + 0.06 * upg(s, "radar")) if w.kind == "gun" else 1.0) * (1.4 if w.kind == "sam" and s.tech.has("aegis") else 1.0) * (1.15 if w.kind == "ssm" and s.tech.has("datalink") else 1.0) * (1.4 if w.kind == "ssm" and s.tech.has("precision") else 1.0)
 
 func max_gun_range(s: CShip) -> float:
     var r = 0.0
@@ -1080,6 +1083,7 @@ func spot(s: CShip, tg: CShip, reload: float) -> void:
     elif wx.get("night", false) and not star_lit(tg.pos): keep = 0.78
     if not eye_sees(tg, s.side): keep = maxf(keep, 0.7 if has_radar(s) else 0.92)   # behind smoke or beyond sight: the plot alone
     if spotter_over(s.side, tg.pos): keep *= SPOT_HELP   # her floatplane is over the target, calling the fall of shot
+    if s.tech.has("netcentric"): keep *= 0.8   # cooperative engagement (Era IV): the squadron's picture, whoever spots
     keep = clampf(keep * CREW[s.cq].spot, 0.2, 0.95)
     so.r = float(so.r) * keep; so.a = float(so.a) * keep
     # the target's helm and ours spoil the reckoning a little each time
@@ -1188,26 +1192,33 @@ const SPOT_V := 55.0         # her speed, m/s
 const SPOT_ORBIT := 2500.0   # how far off the target she circles (outside the light flak, inside the heavy)
 var spotters: Array = []
 func cats_of(s: CShip) -> Array: return s.d.get("p", {}).get("cat", [])
+## Drones (Era IV, "Unmanned aircraft"): every warship of destroyer size and more without a catapult carries one; it
+## flies by night and in fog as well as by day (not in a storm), and longer than a floatplane.
+static func drone_ship(d: Dictionary, tech: Array) -> bool: return tech.has("drones") and d.kind == "war" and float(d.t) >= 2000.0 and d.get("p", {}).get("cat", []).is_empty()
+func spot_cap(s: CShip) -> int: return 1 if drone_ship(s.d, s.tech) else cats_of(s).size()
 ## Why she cannot fly a floatplane off now, or "".
 func spotter_why(s: CShip) -> String:
-    if cats_of(s).is_empty(): return "This ship carries no aircraft."
-    if s.fp <= 0: return "Her floatplanes are all away."
-    if int(wx.sea) >= 3 or wx.fog or wx.night: return "Her floatplane cannot fly: " + ("the sea is too rough." if int(wx.sea) >= 3 else ("fog." if wx.fog else "it is night."))
+    var drone: bool = drone_ship(s.d, s.tech)
+    if spot_cap(s) == 0: return "This ship carries no aircraft."
+    if s.fp <= 0: return "Her drone is away." if drone else "Her floatplanes are all away."
+    if int(wx.sea) >= 3 or (not drone and (wx.fog or wx.night)): return "Her floatplane cannot fly: " + ("the sea is too rough." if int(wx.sea) >= 3 else ("fog." if wx.fog else "it is night."))
     if not s.alive or s.struck or s.eng_out > 0 and s.v < 1.0: return "She cannot launch now."
     return ""
 func launch_spotter(s: CShip) -> bool:
     if spotter_why(s) != "": return false
-    var c: Array = cats_of(s)[maxi(0, s.fp - 1)]; var cy: float = float(c[1])
+    var drone: bool = drone_ship(s.d, s.tech)
+    var c: Array = [-float(s.d.L) * 0.42, 0.0] if drone else cats_of(s)[maxi(0, s.fp - 1)]; var cy: float = float(c[1])
     var a: float = s.a + signf(cy) * 0.32 if cy != 0.0 else s.a + PI / 2 * (1.0 if randf() < 0.5 else -1.0)   # along her catapult (a centreline one trained to the beam)
     s.fp -= 1
-    spotters.append({"ship": s, "side": s.side, "pos": world_pt(s, float(c[0]), cy), "a": a, "v": SPOT_V * 0.6, "t": 0.0, "home": false, "n": 1, "up": 1, "jet": false, "alt": 30.0, "ph": randf() * TAU})
+    spotters.append({"ship": s, "side": s.side, "pos": world_pt(s, float(c[0]), cy), "a": a, "v": SPOT_V * 0.6, "t": 0.0, "home": false, "n": 1, "up": 1, "jet": false, "alt": 30.0, "ph": randf() * TAU, "drone": drone})
     boom(world_pt(s, float(c[0]), cy), 0.05, 700.0)
-    if s.side == 0: say("The %s flies off her floatplane to spot for her guns." % s.rec.name, 1.8)
+    if s.side == 0: say("The %s flies off her %s to spot for her guns." % [s.rec.name, "drone" if drone else "floatplane"], 1.8)
     return true
 ## Is a floatplane of this side over (within SPOT_SEE of) this point, in light she can see by?
 func spotter_over(side: int, p: Vector2) -> bool:
-    if wx.night or wx.fog: return false
-    for q in spotters: if q.side == side and int(q.n) > 0 and not q.home and p.distance_to(q.pos) < SPOT_SEE: return true
+    for q in spotters:
+        if q.side != side or int(q.n) <= 0 or q.home or ((wx.night or wx.fog) and not q.get("drone", false)): continue   # a drone sees by night too
+        if p.distance_to(q.pos) < SPOT_SEE: return true
     return false
 func _spotters(dt: float) -> void:
     for s in ships:   # captains fly theirs off once the enemy is in sight (the flagship's is the player's to fly)
@@ -1224,7 +1235,7 @@ func _spotters(dt: float) -> void:
             if q.side == 0: say("A floatplane of ours is shot down.", 1.5)
             continue
         q.t = float(q.t) + dt; q.alt = minf(150.0, float(q.alt) + dt * 6.0); q.v = minf(SPOT_V, float(q.v) + dt * 4.0)
-        if float(q.t) > SPOT_ENDURE or not sh.alive or wx.night or wx.fog: q.home = true
+        if float(q.t) > SPOT_ENDURE * (2.0 if q.get("drone", false) else 1.0) or not sh.alive or ((wx.night or wx.fog) and not q.get("drone", false)): q.home = true
         var goal: Vector2
         if q.home:
             if not sh.alive: goal = q.pos + Vector2.from_angle(q.a) * 500.0   # her ship is gone: she flies on until her fuel is out

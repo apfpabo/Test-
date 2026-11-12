@@ -12524,6 +12524,609 @@
     9
    ]
   },
+  "ddg_zumwalt": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 50,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "ddg_zumwalt",
+   "yard": "tidewater",
+   "dn": "Wraith",
+   "model": "Zumwalt-class destroyer",
+   "year": 2016,
+   "era": 4,
+   "L": 190,
+   "B": 24.6,
+   "t": 15700,
+   "kn": 30,
+   "td": 900,
+   "armor": 25,
+   "crew": 175,
+   "price": 260000,
+   "p": {
+    "bow": 0.42,
+    "run": 0.16,
+    "stern": "t",
+    "tw": 0.7,
+    "sup": [
+     [
+      -22,
+      46,
+      19,
+      3
+     ]
+    ],
+    "helo": [
+     [
+      -78,
+      9
+     ]
+    ],
+    "boats": [
+     [
+      -50,
+      1
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 62,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "M",
+     "x": 50,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "V",
+     "x": 36,
+     "y": -7,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": 36,
+     "y": 7,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -58,
+     "y": -8,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -58,
+     "y": 8,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "A",
+     "x": 6,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Missile Destroyer",
+   "klass": "ddg",
+   "speed": 30,
+   "hull": 5500,
+   "fuel": 5.6,
+   "island": null
+  },
+  "ddg_gorshkov": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 50,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "ddg_gorshkov",
+   "yard": "neva",
+   "dn": "Admiral",
+   "model": "Admiral Gorshkov-class frigate",
+   "year": 2018,
+   "era": 4,
+   "L": 135,
+   "B": 16,
+   "t": 5400,
+   "kn": 29.5,
+   "td": 640,
+   "armor": 10,
+   "crew": 210,
+   "price": 170000,
+   "p": {
+    "bow": 0.38,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.6,
+    "sup": [
+     [
+      14,
+      30,
+      13,
+      4
+     ]
+    ],
+    "fun": [
+     [
+      -8,
+      3.2,
+      2.4
+     ]
+    ],
+    "mast": [
+     [
+      18,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -55,
+      7
+     ]
+    ],
+    "boats": [
+     [
+      -12,
+      1
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 52,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g130t"
+    },
+    {
+     "s": "V",
+     "x": 40,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": 32,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -30,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "A",
+     "x": -20,
+     "y": -5.6,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -20,
+     "y": 5.6,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "T",
+     "x": -6,
+     "y": 0,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.1
+      ],
+      [
+       -1.5707963267948966,
+       1.1
+      ]
+     ],
+     "def": "torh"
+    }
+   ],
+   "name": "Missile Destroyer",
+   "klass": "ddg",
+   "speed": 29.5,
+   "hull": 2680,
+   "fuel": 3.3,
+   "island": null
+  },
+  "co_visby": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 20,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "co_visby",
+   "name": "Stealth Corvette",
+   "yard": "clydemouth",
+   "dn": "Shade",
+   "model": "Visby-class corvette",
+   "year": 2009,
+   "era": 4,
+   "L": 72.7,
+   "B": 10.4,
+   "t": 640,
+   "kn": 35,
+   "td": 380,
+   "armor": 0,
+   "crew": 43,
+   "price": 60000,
+   "p": {
+    "bow": 0.36,
+    "run": 0.18,
+    "stern": "t",
+    "tw": 0.7,
+    "sup": [
+     [
+      4,
+      22,
+      8,
+      2
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "S",
+     "x": 26,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g76"
+    },
+    {
+     "s": "V",
+     "x": -14,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "T",
+     "x": -24,
+     "y": 0,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.1
+      ],
+      [
+       -1.5707963267948966,
+       1.1
+      ]
+     ],
+     "def": "torh"
+    }
+   ],
+   "klass": "corvette",
+   "speed": 35,
+   "hull": 630,
+   "fuel": 1.1,
+   "island": null
+  },
+  "cv_ford": {
+   "kind": "carrier",
+   "cls": "Capital",
+   "cargo": 200,
+   "radar": true,
+   "tech": "netcentric",
+   "id": "cv_ford",
+   "name": "Nuclear Carrier",
+   "nuc": true,
+   "yard": "tidewater",
+   "dn": "Dominion",
+   "model": "Gerald R. Ford-class carrier",
+   "year": 2017,
+   "era": 4,
+   "L": 337,
+   "B": 41,
+   "t": 100000,
+   "kn": 31,
+   "td": 1300,
+   "armor": 64,
+   "crew": 4550,
+   "hangar": 8,
+   "price": 640000,
+   "p": {
+    "bow": 0.3,
+    "run": 0.18,
+    "stern": "t",
+    "tw": 0.6,
+    "fd": {
+     "w": 56,
+     "len": 0.985,
+     "x": 0,
+     "isl": [
+      -80,
+      18,
+      8
+     ],
+     "ang": true
+    }
+   },
+   "slots": [
+    {
+     "s": "V",
+     "x": -152,
+     "y": -24,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -152,
+     "y": 24,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": 122,
+     "y": 26,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "A",
+     "x": 108,
+     "y": -27.6,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": 108,
+     "y": 27.6,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -124,
+     "y": -27.6,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -124,
+     "y": 27.6,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "klass": "cv",
+   "speed": 31,
+   "hull": 19210,
+   "fuel": 0,
+   "island": [
+    -80,
+    18,
+    8
+   ]
+  },
+  "ssn_virginia": {
+   "kind": "sub",
+   "cls": "Medium",
+   "cargo": 20,
+   "tech": "stealth",
+   "id": "ssn_virginia",
+   "yard": "tidewater",
+   "dn": "Sentry",
+   "model": "Virginia-class submarine",
+   "year": 2004,
+   "era": 4,
+   "L": 115,
+   "B": 10.4,
+   "t": 7800,
+   "kn": 20,
+   "subKn": 34,
+   "td": 520,
+   "armor": 0,
+   "crew": 135,
+   "price": 240000,
+   "p": {
+    "sail": [
+     [
+      22,
+      9,
+      2.4
+     ]
+    ],
+    "casing": 0.22,
+    "smooth": true,
+    "tear": true,
+    "tubes": [
+     [
+      49,
+      43,
+      3,
+      1.5
+     ]
+    ],
+    "pod": 1
+   },
+   "slots": [
+    {
+     "s": "T",
+     "x": 36,
+     "y": -1.4,
+     "arcs": [
+      [
+       0,
+       0.3
+      ]
+     ],
+     "def": "torh"
+    },
+    {
+     "s": "T",
+     "x": 36,
+     "y": 1.4,
+     "arcs": [
+      [
+       0,
+       0.3
+      ]
+     ],
+     "def": "torh"
+    },
+    {
+     "s": "V",
+     "x": 46,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    }
+   ],
+   "name": "Nuclear Attack Sub",
+   "klass": "ssn",
+   "speed": 20,
+   "hull": 3430,
+   "fuel": 0,
+   "island": null
+  },
   "cg_tico": {
    "kind": "war",
    "cls": "Heavy",

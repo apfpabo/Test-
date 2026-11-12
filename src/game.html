@@ -469,6 +469,22 @@ const DESIGN_LIST = [
   { id: 'cv_nimitz', cls: 'cv', name: 'Nuclear Carrier', tech: 'reactors', nuc: true, yard: 'tidewater', dn: 'Supremacy', model: 'Nimitz-class carrier', year: 1975, era: 3, L: 332.8, B: 40.8, t: 81600, kn: 31, td: 1300, armor: 64, crew: 5680, hangar: 7, price: 520000,
     p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 54, len: .985, x: 0, isl: [-52, 22, 9], ang: true } },
     slots: [sl('V', -152, -24, ALL, 'sam'), sl('V', -152, 24, ALL, 'sam'), sl('V', 122, 26, ALL, 'sam'), ...pair('A', 108, 27.6, 'ciws'), ...pair('A', -124, 27.6, 'ciws')] },
+  // ---------------------------------------------------------------- Era IV · Network age (the owner's go-ahead, 11 Nov 2026)
+  { id: 'ddg_zumwalt', cls: 'ddg', tech: 'stealth', yard: 'tidewater', dn: 'Wraith', model: 'Zumwalt-class destroyer', year: 2016, era: 4, L: 190, B: 24.6, t: 15700, kn: 30, td: 900, armor: 25, crew: 175, price: 260000,
+    p: { bow: .42, run: .16, stern: 't', tw: .7, sup: [[-22, 46, 19, 3]], helo: [[-78, 9]], boats: [[-50, 1]] },
+    slots: [sl('M', 62, 0, FWD, 'g127s'), sl('M', 50, 0, FWD, 'g127s'), sl('V', 36, -7, ALL, 'ssm'), sl('V', 36, 7, ALL, 'sam'), sl('V', -58, -8, ALL, 'sam'), sl('V', -58, 8, ALL, 'ssm'), sl('A', 6, 0, ALL, 'ciws')] },
+  { id: 'ddg_gorshkov', cls: 'ddg', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 170000,
+    p: { bow: .38, run: .2, stern: 't', tw: .6, sup: [[14, 30, 13, 4]], fun: [[-8, 3.2, 2.4]], mast: [[18, 'l']], helo: [[-55, 7]], boats: [[-12, 1]] },
+    slots: [sl('M', 52, 0, FWD, 'g130t'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 32, 0, ALL, 'sam'), sl('V', -30, 0, ALL, 'sam'), ...pair('A', -20, 5.6, 'ciws'), sl('T', -6, 0, BEAM, 'torh')] },
+  { id: 'co_visby', cls: 'corvette', name: 'Stealth Corvette', tech: 'stealth', yard: 'clydemouth', dn: 'Shade', model: 'Visby-class corvette', year: 2009, era: 4, L: 72.7, B: 10.4, t: 640, kn: 35, td: 380, armor: 0, crew: 43, price: 60000, radar: true,
+    p: { bow: .36, run: .18, stern: 't', tw: .7, sup: [[4, 22, 8, 2]] },
+    slots: [sl('S', 26, 0, FWD, 'g76'), sl('V', -14, 0, ALL, 'ssm'), sl('T', -24, 0, BEAM, 'torh')] },
+  { id: 'cv_ford', cls: 'cv', name: 'Nuclear Carrier', tech: 'netcentric', nuc: true, yard: 'tidewater', dn: 'Dominion', model: 'Gerald R. Ford-class carrier', year: 2017, era: 4, L: 337, B: 41, t: 100000, kn: 31, td: 1300, armor: 64, crew: 4550, hangar: 8, price: 640000,
+    p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 56, len: .985, x: 0, isl: [-80, 18, 8], ang: true } },
+    slots: [sl('V', -152, -24, ALL, 'sam'), sl('V', -152, 24, ALL, 'sam'), sl('V', 122, 26, ALL, 'sam'), ...pair('A', 108, 27.6, 'ciws'), ...pair('A', -124, 27.6, 'ciws')] },
+  { id: 'ssn_virginia', cls: 'ssn', tech: 'stealth', yard: 'tidewater', dn: 'Sentry', model: 'Virginia-class submarine', year: 2004, era: 4, L: 115, B: 10.4, t: 7800, kn: 20, subKn: 34, td: 520, armor: 0, crew: 135, price: 240000,
+    p: { sail: [[22, 9, 2.4]], casing: .22, smooth: true, tear: true, tubes: [[49, 43, 3, 1.5]], pod: 1 },
+    slots: [sl('T', 36, -1.4, BOW, 'torh'), sl('T', 36, 1.4, BOW, 'torh'), sl('V', 46, 0, ALL, 'ssm')] },
   // ---------------------------------------------------------------- missile cruisers (Era III)
   { id: 'cg_tico', cls: 'cg', yard: 'tidewater', dn: 'Bastion', model: 'Ticonderoga-class cruiser', year: 1983, era: 3, L: 172.8, B: 16.8, t: 9600, kn: 32.5, td: 800, armor: 25, crew: 330, price: 190000,
     p: { bow: .34, run: .22, stern: 't', tw: .55, sup: [[22, 44, 14, 4]], fun: [[4, 3, 2.2, -2.6], [-16, 3, 2.2, -2.6]], mast: [[16, 'l'], [-10, 'l']], boats: [[-30, 1]] },
@@ -517,9 +533,14 @@ const TECH = [
   { id: 'reactors', name: 'Advanced naval reactors', era: 3, cost: 150, req: ['nuclear'], desc: 'Unlocks the nuclear fleet carrier and the Era III nuclear submarines.' },
   { id: 'datalink', name: 'Tactical data links', era: 3, cost: 90, req: ['radar', 'ecm'], desc: 'Salvos 15% tighter; anti-ship missiles reach 15% farther.' },
   { id: 'nukes', name: 'Nuclear warheads', era: 3, cost: 220, req: ['reactors', 'missiles'], desc: 'Your missile submarines can carry nuclear warheads, fitted at a port or naval base of your own or at the Enclaves. One destroys a land structure for good. The treaties that kept these weapons out of the world end with the first you fire: think before you do.' },
+  // Era IV: open with five of the six Era III technologies (the owner's go-ahead, 11 Nov 2026)
+  { id: 'netcentric', name: 'Cooperative engagement', era: 4, cost: 160, req: ['datalink'], desc: 'Every ship shares the squadron\'s fire-control picture: salvos are corrected a fifth faster, whoever spots them. Unlocks the Era IV fleet carrier.' },
+  { id: 'stealth', name: 'Stealth shaping', era: 4, cost: 170, req: ['ecm'], desc: 'Your squadron is found a quarter later on the chart and enemy radar picks your ships up at three quarters of its range. Unlocks the Era IV stealth destroyers, corvette and attack submarine.' },
+  { id: 'precision', name: 'Long-range precision strike', era: 4, cost: 150, req: ['missiles', 'datalink'], desc: 'Anti-ship missiles reach 40% farther.' },
+  { id: 'drones', name: 'Unmanned aircraft', era: 4, cost: 130, req: ['helo'], desc: 'Every warship of destroyer size and more carries a drone to spot for her guns, which flies by night as well as by day.' },
 ];
 const ERA_GATE = 3;   // technologies of an era needed to open the next
-const ERA_NAME = { 1: 'Era I · Late war', 2: 'Era II · Jet age', 3: 'Era III · Missile age' };
+const ERA_NAME = { 1: 'Era I · Late war', 2: 'Era II · Jet age', 3: 'Era III · Missile age', 4: 'Era IV · Network age' };
 const GOODS = [
   { id: 'fuel', name: 'Fuel oil', base: 8 },
   { id: 'food', name: 'Food', base: 14 },

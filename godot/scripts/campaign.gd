@@ -221,6 +221,10 @@ func hull(rec: Dictionary) -> Dictionary: return GameData.hulls[rec.type]
 ## The era a set of technologies has reached: Era II opens with ERA_GATE (3) Era I technologies, Era III with
 ## ERA_GATE Era II technologies on top. (Technologies of an era can only be researched once it is open.)
 const ERA_GATE := 3
+## Era IV (the Network age, the owner's go-ahead, 11 Nov 2026) opens with ERA4_GATE of the six Era III technologies:
+## the other navies field Era III with four of them, so their Era III is not mistaken for Era IV.
+const ERA4_GATE := 5
+func era_gate(era: int) -> int: return ERA4_GATE if era == 3 else ERA_GATE
 func era_count(tech: Array, era: int) -> int:
     var n := 0
     for x in C.TECH: if int(x.era) == era and tech.has(x.id): n += 1
@@ -228,7 +232,8 @@ func era_count(tech: Array, era: int) -> int:
 func era_of(tech: Array) -> int:
     if era_count(tech, 1) < ERA_GATE: return 1
     if era_count(tech, 2) < ERA_GATE: return 2
-    return 3
+    if era_count(tech, 3) < ERA4_GATE: return 3
+    return 4
 func has_tech(t: String) -> bool: return G.tech.has(t)
 func player_era() -> int: return era_of(G.tech)
 ## Each power runs its own Quiet Race. Its research points grow every day at its own pace (faster at war); its era,
@@ -236,14 +241,14 @@ func player_era() -> int: return era_of(G.tech)
 ## early does not drag the world along. 400 points for Era II, 800 for Era III: at the base pace, the old calendar.
 const RESEARCH_PACE := {"concord": 1.0, "directorate": 1.15, "pacific": 0.95, "combine": 1.2, "republic": 0.65, "freeport": 0.55,
     "enclave": 0.9, "ombria": 0.6, "isles": 0.6}
-const ERA_POINTS := [0.0, 400.0, 800.0]
+const ERA_POINTS := [0.0, 400.0, 800.0, 1300.0]
 func fac_rp(fac: String) -> float:
     if fac == "raiders": return maxf(0.0, fac_rp("freeport") - 400.0)   # scavenged ships, a step behind the freeports
     return float(G.get("facRp", {}).get(fac, float(G.get("day", 1)) * float(RESEARCH_PACE.get(fac, 0.8))))
 func fac_era(fac: String) -> int:
     var p := fac_rp(fac); var e := 1
     for i in ERA_POINTS.size(): if p >= ERA_POINTS[i]: e = i + 1
-    return clampi(e, 1, 3)
+    return clampi(e, 1, 4)
 ## The newest era fielded by any power (for things not tied to one flag).
 func enemy_era() -> int:
     var e := 1
@@ -262,7 +267,8 @@ func _research_day() -> void:
 func enemy_tech(era: int) -> Array:
     var t = []
     if era >= 2: t.append_array(["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"])
-    if era >= 3: t.append_array(["helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"])
+    if era >= 3: t.append_array(["helo", "ecm", "ciws", "aegis", "vls", "reactors"])
+    if era >= 4: t.append_array(["datalink", "netcentric", "stealth", "precision", "drones"])
     return t
 func tech_ok(t, tech: Array) -> bool: return t == null or t == "" or tech.has(t)
 func design_ok(id: String, tech: Array) -> bool:
@@ -1596,6 +1602,7 @@ func signature() -> float:
     var k: float = SIG_SPEED[speed_order()]
     if dark(): k *= 0.6 if weather_here().night else 0.85
     if heard(): k *= 1.5
+    if has_tech("stealth"): k *= 0.75   # stealth shaping (Era IV)
     return k
 
 ## The weather where your squadron is (cached for the tick), and how far each side sees in it as a share of clear

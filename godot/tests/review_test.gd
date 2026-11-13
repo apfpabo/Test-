@@ -1449,7 +1449,7 @@ func _levels() -> void:
 	for i in 12: sp.fx(0.1)
 	var bw: BattleSim.Part = sp.splash_laces[0]; var cw: BattleSim.Part = sp.splash_cols[0]
 	var b_dep: float = bw.dep; var b_life: float = bw.life; var b_pos: Vector2 = bw.pos; var b_size: float = bw.size; var c_life: float = cw.life
-	sp.fx_splash(Vector2(504, 500), 8.0)
+	sp.fx_splash(b_pos + Vector2(4, 0), 8.0)   # (beside where it has drifted to)
 	ok(sp.splash_laces.size() == 1 and sp.splash_cols.size() == 1 and bw.dep == b_dep and bw.life == b_life and bw.pos == b_pos and bw.size == b_size and cw.life == c_life and b_dep > 0.5 and b_dep < 1.0, "a second shell in a hollow changes nothing at the instant it falls: no clock put back, no jump")
 	for i in 3: sp.fx(0.1)
 	ok(bw.dep > b_dep and bw.vel.x > 0.0 and bw.vel.length() < 4.0, "it is pressed down again from the depth it had, and slides towards the new shell")

@@ -1713,7 +1713,7 @@ func _subs() -> void:
 	var sk = load("res://scripts/skirmish.gd")
 	var tech: Array = sk.ERA_TECH[3]
 	var fit: Array = BattleSim.default_fit(GameData.hulls["ssn_typhoon"], tech)
-	ok(fit.count("ssm") == 4, "a Typhoon-type boat in Era III carries her four missile tubes (%s)" % str(fit))
+	ok(fit.count("ssmh") == 4, "a Typhoon-type boat in Era III carries her four missile tubes (%s)" % str(fit))
 	var sim := BattleSim.new()
 	sim.setup([{"type": "ss_gato", "name": "A", "hullFrac": 1.0, "fit": BattleSim.default_fit(GameData.hulls["ss_gato"], []), "pal": "player"}], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], [], [], 0)
 	var b: BattleSim.CShip = sim.ships[0]; var tube: BattleSim.Mount = null

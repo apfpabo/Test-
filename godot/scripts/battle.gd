@@ -13,6 +13,7 @@ var paused = false
 var cam_free = false
 var shot_on := false        # the gun-shot camera is riding a shell (its key is held)
 var shot_sh = null          # the shell it rides
+var shot_ms = null          # or the missile, when she has no shell in the air
 var shot_at := Vector2.ZERO
 var shot_stay := 0.0        # seconds it stays on the fall of shot
 var sel: Array = []          # ships of yours picked out to be given their own orders (empty: orders go to the whole squadron)
@@ -267,15 +268,23 @@ func _process(delta: float) -> void:
                     var sh: Dictionary = sim.shells[i]
                     if sh.get("who") != who: continue
                     if shot_sh == null or int(rank[sh.size]) > int(rank[shot_sh.size]) or (sh.size == shot_sh.size and float(sh.t) < float(shot_sh.t)): shot_sh = sh
+            # no shell of hers in the air: her missiles are ridden the same way (the owner, 13 Nov 2026)
+            if shot_ms != null and (not sim.missiles.has(shot_ms) or shot_ms.get("dead", false)): shot_ms = null; shot_stay = 1.4
+            if shot_sh == null and shot_ms == null and shot_stay <= 0.0 and who != null:
+                for i in range(sim.missiles.size() - 1, -1, -1):
+                    var ms: Dictionary = sim.missiles[i]
+                    if ms.get("who") == who and float(ms.get("delay", 0.0)) <= 0.0 and not ms.get("dead", false): shot_ms = ms; break
             shot_on = true
-            if shot_sh != null:
+            if shot_sh == null and shot_ms != null:
+                shot_at = shot_ms.pos; camera.position = camera.position.lerp(shot_at, minf(1.0, dt * 9.0))
+            elif shot_sh != null:
                 var kk: float = float(shot_sh.t) / float(shot_sh.T)
                 shot_at = shot_sh.pos - Vector2(0, sin(PI * kk) * minf(600.0, shot_sh.s.distance_to(shot_sh.e) * 0.08))   # where it is drawn: lifted by the arc of its flight
                 camera.position = camera.position.lerp(shot_at, minf(1.0, dt * 9.0))
             elif shot_stay > 0.0: shot_stay -= dt; camera.position = camera.position.lerp(shot_at, minf(1.0, dt * 9.0))
             elif who != null: camera.position = camera.position.lerp(who.pos, minf(1.0, dt * 4.0))   # waiting for her next salvo
         elif shot_on:
-            shot_on = false; shot_sh = null; shot_stay = 0.0; cam_free = false   # let go: back to the ship
+            shot_on = false; shot_sh = null; shot_ms = null; shot_stay = 0.0; cam_free = false   # let go: back to the ship
             var back = sel[0] if not sel.is_empty() else sim.flag
             if back != null: camera.position = back.pos
         elif sim.flag != null and not cam_free:
@@ -621,6 +630,8 @@ class ShipView extends Node2D:
     var size_m = Vector2.ONE
     var edge: Array = []   # Vector2(x along the ship, half beam there)
     var mount_mat: ShaderMaterial
+    var stealth := false   # a stealth design: her torpedo tubes are under a cover, and no aerial turns on her mast
+    var dark := false
     var lean := 0.0        # metres carried towards her low side per metre of height
     var freeboard := 4.0
     var deck_shift := 0.0  # how far the deck is carried to her low side by the heel, metres
@@ -647,6 +658,7 @@ class ShipView extends Node2D:
         detail_top = Detail.new(); detail_top.view = self; detail_top.upper = true; detail_top.scale = Vector2(spr, spr); top.add_child(detail_top)
         top.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
         style = GameData.style_of(id)
+        var pl: Dictionary = s.d.get("p", {}); stealth = pl.has("stealth"); dark = stealth and pl.stealth is Dictionary and pl.stealth.get("dark", false)
         if not s.boxes.is_empty(): var bx = BoxLayer.new(); bx.view = self; add_child(bx)
         var mmat = GameData.mount_material(s.pal); mount_mat = mmat
         for lvl in range(0, s.max_lvl + 1):
@@ -654,6 +666,8 @@ class ShipView extends Node2D:
                 var ml = MountLayer.new(); ml.view = self; ml.lvl = lvl; ml.lit = lit
                 if lit: ml.material = mmat
                 add_child(ml)
+        if not stealth and not s.sub and not (s.d.get("p", {}).get("mast", []) as Array).is_empty():
+            var ra = Aerial.new(); ra.view = self; add_child(ra)
         var fires = Fires.new(); fires.view = self; var mat = CanvasItemMaterial.new(); mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; fires.material = mat; add_child(fires)
         var hm = GameData.ship_h(id)
         for m in [lit_base, lit_top]:
@@ -696,6 +710,30 @@ class ShipView extends Node2D:
             if c is Fires: c.position.y = ln * (fb + 1.0)
             if c is Node2D and not (c is Sprite2D): c.queue_redraw()
         detail.queue_redraw(); detail_top.queue_redraw()
+
+## The search radar's aerial, turning on her foremast while the set is switched on (the owner, 13 Nov 2026). The
+## masts are in her plan (`p.mast`); a merchant's derrick posts carry none, and a stealth design's arrays are fixed.
+class Aerial extends Node2D:
+    var view
+    func _draw() -> void:
+        var s: BattleSim.CShip = view.s; var sim = view.battle.sim
+        if not s.alive or not sim.radar_fitted(s) or view.battle.zoom() * s.d.L < 90.0: return
+        var n := 0
+        for mk in s.d.p.mast:
+            if String(mk[1]) == "k" or n >= 2: continue
+            n += 1
+            var h: float = clampf(float(s.d.B) * 0.9, 8.0, 26.0)   # about how high the aerial stands: carried over in a list
+            var at := Vector2(float(mk[0]), view.lean * (view.freeboard + h))
+            var w: float = clampf(float(s.d.B) * (0.34 if n == 1 else 0.24), 1.6, 8.0)
+            var ang: float = (BattleSim.rclock * TAU / 5.0 * (1.0 if n == 1 else -1.4) + float(mk[0])) if s.radar_on else 0.6
+            var sun: Vector2 = BattleSim.SUN.rotated(-s.a).normalized()
+            draw_set_transform(at + sun * h * 0.55, ang, Vector2.ONE)
+            draw_rect(Rect2(-w * 0.5, -0.3, w, 0.6), Color(0, 0, 0, 0.28))                 # its shadow on the deck
+            draw_set_transform(at, ang, Vector2.ONE)
+            draw_rect(Rect2(-w * 0.5, -0.42, w, 0.84), Color(0.2, 0.22, 0.23))            # the frame
+            draw_rect(Rect2(-w * 0.5 + 0.15, -0.26, w - 0.3, 0.52), Color(0.56, 0.59, 0.6))  # the mesh, catching the light
+            draw_circle(Vector2.ZERO, 0.5, Color(0.16, 0.17, 0.18))
+        draw_set_transform(Vector2.ZERO)
 
 ## What a heel shows from above: along the high side, the plating of her side and below it the red of her bottom,
 ## rolled up out of the water.
@@ -916,6 +954,9 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
         var style: String = view.style
         for m in s.mounts:
             if not _visible_mount(s, m): continue
+            if m.w.kind == "torp" and view.stealth:   # a stealth ship's tubes lie behind a faceted cover (the owner, 13 Nov 2026)
+                if not lit: _tube_cover(s, m)
+                continue
             var info: Dictionary = GameData.sprites.mounts[m.wid]
             var sc: float = (1.0 + 0.035 * lvl) / info.spr * GameData.mount_scale(s.rec.type, m.wid)
             var p = Vector2(m.slot.x, m.slot.y); var o = -Vector2(info.ox, info.oy) * info.spr
@@ -949,6 +990,28 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
                 else: draw_texture(mt, o, code)
         draw_set_transform(Vector2.ZERO)
         if lit and lvl == s.max_lvl and s.struck: _white_flag(s)
+
+    ## Torpedo tubes on a stealth design: a low faceted cover in her own paint, lying fore and aft, with the seam of its
+    ## doors; it does not train (the torpedoes leave through the doors). Looks only.
+    func _tube_cover(s, m) -> void:
+        var t3: Vector3 = GameData.mount_tint(s.pal); var k: float = 0.3 if view.dark else 1.0
+        var base := Color(t3.x, t3.y, t3.z) * k; base.a = 1.0
+        var sun: Vector2 = BattleSim.SUN.rotated(-s.a).normalized()
+        var hl := 3.6; var hw := 1.5; var p := Vector2(m.slot.x, m.slot.y + view.lean * view.freeboard)
+        draw_set_transform(p + sun * 0.9, 0.0, Vector2.ONE)
+        draw_colored_polygon(PackedVector2Array([Vector2(-hl, 0), Vector2(-hl * 0.6, -hw), Vector2(hl * 0.6, -hw), Vector2(hl, 0), Vector2(hl * 0.6, hw), Vector2(-hl * 0.6, hw)]), Color(0, 0, 0, 0.3))
+        draw_set_transform(p, 0.0, Vector2.ONE)
+        var o := [Vector2(-hl, 0), Vector2(-hl * 0.6, -hw), Vector2(hl * 0.6, -hw), Vector2(hl, 0), Vector2(hl * 0.6, hw), Vector2(-hl * 0.6, hw)]
+        var r := [Vector2(-hl * 0.55, 0), Vector2(-hl * 0.4, -hw * 0.45), Vector2(hl * 0.4, -hw * 0.45), Vector2(hl * 0.55, 0), Vector2(hl * 0.4, hw * 0.45), Vector2(-hl * 0.4, hw * 0.45)]
+        for i in 6:   # each sloping face lit by how it lies to the sun
+            var a: Vector2 = o[i]; var b: Vector2 = o[(i + 1) % 6]; var mid: Vector2 = (a + b) * 0.5
+            var lit_k: float = clampf(0.78 - 0.3 * mid.normalized().dot(sun), 0.45, 1.1)
+            var c := base * lit_k; c.a = 1.0
+            draw_colored_polygon(PackedVector2Array([a, b, r[(i + 1) % 6], r[i]]), c)
+        var top := base * 0.97; top.a = 1.0
+        draw_colored_polygon(PackedVector2Array(r), top)
+        draw_line(Vector2(-hl * 0.4, 0), Vector2(hl * 0.4, 0), Color(0, 0, 0, 0.35), 0.12)
+        if m.dead: draw_colored_polygon(PackedVector2Array(o), Color(0.05, 0.04, 0.04, 0.6))
 
     ## A ship that has struck her colours flies a white flag from the stern: a staff, and a flag rippling downwind
     ## with its shadow on the deck and the sea. Drawn larger than life (about 14 m) so it reads at battle zoom.

@@ -112,3 +112,11 @@ Run headless checks via `tools/run_tests.sh <log_dir> [tests]` (which isolates `
 * **Officer traits:** `Campaign.OFFICER_TRAITS`, `grant_officer_trait(o)` at levels 3 and 5 (`TRAIT_LEVELS`; two at most; `o.traits`), `traits(o)`, `flag_trait(id)`, `trait_evade()`. In battle a `CShip`'s `traits` (set beside `tm` in `battle.gd` and the soak), read with `BattleSim.has_trait(s, id)`; what each is worth is in the `TRAIT_*` constants. Shown by `world_map._trait_labels(o)`. review_test `_traits`.
 * **Turret shadows from the upper works:** `mount_light.gdshader` marches the ship's height map (`ship_hmap`, `ship_size_m`, `freeboard`) from each turret pixel towards the sun. The pixel's place in the ship's frame comes from `MODEL_MATRIX * VERTEX` through `ship_ix`/`ship_iy`/`ship_io` (the inverse of the `ShipView`'s transform, set in `refresh()`): `VERTEX` alone is the mount's own rectangle. `GameData.mount_material()` already makes a material per call, so each ship has her own.
 * **Tales:** `godot/data/tales/iron_meridian_tales.txt` is the owner's pack (10 tales): never alter it unasked.
+
+## 8. Later on 13 Nov 2026
+
+* **Launch cells:** `BattleSim.default_fit` empties a V slot without the research only on a design of Era I or II (an old hull given cells later); a design of Era III or IV always carries her missiles (the editor sets no research, and the Umbra's and the Shade's cells did nothing there).
+* **Shot camera:** with E held and no shell of hers in the air, the camera rides her newest anti-ship missile (`battle.shot_ms`; a ship's own missiles carry `who`).
+* **Stealth designs** (`ShipView.stealth`, `dark`, from the plan's `stealth`): torpedo tubes are drawn as a fixed faceted cover (`MountLayer._tube_cover`), looks only. **Aerials** (`battle.gd` `Aerial`): a search aerial turns on the first two masts of a ship with radar fitted while the set is on (`p.mast`; not derrick posts, submarines or stealth designs).
+* **Rain** (`veil.gdshader`): cell numbers are kept small (`rhash`); the old hash lost precision on some graphics cards and rain fell on one side of the screen.
+* **Five portrait clips** (`tests/reel_five.gd`, `tools/make_five.sh <dir> [shell eras yamato sinking night]`): no interface, the in-development tag, -14 LUFS. `tests/shot_art` takes `TECH=radar,...`.

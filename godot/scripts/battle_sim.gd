@@ -361,7 +361,10 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
         if w == "g76" and not tech.has("missiles"): w = "g102t"
         if w == "g203r" and not tech.has("radar"): w = "g203"
         var wd: Dictionary = GameData.weapons[w]
-        if wd.has("tech") and not tech.has(wd.tech) and s.s == "V": w = ""
+        # launch cells are empty without the research - on an old hull given cells later. A ship designed in the missile
+        # age was built with hers: she carries them whoever sails her (the owner, 13 Nov 2026: the Umbra and the Shade
+        # had cells that did nothing in the editor, where no research is set)
+        if wd.has("tech") and not tech.has(wd.tech) and s.s == "V" and int(design.get("era", 1)) < 3: w = ""
         out.append(w)
     return out
 
@@ -1481,7 +1484,7 @@ func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
     for i in int(w.count) + (1 + (1 if tech_lv(s.tech, "vls") >= 2 else 0) if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
-        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "delay": i * 2.0,
+        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "delay": i * 2.0,
             "prof": missile_profile(s, tg), "sk": 0.1 * (tech_lv(s.tech, "precision") if s.tech.has("precision") else 0) + (0.1 if s.tech.has("netcentric") else 0.0)})
     if s.sub: s.reveal_t = 25.0
 

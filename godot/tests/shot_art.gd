@@ -8,7 +8,7 @@ var args: PackedStringArray
 func _ready() -> void:
     args = OS.get_cmdline_user_args()
     var ids: Array = Array(args[2].split(",")) if args.size() > 2 else ["bb_iowa", "bb_yamato", "bb_bismarck"]
-    GameData.pending = {"player": ids, "enemy": ["dd_narvik"], "enemy_fac": "directorate", "player_tech": [], "enemy_tech": [], "islands": 0}
+    GameData.pending = {"player": ids, "enemy": ["dd_narvik"], "enemy_fac": "directorate", "player_tech": Array(OS.get_environment("TECH").split(",", false)), "enemy_tech": [], "islands": 0}   # TECH=radar,missiles: the research they are fitted by
     battle = load("res://scenes/battle.tscn").instantiate(); add_child(battle)
 func _process(_d: float) -> void:
     frame += 1

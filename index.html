@@ -957,10 +957,16 @@ function drawPlan(g, d, P, part = 'all') {
   const deckCol = p.deck === 'teak' ? TEAK : p.deck === 'lino' ? LINO : P.deck;
   const ink = 'rgba(14,18,20,.85)', edge = 'rgba(0,0,0,.32)';
   if (d.kind === 'sub') {
+    // diving planes: tapered fins, swept back, rooted under the hull so only the part outboard of it shows (the owner,
+    // 13 Nov 2026: they were flat bars laid across the hull)
+    g.fillStyle = shade(P.hull, -0.55);
+    for (const [sx, k] of p.pod ? [[-h * 0.9, 1.0]] : [[h * 0.8, 0.75], [-h * 0.9, 1.0]]) for (const sg of [-1, 1]) {
+      const c = Math.max(1.0, L * 0.032) * k, span = b * (0.35 + 0.4 * k), sw = c * 0.35;
+      g.beginPath(); g.moveTo(sx + c / 2, sg * b * 0.4); g.lineTo(sx + c / 2 - sw, sg * (b + span)); g.lineTo(sx + c / 2 - sw - c * 0.5, sg * (b + span));
+      g.lineTo(sx - c / 2, sg * b * 0.4); g.closePath(); g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.12; g.stroke(); }
     hullPath(g, d); crownFill(g, shade(P.hull, -0.45), b); g.lineWidth = 0.25; g.strokeStyle = edge; g.stroke();
     if (!p.smooth || p.casing) { const cw = B * (p.casing || .4); rrect(g, -h * 0.72, -cw / 2, L * 0.78, cw, cw / 2); crownFill(g, shade(P.deck, -0.25), cw / 2);
       g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.15; g.beginPath(); for (let x = -h * 0.7; x < h * 0.06; x += 2.2) { g.moveTo(x, -cw / 2 + 0.2); g.lineTo(x, cw / 2 - 0.2); } g.stroke(); }
-    g.fillStyle = shade(P.hull, -0.5); for (const sx of p.pod ? [-h * 0.9] : [h * 0.82, -h * 0.9]) { g.fillRect(sx - 0.6, -b * 1.25, 1.2, b * 2.5); }   // diving planes
     if (p.pod) { g.fillRect(-h * 0.97, -0.25, h * 0.14, 0.5); if (p.pod === 2) { g.beginPath(); g.ellipse(-h * 0.93, 0, 3.2, 0.9, 0, 0, TAU); g.fillStyle = shade(P.hull, -0.35); g.fill(); } }
     for (const [x0, x1, n, y] of p.tubes || []) for (let i = 0; i < n; i++) for (const sy of y ? [-1, 1] : [0]) {   // missile tube hatches
       const tx = x0 + (x1 - x0) * i / Math.max(1, n - 1), ty = sy * y, r = Math.min(1.5, Math.abs(x1 - x0) / Math.max(1, n - 1) * 0.36 + 0.3);

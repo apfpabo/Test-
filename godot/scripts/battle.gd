@@ -442,21 +442,31 @@ func _ship_menu(s: BattleSim.CShip, at: Vector2) -> void:
         ship_menu.id_pressed.connect(func(id: int): _sensor_cmd(id, ship_menu.get_meta("ship")))
     ship_menu.clear(); ship_menu.set_meta("ship", s)
     ship_menu.add_separator(s.rec.name)
-    if sim.radar_fitted(s): ship_menu.add_item("Radar: switch off (seen by eye alone; her set is not picked up)" if s.radar_on else "Radar: switch on", 1)
-    else: ship_menu.add_item("No radar" if not s.sub else "No radar (a boat listens)", 90); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
-    if sim.can_jam(s): ship_menu.add_item("Jammer: switch off" if s.jam_on else "Jammer: switch on (enemy radar sees her and those near her shorter; heard far off)", 7)
-    if s.chaff > 0 or sim.can_jam(s): ship_menu.add_item("Chaff: %d rounds (fired by itself at a missile coming in)" % s.chaff, 92); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
-    if sim.has_sonar(s): ship_menu.add_item("Sonar: go passive (listen only; nothing hears her)" if s.sonar_on else "Sonar: start pinging (finds dived boats; gives her away)", 2)
+    # every entry says what it does; the entries lie in three groups; and a ship in a state you set shows the way back first
+    # (the owner, 13 Nov 2026: A marks on her name in the HUD, B back to normal, C a line each, D groups)
+    if s.own or s.lead != null or s.st_off != null:
+        var st: Array = []
+        if s.own: st.append("your own orders")
+        if s.lead != null: st.append("formed on the " + s.lead.rec.name)
+        if s.st_off != null: st.append("a station you gave her")
+        ship_menu.add_item("Back to normal: drop %s. Her captain fights her, in standard station on the flagship" % ", ".join(st), 13)
+    ship_menu.add_separator("Sensors")
+    if sim.radar_fitted(s): ship_menu.add_item("Radar off: she sees by eye alone, and her set cannot be picked up" if s.radar_on else "Radar on: sees through night and fog, and is heard from far off", 1)
+    else: ship_menu.add_item("No radar" if not s.sub else "No radar: a boat listens", 90); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
+    if sim.has_sonar(s): ship_menu.add_item("Sonar silent: she only listens, and nothing hears her" if s.sonar_on else "Sonar pinging: finds dived boats, and gives her away", 2)
     else: ship_menu.add_item("No sonar", 91); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
-    ship_menu.add_separator("Her orders")
-    ship_menu.add_item("Left to her captain: give her your own orders, which she will keep" if not s.own else "Under your own orders: leave her to her captain", 8)
+    if sim.can_jam(s): ship_menu.add_item("Jammer off: she stops radiating" if s.jam_on else "Jammer on: enemy radar sees her and ships near her from less far; heard far off", 7)
+    if s.chaff > 0 or sim.can_jam(s): ship_menu.add_item("Chaff, %d rounds: fired by itself at a missile coming in" % s.chaff, 92); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
+    ship_menu.add_separator("Orders")
+    ship_menu.add_item("Your orders stand: she keeps the course, speed and target you give her when you leave her" if not s.own else "Leave her to her captain: he fights her as he sees fit", 8)
+    ship_menu.add_separator("Formation")
     var pk: Array = sel.filter(func(x): return x != s)
-    if not pk.is_empty(): ship_menu.add_item("The %d picked out: form on her" % pk.size() if pk.size() > 1 else "%s: form on her" % pk[0].rec.name, 9)
-    if s.lead != null: ship_menu.add_item("Form on the flagship again", 10)
-    ship_menu.add_item("Keep present stations (%s)" % ("the ships picked out" if not sel.is_empty() else "every ship in formation"), 11)
-    if sim.ships.any(func(x): return x.side == 0 and x.st_off != null): ship_menu.add_item("Standard stations again", 12)
-    ship_menu.add_separator("The squadron")
-    ship_menu.add_item("All radar off", 3); ship_menu.add_item("All radar on", 4); ship_menu.add_item("All sonar passive", 5); ship_menu.add_item("All sonar pinging", 6)
+    if not pk.is_empty(): ship_menu.add_item(("Form the %d ships picked out on her: she leads a division of her own" % pk.size()) if pk.size() > 1 else ("Form the %s on her: she leads a division of her own" % pk[0].rec.name), 9)
+    if s.lead != null: ship_menu.add_item("Form on the flagship again: she leaves the %s" % s.lead.rec.name, 10)
+    ship_menu.add_item("Keep present stations: %s hold the places they lie in now" % ("the ships picked out" if not sel.is_empty() else "all ships in formation"), 11)
+    if sim.ships.any(func(x): return x.side == 0 and x.st_off != null): ship_menu.add_item("Standard stations: every ship goes back to her usual place", 12)
+    ship_menu.add_separator("The whole squadron")
+    ship_menu.add_item("All radar off", 3); ship_menu.add_item("All radar on", 4); ship_menu.add_item("All sonar silent", 5); ship_menu.add_item("All sonar pinging", 6)
     ship_menu.position = Vector2i(at) + Vector2i(get_window().position if not get_window().is_embedded() else Vector2i.ZERO); ship_menu.reset_size(); ship_menu.popup()
 func _sensor_cmd(id: int, s) -> void:
     var all: Array = sim.ships.filter(func(o): return o.side == 0 and sim.active(o))
@@ -487,6 +497,11 @@ func _sensor_cmd(id: int, s) -> void:
         12:
             for x in all: x.st_off = null
             sim.say("Standard stations.", 1.5)
+        13:   # back to normal: every state you set on her is dropped
+            if s != null:
+                if s.own: sim.set_own(s, false)
+                s.lead = null; s.st_off = null
+                sim.say("%s: back to normal. Her captain fights her, in standard station on the flagship." % s.rec.name, 2.0)
         7:
             if s != null: s.jam_on = not s.jam_on; sim.say("%s: jammer %s." % [s.rec.name, "on" if s.jam_on else "off"], 1.6)
         5, 6:

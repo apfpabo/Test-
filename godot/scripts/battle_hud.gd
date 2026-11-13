@@ -141,6 +141,19 @@ func _draw() -> void:
             elif s.heard_t < BattleSim.HEARD_FOR and (s.sub or sim.limited()): ail.append("her ping was heard")
         if ail.size(): _text(sp + Vector2(-150, -off - 18), " · ".join(ail), Color(0.93, 0.5, 0.36) if not (ail.size() == 1 and s.smoke_on) else Color(0.8, 0.82, 0.8), 11, HORIZONTAL_ALIGNMENT_CENTER, 300)
         _text(sp + Vector2(-150, -off - 4), s.rec.name + tag, Color(0.95, 0.75, 0.71) if s.side else (GOLD if s == sim.flag else Color(0.84, 0.86, 0.85)), 12, HORIZONTAL_ALIGNMENT_CENTER, 300)
+        # marks beside her name for a state you set and may forget (the owner, 13 Nov 2026): a pennant = under your own
+        # orders, chevrons = formed on a lead other than the flagship, a diamond = holding a station you gave her
+        if s.side == 0 and s.alive and (s.own or s.lead != null or s.st_off != null):
+            var nw: float = font.get_string_size(s.rec.name + tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+            var mx: float = sp.x - nw / 2.0 - 10.0; var my: float = sp.y - off - 8.0
+            if s.own:
+                draw_line(Vector2(mx - 4, my - 6), Vector2(mx - 4, my + 5), GOLD, 1.2)
+                draw_colored_polygon(PackedVector2Array([Vector2(mx - 3.4, my - 6), Vector2(mx + 4, my - 3), Vector2(mx - 3.4, my)]), GOLD); mx -= 14.0
+            if s.lead != null:
+                for kx in [0.0, 4.0]: draw_polyline(PackedVector2Array([Vector2(mx - 5 + kx, my - 4), Vector2(mx - 1 + kx, my), Vector2(mx - 5 + kx, my + 4)]), Color(0.6, 0.8, 0.95), 1.3)
+                mx -= 14.0
+            if s.st_off != null:
+                draw_polyline(PackedVector2Array([Vector2(mx, my - 5), Vector2(mx + 4.5, my), Vector2(mx, my + 5), Vector2(mx - 4.5, my), Vector2(mx, my - 5)]), Color(0.84, 0.86, 0.85), 1.2)
     # orders and help
     # squadron orders, in a row: the standing order in gold
     var orders = [[kn(KEY_1), "Engage", "engage"], [kn(KEY_2), "Form on flag", "escort"], [kn(KEY_4), "Line ahead", "line"], [kn(KEY_6), "Line abreast", "abreast"], [kn(KEY_7), "Screen", "screen"], [kn(KEY_3), "Withdraw", "retreat"]]

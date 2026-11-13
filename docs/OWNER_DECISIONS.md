@@ -196,6 +196,20 @@ at sea are not grounded anyway); (c) size raiders to the captain for his first m
 (d) count torpedo boats for more in the strength shown on the contact panel, so "an even fight" is honest.
 The agent's recommendation: (b) and (d).
 
+## Parked by the owner
+
+The oblique (2.5D) battle view, difficulty settings and mod support (parked earlier). And:
+
+**A battle for bombardment (raised by the owner, 13 Nov 2026; he liked it, parked for now).** Bombardments, carrier
+strikes and land-based air raids are settled with numbers and shown as a scene you only watch (`Structures`, the raid
+view). His idea: a real battle when you bombard, with the structure on a stretch of coast, its guns answering, and an
+airfield sending aircraft against your fleet. What exists already: battle islands where shells burst on land, carrier air
+groups with flak and fighters, sighting and gunnery. What would be new: targets on land (gunnery, AI and sighting know
+only ships), a coast with the structure on it, shore guns firing back, an airfield launching strikes, and the result fed
+back to the campaign in place of the numbers. Open question for when it is taken up: what he wants to be doing and
+deciding in that fight (duel the battery and judge when to pull out before the planes come, or a full action with escorts
+and a defending patrol). A new system: not started.
+
 ## Older lists still open
 
 - The realism review of 11 Nov 2026 (gun and torpedo ranges, a few designs' armament): [`ROADMAP.md`](ROADMAP.md),

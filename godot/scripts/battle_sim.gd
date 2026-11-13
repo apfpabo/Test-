@@ -77,6 +77,7 @@ class CShip:
     var sub = false
     var dive = 0.0
     var want_dive = false
+    var dive_was = false   # the last order to her tanks: a change sounds (the owner's dive sound)
     var reveal_t = 0.0
     var radar_on := true    # her search radar radiating (off: she sees by eye alone, and no one hears her set)
     var sonar_on := true    # her active sonar pinging (off: she only listens; a boat starts so)
@@ -2592,6 +2593,7 @@ func step(dtv: float) -> void:
             if s.ai_acc >= 0.25:
                 if not s.ai_off: ai_ship(s, s.ai_acc)
                 s.ai_acc = 0.0
+        if s.sub and s.want_dive != s.dive_was: s.dive_was = s.want_dive; sound("dive", s.pos, 0.6)   # diving or surfacing
         if s.sub: s.dive = clampf(s.dive + (dt / 30.0 if s.want_dive else -dt / 30.0), 0.0, 1.0)
         s.wpn_acc += dt
         if s == flag or s.wpn_acc >= 0.1: update_weapons(s, s.wpn_acc); s.wpn_acc = 0.0

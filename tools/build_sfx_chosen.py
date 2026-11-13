@@ -79,12 +79,19 @@ def main():
     made['refit'] = fade(level(load(find(dl, 'x_mech', 'Single_Mechanical Pack Vol 1_Large Mechanical Press Hit_01.wav')), -21.0), 0.002, 0.3)   # yard work done
     made['typewriter'] = fade(level(load(os.path.join(dl, 'typewriter.wav')), -24.0), 0.002, 0.1)          # the game saved: a line in the log
     made['horn'] = fade(level(load(find(dl, 'x_sndfx', 'friendlyship.ogg')), -21.0), 0.01, 0.6)          # a ship joins the squadron
+    # two sounds the owner chose and sent himself (12-13 Nov 2026), kept in tools/owner_sounds
+    own = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'owner_sounds')
+    jet = load(os.path.join(own, 'WWS_SaabJ35DDraken8211passingtwotimes.ogg'), 10.5, 25.5)   # the first pass, starting as it comes up (the owner: "so it doesn't take too long to start")
+    made['jet_loop'] = level(loop(highpass(jet, 40.0), 1.5), -20.0)
+    made['dive'] = fade(level(load(os.path.join(own, '688dv4.wav')), -27.0, 0.6), 0.005, 0.25)   # a boat diving or surfacing (the owner: "not TOO loud")
     for name, x in made.items(): print('%-13s %.2f s' % (name, len(x) / RATE)); write(out, name, x)
     cp = os.path.join(out, 'CREDITS.md'); txt = open(cp).read(); mark = '\n## Chosen by the owner, 11 and 12 Nov 2026\n'
     txt = txt.split(mark)[0].rstrip('\n') + '\n'
     lines = [mark.strip('\n'), '', 'Built by `tools/build_sfx_chosen.py`.', '', '| File here | Source | Author | Licence |', '| --- | --- | --- | --- |']
     for f, s in USED.items():
         url, title, author, lic, page = SOURCES[s]; lines.append('| `%s` | [%s](%s) | %s | %s |' % (f, title, page, author, lic))
+    lines += ['| `jet_loop` | [Saab J35D Draken passing two times](https://commons.wikimedia.org/wiki/File:WWS_SaabJ35DDraken8211passingtwotimes.ogg) (sent by the owner) | Work With Sounds / Torsten Nilsson | CC BY 4.0 |',
+              '| `dive` | `688dv4.wav`, sent by the owner as free to use (13 Nov 2026) | | free to use (the owner) |']
     lines += ['', 'CC BY 3.0: https://creativecommons.org/licenses/by/3.0/ · CC BY 4.0: https://creativecommons.org/licenses/by/4.0/']
     open(cp, 'w').write(txt + '\n' + '\n'.join(lines) + '\n')
     print('built', len(made), 'chosen sounds into', out)

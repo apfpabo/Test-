@@ -62,7 +62,7 @@ slick lasts, the look at night), or go back to Classic. Nothing more will be cha
 Where it lives: `BattleSim.fx_splash_new`, `battle._columns`, `_laces`, `_sinks`, `shaders/sink.gdshader`; see the
 "new splash" note in `CLAUDE.md`.
 
-## 5. The sound gaps (12 Nov 2026). Chosen: C2 coins, R4 the press, S1 the typewriter, W4 the horn (in the game); jamming none; jets and diving: more candidates asked for
+## 5. The sound gaps (12 Nov 2026). Chosen: C2 coins, R4 the press, S1 the typewriter, W4 the horn (in the game); jamming none; jets: the Saab Draken's pass and diving: a sound of his own, both sent by him (13 Nov 2026) and in the game
 
 Seven things are silent: jet aircraft, a boat diving or surfacing, trade, a refit done, saving, a ship joining, and
 jamming. Candidates, levelled to one loudness, are on the listening page "Iron Meridian Sound Gaps"

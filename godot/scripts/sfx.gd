@@ -89,7 +89,7 @@ func _ready() -> void:
 		if ResourceLoader.exists(mpath):
 			var ms = load(mpath); ms.loop = false; _mus_streams[k] = ms
 	# the sounds the owner chose (11 Nov 2026): one-shots (`cue`) and loops that follow what is on the screen (`layer`)
-	for n in ["siren", "gong", "paper", "coins", "refit", "typewriter", "horn"]:   # (the last four chosen on 12 Nov 2026)
+	for n in ["siren", "gong", "paper", "coins", "refit", "typewriter", "horn", "dive"]:   # (the last four chosen on 12 Nov 2026)
 		var st = load("res://assets/sfx/%s.ogg" % n) if ResourceLoader.exists("res://assets/sfx/%s.ogg" % n) else null
 		if st != null: _cues[n] = st
 	for n in LAYERS:
@@ -161,6 +161,7 @@ func event(kind: String, vol: float, rate := 1.0) -> void:
 	match kind:
 		"ping": _play(_rec.ping[0] if _rec.has("ping") else _ping_wav(), vol, rate); return   # the recorded ping (the owner's choice), else the synthesised one
 		"depth": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.55 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol * 0.6, 0.6); return
+		"dive": if _cues.has("dive"): _play(_cues.dive, vol, rate); return   # a boat diving or surfacing (the owner's own sound, 13 Nov 2026)
 		"torp_hit": if _rec.has("splash"): _play(_rec.splash.pick_random(), vol, 0.7 * rate); if _rec.has("hit_big"): _play(_rec.hit_big[0], vol, 0.8); return
 	if not _rec.has(kind):
 		boom(vol, {"gun_H": 160.0, "gun_L": 350.0, "gun_M": 520.0, "gun_S": 700.0, "hit": 600.0, "hit_big": 220.0, "blast": 160.0, "launch": 1200.0}.get(kind, 420.0), rate); return
@@ -277,7 +278,7 @@ func _music_tick(dt: float) -> void:
 		if _mus_rest >= float(MUSIC[_mus_name][2]): _mus_rest = 0.0; _mus_k[_mus_on] = 0.0; cur.volume_db = -60.0; cur.play()
 var _cues := {}                  # one-shot sounds by name: siren (battle stations), gong (the bell: port and engine orders), paper (pages)
 ## name: true if it belongs to the weather (Ambience bus), false if to things on the screen (Effects bus)
-const LAYERS := {"prop": false, "fire": false, "bubbles": false, "rain": true, "thunder": true, "storm": true}
+const LAYERS := {"prop": false, "jet": false, "fire": false, "bubbles": false, "rain": true, "thunder": true, "storm": true}
 var _layers := {}
 var _layer_want := {}
 ## A one-shot: "siren", "gong", "paper", "coins" (a trade), "refit" (yard work done), "typewriter" (saved), "horn" (a ship joins).

@@ -46,5 +46,7 @@ Built by `tools/build_sfx_chosen.py`.
 | `refit` | [JC Sounds: Mechanical Pack Vol 1](https://opengameart.org/content/jc-sounds-mechanical-pack-vol-1) | JC Sounds | CC BY 4.0 |
 | `typewriter` | [Typewriter sounds](https://opengameart.org/content/typewriter-sounds) | Cassie-OrbitGames | CC0 |
 | `horn` | [War on Water: SNDFX](https://opengameart.org/content/war-on-water-sndfx) | yd | CC0 |
+| `jet_loop` | [Saab J35D Draken passing two times](https://commons.wikimedia.org/wiki/File:WWS_SaabJ35DDraken8211passingtwotimes.ogg) (sent by the owner) | Work With Sounds / Torsten Nilsson | CC BY 4.0 |
+| `dive` | `688dv4.wav`, sent by the owner as free to use (13 Nov 2026) | | free to use (the owner) |
 
 CC BY 3.0: https://creativecommons.org/licenses/by/3.0/ · CC BY 4.0: https://creativecommons.org/licenses/by/4.0/

@@ -243,14 +243,20 @@ func _process(delta: float) -> void:
     Sfx.engine(eng)
     Sfx.ambience(0.0 if paused else 0.6, 0.35 if not sim.islands.is_empty() else 0.0)
     if not paused:   # what is near the camera, and the weather (the owner's chosen sounds)
-        var prop := 0.0; var fire := 0.0; var bub := 0.0
-        for q in sim.air: if not q.jet and q.up > 0 and (q.side == 0 or not sim.limited()): prop = maxf(prop, _near(q.pos) * minf(1.0, 0.4 + 0.15 * q.up))
+        var prop := 0.0; var jet := 0.0; var fire := 0.0; var bub := 0.0
+        for q in sim.air:
+            if q.up <= 0 or not (q.side == 0 or not sim.limited()): continue
+            var lv: float = _near(q.pos) * minf(1.0, 0.4 + 0.15 * q.up)
+            if q.jet: jet = maxf(jet, lv)   # jets: the Draken's pass, the owner's choice (13 Nov 2026)
+            else: prop = maxf(prop, lv)
         for x in sim.ships:
-            for op in x.deck_ops: if not op.q.jet: prop = maxf(prop, _near(op.pos) * 0.6)
+            for op in x.deck_ops:
+                if op.q.jet: jet = maxf(jet, _near(op.pos) * 0.6)
+                else: prop = maxf(prop, _near(op.pos) * 0.6)
             if x.side == 1 and not sim.visible_to(x, 0): continue
             if x.alive and not x.escaped and not x.fires.is_empty(): fire = maxf(fire, _near(x.pos) * minf(1.0, 0.4 + 0.2 * x.fires.size()))
             if not x.alive and sim.sink_k(x) < 1.0: bub = maxf(bub, _near(x.pos))
-        Sfx.layer("prop", prop); Sfx.layer("fire", fire * 0.8); Sfx.layer("bubbles", bub * 0.9)
+        Sfx.layer("prop", prop); Sfx.layer("jet", jet); Sfx.layer("fire", fire * 0.8); Sfx.layer("bubbles", bub * 0.9)
         var sea: int = int(sim.wx.get("sea", 0))
         if sea == 2: Sfx.layer("rain", 0.6)
         elif sea >= 3: Sfx.layer("storm", 0.8); Sfx.layer("thunder", 0.7)

@@ -848,7 +848,7 @@ func _toast(text: String) -> void:
     get_tree().create_timer(6.5).timeout.connect(func(): if is_instance_valid(pc): pc.queue_free())
 
 # ------------------------------------------------------------------ the Command tabs (bottom left)
-const CMD_TABS := [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["locations", "Locations"], ["codex", "Codex"]]
+const CMD_TABS := [["fleet", "Fleet"], ["officers", "Officers"], ["research", "Research"], ["missions", "Missions & diplomacy"], ["holdings", "Holdings"], ["hold", "Hold"], ["locations", "Locations"], ["career", "Career"], ["codex", "Codex"]]
 var cmd_btns := {}
 var cmdbar: Control
 func _build_cmdbar() -> void:
@@ -1369,6 +1369,7 @@ func _show_origin() -> void:
         box.add_child(UI.button("Put to sea", func(): close_panel(); Campaign.paused = false, true)), true)
 
 func _show_aftermath(r: Dictionary) -> void:
+    Campaign.career_battle(r)
     if guide_card != null and is_instance_valid(guide_card): guide_card.aftermath()
     if Campaign.G.fleet.is_empty():
         open_panel(func(box):
@@ -1972,6 +1973,7 @@ func _command_page(box: Control) -> void:
             "missions": _missions(box, false)
             "holdings": _holdings(box)
             "locations": _locations(box)
+            "career": _career(box)
             "codex": Codex.build(box, codex_tab, func(k): codex_tab = k; show_command())
             "hold":
                 for g in Campaign.C.GOODS: box.add_child(UI.row([UI.label(g.name), UI.label(str(int(floor(Campaign.G.cargo[g.id]))), UI.DIM)]))
@@ -2266,6 +2268,7 @@ var refit_arm := {}    # ship id -> planned armour by place (mm added or landed:
 var refit_warn := ""    # the ship whose costly refit the yard is asking about (warn and ask)
 var refit_sel := 0     # slot shown on the weapon card
 func _refit(box: Control) -> void:
+    Campaign.hint_once("refit", "A hull carries only so much weight. The yard's ledger is explained in the Codex under Manual: Refits by weight.")
     var G: Dictionary = Campaign.G
     refit_idx = clampi(refit_idx, 0, G.fleet.size() - 1); var s: Dictionary = G.fleet[refit_idx]; var d: Dictionary = GameData.hulls[s.type]
     var plan: Array = refit_plan.get(s.id, s.fit.duplicate()); refit_plan[s.id] = plan
@@ -2561,6 +2564,43 @@ func _trait_labels(o: Dictionary) -> Array:
         var l := UI.label("★ " + String(Campaign.OFFICER_TRAITS[k].name), UI.GOLD, 13); l.tooltip_text = String(Campaign.OFFICER_TRAITS[k].desc); l.mouse_filter = Control.MOUSE_FILTER_PASS
         out.append(l)
     return out
+
+## The captain's career: what he has done so far, the milestones with their dates, and a way to retire.
+var _retire_ask := false
+func _career(box: Control) -> void:
+    var G: Dictionary = Campaign.G; var c: Dictionary = Campaign.career()
+    var who: String = String(Origins.INFO.get(String(G.get("origin", "")), {}).get("label", "Captain"))
+    box.add_child(UI.label(who, UI.GOLD, 20))
+    _p(box, "At sea since %s: %d days. Now %s." % [Campaign.date_str(1), int(G.day), Campaign.date_str(int(G.day))], UI.DIM, 14)
+    var held: int = Flag.ports().size() if Flag.founded() else 0
+    box.add_child(UI.label("THE RECORD", UI.DIM, 12))
+    for line in [["Actions fought", "%d, of which %d won" % [int(c.battles), int(c.won)]], ["Enemy ships sunk or taken", str(int(G.kills))], ["Ships of yours lost", str(int(c.lost))],
+            ["Ships now, and the most at one time", "%d, %d" % [Campaign.all_ships().size(), maxi(int(c.peak), Campaign.all_ships().size())]], ["Harbours under your flag", str(held)], ["In the chest", Campaign.fmt(int(G.credits))]]:
+        box.add_child(UI.row([UI.label(line[0]), UI.label(line[1], UI.DIM)]))
+    box.add_child(UI.label("MILESTONES", UI.DIM, 12))
+    if c.marks.is_empty(): _p(box, "Nothing yet worth writing down. The first action won, the first big ship and the first harbour held will be entered here.", UI.DIM, 14)
+    for i in range(c.marks.size() - 1, -1, -1):
+        var m: Array = c.marks[i]
+        box.add_child(UI.row([UI.label(Campaign.date_str(int(m[0])), UI.DIM, 13), UI.label(String(m[1]), UI.INK, 14)]))
+    box.add_child(UI.label("RETIREMENT", UI.DIM, 12))
+    _p(box, "You may strike your flag and go ashore for good. The campaign ends, and the record above is read out.", UI.DIM, 13)
+    if _retire_ask:
+        box.add_child(UI.row([UI.button("Confirm: retire, and end this campaign", func(): _retire_ask = false; _retire(), true), UI.button("Stay at sea", func(): _retire_ask = false; _rerender())]))
+    else: box.add_child(UI.button("Retire", func(): _retire_ask = true; _rerender()))
+
+func _retire() -> void:
+    var G: Dictionary = Campaign.G; var c: Dictionary = Campaign.career(); close_drawer(); Campaign.paused = true
+    var who: String = String(Origins.INFO.get(String(G.get("origin", "")), {}).get("label", "Captain"))
+    open_panel(func(box):
+        box.add_child(UI.title("Paid off"))
+        _p(box, "%s goes ashore on %s, after %d days at sea." % [who, Campaign.date_str(int(G.day)), int(G.day)])
+        _p(box, "You fought %d actions and won %d, sank or took %d ships and lost %d of your own. You leave %d ships and %s in the chest%s." % [int(c.battles), int(c.won), int(G.kills), int(c.lost), Campaign.all_ships().size(), Campaign.fmt(int(G.credits)),
+            (", and %d harbours under your own flag" % Flag.ports().size()) if Flag.founded() and Flag.ports().size() > 0 else ""], UI.DIM)
+        if not c.marks.is_empty():
+            box.add_child(UI.label("WHAT WILL BE REMEMBERED", UI.DIM, 12))
+            for m in c.marks: box.add_child(UI.row([UI.label(Campaign.date_str(int(m[0])), UI.DIM, 13), UI.label(String(m[1]), UI.INK, 14)]))
+        Campaign._save_wait(); DirAccess.remove_absolute(Campaign.SAVE_PATH)   # the running campaign is over (saves you named are kept)
+        box.add_child(UI.button("Return to the title", func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"), true)), true)
 
 func rp_price(p: Dictionary) -> int: return 6000 if p.get("fac") == "enclave" else (8000 if p.get("capital", false) and p.get("fac") == "concord" else 0)
 

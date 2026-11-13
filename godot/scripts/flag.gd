@@ -35,6 +35,7 @@ func can_found() -> String:
 
 ## Founds your flag. You leave any service you are in; the powers take note.
 func found(flag_name_: String) -> String:
+	Campaign.hint_once("flag", "Holding harbours, the Chancery and coalitions are explained in the Codex under Manual: Your own flag.")
 	var G := g(); var nm := flag_name_.strip_edges()
 	if nm == "": nm = NAMES[0]
 	G.credits -= FOUND_COST

@@ -1814,5 +1814,15 @@ func _traits() -> void:
 	var lv: Dictionary = Campaign.new_officer(2); lv.traits = []; lv.lvl = 3
 	var got: String = Campaign.grant_officer_trait(lv)
 	ok(got != "" and Campaign.traits(lv).size() == 1 and Campaign.OFFICER_TRAITS.has(lv.traits[0]), "a trait is granted by name (%s)" % got)
+	# the career record and the Codex's Manual (the owner, 13 Nov 2026)
+	Campaign.new_game("academy"); G = Campaign.G
+	G.kills = 10; G.day = 366; Campaign._career_day(); Campaign._career_day()
+	var cr: Dictionary = Campaign.career()
+	ok(cr.seen.has("k1") and cr.seen.has("k10") and cr.seen.has("y1") and cr.marks.size() == cr.seen.size(), "milestones are entered once each, with their day (%d)" % cr.marks.size())
+	Campaign.career_battle({"victory": true, "lost": [1, 2]})
+	ok(int(cr.battles) == 1 and int(cr.won) == 1 and int(cr.lost) == 2 and cr.seen.has("won1"), "an action is entered in the record")
+	Campaign.save(); Campaign.load_game(); ok(Campaign.career().marks.size() == cr.marks.size(), "and the record is saved with the campaign")
+	var man: Array = Codex.manual()
+	ok(man.size() >= 10 and man.all(func(pg): return String(pg.get("title", "")) != "" and String(pg.get("text", "")).length() > 200), "the Codex has a Manual of %d pages" % man.size())
 	Campaign.new_game("academy")
 	sections += 1

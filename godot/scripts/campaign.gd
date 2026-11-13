@@ -311,6 +311,7 @@ func research(t: Dictionary) -> bool:
     G.rp = int(G.rp) - tech_cost(t)
     G.tech.append(t.id if lv == 1 else "%s+%d" % [t.id, lv])
     log_ev("Researched %s%s" % [t.name, "" if lv == 1 else " (level %s)" % ["", "I", "II", "III"][lv]])
+    if t.id == "radar" or t.id == "sonar" or t.id == "ecm": hint_once("sensors", "New sensors. What they find, and what they give away, is in the Codex under Manual: Radar, sonar and silence.")
     return true
 func player_era() -> int: return era_of(G.tech)
 ## Each power runs its own Quiet Race. Its research points grow every day at its own pace (faster at war); its era,
@@ -1359,6 +1360,7 @@ func nearest_poi(max_d: float):
 func new_day(moved: bool) -> void:
     if G.has("player") and off_edge(G.player): toast.emit("Your squadron was lying against the edge of the chart, where no course could reach her. She has been brought back onto the nearest sea lane.")
     G.day += 1
+    _career_day()
     var P: Dictionary = G.player
     if not G.has("reserve"): G.reserve = reserve_cap()
     if moved and P.get("towed") == null:
@@ -1928,6 +1930,53 @@ func _arrive() -> void:
         if mdist(P.x, P.y, p.sx, p.sy) < 30:
             P.x = p.sx; P.y = p.sy; P.v = 0.0   # she lies in the roads (carrying on past them, a squadron ran into a cove by Bab Hakar's town that no course leads out of)
             reached_port.emit(p)
+
+# ------------------------------------------------------------------ a captain's career
+## The sandbox has no end, so the career is kept where the captain can see it (the owner, 13 Nov 2026): milestones
+## as they are reached (each once, with its day), a few counts, and a way to retire with a summary (world_map._career).
+func career() -> Dictionary:
+    if not G.has("career"): G.career = {"marks": [], "seen": {}, "battles": 0, "won": 0, "lost": 0, "peak": 0}
+    return G.career
+func career_mark(key: String, text: String) -> void:
+    var c: Dictionary = career()
+    if c.seen.has(key): return
+    c.seen[key] = int(G.day); c.marks.append([int(G.day), text]); log_ev(text)
+## After an action (the aftermath panel calls it with apply_battle's result).
+func career_battle(r: Dictionary) -> void:
+    var c: Dictionary = career(); c.battles = int(c.battles) + 1; c.lost = int(c.lost) + int(r.get("lost", []).size())
+    if r.get("victory", false):
+        c.won = int(c.won) + 1; career_mark("won1", "Your first action won.")
+        if int(c.won) >= 10: career_mark("won10", "Ten actions won.")
+        if int(c.won) >= 25: career_mark("won25", "Twenty-five actions won.")
+func _career_day() -> void:
+    var c: Dictionary = career(); var ships: Array = all_ships(); c.peak = maxi(int(c.peak), ships.size())
+    if ships.size() >= 3: career_mark("sq3", "You command a squadron of three ships.")
+    if ships.size() >= 6: career_mark("sq6", "Six ships sail under your orders.")
+    if ships.size() >= 10: career_mark("sq10", "Ten ships: a fleet in all but name.")
+    for s in ships:
+        var k: String = String(hull(s).klass)
+        if k == "bb": career_mark("bb", "Your first battleship, the %s." % s.name)
+        elif k == "cv" or k == "cve": career_mark("cv", "Your first carrier, the %s." % s.name)
+        elif k == "ca" or k == "cg": career_mark("ca", "Your first heavy cruiser, the %s." % s.name)
+    var era: int = player_era()
+    for e in [2, 3, 4]: if era >= e: career_mark("era%d" % e, "Your yards reach %s." % String(C.ERA_NAME.get(str(e), "a new era")))
+    if int(G.kills) >= 1: career_mark("k1", "The first enemy ship sunk or taken.")
+    if int(G.kills) >= 10: career_mark("k10", "Ten ships sunk or taken.")
+    if int(G.kills) >= 50: career_mark("k50", "Fifty ships sunk or taken.")
+    if float(G.credits) >= 100000.0: career_mark("c100k", "A hundred thousand in the chest.")
+    if float(G.credits) >= 1000000.0: career_mark("c1m", "A million in the chest.")
+    if Flag.founded():
+        career_mark("flag", "You raised a flag of your own.")
+        var held: int = Flag.ports().size()
+        if held >= 1: career_mark("port1", "The first harbour under your flag.")
+        if held >= 3: career_mark("port3", "Three harbours under your flag.")
+        if Flag.capital() != null: career_mark("capital", "Your flag has a capital.")
+    for y in range(1, 11): if int(G.day) >= 365 * y: career_mark("y%d" % y, "%s at sea." % ("A year" if y == 1 else "%d years" % y))
+## Something a system's first use should point out, once a campaign (toast): where the Codex's Manual explains it.
+func hint_once(key: String, text: String) -> void:
+    if not G.has("hints"): G.hints = {}
+    if G.hints.has(key): return
+    G.hints[key] = true; toast.emit(text)
 
 func log_ev(t: String) -> void:
     G.log.append([G.day, t])

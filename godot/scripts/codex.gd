@@ -2,7 +2,18 @@ class_name Codex
 ## The codex: the owner's foundational lore (data/lore.json "world", parsed word for word from
 ## docs/lore/foundational_lore.md by tools/lore_to_json.py), shown on the title screen and in the Command panel.
 
-const TABS := [["world", "The world"], ["history", "The Meridian War"], ["powers", "The powers"], ["mysteries", "Mysteries"], ["race", "The Quiet Race"]]
+const TABS := [["world", "The world"], ["history", "The Meridian War"], ["powers", "The powers"], ["mysteries", "Mysteries"], ["race", "The Quiet Race"], ["manual", "Manual"]]
+## The Manual (the owner, 13 Nov 2026): how the game's deeper systems work, a short page each (data/manual.json: the
+## agent's text, not the owner's lore). `manual_page` is the page shown.
+static var _manual: Array = []
+static var manual_page := "sight"
+static func manual() -> Array:
+	if _manual.is_empty():
+		var f := FileAccess.open("res://data/manual.json", FileAccess.READ)
+		if f != null:
+			var d = JSON.parse_string(f.get_as_text())
+			if d is Array: _manual = d
+	return _manual
 static var _world: Dictionary = {}
 
 static func world() -> Dictionary:
@@ -41,6 +52,15 @@ static func profile(fac: String) -> Dictionary: return world().get("profiles", {
 static func build(box: Container, tab: String, on_tab: Callable) -> void:
 	var W := world()
 	box.add_child(UI.tabs(TABS, tab, on_tab))
+	if tab == "manual":
+		var pages: Array = manual(); var row := HFlowContainer.new(); row.add_theme_constant_override("h_separation", 6); row.add_theme_constant_override("v_separation", 6)
+		for pg in pages:
+			var id: String = String(pg.id)
+			row.add_child(UI.button(String(pg.title), func(): manual_page = id; on_tab.call("manual"), id == manual_page))
+		box.add_child(row)
+		for pg in pages:
+			if String(pg.id) == manual_page: box.add_child(UI.label(String(pg.title), UI.GOLD, 20)); box.add_child(rich(String(pg.text)))
+		return
 	if W.is_empty(): box.add_child(UI.label("The codex is missing (data/lore.json).", UI.RED)); return
 	match tab:
 		"world":

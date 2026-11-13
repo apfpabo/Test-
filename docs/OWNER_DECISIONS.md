@@ -69,6 +69,26 @@ jamming. Candidates, levelled to one loudness, are on the listening page "Iron M
 (https://claude.ai/artifact/PZL2UfbDwiHdz4hAXYCh3T) and in `tools/sound_candidates.json` ("gaps_12_nov"). None is in
 the game until the owner has chosen.
 
+## 6. More Era III and Era IV designs, by shipyard (13 Nov 2026). Proposed, none built
+
+Only Tidewater and Korvagrad build past Era II (Calder has one Era IV corvette). Proposed, each after a real design, in the
+classes the game has (a frigate goes in as a missile destroyer or corvette, a light carrier as a carrier):
+
+| Yard | Era III | Era IV |
+|---|---|---|
+| Calder & Wexmouth (British) | Type 42 destroyer; Invincible light carrier; Trafalgar attack submarine | Type 45 destroyer; Queen Elizabeth carrier (two islands); Astute attack submarine |
+| Strelsk-Werke (German) | Bremen frigate; Type 206 coastal submarine; Gepard missile boat | Sachsen air-defence frigate; Type 212 submarine (the quietest boat in the game); Braunschweig corvette |
+| Korvagrad (Soviet) | Kuznetsov carrier (the Directorate has none past Era II) | Yasen attack submarine; Karakurt missile corvette; Steregushchiy corvette |
+| Amakura (Japanese) | Kongo destroyer; Hatsuyuki destroyer; Harushio submarine | Mogami stealth frigate; Izumo light carrier; Soryu submarine |
+| Cantieri del Corvo (Italian) | Garibaldi light carrier; Maestrale frigate; Sparviero hydrofoil missile boat | Andrea Doria destroyer; Thaon di Revel patrol ship; Cavour carrier |
+| Combine Marine (merchant) | container ship; replenishment ship (oil and ammunition in one hull) | landing platform dock; offshore patrol vessel |
+| Tidewater (American) | Oliver Hazard Perry frigate (a cheap escort); Tarawa assault ship | Independence trimaran; San Antonio landing ship; a rail-gun cruiser (a paper design: the second hull with the power) |
+
+Suggested first batch, one or two a yard so every flag has something past Era II: Type 42 and Type 45 (Calder), Bremen and
+Type 212 (Strelsk), Kuznetsov and Yasen (Korvagrad), Kongo and Mogami (Amakura), Maestrale and Andrea Doria (Corvo), the
+container ship (Combine Marine), Perry and Independence (Tidewater). **To decide:** which of these, and whether the
+frigates should be a class of their own.
+
 ## Older lists still open
 
 - The realism review of 11 Nov 2026 (gun and torpedo ranges, a few designs' armament): [`ROADMAP.md`](ROADMAP.md),

@@ -119,13 +119,13 @@ res://tests/duel_measure.tscn`; nothing changed). Share of each side's money lef
 | Verdict | Designs (her share left against her peer's) |
 |---|---|
 | Fair (within 30 points) | Kirov 64/40, Slava 40/22, Sovremenny 37/37, Braunschweig 36/50, Karakurt 45/36, Sparviero 19/30, Steregushchiy 3/17, Visby 15/44, Doria 91/100, Hatsuyuki 70/50, Maestrale 28/56, Sachsen 93/97, Kongo 100/100, Type 45 98/100 |
-| Dear for what she is | Thunderhead 8/59, Gepard 11/49, Wayfarer (OPV) 5/100, Shade 0/37, Gorshkov 0/95, Trident (Independence) 0/83, Kasumi (Mogami) 2/71, Ammiraglio (Thaon) 0/94 |
+| Dear for what she is | Thunderhead 8/59, Gepard 11/49, Wayfarer (OPV) 5/100, Umbra (Sea Shadow) 0/37, Gorshkov 0/95, Trident (Independence) 0/83, Kasumi (Mogami) 2/71, Ammiraglio (Thaon) 0/94 |
 | Cheap for what she is | Type 42 96/5, Wraith (Zumwalt) 71/6, Bremen 97/28, Perry 87/50 |
 
 Two notes. The Gorshkov is still priced against the old Sovremenny: since the Sovremenny was raised to 210,000 and given
 the 130 mm automatic and the heavy missile, three Gorshkovs lose outright to two of her. Where both sides keep nearly
 everything (Kongo, Type 45, Sachsen, Doria against the Burke) the missiles were all shot down and the fight never came
-to a decision, so those pairs say little about price. The Wayfarer and the Shade carry no guns that fight ships, as
+to a decision, so those pairs say little about price. The Wayfarer and the Umbra carry no guns that fight ships, as
 noted above.
 
 Four fights a pair is a small sample, and submarines cannot be priced this way (a boat that meets destroyers in the open

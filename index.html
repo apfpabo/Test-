@@ -1031,7 +1031,8 @@ function drawPlan(g, d, P, part = 'all') {
   // gun barbettes, tubs and launchers (the guns themselves are drawn on top as separate rotating parts)
   for (const s of d.slots) {
     const w = WEAPONS[s.def];
-    if (GUN_SIZES.includes(s.s) && w) { const r = w.tw * 0.56; g.beginPath(); g.arc(s.x, s.y, r, 0, TAU); g.fillStyle = shade(deckCol, -0.22); g.fill(); g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 0.15; g.stroke(); }
+    if (GUN_SIZES.includes(s.s) && w) { const r = w.tw * 0.45;   // (narrower than the gunhouse, so no dark rim shows round a trained turret: the owner saw it on the A-150, 13 Nov 2026)
+       g.beginPath(); g.arc(s.x, s.y, r, 0, TAU); g.fillStyle = shade(deckCol, -0.22); g.fill(); g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 0.15; g.stroke(); }
     else if (s.s === 'A') { const r = s.def === 'aa40' ? 2.3 : s.def === 'ciws' ? 1.8 : 1.1; g.beginPath(); g.arc(s.x, s.y, r, 0, TAU); g.fillStyle = shade(P.sup, -0.18); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.15; g.stroke(); }
     else if (s.s === 'V') {
       if (d.era >= 3) { const cw = 6, ch = 5; contact(g, k => rrect(g, s.x - cw / 2 - k, s.y - ch / 2 - k, cw + 2 * k, ch + 2 * k, 0.3), 0.4); g.fillStyle = shade(P.deck, -0.3); g.fillRect(s.x - cw / 2, s.y - ch / 2, cw, ch);

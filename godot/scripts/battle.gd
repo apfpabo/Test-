@@ -1861,8 +1861,17 @@ class Drawer extends Node2D:
                     var c: Array = cats[ci]; var cy: float = float(c[1])
                     var ca: float = sh.a + (signf(cy) * 0.32 if cy != 0.0 else PI / 2)
                     var along: float = 7.0 if cy != 0.0 else 2.0   # out along her rail: on twin catapults, which splay outward, this keeps the two planes' wings clear of each other
+                    # ... but never under the guns of the turret next forward of the catapult: the plane sits abaft the reach
+                    # of its barrels trained aft, and is drawn a little smaller there (the owner, 13 Nov 2026: wings lay across the barrels)
+                    var psc := 0.82
+                    for m in sh.mounts:
+                        if m.w.kind != "gun" or absf(float(m.slot.y)) > 1.0 or float(m.slot.x) <= float(c[0]): continue
+                        var reach: float = float(m.slot.x) - float(m.w.get("tl", 4.0)) * 0.5 - float(m.w.get("bl", 3.0))
+                        along = minf(along, (reach - 1.5 - 4.6 * psc - float(c[0])) / cos(0.32))
+                    along = maxf(along, -2.5)
+                    if along < 2.0 and cy != 0.0: psc = 0.72   # close in at the rail's foot the two planes lie nearer each other
                     var cp: Vector2 = sh.pos + Vector2(float(c[0]) + along * cos(ca - sh.a), cy + dsh + along * sin(ca - sh.a)).rotated(sh.a)
-                    PlaneArt.draw(self, cp, ca, 1.0, false, sh.side, false, sun_s, 4.0, null, true)
+                    PlaneArt.draw(self, cp, ca, psc, false, sh.side, false, sun_s, 4.0, null, true)
         # ensigns: each ship flies her flag at the stern (yours the device you chose), streaming aft, close in
         if sim.modern and z0 >= 0.9:
             for sh in sim.ships:

@@ -15362,7 +15362,7 @@
   "ddg_gorshkov": {
    "kind": "war",
    "cls": "Light",
-   "cargo": 50,
+   "cargo": 40,
    "sonar": true,
    "radar": true,
    "tech": "stealth",
@@ -15513,8 +15513,8 @@
      "def": "torh"
     }
    ],
-   "name": "Missile Destroyer",
-   "klass": "ddg",
+   "name": "Frigate",
+   "klass": "ff",
    "speed": 29.5,
    "hull": 2680,
    "fuel": 3.3,
@@ -16006,6 +16006,1609 @@
    "speed": 20,
    "hull": 3430,
    "fuel": 0,
+   "island": null
+  },
+  "ff_perry": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 40,
+   "sonar": true,
+   "radar": true,
+   "tech": "missiles",
+   "id": "ff_perry",
+   "yard": "tidewater",
+   "dn": "Steadfast",
+   "model": "Oliver Hazard Perry-class frigate",
+   "year": 1977,
+   "era": 3,
+   "L": 135.6,
+   "B": 13.7,
+   "t": 4100,
+   "kn": 29,
+   "td": 640,
+   "armor": 8,
+   "crew": 176,
+   "price": 70000,
+   "p": {
+    "bow": 0.36,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.55,
+    "sup": [
+     [
+      18,
+      34,
+      11.5,
+      3
+     ],
+     [
+      -22,
+      26,
+      11.5,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      -14,
+      2.6,
+      2
+     ]
+    ],
+    "mast": [
+     [
+      24,
+      "l"
+     ],
+     [
+      8,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -55,
+      6.5
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "V",
+     "x": 50,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": 42,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "S",
+     "x": -4,
+     "y": 0,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.1
+      ],
+      [
+       -1.5707963267948966,
+       1.1
+      ]
+     ],
+     "def": "g76"
+    },
+    {
+     "s": "A",
+     "x": -41,
+     "y": 0,
+     "arcs": [
+      [
+       3.141592653589793,
+       2.45
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Frigate",
+   "klass": "ff",
+   "speed": 29,
+   "hull": 2220,
+   "fuel": 2.9,
+   "island": null
+  },
+  "ff_independence": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 40,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "ff_independence",
+   "yard": "tidewater",
+   "dn": "Trident",
+   "model": "Independence-class littoral combat ship",
+   "year": 2010,
+   "era": 4,
+   "L": 127.4,
+   "B": 31.6,
+   "t": 3100,
+   "kn": 44,
+   "td": 520,
+   "armor": 0,
+   "crew": 75,
+   "price": 120000,
+   "p": {
+    "outline": [
+     [
+      63.7,
+      0.3
+     ],
+     [
+      38,
+      4.2
+     ],
+     [
+      22,
+      6.5
+     ],
+     [
+      14,
+      12.5
+     ],
+     [
+      8,
+      15.6
+     ],
+     [
+      -63.7,
+      15.8
+     ]
+    ],
+    "stealth": {
+     "tumble": true
+    },
+    "sup": [
+     [
+      -10,
+      34,
+      24,
+      2
+     ]
+    ],
+    "mast": [
+     [
+      -4,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -46,
+      10
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "S",
+     "x": 36,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g57s"
+    },
+    {
+     "s": "V",
+     "x": 24,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": 13,
+     "y": -6.5,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": 13,
+     "y": 6.5,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    }
+   ],
+   "name": "Frigate",
+   "klass": "ff",
+   "speed": 44,
+   "hull": 1840,
+   "fuel": 2.5,
+   "island": null
+  },
+  "ddg_type42": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 50,
+   "sonar": true,
+   "radar": true,
+   "tech": "vls",
+   "id": "ddg_type42",
+   "yard": "clydemouth",
+   "dn": "Borough",
+   "model": "Type 42 destroyer",
+   "year": 1975,
+   "era": 3,
+   "L": 125,
+   "B": 14.3,
+   "t": 4100,
+   "kn": 30,
+   "td": 640,
+   "armor": 8,
+   "crew": 280,
+   "price": 95000,
+   "p": {
+    "bow": 0.36,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.5,
+    "sup": [
+     [
+      22,
+      22,
+      11,
+      3
+     ],
+     [
+      -20,
+      20,
+      10,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      2,
+      3,
+      2.2
+     ]
+    ],
+    "mast": [
+     [
+      20,
+      "l"
+     ],
+     [
+      -12,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -50,
+      6.5
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 48,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "V",
+     "x": 38,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "T",
+     "x": -36,
+     "y": 0,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.1
+      ],
+      [
+       -1.5707963267948966,
+       1.1
+      ]
+     ],
+     "def": "torh"
+    },
+    {
+     "s": "A",
+     "x": 8,
+     "y": -5.4,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": 8,
+     "y": 5.4,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Missile Destroyer",
+   "klass": "ddg",
+   "speed": 30,
+   "hull": 2220,
+   "fuel": 2.9,
+   "island": null
+  },
+  "ddg_type45": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 50,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "ddg_type45",
+   "yard": "clydemouth",
+   "dn": "Resolute",
+   "model": "Type 45 destroyer",
+   "year": 2009,
+   "era": 4,
+   "L": 152.4,
+   "B": 21.2,
+   "t": 8500,
+   "kn": 30,
+   "td": 760,
+   "armor": 15,
+   "crew": 191,
+   "price": 210000,
+   "p": {
+    "bow": 0.38,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.62,
+    "stealth": {
+     "up": [
+      [
+       26,
+       14,
+       10,
+       3
+      ]
+     ]
+    },
+    "sup": [
+     [
+      20,
+      34,
+      17,
+      3
+     ],
+     [
+      -24,
+      20,
+      15,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      -4,
+      3,
+      2.2
+     ]
+    ],
+    "mast": [
+     [
+      23,
+      "l"
+     ],
+     [
+      -22,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -60,
+      8
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 58,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "V",
+     "x": 46,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -41,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "A",
+     "x": -5,
+     "y": -8,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -5,
+     "y": 8,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Missile Destroyer",
+   "klass": "ddg",
+   "speed": 30,
+   "hull": 3640,
+   "fuel": 4.1,
+   "island": null
+  },
+  "ff_bremen": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 40,
+   "sonar": true,
+   "radar": true,
+   "tech": "missiles",
+   "id": "ff_bremen",
+   "yard": "ostsee",
+   "dn": "Hansa",
+   "model": "Bremen-class frigate",
+   "year": 1982,
+   "era": 3,
+   "L": 130.5,
+   "B": 14.6,
+   "t": 3680,
+   "kn": 30,
+   "td": 640,
+   "armor": 8,
+   "crew": 219,
+   "price": 80000,
+   "p": {
+    "bow": 0.36,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.55,
+    "sup": [
+     [
+      20,
+      26,
+      12,
+      3
+     ],
+     [
+      -18,
+      24,
+      12,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      0,
+      2.8,
+      2.1
+     ]
+    ],
+    "mast": [
+     [
+      22,
+      "l"
+     ],
+     [
+      -14,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -52,
+      6.5
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "S",
+     "x": 50,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g76"
+    },
+    {
+     "s": "V",
+     "x": 40,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -36.5,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "A",
+     "x": -42.5,
+     "y": 0,
+     "arcs": [
+      [
+       3.141592653589793,
+       2.45
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Frigate",
+   "klass": "ff",
+   "speed": 30,
+   "hull": 2070,
+   "fuel": 2.7,
+   "island": null
+  },
+  "ss_212": {
+   "kind": "sub",
+   "cls": "Light",
+   "cargo": 15,
+   "tech": "stealth",
+   "id": "ss_212",
+   "yard": "ostsee",
+   "dn": "Nixe",
+   "model": "Type 212 submarine",
+   "year": 2005,
+   "era": 4,
+   "L": 57,
+   "B": 7,
+   "t": 1450,
+   "kn": 12,
+   "subKn": 20,
+   "td": 300,
+   "armor": 0,
+   "crew": 27,
+   "price": 120000,
+   "p": {
+    "sail": [
+     [
+      6,
+      7,
+      2
+     ]
+    ],
+    "casing": 0.25,
+    "smooth": true,
+    "tear": true,
+    "pod": 1
+   },
+   "slots": [
+    {
+     "s": "T",
+     "x": 18,
+     "y": -1,
+     "arcs": [
+      [
+       0,
+       0.3
+      ]
+     ],
+     "def": "torh"
+    },
+    {
+     "s": "T",
+     "x": 18,
+     "y": 1,
+     "arcs": [
+      [
+       0,
+       0.3
+      ]
+     ],
+     "def": "torh"
+    }
+   ],
+   "name": "Submarine",
+   "klass": "ss",
+   "speed": 12,
+   "hull": 1100,
+   "fuel": 1.7,
+   "island": null
+  },
+  "cv_kuznetsov": {
+   "kind": "carrier",
+   "cls": "Capital",
+   "cargo": 200,
+   "radar": true,
+   "tech": "vls",
+   "id": "cv_kuznetsov",
+   "yard": "neva",
+   "dn": "Krepost",
+   "model": "Kuznetsov-class carrier",
+   "year": 1990,
+   "era": 3,
+   "L": 305,
+   "B": 35.4,
+   "t": 55000,
+   "kn": 29,
+   "td": 1200,
+   "armor": 50,
+   "crew": 1960,
+   "hangar": 5,
+   "price": 420000,
+   "p": {
+    "bow": 0.3,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.55,
+    "fd": {
+     "w": 50,
+     "len": 0.97,
+     "x": 0,
+     "isl": [
+      -20,
+      32,
+      11
+     ],
+     "ang": true,
+     "ski": true
+    }
+   },
+   "slots": [
+    {
+     "s": "V",
+     "x": 96,
+     "y": -8,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": 96,
+     "y": 8,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": -140,
+     "y": -22,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -140,
+     "y": 22,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "A",
+     "x": 100,
+     "y": -24.4,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": 100,
+     "y": 24.4,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -110,
+     "y": -24.6,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -110,
+     "y": 24.6,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Fleet Carrier",
+   "klass": "cv",
+   "speed": 29,
+   "hull": 12830,
+   "fuel": 10.6,
+   "island": [
+    -20,
+    32,
+    11
+   ]
+  },
+  "ssn_yasen": {
+   "kind": "sub",
+   "cls": "Medium",
+   "cargo": 20,
+   "tech": "stealth",
+   "id": "ssn_yasen",
+   "yard": "neva",
+   "dn": "Severyanin",
+   "model": "Yasen-class submarine",
+   "year": 2013,
+   "era": 4,
+   "L": 139,
+   "B": 13,
+   "t": 8600,
+   "kn": 16,
+   "subKn": 31,
+   "td": 560,
+   "armor": 0,
+   "crew": 64,
+   "price": 260000,
+   "p": {
+    "sail": [
+     [
+      30,
+      11,
+      2.6
+     ]
+    ],
+    "casing": 0.22,
+    "smooth": true,
+    "tear": true,
+    "tubes": [
+     [
+      16,
+      -2,
+      4,
+      1.8
+     ]
+    ],
+    "pod": 1
+   },
+   "slots": [
+    {
+     "s": "T",
+     "x": 46,
+     "y": -1.6,
+     "arcs": [
+      [
+       0,
+       0.3
+      ]
+     ],
+     "def": "torh"
+    },
+    {
+     "s": "T",
+     "x": 46,
+     "y": 1.6,
+     "arcs": [
+      [
+       0,
+       0.3
+      ]
+     ],
+     "def": "torh"
+    },
+    {
+     "s": "V",
+     "x": 12,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": 0,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    }
+   ],
+   "name": "Nuclear Attack Sub",
+   "klass": "ssn",
+   "speed": 16,
+   "hull": 3670,
+   "fuel": 0,
+   "island": null
+  },
+  "ddg_kongo": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 50,
+   "sonar": true,
+   "radar": true,
+   "tech": "vls",
+   "id": "ddg_kongo",
+   "yard": "seto",
+   "dn": "Myojin",
+   "model": "Kongo-class destroyer",
+   "year": 1993,
+   "era": 3,
+   "L": 161,
+   "B": 21,
+   "t": 9500,
+   "kn": 30,
+   "td": 780,
+   "armor": 20,
+   "crew": 300,
+   "price": 160000,
+   "p": {
+    "bow": 0.38,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.62,
+    "sup": [
+     [
+      26,
+      28,
+      18,
+      5
+     ],
+     [
+      -22,
+      16,
+      15,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      6,
+      3,
+      2.4
+     ],
+     [
+      -22,
+      3,
+      2.4
+     ]
+    ],
+    "mast": [
+     [
+      22,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -66,
+      7.5
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 64,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "V",
+     "x": 50,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -8,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": -44,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -51,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "A",
+     "x": 43,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -36,
+     "y": 0,
+     "arcs": [
+      [
+       3.141592653589793,
+       2.45
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "T",
+     "x": -5,
+     "y": 0,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.1
+      ],
+      [
+       -1.5707963267948966,
+       1.1
+      ]
+     ],
+     "def": "torh"
+    }
+   ],
+   "name": "Missile Destroyer",
+   "klass": "ddg",
+   "speed": 30,
+   "hull": 3920,
+   "fuel": 4.4,
+   "island": null
+  },
+  "ff_mogami": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 40,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "ff_mogami",
+   "yard": "seto",
+   "dn": "Kasumi",
+   "model": "Mogami-class frigate",
+   "year": 2022,
+   "era": 4,
+   "L": 133,
+   "B": 16.3,
+   "t": 3900,
+   "kn": 30,
+   "td": 600,
+   "armor": 5,
+   "crew": 90,
+   "price": 130000,
+   "p": {
+    "outline": [
+     [
+      66.5,
+      0.3
+     ],
+     [
+      52,
+      3.6
+     ],
+     [
+      30,
+      6.9
+     ],
+     [
+      8,
+      8.1
+     ],
+     [
+      -40,
+      8.15
+     ],
+     [
+      -66.5,
+      7.2
+     ]
+    ],
+    "stealth": {
+     "tumble": true,
+     "up": [
+      [
+       14,
+       14,
+       9,
+       2
+      ]
+     ]
+    },
+    "sup": [
+     [
+      2,
+      44,
+      13.4,
+      2
+     ]
+    ],
+    "mast": [
+     [
+      12,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -52,
+      7
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 44,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "V",
+     "x": 33,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -28,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "A",
+     "x": -38,
+     "y": 0,
+     "arcs": [
+      [
+       3.141592653589793,
+       2.45
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Frigate",
+   "klass": "ff",
+   "speed": 30,
+   "hull": 2150,
+   "fuel": 2.8,
+   "island": null
+  },
+  "ff_maestrale": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 40,
+   "sonar": true,
+   "radar": true,
+   "tech": "missiles",
+   "id": "ff_maestrale",
+   "yard": "tirreno",
+   "dn": "Tramontana",
+   "model": "Maestrale-class frigate",
+   "year": 1982,
+   "era": 3,
+   "L": 122.7,
+   "B": 12.9,
+   "t": 3040,
+   "kn": 32,
+   "td": 600,
+   "armor": 6,
+   "crew": 232,
+   "price": 78000,
+   "p": {
+    "bow": 0.36,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.55,
+    "sup": [
+     [
+      18,
+      24,
+      10.5,
+      3
+     ],
+     [
+      -18,
+      22,
+      10.5,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      -1,
+      2.6,
+      1.9
+     ]
+    ],
+    "mast": [
+     [
+      20,
+      "l"
+     ],
+     [
+      -12,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -49,
+      6
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "M",
+     "x": 46,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g127s"
+    },
+    {
+     "s": "V",
+     "x": 37,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -36,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    }
+   ],
+   "name": "Frigate",
+   "klass": "ff",
+   "speed": 32,
+   "hull": 1820,
+   "fuel": 2.5,
+   "island": null
+  },
+  "ddg_doria": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 50,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "ddg_doria",
+   "yard": "tirreno",
+   "dn": "Condottiere",
+   "model": "Andrea Doria-class destroyer",
+   "year": 2007,
+   "era": 4,
+   "L": 152.9,
+   "B": 20.3,
+   "t": 7050,
+   "kn": 29,
+   "td": 740,
+   "armor": 12,
+   "crew": 195,
+   "price": 200000,
+   "p": {
+    "bow": 0.38,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.6,
+    "stealth": {
+     "up": [
+      [
+       24,
+       14,
+       10,
+       3
+      ]
+     ]
+    },
+    "sup": [
+     [
+      18,
+      34,
+      16.5,
+      3
+     ],
+     [
+      -27,
+      18,
+      15,
+      2
+     ]
+    ],
+    "fun": [
+     [
+      -8,
+      3,
+      2.3
+     ]
+    ],
+    "mast": [
+     [
+      21,
+      "l"
+     ],
+     [
+      -25,
+      "l"
+     ]
+    ],
+    "helo": [
+     [
+      -60,
+      7.5
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "S",
+     "x": 58,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       2.45
+      ]
+     ],
+     "def": "g76"
+    },
+    {
+     "s": "V",
+     "x": 45,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    },
+    {
+     "s": "V",
+     "x": -42.5,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "A",
+     "x": -8,
+     "y": -7.6,
+     "arcs": [
+      [
+       -1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    },
+    {
+     "s": "A",
+     "x": -8,
+     "y": 7.6,
+     "arcs": [
+      [
+       1.5707963267948966,
+       1.5
+      ]
+     ],
+     "def": "ciws"
+    }
+   ],
+   "name": "Missile Destroyer",
+   "klass": "ddg",
+   "speed": 29,
+   "hull": 3210,
+   "fuel": 3.8,
+   "island": null
+  },
+  "fr_container": {
+   "kind": "merchant",
+   "cls": "Medium",
+   "cargo": 900,
+   "id": "fr_container",
+   "yard": "marine",
+   "dn": "Longhaul",
+   "model": "Container ship (a feeder of the 1970s)",
+   "year": 1975,
+   "era": 3,
+   "L": 180,
+   "B": 26,
+   "t": 18000,
+   "kn": 20,
+   "td": 800,
+   "armor": 0,
+   "crew": 28,
+   "price": 70000,
+   "p": {
+    "bow": 0.25,
+    "run": 0.2,
+    "stern": "t",
+    "tw": 0.7,
+    "merchant": true,
+    "boxes": [
+     [
+      70,
+      -44
+     ]
+    ],
+    "sup": [
+     [
+      -62,
+      16,
+      22,
+      5
+     ]
+    ],
+    "fun": [
+     [
+      -72,
+      3,
+      2.4
+     ]
+    ],
+    "mast": [
+     [
+      82,
+      "k"
+     ]
+    ]
+   },
+   "slots": [
+    {
+     "s": "A",
+     "x": 84,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "aa20"
+    }
+   ],
+   "name": "Freighter",
+   "klass": "freighter",
+   "speed": 20,
+   "hull": 6040,
+   "fuel": 6,
    "island": null
   },
   "cg_tico": {
@@ -17358,6 +18961,15 @@
    "radar": true,
    "tech": "missiles"
   },
+  "ff": {
+   "name": "Frigate",
+   "cls": "Light",
+   "kind": "war",
+   "cargo": 40,
+   "sonar": true,
+   "radar": true,
+   "tech": "missiles"
+  },
   "ssn": {
    "name": "Nuclear Attack Sub",
    "cls": "Medium",
@@ -17685,6 +19297,7 @@
   "cve",
   "ca",
   "bb",
+  "ff",
   "ddg",
   "ssn",
   "cv",

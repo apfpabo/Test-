@@ -216,6 +216,7 @@ const CLASSES = {
   ca:        { name: 'Heavy Cruiser',      cls: 'Heavy',   kind: 'war',      cargo: 100 },
   bb:        { name: 'Battleship',         cls: 'Capital', kind: 'war',      cargo: 150 },
   ddg:       { name: 'Missile Destroyer',  cls: 'Light',   kind: 'war',      cargo: 50, sonar: true, radar: true, tech: 'missiles' },
+  ff:        { name: 'Frigate',            cls: 'Light',   kind: 'war',      cargo: 40, sonar: true, radar: true, tech: 'missiles' },   // a class of their own (the owner, 13 Nov 2026)
   ssn:       { name: 'Nuclear Attack Sub', cls: 'Medium',  kind: 'sub',      cargo: 20, tech: 'nuclear' },
   cv:        { name: 'Fleet Carrier',      cls: 'Capital', kind: 'carrier',  cargo: 200, radar: true },
   cg:        { name: 'Missile Cruiser',    cls: 'Heavy',   kind: 'war',      cargo: 90, sonar: true, radar: true, tech: 'aegis' },
@@ -226,7 +227,7 @@ const CLASSES = {
   ae:        { name: 'Ammunition Ship',    cls: 'Medium',  kind: 'merchant', cargo: 260 },
   ar:        { name: 'Repair Ship',        cls: 'Medium',  kind: 'merchant', cargo: 220 },
 };
-const HULL_ORDER = ['pt', 'corvette', 'dd', 'ss', 'freighter', 'ap', 'ao', 'ae', 'ar', 'cl', 'cve', 'ca', 'bb', 'ddg', 'ssn', 'cv', 'cg'];
+const HULL_ORDER = ['pt', 'corvette', 'dd', 'ss', 'freighter', 'ap', 'ao', 'ae', 'ar', 'cl', 'cve', 'ca', 'bb', 'ff', 'ddg', 'ssn', 'cv', 'cg'];
 // Shipbuilders. Each has its own house style, and each flag buys from its own yards.
 const MAKERS = {
   tidewater: { name: 'Tidewater Naval Shipbuilding', short: 'Tidewater', desc: 'Hesperian seaboard yards building big, fast, heavily gunned ships in long series.' },
@@ -522,7 +523,7 @@ const DESIGN_LIST = [
     // a wave-piercing hull, widest abaft amidships, its sides leaning inboard; one great slab-sided deckhouse and nothing else standing
     p: { outline: [[95, 0.3], [91, 1.5], [72, 5.0], [48, 8.6], [24, 11.0], [2, 12.1], [-40, 12.3], [-78, 11.7], [-95, 10.7]], stealth: { tumble: true, up: [[-10, 30, 12.5, 2]] }, sup: [[-14, 52, 19.5, 3]], helo: [[-78, 9]] },
     slots: [sl('M', 62, 0, FWD, 'g155s'), sl('M', 42, 0, FWD, 'g155s'), sl('V', 30, -6, ALL, 'ssm'), sl('V', 30, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
-  { id: 'ddg_gorshkov', cls: 'ddg', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 170000,
+  { id: 'ddg_gorshkov', cls: 'ff', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 170000,
     p: { bow: .38, run: .2, stern: 't', tw: .6, stealth: { up: [[17, 15, 8.5, 2]] }, sup: [[14, 30, 13, 2]], fun: [[-8, 3.2, 2.4]], mast: [[15, 'l']], helo: [[-55, 7]] },
     slots: [sl('M', 52, 0, FWD, 'g130t'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 32, 0, ALL, 'sam'), sl('V', -30, 0, ALL, 'sam'), ...pair('A', -20, 5.6, 'ciws'), sl('T', -6, 0, BEAM, 'torh')] },
   { id: 'co_visby', cls: 'corvette', name: 'Stealth Corvette', tech: 'stealth', yard: 'clydemouth', dn: 'Shade', model: 'Visby-class corvette', year: 2009, era: 4, L: 72.7, B: 10.4, t: 640, kn: 35, td: 380, armor: 0, crew: 43, price: 60000, radar: true,
@@ -539,6 +540,47 @@ const DESIGN_LIST = [
   { id: 'ssn_virginia', cls: 'ssn', tech: 'stealth', yard: 'tidewater', dn: 'Sentry', model: 'Virginia-class submarine', year: 2004, era: 4, L: 115, B: 10.4, t: 7800, kn: 20, subKn: 34, td: 520, armor: 0, crew: 135, price: 240000,
     p: { sail: [[22, 9, 2.4]], casing: .22, smooth: true, tear: true, tubes: [[49, 43, 3, 1.5]], pod: 1 },
     slots: [sl('T', 36, -1.4, BOW, 'torh'), sl('T', 36, 1.4, BOW, 'torh'), sl('V', 46, 0, ALL, 'ssm')] },
+  // ---------------------------------------------------------------- the first batch for every yard (the owner's choice, 13 Nov 2026): Era III and IV
+  { id: 'ff_perry', cls: 'ff', yard: 'tidewater', dn: 'Steadfast', model: 'Oliver Hazard Perry-class frigate', year: 1977, era: 3, L: 135.6, B: 13.7, t: 4100, kn: 29, td: 640, armor: 8, crew: 176, price: 70000,
+    p: { bow: .36, run: .2, stern: 't', tw: .55, sup: [[18, 34, 11.5, 3], [-22, 26, 11.5, 2]], fun: [[-14, 2.6, 2]], mast: [[24, 'l'], [8, 'l']], helo: [[-55, 6.5]] },
+    slots: [sl('V', 50, 0, ALL, 'sam'), sl('V', 42, 0, ALL, 'ssm'), sl('S', -4, 0, BEAM, 'g76'), sl('A', -41, 0, AFT, 'ciws')] },
+  { id: 'ff_independence', cls: 'ff', tech: 'stealth', yard: 'tidewater', dn: 'Trident', model: 'Independence-class littoral combat ship', year: 2010, era: 4, L: 127.4, B: 31.6, t: 3100, kn: 44, td: 520, armor: 0, crew: 75, price: 120000,
+    // a trimaran: a needle of a main hull, the deck spreading to full width abaft the bridge over the two side hulls
+    p: { outline: [[63.7, 0.3], [38, 4.2], [22, 6.5], [14, 12.5], [8, 15.6], [-63.7, 15.8]], stealth: { tumble: true }, sup: [[-10, 34, 24, 2]], mast: [[-4, 'l']], helo: [[-46, 10]] },
+    slots: [sl('S', 36, 0, FWD, 'g57s'), sl('V', 24, 0, ALL, 'sam'), sl('V', 13, -6.5, ALL, 'ssm'), sl('V', 13, 6.5, ALL, 'ssm')] },
+  { id: 'ddg_type42', cls: 'ddg', tech: 'vls', yard: 'clydemouth', dn: 'Borough', model: 'Type 42 destroyer', year: 1975, era: 3, L: 125, B: 14.3, t: 4100, kn: 30, td: 640, armor: 8, crew: 280, price: 95000,
+    p: { bow: .36, run: .2, stern: 't', tw: .5, sup: [[22, 22, 11, 3], [-20, 20, 10, 2]], fun: [[2, 3, 2.2]], mast: [[20, 'l'], [-12, 'l']], helo: [[-50, 6.5]] },
+    slots: [sl('M', 48, 0, FWD, 'g127s'), sl('V', 38, 0, ALL, 'sam'), sl('T', -36, 0, BEAM, 'torh'), ...pair('A', 8, 5.4, 'ciws')] },
+  { id: 'ddg_type45', cls: 'ddg', tech: 'stealth', yard: 'clydemouth', dn: 'Resolute', model: 'Type 45 destroyer', year: 2009, era: 4, L: 152.4, B: 21.2, t: 8500, kn: 30, td: 760, armor: 15, crew: 191, price: 210000,
+    p: { bow: .38, run: .2, stern: 't', tw: .62, stealth: { up: [[26, 14, 10, 3]] }, sup: [[20, 34, 17, 3], [-24, 20, 15, 2]], fun: [[-4, 3, 2.2]], mast: [[23, 'l'], [-22, 'l']], helo: [[-60, 8]] },
+    slots: [sl('M', 58, 0, FWD, 'g127s'), sl('V', 46, 0, ALL, 'sam'), sl('V', -41, 0, ALL, 'ssm'), ...pair('A', -5, 8, 'ciws')] },
+  { id: 'ff_bremen', cls: 'ff', yard: 'ostsee', dn: 'Hansa', model: 'Bremen-class frigate', year: 1982, era: 3, L: 130.5, B: 14.6, t: 3680, kn: 30, td: 640, armor: 8, crew: 219, price: 80000,
+    p: { bow: .36, run: .2, stern: 't', tw: .55, sup: [[20, 26, 12, 3], [-18, 24, 12, 2]], fun: [[0, 2.8, 2.1]], mast: [[22, 'l'], [-14, 'l']], helo: [[-52, 6.5]] },
+    slots: [sl('S', 50, 0, FWD, 'g76'), sl('V', 40, 0, ALL, 'sam'), sl('V', -36.5, 0, ALL, 'ssm'), sl('A', -42.5, 0, AFT, 'ciws')] },
+  { id: 'ss_212', cls: 'ss', tech: 'stealth', yard: 'ostsee', dn: 'Nixe', model: 'Type 212 submarine', year: 2005, era: 4, L: 57, B: 7, t: 1450, kn: 12, subKn: 20, td: 300, armor: 0, crew: 27, price: 120000,
+    p: { sail: [[6, 7, 2]], casing: .25, smooth: true, tear: true, pod: 1 },
+    slots: [sl('T', 18, -1, BOW, 'torh'), sl('T', 18, 1, BOW, 'torh')] },
+  { id: 'cv_kuznetsov', cls: 'cv', tech: 'vls', yard: 'neva', dn: 'Krepost', model: 'Kuznetsov-class carrier', year: 1990, era: 3, L: 305, B: 35.4, t: 55000, kn: 29, td: 1200, armor: 50, crew: 1960, hangar: 5, price: 420000,
+    p: { bow: .3, run: .2, stern: 't', tw: .55, fd: { w: 50, len: .97, x: 0, isl: [-20, 32, 11], ang: true, ski: true } },
+    slots: [sl('V', 96, -8, ALL, 'ssm'), sl('V', 96, 8, ALL, 'ssm'), sl('V', -140, -22, ALL, 'sam'), sl('V', -140, 22, ALL, 'sam'), ...pair('A', 100, 24.4, 'ciws'), ...pair('A', -110, 24.6, 'ciws')] },
+  { id: 'ssn_yasen', cls: 'ssn', tech: 'stealth', yard: 'neva', dn: 'Severyanin', model: 'Yasen-class submarine', year: 2013, era: 4, L: 139, B: 13, t: 8600, kn: 16, subKn: 31, td: 560, armor: 0, crew: 64, price: 260000,
+    p: { sail: [[30, 11, 2.6]], casing: .22, smooth: true, tear: true, tubes: [[16, -2, 4, 1.8]], pod: 1 },
+    slots: [sl('T', 46, -1.6, BOW, 'torh'), sl('T', 46, 1.6, BOW, 'torh'), sl('V', 12, 0, ALL, 'ssm'), sl('V', 0, 0, ALL, 'ssm')] },
+  { id: 'ddg_kongo', cls: 'ddg', tech: 'vls', yard: 'seto', dn: 'Myojin', model: 'Kongo-class destroyer', year: 1993, era: 3, L: 161, B: 21, t: 9500, kn: 30, td: 780, armor: 20, crew: 300, price: 160000,
+    p: { bow: .38, run: .2, stern: 't', tw: .62, sup: [[26, 28, 18, 5], [-22, 16, 15, 2]], fun: [[6, 3, 2.4], [-22, 3, 2.4]], mast: [[22, 'l']], helo: [[-66, 7.5]] },
+    slots: [sl('M', 64, 0, FWD, 'g127s'), sl('V', 50, 0, ALL, 'sam'), sl('V', -8, 0, ALL, 'ssm'), sl('V', -44, 0, ALL, 'sam'), sl('V', -51, 0, ALL, 'ssm'), sl('A', 43, 0, FWD, 'ciws'), sl('A', -36, 0, AFT, 'ciws'), sl('T', -5, 0, BEAM, 'torh')] },
+  { id: 'ff_mogami', cls: 'ff', tech: 'stealth', yard: 'seto', dn: 'Kasumi', model: 'Mogami-class frigate', year: 2022, era: 4, L: 133, B: 16.3, t: 3900, kn: 30, td: 600, armor: 5, crew: 90, price: 130000,
+    p: { outline: [[66.5, 0.3], [52, 3.6], [30, 6.9], [8, 8.1], [-40, 8.15], [-66.5, 7.2]], stealth: { tumble: true, up: [[14, 14, 9, 2]] }, sup: [[2, 44, 13.4, 2]], mast: [[12, 'l']], helo: [[-52, 7]] },
+    slots: [sl('M', 44, 0, FWD, 'g127s'), sl('V', 33, 0, ALL, 'sam'), sl('V', -28, 0, ALL, 'ssm'), sl('A', -38, 0, AFT, 'ciws')] },
+  { id: 'ff_maestrale', cls: 'ff', yard: 'tirreno', dn: 'Tramontana', model: 'Maestrale-class frigate', year: 1982, era: 3, L: 122.7, B: 12.9, t: 3040, kn: 32, td: 600, armor: 6, crew: 232, price: 78000,
+    p: { bow: .36, run: .2, stern: 't', tw: .55, sup: [[18, 24, 10.5, 3], [-18, 22, 10.5, 2]], fun: [[-1, 2.6, 1.9]], mast: [[20, 'l'], [-12, 'l']], helo: [[-49, 6]] },
+    slots: [sl('M', 46, 0, FWD, 'g127s'), sl('V', 37, 0, ALL, 'sam'), sl('V', -36, 0, ALL, 'ssm')] },
+  { id: 'ddg_doria', cls: 'ddg', tech: 'stealth', yard: 'tirreno', dn: 'Condottiere', model: 'Andrea Doria-class destroyer', year: 2007, era: 4, L: 152.9, B: 20.3, t: 7050, kn: 29, td: 740, armor: 12, crew: 195, price: 200000,
+    p: { bow: .38, run: .2, stern: 't', tw: .6, stealth: { up: [[24, 14, 10, 3]] }, sup: [[18, 34, 16.5, 3], [-27, 18, 15, 2]], fun: [[-8, 3, 2.3]], mast: [[21, 'l'], [-25, 'l']], helo: [[-60, 7.5]] },
+    slots: [sl('S', 58, 0, FWD, 'g76'), sl('V', 45, 0, ALL, 'sam'), sl('V', -42.5, 0, ALL, 'ssm'), ...pair('A', -8, 7.6, 'ciws')] },
+  { id: 'fr_container', cls: 'freighter', yard: 'marine', dn: 'Longhaul', model: 'Container ship (a feeder of the 1970s)', year: 1975, era: 3, L: 180, B: 26, t: 18000, kn: 20, td: 800, armor: 0, crew: 28, price: 70000, cargo: 900,
+    p: { bow: .25, run: .2, stern: 't', tw: .7, merchant: true, boxes: [[70, -44]], sup: [[-62, 16, 22, 5]], fun: [[-72, 3, 2.4]], mast: [[82, 'k']] },
+    slots: [sl('A', 84, 0, ALL, 'aa20')] },
   // ---------------------------------------------------------------- missile cruisers (Era III)
   { id: 'cg_tico', cls: 'cg', yard: 'tidewater', dn: 'Bastion', model: 'Ticonderoga-class cruiser', year: 1983, era: 3, L: 172.8, B: 16.8, t: 9600, kn: 32.5, td: 800, armor: 25, crew: 330, price: 190000,
     p: { bow: .34, run: .22, stern: 't', tw: .55, sup: [[22, 44, 14, 4]], fun: [[4, 3, 2.2, -2.6], [-16, 3, 2.2, -2.6]], mast: [[16, 'l'], [-10, 'l']], boats: [[-30, 1]] },
@@ -579,7 +621,7 @@ for (const d of DESIGN_LIST) {
 }
 const DESIGNS_OF = {}; for (const d of DESIGN_LIST) (DESIGNS_OF[d.cls] = DESIGNS_OF[d.cls] || []).push(d.id);
 // Saves from before the yards existed stored a class key as the ship type.
-const LEGACY = { pt: 'pt_elco', corvette: 'co_flower', dd: 'dd_fletcher', ss: 'ss_gato', freighter: 'fr_liberty', cl: 'cl_cleveland', cve: 'cve_casa', ca: 'ca_baltimore', bb: 'bb_iowa', ddg: 'ddg_adams', ssn: 'ssn_skipjack', cv: 'cv_midway', cg: 'cg_tico', ap: 'ap_haskell', ao: 'ao_cimarron', ae: 'ae_hood', ar: 'ar_vulcan' };
+const LEGACY = { pt: 'pt_elco', corvette: 'co_flower', dd: 'dd_fletcher', ss: 'ss_gato', freighter: 'fr_liberty', cl: 'cl_cleveland', cve: 'cve_casa', ca: 'ca_baltimore', bb: 'bb_iowa', ddg: 'ddg_adams', ff: 'ff_perry', ssn: 'ssn_skipjack', cv: 'cv_midway', cg: 'cg_tico', ap: 'ap_haskell', ao: 'ao_cimarron', ae: 'ae_hood', ar: 'ar_vulcan' };
 const designLabel = d => d.dn + ' class · ' + MAKERS[d.yard].short;
 
 /* ================================================================ tech, goods, story */
@@ -646,14 +688,14 @@ const OFFICER_FIRST = ['Ada', 'Bram', 'Celia', 'Dorian', 'Edda', 'Felix', 'Greta
 const OFFICER_LAST = ['Achterberg', 'Blackwood', 'Castell', 'Dunmore', 'Everett', 'Falk', 'Gorse', 'Hartley', 'Ivers', 'Juniper', 'Kerr', 'Lindqvist', 'Marsh', 'Nolan', 'Okafor', 'Prowse', 'Quint', 'Rourke', 'Sallow', 'Teague', 'Vardy', 'Whitlock'];
 const SKILLS = { gun: ['Gunnery', 'Guns reload 8% faster and shoot tighter per rank'], helm: ['Ship handling', '+6% speed and +10% turn rate per rank'], dc: ['Damage control', '-7% hull damage and -15% crew losses per rank'], ord: ['Ordnance', 'Torpedoes, missiles and aircraft rearm 12% faster per rank'] };
 const YARDS = {
-  concord: ['corvette', 'dd', 'ss', 'ap', 'ao', 'ae', 'ar', 'cl', 'cve', 'ca', 'bb', 'ddg', 'ssn', 'cv', 'cg'],
-  directorate: ['pt', 'dd', 'ss', 'ap', 'ao', 'cl', 'ca', 'bb', 'ddg', 'ssn', 'cg'],
-  pacific: ['pt', 'dd', 'ss', 'ap', 'ao', 'ae', 'cl', 'cve', 'ca', 'bb', 'ddg', 'cv'],
-  combine: ['corvette', 'freighter', 'ap', 'ao', 'ae', 'ar', 'dd', 'cl', 'cve', 'ddg'],
-  republic: ['pt', 'corvette', 'dd', 'ss', 'cl', 'ca', 'bb'],
-  freeport: ['pt', 'corvette', 'freighter', 'ao', 'dd', 'ss'],
+  concord: ['corvette', 'dd', 'ss', 'ap', 'ao', 'ae', 'ar', 'cl', 'cve', 'ca', 'bb', 'ff', 'ddg', 'ssn', 'cv', 'cg'],
+  directorate: ['pt', 'dd', 'ss', 'ap', 'ao', 'cl', 'ca', 'bb', 'ff', 'ddg', 'ssn', 'cv', 'cg'],
+  pacific: ['pt', 'dd', 'ss', 'ap', 'ao', 'ae', 'cl', 'cve', 'ca', 'bb', 'ff', 'ddg', 'cv'],
+  combine: ['corvette', 'freighter', 'ap', 'ao', 'ae', 'ar', 'dd', 'cl', 'cve', 'ff', 'ddg'],
+  republic: ['pt', 'corvette', 'dd', 'ss', 'cl', 'ca', 'bb', 'ff', 'ddg'],
+  freeport: ['pt', 'corvette', 'freighter', 'ao', 'dd', 'ss', 'ff'],
   enclave: ['corvette', 'freighter'],
-  ombria: ['pt', 'corvette', 'dd', 'ss', 'cl'],
+  ombria: ['pt', 'corvette', 'dd', 'ss', 'cl', 'ff'],
   isles: ['pt', 'corvette', 'dd', 'freighter', 'ao'],
 };
 const SAVE_KEY = 'iron-meridian-save-v2';
@@ -1037,7 +1079,8 @@ function drawPlan(g, d, P, part = 'all') {
   g.fillStyle = shade(P.sup, -0.35); for (const sy of [-1, 1]) { g.beginPath(); g.arc(cx, sy * b * 0.22, Math.max(0.3, B * 0.03), 0, TAU); g.fill(); } }
   // breakwater ahead of the forward guns
   if (guns.length && L > 60 && !tumble) { const fx = Math.max(...guns.map(s => s.x)), wid = WEAPONS[guns.find(s => s.x === fx).def]; const bx = fx + (wid ? wid.tl * 0.55 + 1.5 : 3);
-    g.strokeStyle = shade(P.sup, -0.05); g.lineWidth = Math.max(0.2, B * 0.02); g.beginPath(); g.moveTo(bx - b * 0.7, -b * 0.72); g.lineTo(bx, 0); g.lineTo(bx - b * 0.7, b * 0.72); g.stroke(); }
+    g.save(); hullPath(g, d, inset + 0.3); g.clip();   // (kept inside the deck: on a fine bow its arms ran out over the side; the owner, 13 Nov 2026)
+    g.strokeStyle = shade(P.sup, -0.05); g.lineWidth = Math.max(0.2, B * 0.02); g.beginPath(); g.moveTo(bx - b * 0.7, -b * 0.72); g.lineTo(bx, 0); g.lineTo(bx - b * 0.7, b * 0.72); g.stroke(); g.restore(); }
   // bollards and fairleads along the deck edge
   g.fillStyle = shade(P.sup, -0.4); if (!p.stealth) for (let x = -h * 0.85; x < h * 0.7; x += Math.max(6, L / 9)) for (const sy of [-1, 1]) { g.beginPath(); g.arc(x, sy * (b - inset - 0.5), Math.max(0.15, B * 0.012), 0, TAU); g.fill(); }
   // merchant hatches and derricks
@@ -1096,7 +1139,7 @@ function supSchool(d) {
   if (d.p.school) return d.p.school;
   if (d.p.merchant) return 'merchant';
   if (d.klass === 'pt' || d.klass === 'corvette') return 'small';
-  if (d.era >= 2 && (d.klass === 'ddg' || d.klass === 'cg')) return 'modern';
+  if (d.era >= 2 && (d.klass === 'ddg' || d.klass === 'cg' || d.klass === 'ff')) return 'modern';
   return YARD_STYLE[d.yard] || 'uk';
 }
 // Soft contact shadow round the foot of a raised part (colour pass only).
@@ -1290,12 +1333,14 @@ function stealthTop(g, d, P) {
     const r = facetBlock(g, P, x - rx * 1.5, x + rx * 1.5, ry * 1.25, 0, hf, { kf: 0.75, ka: 0.75, slope: 0.12, y });
     if (!HM.on) { g.fillStyle = '#17191a'; for (const k of [-0.35, 0.35]) g.fillRect(x + k * rx - rx * 0.22, y - r.hw * 0.6, rx * 0.44, r.hw * 1.2); } }
   const hm = clamp(d.B * 0.9, 6, 30);
-  for (const [x] of p.mast || []) { // the mast: a closed four-sided pyramid, cut off at the top, an array panel on each face
-    const bs = Math.max(2.2, d.B * 0.2), ts = bs * 0.32, sq = k => [[x - k, -k], [x + k, -k], [x + k, k], [x - k, k]];
-    facet(g, P, sq(bs), sq(ts), top, top + hm * 0.8, { lift: 0.05 });
-    if (!HM.on) { g.fillStyle = shade(S, 0.2); const m = (bs + ts) / 2; for (const [dx, dy, ww, hh] of [[m, 0, 0.3, 1.5], [-m, 0, 0.3, 1.5], [0, m, 1.5, 0.3], [0, -m, 1.5, 0.3]]) g.fillRect(x + dx - ww / 2, dy - hh / 2, ww, hh);
-      g.beginPath(); g.arc(x, 0, ts * 0.45, 0, TAU); g.fillStyle = '#1c1f21'; g.fill(); }
-    else { g.beginPath(); g.arc(x, 0, ts * 0.45, 0, TAU); pfill(g, null, top + hm); } }
+  for (const [x] of p.mast || []) { // the mast: a slim closed tower, eight-sided and tapering, with a short yard and a flat array on its forward face
+    // (a broad four-sided pyramid read as a block with a hole in it; the owner, 13 Nov 2026)
+    const bs = clamp(d.B * 0.085, 1.1, 1.8), ts = bs * 0.5, o8 = k => { const q = []; for (let i = 0; i < 8; i++) q.push([x + Math.cos(i * PI / 4 + PI / 8) * k, Math.sin(i * PI / 4 + PI / 8) * k]); return q; };
+    facet(g, P, o8(bs), o8(ts), top, top + hm * 0.8, { lift: 0.06, noAo: true });
+    if (HM.on) { g.beginPath(); g.rect(x - 0.18, -bs * 1.9, 0.36, bs * 3.8); pfill(g, null, top + hm * 0.7); }
+    else { g.beginPath(); g.rect(x - 0.18, -bs * 1.9, 0.36, bs * 3.8); g.fillStyle = shade(S, -0.35); g.fill();
+      g.fillStyle = shade(S, 0.2); g.fillRect(x + (bs + ts) / 2 - 0.15, -ts * 0.9, 0.3, ts * 1.8);
+      g.beginPath(); g.arc(x, 0, ts * 0.4, 0, TAU); g.fillStyle = shade(S, -0.3); g.fill(); } }
   if (!HM.on) { g.fillStyle = P.ens; g.fillRect(-d.L / 2 + 0.4, -0.6, 1.4, 1.2); }
 }
 
@@ -1452,6 +1497,15 @@ function drawPlanTop(g, d, P) {
   // the long deckhouse (01 level) that the bridge, funnels and after control stand on
   for (const [x, len, w] of p.house || []) { level(g, P, x - len / 2, x + len / 2, w / 2, DECK_H * 0.8, { front: 'taper', rear: 'round' }); houseDetail(g, d, P, x, len, w); }
   for (const [x, y, r, hh] of p.tubs || []) tub(g, P, x, y, r, hh || 1.4);
+  for (const [xf, xa] of p.boxes || []) { // containers stacked on deck, bays across the beam, each stack its own height and faded colours:
+    // drawn with the upper works, so they are lit and throw their shadows like anything else that stands on the ship (the owner, 13 Nov 2026)
+    const cols = ['#7a3b32', '#35566b', '#6b6a3a', '#3f5d48', '#70583c', '#4b4f58'], r2 = rng(seedOf(d.id)), bl = 12.4, bw2 = 2.5, rows = Math.floor((B - 3) / bw2);
+    for (let x = xf - bl; x >= xa; x -= bl + 1.2) for (let i = 0; i < rows; i++) { const y = -rows * bw2 / 2 + i * bw2, c1 = r2(), c2 = r2(), tall = 1 + Math.floor(r2() * 3);
+      if (!insideHull(d, x, y, 0.8) || !insideHull(d, x + bl, y + bw2 * Math.sign(y + 0.01), 0.8)) continue;
+      g.beginPath(); g.rect(x, y + 0.08, bl, bw2 - 0.16);
+      if (HM.on) { pfill(g, null, tall * 2.6); continue; }
+      g.fillStyle = shade(cols[Math.floor(c1 * cols.length)], -0.1 + c2 * 0.15); g.fill(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.06; g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.moveTo(x + bl / 2, y + 0.08); g.lineTo(x + bl / 2, y + bw2 - 0.08); g.stroke(); } }
   if (p.stealth) { stealthTop(g, d, P); return; }
   // superstructure blocks
   (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
@@ -1514,7 +1568,11 @@ function drawFlightDeck(g, d, P) {
     g.strokeStyle = 'rgba(226,200,90,.35)'; g.lineWidth = 0.25; g.setLineDash([1.5, 1.5]); g.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2); g.setLineDash([]); }
   // tie-down points, the catapult tracks at the bow, crash barriers, and the gun galleries hung below the deck edge
   g.fillStyle = 'rgba(0,0,0,.16)'; for (let x = x0 + 4; x < x1 - 6; x += 4) for (let yy = -w / 2 + 2.5; yy < w / 2 - 2; yy += 4) g.fillRect(x, yy, 0.22, 0.22);
-  if (!f.wood) { g.strokeStyle = 'rgba(20,22,24,.5)'; g.lineWidth = 0.45; g.beginPath(); for (const cy of f.ang ? [-w * 0.2, w * 0.14] : [-w * 0.18, w * 0.18]) { g.moveTo(x1 - w * 0.3, cy); g.lineTo(x1 - w * 0.3 - (f.cats ? 92 : Math.min(75, fl * 0.24)), cy); } g.stroke(); }
+  if (f.ski) { // a ramp at the bow in place of catapults (the Korvagrad carrier): the deck rising over the last fifty metres, its lip and the take-off lines
+    const rx = x1 - 52; g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(rx, -w / 2 + 0.4, 52 - w * 0.25, w - 0.8);
+    g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.2; g.beginPath(); g.moveTo(rx, -w / 2 + 0.4); g.lineTo(rx, w / 2 - 0.4); for (let q = 1; q < 6; q++) { g.moveTo(rx + q * 8, -w * 0.4); g.lineTo(rx + q * 8, w * 0.4); } g.stroke();
+    g.strokeStyle = 'rgba(226,226,214,.45)'; g.lineWidth = 0.35; g.beginPath(); for (const [y0, y1] of [[-w * 0.2, -w * 0.06], [w * 0.2, w * 0.06]]) { g.moveTo(rx - 90, y0); g.lineTo(x1 - 6, y1); } g.stroke(); }
+  if (!f.wood && !f.ski) { g.strokeStyle = 'rgba(20,22,24,.5)'; g.lineWidth = 0.45; g.beginPath(); for (const cy of f.ang ? [-w * 0.2, w * 0.14] : [-w * 0.18, w * 0.18]) { g.moveTo(x1 - w * 0.3, cy); g.lineTo(x1 - w * 0.3 - (f.cats ? 92 : Math.min(75, fl * 0.24)), cy); } g.stroke(); }
   if (f.cats) { g.strokeStyle = 'rgba(226,200,90,.3)'; g.lineWidth = 0.3; g.beginPath(); g.moveTo(x0 + 6, w / 2 - 2.2); g.lineTo(x1 - w * 0.3, w / 2 - 2.2); g.moveTo(fx + fl * 0.24, -w / 2 + 2.2); g.lineTo(x1 - w * 0.3, -w / 2 + 2.2); g.stroke();   // the safety line inside the deck edge
     g.strokeStyle = 'rgba(200,70,60,.4)'; g.setLineDash([2.5, 2.5]); g.beginPath(); g.moveTo(x0 + 10, w * 0.2); g.lineTo(fx + fl * 0.2, -w * 0.3); g.stroke(); g.setLineDash([]); }   // the foul line along the landing area
   if (f.cats) { // four catapults: two at the bow (drawn above), two in the waist across the angle; a blast deflector behind each
@@ -1552,12 +1610,12 @@ function drawIslandTop(g, d, P) { // the carrier's island: stepped levels, the f
   if (f.modern) { // a small slab-sided island well aft, flat array panels on its faces, and a closed mast on it
     const r = facetBlock(g, P, ix - il / 2, ix + il / 2, iw / 2, hd, hd + 4 * DECK_H, { y: iy, kf: 0.6, ka: 0.7, slope: 0.1 });
     const r2 = facetBlock(g, P, ix - il * 0.3, ix + il * 0.42, iw * 0.36, hd + 4 * DECK_H, hd + 6 * DECK_H, { y: iy, kf: 0.5, ka: 0.7, slope: 0.12, lift: 0.04 });
-    const mx = ix - il * 0.12, bs = iw * 0.24, ts = bs * 0.35, sq = k => [[mx - k, iy - k], [mx + k, iy - k], [mx + k, iy + k], [mx - k, iy + k]];
+    const mx = ix - il * 0.12, bs = iw * 0.15, ts = bs * 0.5, sq = k => { const q = []; for (let i = 0; i < 8; i++) q.push([mx + Math.cos(i * PI / 4 + PI / 8) * k, iy + Math.sin(i * PI / 4 + PI / 8) * k]); return q; };
     facet(g, P, sq(bs), sq(ts), hd + 6 * DECK_H, hd + 6 * DECK_H + 12, { lift: 0.06, noAo: true });
     panes(g, r2);
     if (!HM.on) {
       g.fillStyle = shade(P.sup, 0.18); for (const sx of [-1, 1]) for (const sy of [-1, 1]) g.fillRect(ix + sx * il * 0.3 - 1.4, iy + sy * (iw / 2 - 0.55) - 0.25, 2.8, 0.5);
-      g.beginPath(); g.arc(mx, iy, ts * 0.5, 0, TAU); g.fillStyle = '#1c1f21'; g.fill(); }
+      g.beginPath(); g.rect(mx - 0.2, iy - bs * 1.8, 0.4, bs * 3.6); g.fillStyle = shade(P.sup, -0.35); g.fill(); g.beginPath(); g.arc(mx, iy, ts * 0.4, 0, TAU); g.fillStyle = shade(P.sup, -0.3); g.fill(); }
     return; }
   for (let t = 0; t < 4; t++) { const ll = il * (1 - t * 0.17), ww = iw * (1 - t * 0.14), xx = ix + t * il * 0.05;
     level(g, P, xx - ll / 2, xx + ll / 2, ww / 2, hd + (t + 1) * DECK_H, { y: iy, front: 'round', windows: t === 2, open: t === 3 }); }
@@ -1964,8 +2022,8 @@ function routeLength(x, y, path) { let d = 0, px = x, py = y; for (const p of pa
 
 /* ================================================================ map fleets */
 const PATROL_POOL = {
-  concord: ['corvette', 'dd', 'dd', 'cl', 'ca', 'cve', 'ddg', 'ssn', 'cv', 'cg'], directorate: ['pt', 'dd', 'dd', 'ss', 'cl', 'ca', 'ddg', 'ssn', 'cg'],
-  pacific: ['pt', 'dd', 'dd', 'ss', 'cl', 'ca', 'cve', 'cv', 'ddg'], combine: ['corvette', 'dd', 'cl', 'cve', 'ddg'], republic: ['pt', 'corvette', 'dd', 'dd', 'ss', 'cl', 'ca'],
+  concord: ['corvette', 'dd', 'dd', 'cl', 'ca', 'cve', 'ff', 'ddg', 'ssn', 'cv', 'cg'], directorate: ['pt', 'dd', 'dd', 'ss', 'cl', 'ca', 'ff', 'ddg', 'ssn', 'cg'],
+  pacific: ['pt', 'dd', 'dd', 'ss', 'cl', 'ca', 'cve', 'cv', 'ff', 'ddg'], combine: ['corvette', 'dd', 'cl', 'cve', 'ff', 'ddg'], republic: ['pt', 'corvette', 'dd', 'dd', 'ss', 'cl', 'ca', 'ff', 'ddg'],
   freeport: ['pt', 'corvette', 'dd'], enclave: ['corvette'], ombria: ['pt', 'pt', 'corvette', 'dd', 'ss'], isles: ['pt', 'corvette', 'dd'], raiders: ['pt', 'pt', 'corvette', 'dd', 'ss'],
 };
 const ESCORT_POOL = { concord: ['corvette', 'dd'], directorate: ['dd', 'pt'], pacific: ['dd', 'pt'], combine: ['corvette', 'dd'], republic: ['corvette', 'pt'], freeport: ['pt', 'corvette'], enclave: ['corvette'], ombria: ['pt', 'dd'], isles: ['pt', 'corvette'] };

@@ -725,7 +725,7 @@ func fleet_turn_rate(ships: Array) -> float:
 ## limit the fleet still sails, but tenders must be hired by the day and the crews cannot be kept fresh; half as much
 ## again over it, no yard will hand you another ship. Twenty ships is the most one flag officer can handle at all,
 ## and ten the most that fight in one action (the rest stand off, as ships in reserve do).
-const SUPPLY_W := {"pt": 1, "corvette": 1, "dd": 2, "ss": 2, "freighter": 1, "ap": 2, "ao": 1, "ae": 1, "ar": 1, "cl": 3, "ddg": 3, "ssn": 3, "cve": 4, "ca": 4, "cg": 5, "bb": 6, "cv": 7}
+const SUPPLY_W := {"pt": 1, "corvette": 1, "dd": 2, "ss": 2, "freighter": 1, "ap": 2, "ao": 1, "ae": 1, "ar": 1, "cl": 3, "ff": 2, "ddg": 3, "ssn": 3, "cve": 4, "ca": 4, "cg": 5, "bb": 6, "cv": 7}
 const SUPPLY_TRAIN := {"ao": 5, "ae": 4, "ar": 4, "freighter": 2}   # what an auxiliary in company adds
 const SUPPLY_BASE := 16
 const SUPPLY_MAX := 60

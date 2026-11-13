@@ -13,7 +13,7 @@ static func declassified(key: String) -> bool:
 	if year_now() == 0: return false
 	if year_now() >= 1947: return true
 	for q in Campaign.G.get("pois", []):
-		if String(q.get("name", "")).contains(String(TRUTH_SITE.get(key, "\u0000"))) and q.get("surveyed", false): return true
+		if String(q.get("name", "")).contains(String(TRUTH_SITE.get(key, "~no such site~"))) and q.get("surveyed", false): return true
 	return false
 ## The Manual (the owner, 13 Nov 2026): how the game's deeper systems work, a short page each (data/manual.json: the
 ## agent's text, not the owner's lore). `manual_page` is the page shown.

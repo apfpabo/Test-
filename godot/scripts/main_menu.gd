@@ -3,6 +3,7 @@ extends Control
 
 var pc: PanelContainer
 var home: Control
+var picked := ""   # the origin marked on the New campaign page
 var test_mode := false
 var guide := true   # a new captain is guided through the chart, the first harbour and the first action (scripts/guide.gd)
 const Guide = preload("res://scripts/guide.gd")
@@ -103,6 +104,10 @@ func _new_campaign() -> void:
     var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box); home = box
     box.add_child(UI.title("Who were you?"))
     var grid = GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 8); grid.add_theme_constant_override("v_separation", 8); box.add_child(grid)
+    # a click picks an origin and marks it; Next opens its page (the owner, 13 Nov 2026: a click used to go straight on)
+    var group := ButtonGroup.new()
+    var on := StyleBoxFlat.new(); on.bg_color = Color(UI.GOLD, 0.12); on.border_color = UI.GOLD; on.set_border_width_all(2); on.set_corner_radius_all(3)
+    var next := UI.button("Next", func(): if picked != "": go(func(): _origin(pc, box, picked)), true, picked == "")
     for key in Origins.LIST:
         var info: Dictionary = Origins.INFO[key]
         # a card: the origin's name as its heading, the line about it under, both from the top (UI review, 12 Nov 2026:
@@ -112,12 +117,16 @@ func _new_campaign() -> void:
         inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12); b.add_child(inner)
         var hd := UI.label(String(info.label).trim_prefix("The ").to_upper(), UI.GOLD, 15); hd.add_theme_font_override("font", UI.font("cond")); hd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; hd.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.add_child(hd)
         var bd := UI.label(info.short, UI.INK, 14, true); bd.custom_minimum_size.x = 0; bd.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.add_child(bd)
-        b.pressed.connect(func(): go(func(): _origin(pc, box, key))); grid.add_child(b)
+        b.toggle_mode = true; b.button_group = group; b.button_pressed = key == picked
+        for st in ["pressed", "hover_pressed"]: b.add_theme_stylebox_override(st, on)
+        b.pressed.connect(func(): picked = key; next.disabled = false)
+        b.gui_input.connect(func(e): if e is InputEventMouseButton and e.double_click: picked = key; go(func(): _origin(pc, box, key)))   # a double click still goes straight on
+        grid.add_child(b)
     var tm := CheckBox.new(); tm.text = "Test mode: every technology researched, every design in every shipyard, unlimited money and research points"; tm.button_pressed = test_mode
     tm.toggled.connect(func(on): test_mode = on); box.add_child(tm)
     var gm := CheckBox.new(); gm.text = "Guide me through my first voyage and battle"; gm.button_pressed = guide
     gm.toggled.connect(func(on): guide = on); box.add_child(gm)
-    box.add_child(UI.row([UI.button("Back", func(): go(_home))]))
+    box.add_child(UI.row([UI.button("Back", func(): go(_home)), next]))
 
 ## The title in iron: brushed steel capitals with a drop shadow, over a riveted rule.
 func _iron_title() -> Control:

@@ -17,7 +17,7 @@ func _ready() -> void:
 	seed(3)
 	steps = [
 		func(): node = load("res://scenes/main_menu.tscn").instantiate(); add_child(node); return "01_title",
-		func(): node.go(node._new_campaign); return "02_new_campaign",
+		func(): node.picked = "merchant"; node.go(node._new_campaign); return "02_new_campaign",
 		func(): node._origin(node.pc, node.home, "merchant"); return "03_origin",
 		func():
 			node.queue_free(); Campaign.new_game("disgraced"); Campaign.G.credits = 60000

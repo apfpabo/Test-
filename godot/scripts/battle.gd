@@ -53,7 +53,7 @@ func _ready() -> void:
                 sh.tm = Campaign.pick_temper(0.6, 0.1) if (fk == "bounty" or fk == "hunter" or fk == "mission") else (Campaign.pick_temper(0.1, 0.5) if fk == "convoy" else Campaign.pick_temper())
         if cfg.get("no_fuel", false): sim.say("Bunkers are dry: your ships can make steerage way on emergency reserves, little more.", 4.0)
     else:
-        sim.setup(_recs(mine, "player", pt), _recs(theirs, efac, et), pt, et, cfg.get("islands", randi_range(0, 4)))
+        sim.setup(_recs(mine, "player", pt, cfg.get("player_mods", [])), _recs(theirs, efac, et, cfg.get("enemy_mods", [])), pt, et, cfg.get("islands", randi_range(0, 4)))
     # sea
     var bg = CanvasLayer.new(); bg.layer = -10; add_child(bg)
     water = ColorRect.new(); water.set_anchors_preset(Control.PRESET_FULL_RECT); water.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -155,11 +155,17 @@ func _veil_spots() -> void:
     while arr.size() < 24: arr.append(Vector4(0, 0, 0, 0))
     veil_mat.set_shader_parameter("spots", arr); veil_mat.set_shader_parameter("n_spots", n)
     veil_mat.set_shader_parameter("screen", vs); veil_mat.set_shader_parameter("rt", BattleSim.rclock)
-func _recs(ids: Array, pal: String, tech: Array) -> Array:
+## Records for a quick battle's ships; `mods` (one per ship, or empty) carries a fit and systems chosen on the quick
+## battle page (skirmish.gd's ship editor).
+func _recs(ids: Array, pal: String, tech: Array, mods: Array = []) -> Array:
     var out = []; var pool: Array = GameData.names.get(pal, GameData.names.player).duplicate(); pool.shuffle()
     for i in ids.size():
         var d: Dictionary = GameData.hulls[ids[i]]
-        out.append({"type": ids[i], "name": pool[i % pool.size()], "hullFrac": 1.0, "fit": BattleSim.default_fit(d, tech), "pal": pal})
+        var r := {"type": ids[i], "name": pool[i % pool.size()], "hullFrac": 1.0, "fit": BattleSim.default_fit(d, tech), "pal": pal}
+        if i < mods.size() and mods[i] is Dictionary:
+            if mods[i].has("fit"): r.fit = mods[i].fit.duplicate()
+            if mods[i].has("up"): r.up = mods[i].up.duplicate()
+        out.append(r)
     return out
 
 var island_mats: Array = []

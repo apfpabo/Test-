@@ -15,6 +15,9 @@ const PRESETS := [
 ]
 var mine: Array = []
 var theirs: Array = []
+var mine_mods: Array = []    # one per ship in `mine`: {} or {fit, up} chosen in the ship editor
+var theirs_mods: Array = []
+var editor_box: VBoxContainer   # the ship editor, under the lists
 var design_pick: OptionButton
 var fac_pick: OptionButton
 var era_pick: OptionButton
@@ -63,26 +66,93 @@ func _ready() -> void:
     hour_pick = OptionButton.new(); for n in ["Day", "Night, full moon", "Night, no moon"]: hour_pick.add_item(n)
     row2.add_child(hour_pick)
     var lists = HBoxContainer.new(); lists.add_theme_constant_override("separation", 12); col.add_child(lists)
-    mine_list = _list(lists, "My squadron (click to remove)", mine); theirs_list = _list(lists, "Enemy (click to remove)", theirs)
+    mine_list = _list(lists, "My squadron (click a ship to refit her)", mine, mine_mods); theirs_list = _list(lists, "Enemy (click a ship to refit her)", theirs, theirs_mods)
+    editor_box = VBoxContainer.new(); editor_box.add_theme_constant_override("separation", 6); col.add_child(editor_box)
     var go = Button.new(); go.text = "Battle stations"; go.custom_minimum_size = Vector2(220, 44)
     go.pressed.connect(func(): if mine.size() and theirs.size(): _start(mine, theirs, fac_pick.get_item_metadata(fac_pick.selected), era_pick.selected + 1))
     col.add_child(go)
     var back := Button.new(); back.text = "Back to the title screen"; back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")); col.add_child(back)
 
-func _list(parent: Control, label: String, arr: Array) -> ItemList:
+func _list(parent: Control, label: String, arr: Array, mods: Array) -> ItemList:
     var box = VBoxContainer.new(); box.size_flags_horizontal = Control.SIZE_EXPAND_FILL; parent.add_child(box)
     var l = Label.new(); l.text = label; box.add_child(l)
     var il = ItemList.new(); il.custom_minimum_size = Vector2(0, 160); box.add_child(il)
-    il.item_clicked.connect(func(i, _p, _b): arr.remove_at(i); _refresh())
+    il.item_clicked.connect(func(i, _p, _b): _edit(arr, mods, i))
     return il
 
 func _add(arr: Array) -> void:
-    if arr.size() < 10: arr.append(ids[design_pick.selected]); _refresh()
+    if arr.size() < 10:
+        arr.append(ids[design_pick.selected]); (mine_mods if is_same(arr, mine) else theirs_mods).append({}); _refresh()
+
+## The research a side's ship is fitted from: the era picked, or her own if she is newer (as _start reckons it).
+func _tech_for(id: String) -> Array:
+    return ERA_TECH[maxi(era_pick.selected + 1, mini(3, int(GameData.hulls[id].get("era", 1))))]
+
+## The ship editor (the owner, 13 Nov 2026): a weapon for each mount, the marks of each system, her weight against what
+## her hull can carry, and Remove. What is chosen goes into the battle with her (battle.gd _recs).
+func _edit(arr: Array, mods: Array, i: int) -> void:
+    for c in editor_box.get_children(): c.queue_free()
+    if i < 0 or i >= arr.size(): return
+    var id: String = arr[i]; var d: Dictionary = GameData.hulls[id]; var tech := _tech_for(id)
+    while mods.size() < arr.size(): mods.append({})
+    var m: Dictionary = mods[i]
+    if not m.has("fit"): m.fit = BattleSim.default_fit(d, tech)
+    if not m.has("up"): m.up = {}
+    var h := Label.new(); h.text = "%s · %s class · %s" % [d.name, d.dn, "your squadron" if is_same(arr, mine) else "the enemy"]; h.add_theme_font_size_override("font_size", 18); h.add_theme_color_override("font_color", Color(0.89, 0.7, 0.24)); editor_box.add_child(h)
+    var ld: Dictionary = BattleSim.loading(d, m.fit, m.up)
+    var wl := Label.new(); wl.add_theme_color_override("font_color", Color(0.85, 0.35, 0.3) if not ld.ok else Color(0.62, 0.67, 0.67))
+    wl.text = "Weight: %d t carried against %d t designed, %s%s" % [int(ld.tons), int(ld.std), ("%d t in hand" % int(-float(ld.over_t))) if float(ld.over_t) <= 0.0 else ("%d t over her margin, %d%% slower" % [int(ld.over_t), int(round((1.0 - float(ld.speed)) * 100))]), "" if ld.ok else ". A yard would not pass this fit."]
+    editor_box.add_child(wl)
+    var grid := GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 10); editor_box.add_child(grid)
+    var sizes := {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / close-in", "T": "Torpedoes", "V": "Launch cells"}
+    for si in d.slots.size():
+        var sl: Dictionary = d.slots[si]
+        var lab := Label.new(); lab.text = "%s · %s" % [sizes.get(sl.s, sl.s), "fwd" if sl.x > 10 else ("aft" if sl.x < -10 else "mid")]; lab.custom_minimum_size.x = 150; grid.add_child(lab)
+        var ob := OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, ""); ob.custom_minimum_size.x = 250
+        for wid in GameData.weapons:
+            var w: Dictionary = GameData.weapons[wid]
+            if not _fits(wid, sl.s) or (w.has("tech") and not tech.has(w.tech)): continue
+            ob.add_item(String(w.name)); ob.set_item_metadata(ob.item_count - 1, wid)
+            if wid == m.fit[si]: ob.selected = ob.item_count - 1
+        var sx: int = si
+        ob.item_selected.connect(func(j): m.fit[sx] = ob.get_item_metadata(j); _edit(arr, mods, i))
+        grid.add_child(ob)
+    var sh := Label.new(); sh.text = "Ship systems"; sh.add_theme_color_override("font_color", Color(0.62, 0.67, 0.67)); editor_box.add_child(sh)
+    var g2 := GridContainer.new(); g2.columns = 4; g2.add_theme_constant_override("h_separation", 10); editor_box.add_child(g2)
+    for k in BattleSim.UPGRADES:
+        var u: Dictionary = BattleSim.UPGRADES[k]
+        if u.get("needs_sonar", false) and not d.get("sonar", false): continue
+        var lab2 := Label.new(); lab2.text = String(u.name); lab2.tooltip_text = "%s a mark" % u.per; lab2.mouse_filter = Control.MOUSE_FILTER_PASS; lab2.custom_minimum_size.x = 150; g2.add_child(lab2)
+        var ob2 := OptionButton.new(); ob2.add_item("Standard"); ob2.add_item("Mk I")
+        if u.get("mk2", "") == "" or tech.has(u.mk2): ob2.add_item("Mk II")
+        ob2.selected = mini(int(m.up.get(k, 0)), ob2.item_count - 1)
+        var kk: String = k
+        ob2.item_selected.connect(func(j):
+            m.up[kk] = j
+            if j == 0: m.up.erase(kk)
+            _edit(arr, mods, i))
+        g2.add_child(ob2)
+    var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 8); editor_box.add_child(row)
+    var std := Button.new(); std.text = "Standard fit"; std.pressed.connect(func(): mods[i] = {}; _edit(arr, mods, i)); row.add_child(std)
+    var rm := Button.new(); rm.text = "Remove her"; rm.pressed.connect(func(): arr.remove_at(i); mods.remove_at(i); _refresh(); _close_editor()); row.add_child(rm)
+    var done := Button.new(); done.text = "Done"; done.pressed.connect(func(): _refresh(); _close_editor()); row.add_child(done)
+
+func _close_editor() -> void:
+    for c in editor_box.get_children(): c.queue_free()
+
+## A weapon fits a mount of its own size class, or one size larger (as the refit page has it).
+func _fits(wid: String, slot: String) -> bool:
+    var w: Dictionary = GameData.weapons[wid]; var gs = ["S", "M", "L", "H"]
+    if gs.has(slot): return gs.has(w.size) and gs.find(w.size) <= gs.find(slot) and gs.find(w.size) >= gs.find(slot) - 1
+    return w.size == slot
 
 func _refresh() -> void:
     for pair in [[mine_list, mine], [theirs_list, theirs]]:
         pair[0].clear()
-        for id in pair[1]: pair[0].add_item(GameData.hulls[id].name + " · " + GameData.hulls[id].dn + " class")
+        var mods: Array = mine_mods if is_same(pair[1], mine) else theirs_mods
+        for k in pair[1].size():
+            var id: String = pair[1][k]; var refit: bool = k < mods.size() and not mods[k].is_empty()
+            pair[0].add_item(GameData.hulls[id].name + " · " + GameData.hulls[id].dn + " class" + (" · refitted" if refit else ""))
 
 func _start(p: Array, e: Array, fac: String, era: int) -> void:
     var w := {"sea": mini(wx_pick.selected, 3) if wx_pick.selected < 4 else 0, "fog": wx_pick.selected == 4, "night": hour_pick.selected > 0, "moon": 1.0 if hour_pick.selected == 1 else 0.1}
@@ -92,5 +162,5 @@ func _start(p: Array, e: Array, fac: String, era: int) -> void:
         var e2 := era
         for id in ids: e2 = maxi(e2, mini(3, int(GameData.hulls[id].get("era", 1))))
         return e2
-    GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "enemy_fac": fac, "player_tech": ERA_TECH[side_era.call(p)], "enemy_tech": ERA_TECH[side_era.call(e)], "islands": randi_range(0, 4), "weather": Weather.battle(w)}
+    GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "player_mods": (mine_mods if is_same(p, mine) else []).duplicate(true), "enemy_mods": (theirs_mods if is_same(e, theirs) else []).duplicate(true), "enemy_fac": fac, "player_tech": ERA_TECH[side_era.call(p)], "enemy_tech": ERA_TECH[side_era.call(e)], "islands": randi_range(0, 4), "weather": Weather.battle(w)}
     get_tree().change_scene_to_file("res://scenes/battle.tscn")

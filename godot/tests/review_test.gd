@@ -1655,6 +1655,29 @@ func _ew() -> void:
 				if w2.missiles.is_empty(): break
 	print("  missiles shot down of 40 by a Second World War battleship: %d with her own fire control, %d with the missile age's" % shot)
 	ok(shot[0] < 14 and shot[1] > shot[0], "a Second World War ship's light guns stop few missiles (%d of 40; %d with later directors)" % shot)
+	# missiles against armour and above it, and the heavy missile (the owner, 13 Nov 2026)
+	var mm := BattleSim.new(); mm.setup([Campaign.new_ship("bb_yamato", "Y", "player", []), Campaign.new_ship("ddg_burke", "B", "player", tech)], [Campaign.new_ship("cg_kirov", "K", "directorate", tech)], tech, tech, 0)
+	var ym: BattleSim.CShip = mm.ships[0]; var bk: BattleSim.CShip = mm.ships[1]; var kv: BattleSim.CShip = mm.ships[2]
+	var wd: float = float(GameData.weapons.ssm.dmg); var wh: float = float(GameData.weapons.ssmh.dmg)
+	var h0: float = ym.hull; mm.damage(ym, wd, "missile"); var per: float = h0 - ym.hull
+	ok(absf(per - wd * (1.0 - BattleSim.MSL_ARMOUR)) < 1.0 and ym.max_hull / per > 45.0 and ym.max_hull / per < 65.0, "a sea-skimmer costs the Yamato %.0f of %d: about %d hits to sink her (it was 74)" % [per, int(ym.max_hull), int(ym.max_hull / per)])
+	h0 = ym.hull; mm.damage(ym, wh, "missile_h"); var perh: float = h0 - ym.hull
+	ok(perh > per * 2.5 and ym.max_hull / perh < 22.0, "a heavy missile costs her %.0f: about %d hits" % [perh, int(ym.max_hull / perh)])
+	h0 = bk.hull; mm.damage(bk, wd, "missile")
+	ok((h0 - bk.hull) / bk.max_hull > 0.14 and (h0 - bk.hull) / bk.max_hull < 0.25, "a missile costs an unarmoured destroyer %d%% of her hull (it was 12%%)" % int((h0 - bk.hull) / bk.max_hull * 100.0))
+	var f0: int = ym.fires.size(); var alive0: int = ym.mounts.filter(func(m): return not m.dead).size()
+	for i in 6: mm._missile_blast(ym, ym.pos + Vector2(float(i) * 12.0 - 30.0, 10.0).rotated(ym.a), false)
+	var heavy_dead: int = ym.mounts.filter(func(m): return m.dead and m.w.kind == "gun" and (m.w.size == "H" or m.w.size == "L")).size()
+	ok(ym.fires.size() == f0 + 6 and ym.mounts.filter(func(m): return not m.dead).size() < alive0 - 3 and heavy_dead == 0, "every missile hit starts a fire and wrecks light mounts near it (%d of %d left), never an armoured turret" % [ym.mounts.filter(func(m): return not m.dead).size(), alive0])
+	ok(kv.mounts.any(func(m): return m.wid == "ssmh") and GameData.weapons.ssmh.get("heavy", false) and float(GameData.weapons.ssmh.speed) > 1.9 * float(GameData.weapons.ssm.speed), "the Kirov carries the heavy missile, twice as fast as the other")
+	# guns by era: no design of the missile age carries a wartime mount as built, and the reverse
+	var wrong := []
+	for id in GameData.hulls:
+		var hd: Dictionary = GameData.hulls[id]
+		for sl in hd.slots:
+			if int(hd.get("era", 1)) >= 3 and ["g76", "g127s", "g130t"].has(sl.def): wrong.append(id)
+			if int(hd.get("era", 1)) <= 2 and ["g76a", "g127a", "g130a"].has(sl.def): wrong.append(id)
+	ok(wrong.is_empty(), "wartime and missile-age designs do not share gun mounts %s" % str(wrong.slice(0, 5)))
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	sections += 1
 

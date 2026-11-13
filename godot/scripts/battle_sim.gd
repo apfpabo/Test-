@@ -357,7 +357,7 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
         if w == "tor" and tech.has("homing") and design.kind != "pt": w = "torh"
         if w == "torh" and not tech.has("homing"): w = "tor"
         if (w == "aa40" or w == "aa20") and tech.has("ciws") and randf() < 0.5: w = "ciws"
-        if w == "ciws" and not tech.has("ciws"): w = "aa40"
+        if w == "ciws" and not tech.has("ciws") and int(design.get("era", 1)) < 3: w = "aa40"   # (a missile-age design keeps the close-in guns she was built with, as she keeps her missiles)
         if w == "g76" and not tech.has("missiles"): w = "g102t"
         if not tech.has("missiles") and int(design.get("era", 1)) < 3:   # the missile age's guns on an old hull, before their time
             if w == "g76a": w = "g102t"
@@ -762,6 +762,13 @@ const CHAFF_LURE := 0.4
 ## before); a high diver is seen far off but comes down steeply, where close-in guns hit her at HIGH_PD of their chance.
 const SKIM_SEEN := 2200.0
 const HIGH_PD := 0.7
+const MSL_ARMOUR := 0.4       # the most of a missile's blast a belt keeps out
+const MSL_ARMOUR_H := 0.2     # and of a heavy missile's
+const MSL_SOFT := 0.6         # how much more a missile does to a hull with no armour at all
+const MSL_SOFT_MM := 80.0
+const MSL_BLAST := 10.0       # what stands on the upper deck within this of the hit (m) is likely wrecked, whatever the belt
+const MSL_BLAST_K := 0.65
+const HEAVY_PD := 0.55        # a supersonic heavy missile is this much harder to shoot down
 ## Hand-laid light guns (Oerlikon, Bofors) against a missile (the owner, 13 Nov 2026: ships of the Second World War
 ## should have a much harder time of it): a mount laid by eye on a ship whose fire control predates missiles hits one at
 ## HAND_PD of its figure; with the directors of the missile age, at HAND_PD_FC. A CIWS is unchanged.
@@ -908,7 +915,7 @@ func nearest_any(from: Vector2, side: int) -> CShip:
 ## standard fit and has a small margin beyond it. Past the margin she is slower and slow on the helm; a little
 ## further and no yard will send her to sea. What is carried high (AA, directors, radar) counts more towards
 ## topweight: a top-heavy ship rolls, and her salvos spread, worst in a sea.
-const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g76a": 12, "g127a": 22, "g130a": 60, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
+const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g76a": 12, "g127a": 22, "g130a": 60, "ssmh": 30, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
     "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500, "g381q": 2000, "g406t": 1150, "g510t": 2700,
     "g57s": 8, "g155s": 60, "rail": 110,
     "aa20": 1, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}
@@ -1488,7 +1495,7 @@ func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
     for i in int(w.count) + (1 + (1 if tech_lv(s.tech, "vls") >= 2 else 0) if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
-        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "delay": i * 2.0,
+        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "hv": w.get("heavy", false), "delay": i * 2.0,
             "prof": missile_profile(s, tg), "sk": 0.1 * (tech_lv(s.tech, "precision") if s.tech.has("precision") else 0) + (0.1 if s.tech.has("netcentric") else 0.0)})
     if s.sub: s.reveal_t = 25.0
 
@@ -1607,6 +1614,23 @@ func nearest_missile(side: int, p: Vector2, rng: float, for_sam := false):
         if dd < bd: bd = dd; best = q
     return best
 
+## What a missile does above the armour (the owner, 13 Nov 2026): her unburned fuel starts a fire every time, the
+## light guns and secondary mounts near the hit are likely wrecked, and a hit on the bridge block blinds the director.
+func _missile_blast(s: CShip, wp: Vector2, heavy: bool) -> void:
+    if not s.alive or s.god: return
+    var l: Vector2 = (wp - s.pos).rotated(-s.a)
+    var x: float = clampf(l.x, -s.d.L * 0.46, s.d.L * 0.46); var hh: float = hull_half(s.d, x) * 0.85; var y: float = clampf(l.y, -hh, hh)
+    s.fires.append({"x": x, "y": y, "t": 120.0 + randf() * 180.0, "r": 3.0 if heavy else 2.2, "st": 0.0})
+    var reach: float = MSL_BLAST * (1.5 if heavy else 1.0)
+    for m in s.mounts:
+        if m.dead or m.w.kind == "ssm" or m.w.kind == "sam" or m.w.kind == "torp": continue
+        if m.w.kind == "gun" and (m.w.size == "H" or m.w.size == "L") and not heavy: continue   # an armoured turret keeps out a sea-skimmer
+        if Vector2(m.slot.x - x, m.slot.y - y).length() < reach + float(m.w.get("tw", 2.5)) * 0.5 and randf() < MSL_BLAST_K:
+            m.dead = true; _log("mount wrecked by a missile")
+            s.marks.append({"x": float(m.slot.x), "y": float(m.slot.y), "r": float(m.w.get("tw", 2.5)) * 1.5 + 1.5, "v": randi() % 4, "hole": false, "gash": false, "edge": false, "sd": randi() % 1000, "side": 1.0, "wreck": true})
+    var sup: Array = s.d.p.get("sup", [])
+    if not sup.is_empty() and absf(l.x - float(sup[0][0])) < float(sup[0][1]) / 2 + 2.0 and randf() < 0.7: s.fc = maxf(0.3, s.fc - (0.35 if heavy else 0.22))
+
 func kill_missile(ms: Dictionary) -> void:
     ms.dead = true; fx_boom(ms.pos, 18.0, 0.5)
 
@@ -1701,7 +1725,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var ms = nearest_missile(s.side, p, w.range)
                 if ms != null:
                     m.ta = ang_diff((ms.pos - p).angle(), s.a); m.cd = w.rel; aa_shot(s, m, p, ms.pos)
-                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else gun_pd(s)) * (HIGH_PD if ms.get("prof", "skim") == "high" else 1.0): kill_missile(ms)
+                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else gun_pd(s)) * (HIGH_PD if ms.get("prof", "skim") == "high" else 1.0) * (HEAVY_PD if ms.get("hv", false) else 1.0): kill_missile(ms)
                     done = true
                 if not done:
                     var sq = nearest_air(s.side, p, w.range)
@@ -2007,7 +2031,11 @@ func damage(s: CShip, dmg: float, type: String) -> void:
         "shell":
             var eff = dmg / (dmg + s.armor); hd = dmg * maxf(0.03, eff); s.armor = maxf(s.d.armor * 0.4, s.armor - dmg * 0.25 * eff); if not s.ar.is_empty(): s.ar.belt = s.armor
         "torp": hd = dmg * (1 - minf(0.45, s.d.armor / 700.0)) * (1.0 - 0.15 * upg(s, "tds"))
-        "missile": hd = dmg * (1 - minf(0.55, s.armor / 550.0))
+        # a missile against armour (the owner, 13 Nov 2026): a belt keeps out up to MSL_ARMOUR of a sea-skimmer's blast
+        # (it was 0.55: the Yamato shrugged off two dozen), far less of a heavy missile's; a hull with almost no
+        # armour is torn open (MSL_SOFT more at none, nothing more from MSL_SOFT_MM up)
+        "missile": hd = dmg * (1 - minf(MSL_ARMOUR, s.armor / 700.0)) * (1.0 + MSL_SOFT * clampf(1.0 - s.armor / MSL_SOFT_MM, 0.0, 1.0))
+        "missile_h": hd = dmg * (1 - minf(MSL_ARMOUR_H, s.armor / 2000.0)) * (1.0 + MSL_SOFT * clampf(1.0 - s.armor / MSL_SOFT_MM, 0.0, 1.0))
         "bomb":   # bombs come down on the deck (armour by place)
             var dk: float = float(s.ar.get("deck", s.armor * 0.4)); var dk0: float = armour_of(s.d).deck
             hd = dmg * dmg / (dmg + dk * 1.75); if not s.ar.is_empty(): s.ar.deck = maxf(dk0 * 0.4, dk - dmg * 0.15)
@@ -2923,7 +2951,7 @@ func step(dtv: float) -> void:
             m.a += clampf(ang_diff((tpos - m.pos).angle(), m.a), -turn * dt, turn * dt)
             var d: float = m.pos.distance_to(tpos)
             if m.kind == "sam" and d < 40:
-                if randf() < m.p:
+                if randf() < m.p * (HEAVY_PD if m.target.get("hv", false) else 1.0):
                     if m.target.get("kind", "") == "ssm": kill_missile(m.target)
                     else: m.target.n = maxi(0, int(m.target.n) - mini(2, int(m.target.up))); fx_plane_down(tpos, Vector2.from_angle(float(m.target.get("a", 0.0))) * (220.0 if m.target.get("jet", false) else 75.0) * 0.6, bool(m.target.get("jet", false)), int(m.target.get("side", 0)))   # only machines in the air can be hit
                 part(P.FLAK, m.pos, 0.5, 14.0); missiles.remove_at(i); continue
@@ -2932,7 +2960,8 @@ func step(dtv: float) -> void:
                 if randf() < (0.25 + 0.08 * tech_up(m.target.tech, "ecm")) * (1.3 if jam_mult(m.target) < 1.0 else 1.0) - float(m.get("sk", 0.0)):   # electronic countermeasures: the seeker is decoyed and the missile runs on into the sea
                     fx_splash(m.pos + Vector2.from_angle(m.a) * 80.0, 14.0); sound("splash", m.pos, 0.3); missiles.remove_at(i); continue
             if m.kind == "ssm" and d < maxf(20.0, m.target.d.B):
-                mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); damage(m.target, m.dmg, "missile")
+                var hv: bool = m.get("hv", false)
+                mark_hit(m.target, m.pos, 4.0, false); mark_hit(m.target, m.pos, 3.0, false); hit_systems(m.target, m.pos, m.dmg, "missile"); _missile_blast(m.target, m.pos, hv); damage(m.target, m.dmg, "missile_h" if hv else "missile")
                 fx_boom(m.pos, 40.0, 0.9); part(P.FIRE, m.pos, 2.0, 12.0); sound("hit_big", m.pos, 0.55); missiles.remove_at(i); continue
         m.pos += Vector2.from_angle(m.a) * m.v * dt
         if modern:   # smoke laid every few metres of flight, so the trail is one unbroken line however fast she flies

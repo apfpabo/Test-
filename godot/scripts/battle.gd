@@ -637,10 +637,23 @@ class ShipView extends Node2D:
     var deck_shift := 0.0  # how far the deck is carried to her low side by the heel, metres
 
     ## How far she is heeled, -1..1 (+ to starboard): her list, and as she sinks she rolls further onto that side.
-    func heel() -> float:
+    ## It is shown easing over, never snapping (the owner, 13 Nov 2026: a torpedoed ship went from upright to her list
+    ## in one frame): `heel_now` follows `heel_to()` at HEEL_RATE a second of the battle screen's clock.
+    const HEEL_RATE := 0.07
+    var heel_now := 0.0
+    var heel_at := -1.0
+    func heel_to() -> float:
         var k: float = battle.sim.sink_k(s)
         if k <= 0.0: return s.list
         return (signf(s.list) if s.list != 0.0 else 1.0) * maxf(absf(s.list), minf(1.0, k * 1.6))
+    func heel() -> float:
+        var now: float = BattleSim.rclock
+        if heel_at < 0.0 or battle.paused: heel_now = heel_to()   # as she is when first seen (and at once while the action is stopped: nothing moves then)
+        elif now > heel_at:
+            var want: float = heel_to(); var dt: float = minf(now - heel_at, 0.5)
+            heel_now = move_toward(heel_now, want, (HEEL_RATE + absf(want - heel_now) * 0.35) * dt)
+        heel_at = now
+        return heel_now
 
     func build() -> void:
         var id: String = s.rec.type; var info: Dictionary = GameData.sprites.ships[id]

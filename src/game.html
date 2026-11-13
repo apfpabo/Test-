@@ -193,6 +193,9 @@ const WEAPONS = {
   tor93: { name: '610 mm long-range torpedoes', size: 'T', kind: 'torp', dmg: 900, range: 4200, rel: 240, speed: 22, count: 4, price: 9000 },
   torh:  { name: 'Homing torpedoes',           size: 'T', kind: 'torp', dmg: 560, range: 2600, rel: 200, speed: 18, count: 2, homing: true, price: 9000, tech: 'homing' },
   ssm:   { name: 'Anti-ship missiles',         size: 'V', kind: 'ssm', dmg: 430, range: 15000, rel: 60, speed: 290, count: 2, price: 20000, tech: 'missiles' },
+  // The heavy anti-ship missile (the owner, 13 Nov 2026): a ton of supersonic missile with a 750 kg warhead, built to
+  // break big ships. Twice as fast, harder to shoot down, and armour keeps out far less of it (`heavy`).
+  ssmh:  { name: 'Heavy anti-ship missiles',   size: 'V', kind: 'ssm', dmg: 1000, range: 20000, rel: 90, speed: 600, count: 2, price: 48000, heavy: true, tech: 'missiles' },
   sam:   { name: 'SAM launcher',               size: 'V', kind: 'sam', dmg: 0,   range: 10000, rel: 15, speed: 600, aa: .55, pd: .6, price: 18000, tech: 'missiles' },
 };
 const GUN_SIZES = ['S', 'M', 'L', 'H'];
@@ -478,7 +481,7 @@ const DESIGN_LIST = [
     slots: [sl('M', 60, 0, FWD, 'g127a'), sl('V', 46, 0, ALL, 'sam'), sl('V', -12.5, 0, ALL, 'ssm'), sl('V', -44, 0, ALL, 'sam'), sl('V', -51, 0, ALL, 'ssm'), sl('A', 39, 0, FWD, 'ciws'), sl('A', -36, 0, AFT, 'ciws'), sl('T', -3.5, 0, BEAM, 'torh')] },   // (her tubes clear of the cells and the after deckhouse: the owner, 13 Nov 2026)
   { id: 'ddg_sovremenny', cls: 'ddg', tech: 'vls', yard: 'neva', dn: 'Burevestnik', model: 'Sovremenny-class destroyer', year: 1980, era: 3, L: 156, B: 17.3, t: 6600, kn: 32.7, td: 800, armor: 10, crew: 350, price: 135000,
     p: { bow: .36, run: .2, stern: 't', tw: .5, sup: [[30, 22, 13, 4], [-30, 18, 11, 2]], fun: [[-6, 3.6, 2.8]], mast: [[26, 'l'], [-24, 'l']], boats: [[6, 1]] },
-    slots: [sl('M', 59, 0, FWD, 'g130a'), sl('M', -63, 0, AFT, 'g130a'), sl('V', 47, 0, ALL, 'sam'), sl('V', -50, 0, ALL, 'sam'), ...pair('V', 36, 7.2, 'ssm'), ...pair('A', 14, 6.6, 'ciws'), sl('T', 4, 0, BEAM, 'torh')] },
+    slots: [sl('M', 59, 0, FWD, 'g130a'), sl('M', -63, 0, AFT, 'g130a'), sl('V', 47, 0, ALL, 'sam'), sl('V', -50, 0, ALL, 'sam'), ...pair('V', 36, 7.2, 'ssmh'), ...pair('A', 14, 6.6, 'ciws'), sl('T', 4, 0, BEAM, 'torh')] },
   // ---------------------------------------------------------------- nuclear submarines (Era II)
   { id: 'ssn_skipjack', cls: 'ssn', yard: 'tidewater', dn: 'Leviathan', model: 'Skipjack-class submarine', year: 1959, era: 2, L: 76.7, B: 9.6, t: 3075, kn: 15, subKn: 33, td: 400, armor: 0, crew: 85, price: 130000,
     p: { sail: [[16, 11, 2.6]], casing: .3, smooth: true, tear: true },
@@ -500,7 +503,7 @@ const DESIGN_LIST = [
     slots: [sl('T', 64, -2, BOW, 'torh'), sl('T', 64, 2, BOW, 'torh'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 10, 0, ALL, 'ssm'), sl('V', -16, 0, ALL, 'ssm')] },
   { id: 'ssn_typhoon', cls: 'ssn', name: 'Heavy Missile Submarine', tech: 'reactors', yard: 'neva', dn: 'Polyarnik', model: 'Typhoon-class submarine', year: 1981, era: 3, L: 175, B: 23, t: 23200, kn: 12, subKn: 27, td: 800, armor: 0, crew: 160, price: 330000,
     p: { sail: [[-24, 32, 7]], casing: .55, smooth: true, tubes: [[58, -2, 10, 3.6]], pod: 1 },
-    slots: [sl('T', 72, -2.5, BOW, 'torh'), sl('T', 72, 2.5, BOW, 'torh'), sl('T', 72, 0, BOW, 'torh'), sl('V', 48, 0, ALL, 'ssm'), sl('V', 30, 0, ALL, 'ssm'), sl('V', 12, 0, ALL, 'ssm'), sl('V', -4, 0, ALL, 'ssm')] },
+    slots: [sl('T', 72, -2.5, BOW, 'torh'), sl('T', 72, 2.5, BOW, 'torh'), sl('T', 72, 0, BOW, 'torh'), sl('V', 48, 0, ALL, 'ssmh'), sl('V', 30, 0, ALL, 'ssmh'), sl('V', 12, 0, ALL, 'ssmh'), sl('V', -4, 0, ALL, 'ssmh')] },
   // ---------------------------------------------------------------- fleet carriers (Era II)
   { id: 'cv_shokaku', cls: 'cv', yard: 'seto', dn: 'Tsurugi', model: 'Shokaku-class carrier', year: 1941, era: 1, L: 257.5, B: 26, t: 25675, kn: 34, td: 1000, armor: 46, crew: 1660, hangar: 4, price: 150000,
     p: { bow: .32, run: .2, stern: 'c', fd: { w: 29, len: .94, x: -1, isl: [44, 14, 4.2], sidefun: [2, -10], wood: true } },
@@ -565,10 +568,10 @@ const DESIGN_LIST = [
     slots: [sl('T', 18, -1, BOW, 'torh'), sl('T', 18, 1, BOW, 'torh')] },
   { id: 'cv_kuznetsov', cls: 'cv', tech: 'vls', yard: 'neva', dn: 'Krepost', model: 'Kuznetsov-class carrier', year: 1990, era: 3, L: 305, B: 35.4, t: 55000, kn: 29, td: 1200, armor: 50, crew: 1960, hangar: 5, price: 420000,
     p: { bow: .3, run: .2, stern: 't', tw: .55, fd: { w: 50, len: .97, x: 0, isl: [-20, 32, 11], ang: true, ski: true } },
-    slots: [sl('V', 96, -8, ALL, 'ssm'), sl('V', 96, 8, ALL, 'ssm'), sl('V', -140, -22, ALL, 'sam'), sl('V', -140, 22, ALL, 'sam'), ...pair('A', 100, 24.4, 'ciws'), ...pair('A', -110, 24.6, 'ciws')] },
+    slots: [sl('V', 96, -8, ALL, 'ssmh'), sl('V', 96, 8, ALL, 'ssmh'), sl('V', -140, -22, ALL, 'sam'), sl('V', -140, 22, ALL, 'sam'), ...pair('A', 100, 24.4, 'ciws'), ...pair('A', -110, 24.6, 'ciws')] },
   { id: 'ssn_yasen', cls: 'ssn', tech: 'stealth', yard: 'neva', dn: 'Severyanin', model: 'Yasen-class submarine', year: 2013, era: 4, L: 139, B: 13, t: 8600, kn: 16, subKn: 31, td: 560, armor: 0, crew: 64, price: 260000,
     p: { sail: [[30, 11, 2.6]], casing: .22, smooth: true, tear: true, tubes: [[16, -2, 4, 1.8]], pod: 1 },
-    slots: [sl('T', 46, -1.6, BOW, 'torh'), sl('T', 46, 1.6, BOW, 'torh'), sl('V', 12, 0, ALL, 'ssm'), sl('V', 0, 0, ALL, 'ssm')] },
+    slots: [sl('T', 46, -1.6, BOW, 'torh'), sl('T', 46, 1.6, BOW, 'torh'), sl('V', 12, 0, ALL, 'ssmh'), sl('V', 0, 0, ALL, 'ssmh')] },
   { id: 'ddg_kongo', cls: 'ddg', tech: 'vls', yard: 'seto', dn: 'Myojin', model: 'Kongo-class destroyer', year: 1993, era: 3, L: 161, B: 21, t: 9500, kn: 30, td: 780, armor: 20, crew: 300, price: 160000,
     p: { bow: .38, run: .2, stern: 't', tw: .62, sup: [[26, 28, 18, 5], [-22, 16, 15, 2]], fun: [[6, 3, 2.4], [-22, 3, 2.4]], mast: [[22, 'l']], helo: [[-66, 7.5]] },
     slots: [sl('M', 64, 0, FWD, 'g127a'), sl('V', 50, 0, ALL, 'sam'), sl('V', -10.5, 0, ALL, 'ssm'), sl('V', -44, 0, ALL, 'sam'), sl('V', -51, 0, ALL, 'ssm'), sl('A', 43, 0, FWD, 'ciws'), sl('A', -36, 0, AFT, 'ciws'), sl('T', -2.5, 0, BEAM, 'torh')] },
@@ -663,10 +666,10 @@ const DESIGN_LIST = [
     slots: [sl('M', 70, 0, FWD, 'g127a'), sl('V', 56, 0, ALL, 'ssm'), sl('V', -54, 0, ALL, 'sam'), sl('V', 44, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'ssm'), sl('M', -78, 0, AFT, 'g127a'), sl('A', 38, -5, PORT, 'ciws'), sl('A', -40, 5, STBD, 'ciws'), sl('T', -24, 0, BEAM, 'torh')] },
   { id: 'cg_slava', cls: 'cg', yard: 'neva', dn: 'Gromoboi', model: 'Slava-class cruiser', year: 1982, era: 3, L: 186.4, B: 20.8, t: 9380, kn: 32, td: 880, armor: 25, crew: 476, price: 185000,
     p: { bow: .36, run: .2, stern: 't', tw: .5, sup: [[40, 24, 13, 4], [-18, 30, 11, 2]], fun: [[-10, 3.4, 2.4, -4], [-10, 3.4, 2.4, 4]], mast: [[32, 'l'], [-30, 'l']], boats: [[0, 1]] },
-    slots: [sl('M', 76, 0, FWD, 'g130a'), ...pair('V', 24, 8, 'ssm'), sl('V', -52, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'sam'), ...pair('A', -38, 7.6, 'ciws'), sl('T', -24, 0, BEAM, 'torh')] },
+    slots: [sl('M', 76, 0, FWD, 'g130a'), ...pair('V', 24, 8, 'ssmh'), sl('V', -52, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'sam'), ...pair('A', -38, 7.6, 'ciws'), sl('T', -24, 0, BEAM, 'torh')] },
   { id: 'cg_kirov', cls: 'cg', name: 'Nuclear Battlecruiser', nuc: true, yard: 'neva', dn: 'Admiral Volkov', model: 'Kirov-class battlecruiser', year: 1980, era: 3, L: 252, B: 28.5, t: 24300, kn: 32, td: 1100, armor: 76, crew: 710, price: 320000,
     p: { bow: .36, run: .2, stern: 't', tw: .55, sup: [[18, 44, 18, 5], [-48, 30, 15, 3]], fun: [[-12, 4.5, 3.6]], mast: [[14, 'l'], [-40, 'l']], helo: [[-108, 9]], boats: [[-22, 1]] },
-    slots: [...pair('V', 73, 4, 'ssm'), ...pair('V', 63, 4, 'ssm'), sl('V', 88, 0, ALL, 'sam'), sl('V', 50, 0, ALL, 'sam'), sl('V', -72, 0, ALL, 'sam'), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 44, 9.4, 'ciws'), ...pair('A', -70, 9.6, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
+    slots: [...pair('V', 73, 4, 'ssmh'), ...pair('V', 63, 4, 'ssmh'), sl('V', 88, 0, ALL, 'sam'), sl('V', 50, 0, ALL, 'sam'), sl('V', -72, 0, ALL, 'sam'), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 44, 9.4, 'ciws'), ...pair('A', -70, 9.6, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
 ];
 const HULL_K = 1; // overall toughness, tuned against measured battle lengths
 // Armour by place (the owner's go-ahead, 12 Nov 2026): the belt is each design's `armor`; here are the armoured deck,

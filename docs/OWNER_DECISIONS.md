@@ -132,6 +132,15 @@ hunters 4 (before: 2), patrols 3. The Survivor and the Disgraced Officer lost no
 all four, to hunters and patrols, though on days 72 to 234 rather than 23 to 76; the Hijacker three of four.
 Break-off succeeded in about half of the attempts in both rounds. **Open:** the Defector's and the Hijacker's hunters.
 
+**Measured 13 Nov 2026 (64 campaigns, details in [`TUNING_SHEET.md`](TUNING_SHEET.md), last section):** weaker or fewer
+hunters barely change the losses (8 of 8 for each origin as the game is; 6 to 8 of 8 with hunters at three-quarters
+strength, one group at a time, or both). The causes lie elsewhere: the Defector's prizes leave his squadron short of
+crew (as low as a tenth of what it needs), and the Hijacker's two torpedo boats count double, so his panel calls a
+hunter group of corvettes the weaker side and he fights and loses. Half the losses are to patrols, before any hunter
+sails. **To decide:** (1) torpedo boats count double only in a pack that attacks, not when they are the hunted;
+(2) refuse or warn against a prize crew there are not the men for, or have the Defector's patrons find him crew;
+(3) leave the hunters as they are.
+
 What was found, for the record:
 
 Thirty-two unattended campaigns of 240 days (eight origins, four seeds, the honest-money captain) were played three

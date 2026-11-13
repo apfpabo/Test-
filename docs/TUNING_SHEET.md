@@ -608,3 +608,42 @@ Port prices (before the 6% buying and 7% selling spread) seen by all captains wh
 | 121–180 | 8 (5–14) | 16 (6–34) | 32 (17–60) | 82 (40–164) | 58 (25–116) | 104 (44–227) |
 | 181–240 | 8 (5–15) | 16 (6–38) | 33 (17–58) | 81 (40–156) | 84 (25–120) | 80 (43–224) |
 
+
+## The Defector's and the Hijacker's hunters (13 Nov 2026, measured; nothing in the game changed)
+
+`tests/tune_probe.tscn` now takes two test-only settings from the environment: `HUNT_SCALE` rebuilds every hunter group
+at that multiple of the strength the game gave it, and `HUNT_MAX` caps how many groups of one origin may be out at once.
+It also records each hunter group as it appears (`hunters` in the JSON). Each origin was played for 240 days on eight
+seeds (11, 23, 37, 51, 61, 73, 89, 97), the Defector for the Concord, the honest-money captain as above, four ways:
+
+| Setting | The Defector: squadron lost on day | The Hijacker: squadron lost on day |
+|---|---|---|
+| As the game is (`HUNT_K` 1.15 rising to 1.45) | 56, 157, 70, 16, 74, 91, 228, 163 (8 of 8) | 58, 68, 111, 5, 21, 53, 197, 38 (8 of 8) |
+| Hunters three-quarters as strong | 56, 108, 70, 16, 74, 205, 102, survived (7 of 8) | 140, 62, 62, 5, 21, 51, 50, 38 (8 of 8) |
+| One hunter group at a time | 56, survived, 70, 16, 74, 91, 156, 176 (7 of 8) | 58, 68, 185, 5, 21, 53, 166, 38 (8 of 8) |
+| Both | 56, 173, 70, 16, 74, 88, 102, 133 (8 of 8) | survived, 62, survived, 5, 21, 51, 140, 38 (6 of 8) |
+
+**What sank them, as the game is:** the Defector, patrols 4, hunters 3, raiders 1; the Hijacker, hunters 4, patrols 4.
+Half the losses come before the hunters may sail at all (day 45; the Defector's intelligence squadron not before day 60).
+
+**What it shows.**
+- **Weaker or fewer hunters change little.** The differences between the four rows are within chance (one or two runs in
+  eight). Hunter strength is not the lever.
+- **The Defector's hunters are already smaller than he is.** They are capped by his origin's budget, and come at 0.3 to 0.7
+  of his squadron's reckoned strength. He loses to them, and to the Concord's patrols at 0.6 to 0.9, because his squadron
+  is **short of crew**: he takes prizes, each takes a prize crew, and he cannot hire or pay enough men to fill them. At the
+  loss his crew was 146 of 2,110 needed (seed 37), 186 of 2,324 (seed 73), 1,206 of 1,874 (seed 51). A ship short of crew
+  steams, reloads and fights fires slowly. One run (seed 97) lost three ships to a bounty squadron of two submarines he
+  could not find.
+- **The Hijacker's two motor torpedo boats count double** (`PT_STRENGTH_MULT`, the owner's rule for packs of boats). So a
+  hunter group of two or three corvettes (2,700 t) reads as 0.7 to 0.8 of his two 50 t boats, "the weaker side", and he
+  fights. He lost every such fight but one. Against patrols the panel reads 1.5 to 2.8 and he breaks off, usually
+  successfully. He loses his 7,200 t Liberty freighter in the first fortnight in five runs of eight: it is slow, and every
+  navy's patrol is hostile to him.
+
+**For the owner:**
+1. The Hijacker: should torpedo boats count double only when they attack (a pack), not when they are what is being
+   hunted? As it stands his contact panel calls a hunter group of corvettes an easy fight when it is not.
+2. The Defector: should a prize crew be refused, or warned against, when there are not the men for it? Or should his
+   patrons find him crew (a perk like the retainer)?
+3. Both: patrols, not hunters, are the early danger. Nothing was changed.

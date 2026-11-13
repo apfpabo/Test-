@@ -1694,6 +1694,9 @@ func _ew() -> void:
 		if float(late.delay) > 0.0: worst = maxf(worst, late.pos.distance_to(ls.world_pt(lb, cellm.slot.x, cellm.slot.y)))
 		else: break
 	ok(ls.missiles.size() >= 2 and worst < 1.5 and lb.pos.x > 5020.0, "the last missile of a salvo waits in her cell as the ship steams on (never more than %.1f m from it; the ship moved %d m)" % [worst, int(lb.pos.x - 5000.0)])
+	# every kind of shot has its card on the flagship's shell panel (the rail gun's slug had none: the panel failed every frame)
+	var hud_info: Dictionary = preload("res://scripts/battle_hud.gd").SHELL_INFO
+	ok(BattleSim.SHELLS.keys().all(func(k): return hud_info.has(k)), "every kind of shell has a card on the shell panel %s" % str(BattleSim.SHELLS.keys()))
 	# guns by era: no design of the missile age carries a wartime mount as built, and the reverse
 	var wrong := []
 	for id in GameData.hulls:

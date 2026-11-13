@@ -413,9 +413,11 @@ func show_results() -> void:
 const SHELL_INFO := {
     "ap": ["ARMOUR-PIERCING", "Defeats the armour it can beat and bursts inside the ship. Passes clean through light ships.", Color(0.16, 0.2, 0.26), Color(0.62, 0.66, 0.7)],
     "he": ["HIGH EXPLOSIVE", "Bursts on contact: wrecks light ships and upperworks and starts fires. Only splinters against armour.", Color(0.86, 0.72, 0.2), Color(0.5, 0.52, 0.42)],
-    "inc": ["INCENDIARY", "Sets a ship alight: four times the fires, little else. For merchants and wooden decks.", Color(0.78, 0.22, 0.16), Color(0.55, 0.5, 0.46)]}
+    "inc": ["INCENDIARY", "Sets a ship alight: four times the fires, little else. For merchants and wooden decks.", Color(0.78, 0.22, 0.16), Color(0.55, 0.5, 0.46)],
+    # the rail gun's solid shot (it had no entry: the flagship's shell panel failed every frame once she had fired one, 13 Nov 2026)
+    "slug": ["RAIL GUN SLUG", "A solid shot at three times a shell's speed. Goes through armour and clean through light ships. No burst, few fires.", Color(0.3, 0.42, 0.5), Color(0.7, 0.74, 0.78)]}
 func _shell(c: Vector2, hgt: float, kind: String, dim := false) -> void:
-    var info: Array = SHELL_INFO[kind]; var w := hgt * 0.3; var a := 0.4 if dim else 1.0
+    var info: Array = SHELL_INFO.get(kind, SHELL_INFO["ap"]); var w := hgt * 0.3; var a := 0.4 if dim else 1.0
     var body_top := c.y - hgt * 0.12; var base := c.y + hgt * 0.5; var x0 := c.x - w / 2
     # a round body lit from the upper left: bright a third of the way across, falling away to a dark far edge
     var shade := func(t: float) -> float: return 0.62 + 0.62 * exp(-pow((t - 0.3) / 0.24, 2.0)) - 0.3 * smoothstep(0.6, 1.0, t)
@@ -443,6 +445,7 @@ func _shell(c: Vector2, hgt: float, kind: String, dim := false) -> void:
 func _shell_panel(f, r: Rect2) -> void:
     draw_rect(r, PANEL); draw_rect(r, Color(GOLD, 0.35), false, 1)
     var mode: String = f.shell_mode; var cur: String = mode if mode != "auto" else (f.last_shell if f.last_shell != "" else "ap")
+    if not SHELL_INFO.has(cur): cur = "ap"   # (a kind with no card must never stop the panel)
     var info: Array = SHELL_INFO[cur]
     _shell(Vector2(r.position.x + 30, r.position.y + r.size.y * 0.56), 66.0, cur)
     var tx := r.position.x + 62

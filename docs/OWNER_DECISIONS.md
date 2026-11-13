@@ -128,6 +128,24 @@ everything (Kongo, Type 45, Sachsen, Doria against the Burke) the missiles were 
 to a decision, so those pairs say little about price. The Wayfarer and the Umbra carry no guns that fight ships, as
 noted above.
 
+**Re-priced at the owner's go-ahead (13 Nov 2026), two passes, hull price:** Type 42 125,000 to 145,000; Bremen 110,000
+to 150,000; Perry 100,000 to 110,000; Wraith (Zumwalt) 215,000 to 235,000; Gorshkov 170,000 to 95,000; Trident
+(Independence) 60,000 to 35,000; Kasumi (Mogami) 90,000 to 45,000; Ammiraglio (Thaon) 88,000 to 42,000; Luchs (Gepard)
+33,000 to 27,000; Thunderhead 240,000 to 160,000; and, once the stalled fights were decided (below), Doria 200,000 to
+160,000, Sachsen 175,000 to 140,000, Maestrale 78,000 to 68,000. The Wayfarer and the Umbra are left: they are not built
+to fight warships.
+
+A fault the duels found: a missile ship whose cells were empty still kept missile range (9 km), out of reach of her guns,
+so two such ships held 5 km apart until the action ended without a shot. That was the Kongo, Type 45, Sachsen and Doria
+"stalemates". Fixed (`BattleSim.has_loaded`): she now closes to gun range once her missiles are spent.
+
+**How far to trust it.** Fair after the passes: Thunderhead, Luchs, Kasumi, Bremen, Trident, and the Kirov, Slava and
+Sovremenny. Still losing at equal money: the Gorshkov, Ammiraglio, Doria, Sachsen and Maestrale (a lower price changes
+nothing until it buys another whole ship; against the Sovremenny or the Burke they lose ship for ship). The Type 42,
+Wraith and Perry swing from cheap to dear as the sides go from 1 v 1 to 3 v 4: the measure there depends more on how
+many ships each side has than on price, and their prices were set between the two. **To decide:** whether the ships still
+losing should be given more to fight with (or the peers they are measured against are too strong), rather than cut further.
+
 Four fights a pair is a small sample, and submarines cannot be priced this way (a boat that meets destroyers in the open
 loses). **To decide:** whether these stand, and whether any of the losers should be given more to fight with instead of
 being made cheaper.
@@ -154,7 +172,8 @@ crew (as low as a tenth of what it needs), and the Hijacker's two torpedo boats 
 hunter group of corvettes the weaker side and he fights and loses. Half the losses are to patrols, before any hunter
 sails. **To decide:** (1) torpedo boats count double only in a pack that attacks, not when they are the hunted;
 (2) refuse or warn against a prize crew there are not the men for, or have the Defector's patrons find him crew;
-(3) leave the hunters as they are.
+(3) leave the hunters as they are. **Decided 13 Nov 2026: all three** (the agent's recommendation): built, and measured
+in the tuning sheet. The Hijacker now survives half his runs (none before); the Defector lives longer but is still lost.
 
 What was found, for the record:
 

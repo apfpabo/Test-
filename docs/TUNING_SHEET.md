@@ -647,3 +647,19 @@ Half the losses come before the hunters may sail at all (day 45; the Defector's 
 2. The Defector: should a prize crew be refused, or warned against, when there are not the men for it? Or should his
    patrons find him crew (a perk like the retainer)?
 3. Both: patrols, not hunters, are the early danger. Nothing was changed.
+
+### After the owner's go-ahead (13 Nov 2026)
+
+Three changes, at his word: your own torpedo boats count at their price in your squadron's strength (`Campaign.own_strength`;
+enemy boats still count double); the prize screen says how manned a prize leaves you, and the probe's captain takes a prize
+or raises a wreck only if he stays four-fifths manned (`Campaign.manned_with`, the probe's `_will_crew`); the hunters are
+left as they were. The same 16 runs, squadron lost on day:
+
+| Origin | Before | After | What sank them, after |
+|---|---|---|---|
+| The Defector | 56, 157, 70, 16, 74, 91, 228, 163 | 58, 124, 101, 155, 74, 206, 111, 163 | hunters 4, patrols 2, raiders, a bounty squadron |
+| The Hijacker | 58, 68, 111, 5, 21, 53, 197, 38 (8 lost) | 140, survived, 15, survived, 199, survived, survived, 47 (4 lost) | hunters 2, convoy escorts 2 |
+
+The Hijacker now breaks off from most hunter groups (58 of 87 contacts), since his panel reads them at about his own strength;
+half his runs survive. The Defector lives longer (by a month or more in four runs) but is still lost in all eight. He is still
+short-handed at the end in three runs (309 of 1,485, none of 1,255, 532 of 1,438): crew lost in action, not to prizes.

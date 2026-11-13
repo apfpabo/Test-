@@ -2,7 +2,7 @@ extends Control
 ## Battle setup: pick a preset engagement or build both squadrons from the design registers.
 ## Quick battles outside the campaign.
 
-const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"], 3: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"], 4: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink", "netcentric", "stealth", "precision", "drones"]}
+const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"], 3: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"], 4: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink", "netcentric", "stealth", "precision", "drones", "railgun"]}
 const PRESETS := [
     {"name": "Destroyer action", "desc": "Three Tidewater destroyers against three Strelsk destroyers. Fast, close, torpedoes in the water.", "player": ["dd_fletcher", "dd_fletcher", "dd_gearing"], "enemy": ["dd_narvik", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
     {"name": "Cruiser action", "desc": "A Sovereign-class heavy cruiser and an Arbiter-class light cruiser with a destroyer screen against two Feldherr-class cruisers.", "player": ["ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"], "enemy": ["ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
@@ -129,7 +129,7 @@ func _edit(arr: Array, mods: Array, i: int) -> void:
         var ob := OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, ""); ob.custom_minimum_size.x = 290
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
-            if not _fits(wid, sl.s) or (w.has("tech") and not tech.has(w.tech)): continue
+            if not _fits(wid, sl.s) or (w.has("tech") and not tech.has(w.tech)) or (w.get("power", false) and not d.get("power", false)): continue
             ob.add_item(String(w.name) + " · %d t" % int(BattleSim.weapon_tons(wid))); ob.set_item_metadata(ob.item_count - 1, wid)
             if wid == cur: ob.selected = ob.item_count - 1
         ob.item_selected.connect(func(j): m.fit[sx] = ob.get_item_metadata(j); edit_sel = sx; _edit(arr, mods, i))

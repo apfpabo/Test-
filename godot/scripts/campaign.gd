@@ -239,7 +239,7 @@ func has_tech(t: String) -> bool: return G.tech.has(t)
 ## G.tech); levels II and III are kept in the same list as "<id>+2" and "<id>+3" (BattleSim.tech_lv reads them), each
 ## costing more and strengthening what the first level does by a step (TECH_UP says what). The three that only open
 ## designs or weapons (TECH_MAX) have one level, vertical launch two. Eras count a technology once, at level I. Untuned.
-const TECH_MAX := {"nuclear": 1, "reactors": 1, "nukes": 1, "vls": 2}
+const TECH_MAX := {"nuclear": 1, "reactors": 1, "nukes": 1, "vls": 2, "railgun": 1}
 const TECH_LV_COST := [1.0, 1.25, 1.75]   # of the technology's cost, for levels I, II and III
 const TECH_UP := {
     "radar": "+5% gun range and salvos 5% tighter", "sonar": "sonar reaches 20% farther", "homing": "homing torpedoes' seekers hear 15% farther",

@@ -768,6 +768,7 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
             var y1: float = hpx if i == n - 1 else (float(info.oy) + (i + 0.5 - (n - 1) / 2.0) * g) * spr
             var r: float = m.rec[i] if i < m.rec.size() else m.recoil
             var rc: float = pow(r, 0.6) * float(m.w.get("bl", 0.0)) * 0.22 * spr   # slams back at once, runs out slowly
+            if m.w.get("hide", false): rc += (1.0 - m.out) * (float(m.w.get("bl", 0.0)) + 0.4) * spr   # a concealed barrel lies back inside its cupola
             var src = Rect2(0, y0, tex.get_width(), y1 - y0)
             draw_texture_rect_region(tex, Rect2(o + Vector2(-rc, y0), src.size), src, col)
     func _visible_mount(s: BattleSim.CShip, m) -> bool:

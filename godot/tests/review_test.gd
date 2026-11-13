@@ -1455,6 +1455,21 @@ func _levels() -> void:
 	ok(bw.dep > b_dep and bw.vel.x > 0.0 and bw.vel.length() < 4.0, "it is pressed down again from the depth it had, and slides towards the new shell")
 	for i in 40: sp.fx(0.1)
 	ok(bw.dep == 0.0 and sp.splash_cols.is_empty(), "three seconds after the last shell the hollow has filled, and a light gun's column is gone within five")
+	# Era IV guns (13 Nov 2026): concealed barrels (looks only), the rail gun, and the Sea Shadow with no guns at all
+	var wr: Dictionary = GameData.weapons["rail"]; var w16: Dictionary = GameData.weapons["g406"]
+	ok(GameData.weapons["g155s"].get("hide", false) and GameData.weapons["g57s"].get("hide", false) and BattleSim.weapon_tons("rail") > 0.0 and BattleSim.weapon_tons("g155s") > 0.0 and BattleSim.weapon_tons("g57s") > 0.0, "the concealed guns and the rail gun are weapons with a weight")
+	ok(BattleSim.shell_pen("rail", wr, 1.0) > BattleSim.shell_pen("g406", w16, 1.0) and float(wr.dmg) < float(GameData.weapons["g152t"].dmg) and float(wr.speed) > 2.0 * float(w16.speed) and BattleSim.SHELLS.slug.fire < 0.5, "a rail gun's slug: fast, through armour at any range, a light blow and few fires")
+	ok(GameData.hulls["ddg_zumwalt"].get("power", false) and not GameData.hulls["bb_iowa"].get("power", false) and Campaign.tech_max("railgun") == 1, "only a hull with the power carries a rail gun, behind its own research")
+	var hs := BattleSim.new(); hs.setup([Campaign.new_ship("ddg_zumwalt", "W", "player", ["stealth"])], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], ["stealth"], [], 0)
+	var hm: BattleSim.Mount = null
+	for m in hs.ships[0].mounts: if m.w.get("hide", false): hm = m; break
+	ok(hm != null and hm.wid == "g155s", "the Wraith's standard guns are the concealed 155 mm")
+	if hm != null:
+		hs.hold_fire = true; for i in 40: hs.step(0.1)
+		var in_: float = hm.out
+		hm.recoil = 1.0; for i in 12: hs.step(0.1)
+		ok(in_ == 0.0 and hm.out == 1.0, "a concealed gun lies in while it is quiet and runs out when it fires (%.1f, %.1f)" % [in_, hm.out])
+	ok(not GameData.hulls["co_shadow"].slots.any(func(q): return ["S", "M", "L", "H", "A"].has(q.s)) and GameData.hulls["co_shadow"].slots.size() == 3, "the Sea Shadow carries launch cells and no guns")
 	ok(preload("res://scripts/skirmish.gd").ERA_TECH.has(4) and preload("res://scripts/skirmish.gd").ERA_TECH[4].has("stealth"), "the quick battle has Era IV")
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1

@@ -37,6 +37,8 @@ class Mount:
     var dead = false
     var rest_t = 0.0
     var rest_o: CShip = null
+    var out := 1.0     # a concealed gun (the weapon's `hide`): how far its barrel is run out, 0 hidden; looks only
+    var quiet := 99.0  # seconds since it last had a target or fired
     var lvl = 0        # 0 on the deck; 1 and up for superfiring mounts whose barrels pass over the one ahead
     var clear := PackedByteArray()   # 1 per 2-degree bearing bin (ship frame) where the barrels clear the ship's own structure
 
@@ -855,6 +857,7 @@ func nearest_any(from: Vector2, side: int) -> CShip:
 ## topweight: a top-heavy ship rolls, and her salvos spread, worst in a sea.
 const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
     "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500, "g381q": 2000, "g406t": 1150, "g510t": 2700,
+    "g57s": 8, "g155s": 60, "rail": 110,
     "aa20": 1, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}
 const HEIGHT := {"A": 1.5, "V": 0.8, "T": 0.9}        # how high a mount sits, guns on the deck being 1
 const TOP_SLACK := 1.10                                # topweight a hull bears before it tells
@@ -1183,6 +1186,7 @@ const BOWL_FILL := 2.2   # and seconds the sea takes to fill it again
 ## the 16-inch beats about 500 mm at half range); a cruiser's gun less, being lighter for its bore, a light gun less
 ## again. Guns with no calibre in their name go by their shell's weight as before.
 static func shell_pen(wid: String, w: Dictionary, frac: float) -> float:
+    if w.has("pen"): return float(w.pen) * (1.0 - 0.25 * frac)   # a rail gun's slug: its own figure, and it keeps most of it at range
     var mm := float(calibre_mm(wid))
     if mm <= 0.0: return float(w.dmg) * 1.9 * (1.0 - 0.45 * frac)
     match String(w.size):
@@ -1406,7 +1410,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
         dd = maxf(60.0, d * (1 + (randf() - 0.5) * 0.06 * fc))
     # penetration in mm of armour, by calibre and range (armour by place); fall: how steeply it comes down
     var pen: float = shell_pen(m.wid, w, clampf(dd / rng, 0.0, 1.0))
-    var kind := shell_for(s, aim, pen)
+    var kind := "slug" if w.get("rail", false) else shell_for(s, aim, pen)   # a rail gun has one kind of shot
     s.last_shell = kind
     pen *= SHELLS[kind].pen
     shells.append({"s": p, "e": p + Vector2.from_angle(a) * dd, "pos": p, "t": 0.0, "T": dd / w.speed, "dmg": w.dmg, "side": s.side, "size": w.size, "pen": pen, "fall": clampf(dd / rng, 0.0, 1.0), "who": s, "ammo": kind, "tgt": tgt, "rel": float(w.rel), "mm": calibre_mm(m.wid)})
@@ -1572,6 +1576,9 @@ func update_weapons(s: CShip, dt: float) -> void:
     for m in s.mounts:
         if m.dead: m.st = ""; continue
         var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 0.5)
+        if w.get("hide", false):   # a concealed gun runs its barrel out when it has a target or is firing, and in again after ten quiet seconds
+            m.quiet = 0.0 if (m.tgt != null or not m.queue.is_empty() or m.recoil > 0.0) else m.quiet + dt
+            m.out = move_toward(m.out, 1.0 if m.quiet < 10.0 else 0.0, dt / 0.9)
         for b in m.rec.size(): m.rec[b] = maxf(0.0, m.rec[b] - dt * 0.5)   # the barrel runs out again over about two seconds
         if not m.queue.is_empty(): _ripple(s, m, dt)
         if m.ammo == 0: m.st = "empty"; continue   # magazine dry
@@ -1838,7 +1845,8 @@ func ff_confirm(kind: String) -> bool:   # true: go ahead (no danger, or the pla
 const SHELLS := {
     "ap": {"name": "AP", "pen": 1.0, "nopen": 1.0, "hit": 1.0, "fire": 1.0},
     "he": {"name": "HE", "pen": 0.35, "nopen": 3.0, "hit": 0.9, "fire": 2.0},
-    "inc": {"name": "Incendiary", "pen": 0.25, "nopen": 1.6, "hit": 0.65, "fire": 4.0}}
+    "inc": {"name": "Incendiary", "pen": 0.25, "nopen": 1.6, "hit": 0.65, "fire": 4.0},
+    "slug": {"name": "Slug", "pen": 1.0, "nopen": 0.5, "hit": 1.0, "fire": 0.25}}   # a rail gun's solid shot: no burst, few fires
 const SHELL_MODES := ["auto", "ap", "he", "inc"]
 
 ## The shell a gun loads: the ship's choice, or (auto, and always for the AI) by the target where it aims: AP if the
@@ -1920,7 +1928,7 @@ func shell_result(tg: CShip, sh: Dictionary) -> Dictionary:
         if plate < 25.0: kb = maxf(kb, 0.55 * float(am.hit) * endk)   # thin plating: the burst does real harm
         if place == "tur": spare = mount
         return {"kind": "nopen", "k": minf(kb, 0.8), "text": tag + ("Burst on the armour" if sh.get("ammo", "ap") != "ap" else "No penetration") + where_, "fire": am.fire, "place": place, "ends": ends}
-    if sh.get("ammo", "ap") == "ap" and pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14 or ends) and place != "tur" and randf() < 0.55:
+    if sh.get("ammo", "ap") in ["ap", "slug"] and pen > eff * 4.0 and (tg.d.armor < 60 or tg.d.B < 14 or ends) and place != "tur" and randf() < 0.55:
         return {"kind": "over", "k": 0.35, "text": tag + "Overpenetration" + where_, "fire": am.fire, "place": place, "ends": ends}
     var base: float = {"belt": float(A.belt), "deck": float(A.deck), "tur": float(A.tur)}[place]
     if not ends or place == "tur": tg.ar[place] = maxf(base * 0.4, float(tg.ar[place]) - sh.dmg * 0.1)   # the plate is weakened where it was holed

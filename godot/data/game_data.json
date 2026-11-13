@@ -15200,6 +15200,7 @@
    "armor": 25,
    "crew": 175,
    "price": 260000,
+   "power": true,
    "p": {
     "outline": [
      [
@@ -15276,11 +15277,11 @@
        2.45
       ]
      ],
-     "def": "g127s"
+     "def": "g155s"
     },
     {
      "s": "M",
-     "x": 50,
+     "x": 42,
      "y": 0,
      "arcs": [
       [
@@ -15288,7 +15289,7 @@
        2.45
       ]
      ],
-     "def": "g127s"
+     "def": "g155s"
     },
     {
      "s": "V",
@@ -15589,7 +15590,7 @@
    "slots": [
     {
      "s": "S",
-     "x": 26,
+     "x": 24,
      "y": 0,
      "arcs": [
       [
@@ -15597,7 +15598,7 @@
        2.45
       ]
      ],
-     "def": "g76"
+     "def": "g57s"
     },
     {
      "s": "V",
@@ -15631,6 +15632,122 @@
    "klass": "corvette",
    "speed": 35,
    "hull": 630,
+   "fuel": 1.1,
+   "island": null
+  },
+  "co_shadow": {
+   "kind": "war",
+   "cls": "Light",
+   "cargo": 20,
+   "sonar": true,
+   "radar": true,
+   "tech": "stealth",
+   "id": "co_shadow",
+   "name": "Stealth Missile Boat",
+   "yard": "tidewater",
+   "dn": "Umbra",
+   "model": "Sea Shadow test ship (a fighting fit she never carried)",
+   "year": 1985,
+   "era": 4,
+   "L": 50,
+   "B": 21,
+   "t": 560,
+   "kn": 28,
+   "td": 300,
+   "armor": 0,
+   "crew": 24,
+   "price": 95000,
+   "p": {
+    "outline": [
+     [
+      25,
+      0.25
+     ],
+     [
+      17.5,
+      7.6
+     ],
+     [
+      11,
+      10.5
+     ],
+     [
+      -10,
+      10.5
+     ],
+     [
+      -16.5,
+      8.2
+     ],
+     [
+      -25,
+      0.25
+     ]
+    ],
+    "stealth": {
+     "tumble": true,
+     "shell": [
+      [
+       17,
+       0.5
+      ],
+      [
+       11,
+       3.3
+      ],
+      [
+       -10,
+       3.3
+      ],
+      [
+       -17,
+       0.5
+      ]
+     ],
+     "shellH": 9
+    }
+   },
+   "slots": [
+    {
+     "s": "V",
+     "x": 8,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": 0,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "ssm"
+    },
+    {
+     "s": "V",
+     "x": -8,
+     "y": 0,
+     "arcs": [
+      [
+       0,
+       3.151592653589793
+      ]
+     ],
+     "def": "sam"
+    }
+   ],
+   "klass": "corvette",
+   "speed": 28,
+   "hull": 580,
    "fuel": 1.1,
    "island": null
   },
@@ -16581,6 +16698,65 @@
    "tl": 5,
    "bl": 5.2,
    "bw": 0.38
+  },
+  "g57s": {
+   "name": "57 mm stealth gun",
+   "size": "S",
+   "kind": "gun",
+   "dmg": 11,
+   "range": 2300,
+   "rel": 0.8,
+   "speed": 340,
+   "spread": 0.009,
+   "barrels": 1,
+   "aa": 0.07,
+   "price": 5000,
+   "tw": 3,
+   "tl": 5.6,
+   "bl": 4.2,
+   "bw": 0.24,
+   "hide": true,
+   "tech": "stealth"
+  },
+  "g155s": {
+   "name": "155 mm stealth gun",
+   "size": "M",
+   "kind": "gun",
+   "dmg": 60,
+   "range": 4400,
+   "rel": 6,
+   "speed": 360,
+   "spread": 0.008,
+   "barrels": 1,
+   "aa": 0,
+   "price": 16000,
+   "tw": 4.6,
+   "tl": 9.6,
+   "bl": 8.2,
+   "bw": 0.44,
+   "hide": true,
+   "tech": "stealth"
+  },
+  "rail": {
+   "name": "Rail gun",
+   "size": "M",
+   "kind": "gun",
+   "dmg": 45,
+   "range": 6500,
+   "rel": 12,
+   "speed": 900,
+   "spread": 0.004,
+   "barrels": 1,
+   "aa": 0.04,
+   "price": 60000,
+   "tw": 4.8,
+   "tl": 8.6,
+   "bl": 9.4,
+   "bw": 0.8,
+   "rail": true,
+   "power": true,
+   "pen": 520,
+   "tech": "railgun"
   },
   "g127": {
    "name": "5-inch twin DP",

@@ -43,14 +43,15 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
     manifest.ships[id] = { spr: res.spr, w: res.w, h: res.h, pals };
     for (const [k, url] of Object.entries(res.img)) save('ships/' + id + '/' + k + (url.startsWith('data:image/png') ? '.png' : '.webp'), url);
   }
-  if (only) { fs.writeFileSync(path.join(OUT, 'data', 'sprites.json'), JSON.stringify(manifest)); console.log('baked', only.join(', '), (bytes / 1e6).toFixed(1), 'MB'); await b.close(); return; }
+  const onlyM = process.env.MOUNTS ? process.env.MOUNTS.split(',') : null;   // with ONLY: these mounts as well (MOUNTS=wid,wid)
+  if (only && !onlyM) { fs.writeFileSync(path.join(OUT, 'data', 'sprites.json'), JSON.stringify(manifest)); console.log('baked', only.join(', '), (bytes / 1e6).toFixed(1), 'MB'); await b.close(); return; }
   // gun mounts, AA and torpedo tubes, in each national style (the shipbuilder's), baked in neutral grey and tinted
   // with the flag's paint in Godot. Each image packs the grey in R and B, the height in metres / H_MAX in G, and alpha.
   // Guns are baked as housing and barrels apart, so only the barrels run back on recoil; ao is a soft contact shadow.
-  const mres = await p.evaluate(() => {
+  const mres = await p.evaluate((onlyM) => {
     const out = {}, S = 20;
     for (const [wid, w] of Object.entries(WEAPONS)) {
-      if (w.kind === 'ssm' || w.kind === 'sam') continue;
+      if (w.kind === 'ssm' || w.kind === 'sam' || (onlyM && !onlyM.includes(wid))) continue;
       const len = w.kind === 'gun' ? w.tl * 0.42 + w.bl + 1 : w.kind === 'torp' ? 6 : 4.5, back = w.kind === 'gun' ? w.tl * 0.62 + 1 : w.kind === 'torp' ? 5 : 3, half = w.kind === 'gun' ? Math.max(w.tw * 0.62, 1.5) + 0.6 : 2.6;
       const cv = () => { const c = document.createElement('canvas'); c.width = Math.ceil((len + back) * S); c.height = Math.ceil(half * 2 * S); return c; };
       const draw = (c, st, part, hm, shadow) => { const g = c.getContext('2d'); g.translate(back * S, half * S); g.scale(S, S); HM.on = hm; try { drawMount(g, wid, 0, REF_PAL, 0, false, shadow, part, st); } finally { HM.on = false; } };
@@ -67,8 +68,9 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
       out[wid].img.ao = ao.toDataURL('image/webp', 0.8);
     }
     return out;
-  });
+  }, onlyM);
   for (const [wid, m] of Object.entries(mres)) { manifest.mounts[wid] = { spr: m.spr, ox: m.ox, oy: m.oy, w: m.w, h: m.h, split: m.split, styled: m.styled }; for (const [k, url] of Object.entries(m.img)) save('mounts/' + wid + '/' + k + (url.startsWith('data:image/png') ? '.png' : '.webp'), url); }
+  if (only) { fs.writeFileSync(path.join(OUT, 'data', 'sprites.json'), JSON.stringify(manifest)); console.log('baked', only.join(', '), 'and mounts', onlyM.join(', ')); await b.close(); return; }
   manifest.yard_style = await p.evaluate(() => YARD_STYLE); manifest.h_max = await p.evaluate(() => H_MAX);
   // effect textures
   const fx = await p.evaluate(() => {

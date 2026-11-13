@@ -154,6 +154,12 @@ const WEAPONS = {
   g76:   { name: '76 mm rapid DP',             size: 'S', kind: 'gun', dmg: 15,  range: 2300, rel: 1.5, speed: 330, spread: .009, barrels: 2, aa: .05, price: 4000,  tw: 3.4, tl: 4,  bl: 3.6, bw: .26, gap: .9, tech: 'missiles' },
   g120t: { name: '4.7-inch twin',              size: 'S', kind: 'gun', dmg: 27,  range: 2700, rel: 5,   speed: 310, spread: .010, barrels: 2, aa: 0,   price: 4500,  tw: 4.2, tl: 5,  bl: 5.2, bw: .36, gap: 1.2 },
   g127s: { name: '5-inch single DP',           size: 'S', kind: 'gun', dmg: 30,  range: 3000, rel: 4,   speed: 320, spread: .010, barrels: 1, aa: .05, price: 3000,  tw: 3.6, tl: 5,  bl: 5.2, bw: .38 },
+  // Era IV guns (the owner, 13 Nov 2026). `hide`: the barrel lies inside a faceted cupola until the gun has work to do
+  // (looks only). `rail`: an electromagnetic gun: a solid slug, very fast and flat, that goes through armour and starts
+  // few fires; slow to charge; only a hull with the power for it (`power` on the design) can carry one.
+  g57s:  { name: '57 mm stealth gun',          size: 'S', kind: 'gun', dmg: 11,  range: 2300, rel: 0.8, speed: 340, spread: .009, barrels: 1, aa: .07, price: 5000,  tw: 3,   tl: 5.6, bl: 4.2, bw: .24, hide: true, tech: 'stealth' },
+  g155s: { name: '155 mm stealth gun',         size: 'M', kind: 'gun', dmg: 60,  range: 4400, rel: 6,   speed: 360, spread: .008, barrels: 1, aa: 0,   price: 16000, tw: 4.6, tl: 9.6, bl: 8.2, bw: .44, hide: true, tech: 'stealth' },
+  rail:  { name: 'Rail gun',                   size: 'M', kind: 'gun', dmg: 45,  range: 6500, rel: 12,  speed: 900, spread: .004, barrels: 1, aa: .04, price: 60000, tw: 4.8, tl: 8.6, bl: 9.4, bw: .8, rail: true, power: true, pen: 520, tech: 'railgun' },
   g127:  { name: '5-inch twin DP',             size: 'M', kind: 'gun', dmg: 30,  range: 3000, rel: 4,   speed: 320, spread: .010, barrels: 2, aa: .06, price: 6000,  tw: 4.8, tl: 6,  bl: 5.2, bw: .38, gap: 1.4 },
   g130t: { name: '130 mm twin',                size: 'M', kind: 'gun', dmg: 33,  range: 3100, rel: 5,   speed: 320, spread: .010, barrels: 2, aa: .02, price: 7000,  tw: 5,   tl: 6.4, bl: 6.2, bw: .4, gap: 1.5 },
   g150s: { name: '150 mm single',              size: 'M', kind: 'gun', dmg: 55,  range: 3600, rel: 7.5, speed: 340, spread: .009, barrels: 1, aa: 0,   price: 5000,  tw: 4,   tl: 5.6, bl: 7,   bw: .44 },
@@ -509,16 +515,20 @@ const DESIGN_LIST = [
     p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 54, len: .985, x: 0, isl: [-52, 22, 9], ang: true } },
     slots: [sl('V', -152, -24, ALL, 'sam'), sl('V', -152, 24, ALL, 'sam'), sl('V', 122, 26, ALL, 'sam'), ...pair('A', 108, 27.6, 'ciws'), ...pair('A', -124, 27.6, 'ciws')] },
   // ---------------------------------------------------------------- Era IV · Network age (the owner's go-ahead, 11 Nov 2026)
-  { id: 'ddg_zumwalt', cls: 'ddg', tech: 'stealth', yard: 'tidewater', dn: 'Wraith', model: 'Zumwalt-class destroyer', year: 2016, era: 4, L: 190, B: 24.6, t: 15700, kn: 30, td: 900, armor: 25, crew: 175, price: 260000,
+  { id: 'ddg_zumwalt', cls: 'ddg', tech: 'stealth', yard: 'tidewater', dn: 'Wraith', model: 'Zumwalt-class destroyer', year: 2016, era: 4, L: 190, B: 24.6, t: 15700, kn: 30, td: 900, armor: 25, crew: 175, price: 260000, power: true,
     // a wave-piercing hull, widest abaft amidships, its sides leaning inboard; one great slab-sided deckhouse and nothing else standing
     p: { outline: [[95, 0.3], [91, 1.5], [72, 5.0], [48, 8.6], [24, 11.0], [2, 12.1], [-40, 12.3], [-78, 11.7], [-95, 10.7]], stealth: { tumble: true, up: [[-10, 30, 12.5, 2]] }, sup: [[-14, 52, 19.5, 3]], helo: [[-78, 9]] },
-    slots: [sl('M', 62, 0, FWD, 'g127s'), sl('M', 50, 0, FWD, 'g127s'), sl('V', 30, -6, ALL, 'ssm'), sl('V', 30, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
+    slots: [sl('M', 62, 0, FWD, 'g155s'), sl('M', 42, 0, FWD, 'g155s'), sl('V', 30, -6, ALL, 'ssm'), sl('V', 30, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
   { id: 'ddg_gorshkov', cls: 'ddg', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 170000,
     p: { bow: .38, run: .2, stern: 't', tw: .6, stealth: { up: [[17, 15, 8.5, 2]] }, sup: [[14, 30, 13, 2]], fun: [[-8, 3.2, 2.4]], mast: [[15, 'l']], helo: [[-55, 7]] },
     slots: [sl('M', 52, 0, FWD, 'g130t'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 32, 0, ALL, 'sam'), sl('V', -30, 0, ALL, 'sam'), ...pair('A', -20, 5.6, 'ciws'), sl('T', -6, 0, BEAM, 'torh')] },
   { id: 'co_visby', cls: 'corvette', name: 'Stealth Corvette', tech: 'stealth', yard: 'clydemouth', dn: 'Shade', model: 'Visby-class corvette', year: 2009, era: 4, L: 72.7, B: 10.4, t: 640, kn: 35, td: 380, armor: 0, crew: 43, price: 60000, radar: true,
     p: { outline: [[36.35, 0.2], [31, 1.7], [19, 4.1], [7, 5.1], [-22, 5.2], [-36.35, 4.7]], stealth: { tumble: true }, sup: [[3, 25, 8.4, 2]], mast: [[1, 'l']] },
-    slots: [sl('S', 26, 0, FWD, 'g76'), sl('V', -14, 0, ALL, 'ssm'), sl('T', -24, 0, BEAM, 'torh')] },
+    slots: [sl('S', 24, 0, FWD, 'g57s'), sl('V', -14, 0, ALL, 'ssm'), sl('T', -24, 0, BEAM, 'torh')] },
+  // the owner's own wish (13 Nov 2026): the Sea Shadow test ship, given a fighting fit she never had. No guns: launch cells in her roof.
+  { id: 'co_shadow', cls: 'corvette', name: 'Stealth Missile Boat', tech: 'stealth', yard: 'tidewater', dn: 'Umbra', model: 'Sea Shadow test ship (a fighting fit she never carried)', year: 1985, era: 4, L: 50, B: 21, t: 560, kn: 28, td: 300, armor: 0, crew: 24, price: 95000, radar: true,
+    p: { outline: [[25, 0.25], [17.5, 7.6], [11, 10.5], [-10, 10.5], [-16.5, 8.2], [-25, 0.25]], stealth: { tumble: true, shell: [[17, 0.5], [11, 3.3], [-10, 3.3], [-17, 0.5]], shellH: 9 } },   // (pointed at both ends, the owner's sketch)
+    slots: [sl('V', 8, 0, ALL, 'ssm'), sl('V', 0, 0, ALL, 'ssm'), sl('V', -8, 0, ALL, 'sam')] },
   { id: 'cv_ford', cls: 'cv', name: 'Nuclear Carrier', tech: 'netcentric', nuc: true, yard: 'tidewater', dn: 'Dominion', model: 'Gerald R. Ford-class carrier', year: 2017, era: 4, L: 337, B: 41, t: 100000, kn: 31, td: 1300, armor: 64, crew: 4550, hangar: 8, price: 640000,
     p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 56, len: .985, x: 0, isl: [-80, 26, 10], ang: true, modern: true, cats: 4, stbd: [-118, 78, 7], lifts: [[36, 1], [-18, 1], [-92, -1]] } },
     slots: [sl('V', -152, -24, ALL, 'sam'), sl('V', -152, 24, ALL, 'sam'), sl('V', 122, 26, ALL, 'sam'), ...pair('A', 108, 27.6, 'ciws'), ...pair('A', -124, 27.6, 'ciws')] },
@@ -595,6 +605,7 @@ const TECH = [
   { id: 'netcentric', name: 'Cooperative engagement', era: 4, cost: 160, req: ['datalink'], desc: 'Every ship shares the squadron\'s fire-control picture: salvos are corrected a fifth faster, whoever spots them. Unlocks the Era IV fleet carrier.' },
   { id: 'stealth', name: 'Stealth shaping', era: 4, cost: 170, req: ['ecm'], desc: 'Your squadron is found a quarter later on the chart and enemy radar picks your ships up at three quarters of its range. Unlocks the Era IV stealth destroyers, corvette and attack submarine.' },
   { id: 'precision', name: 'Long-range precision strike', era: 4, cost: 150, req: ['missiles', 'datalink'], desc: 'Anti-ship missiles reach 40% farther.' },
+  { id: 'railgun', name: 'Electromagnetic guns', era: 4, cost: 210, req: ['stealth', 'reactors'], desc: 'A gun that throws a solid slug by electric power alone: very fast and flat, it holes armour at any range, but it carries no explosive, starts few fires and is slow to charge. Only a ship built with the power for it can mount one: the Era IV stealth destroyer.' },
   { id: 'drones', name: 'Unmanned aircraft', era: 4, cost: 130, req: ['helo'], desc: 'Every warship of destroyer size and more carries a drone to spot for her guns, which flies by night as well as by day.' },
 ];
 const ERA_GATE = 3;   // technologies of an era needed to open the next
@@ -791,7 +802,10 @@ function drawMount(g, wid, ta, P, recoil, stowed, shadow, part, st = 'us') {
     const tw = w.tw, tl = w.tl, n = w.barrels, gap = w.gap || 0, front = tl * 0.42, rear = -tl * 0.58, rc = recoil * w.bl * 0.12;
     const hR = turretHeight(w), hB = hR * 0.5;
     for (let i = 0; i < n && part !== 'house'; i++) {
-      const y = (i - (n - 1) / 2) * gap, x0 = front - 0.6 - rc, x1 = front + w.bl - rc, r0 = w.bw * 0.62, r1 = w.bw * 0.42;
+      const y = (i - (n - 1) / 2) * gap, x0 = front - 0.6 - rc, x1 = front + w.bl - rc, r0 = w.bw * 0.62, r1 = w.bw * (w.rail ? 0.56 : 0.42);
+      if (w.rail && !HM.on && !shadow) { // two rails in a square jacket, the bore a dark line between them
+        g.beginPath(); g.rect(x0, y - r0, x1 - x0, r0 * 2); g.fillStyle = shade(S, -0.22); g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.05; g.stroke();
+        g.fillStyle = '#15181a'; g.fillRect(x0 + 0.4, y - 0.07, x1 - x0 - 0.4, 0.14); g.fillStyle = shade(S, -0.4); for (let q = 0.2; q < 1; q += 0.2) g.fillRect(x0 + (x1 - x0) * q, y - r0, 0.16, r0 * 2); continue; }
       g.beginPath(); g.moveTo(x0, y - r0); g.lineTo(x1, y - r1); g.lineTo(x1, y + r1); g.lineTo(x0, y + r0); g.closePath();
       if (HM.on) { const gr = g.createLinearGradient(0, y - r0, 0, y + r0); gr.addColorStop(0, hgrey(hB)); gr.addColorStop(0.5, hgrey(hB + r0)); gr.addColorStop(1, hgrey(hB)); g.fillStyle = gr; g.fill(); }
       else if (shadow) { g.fillStyle = sh; g.fill(); }
@@ -800,6 +814,18 @@ function drawMount(g, wid, ta, P, recoil, stowed, shadow, part, st = 'us') {
       if (!shadow) { rrect(g, front - 0.35 - rc, y - w.bw * 0.8, Math.max(0.5, w.bw * 1.1), w.bw * 1.6, w.bw * 0.4); pfill(g, shade(S, -0.3), hB + r0 * 1.1); } // blast bag
     }
     if (part === 'barrels') { g.restore(); return; }
+    if (w.hide || w.rail) { // a faceted cupola: a long wedge of flat plates, the gun's slot a dark line down its roof
+      const base = [[rear, -tw * 0.36], [rear + tl * 0.12, -tw / 2], [front - tl * 0.3, -tw / 2], [front, -tw * (w.rail ? 0.3 : 0.16)], [front, tw * (w.rail ? 0.3 : 0.16)], [front - tl * 0.3, tw / 2], [rear + tl * 0.12, tw / 2], [rear, tw * 0.36]];
+      const k = 0.52, cxm = (front + rear) / 2, roofP = base.map(([x, y]) => [cxm + (x - cxm) * (x > cxm ? 0.86 : 0.8), y * k]);
+      const poly = pts => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
+      if (shadow) { poly(base); g.fillStyle = sh; g.fill(); g.restore(); return; }
+      if (HM.on) { for (let i = 0; i <= 16; i++) { const t = i / 16; poly(base.map(([x, y], j) => [x + (roofP[j][0] - x) * t, y + (roofP[j][1] - y) * t])); pfill(g, null, hR * (0.25 + 0.75 * t)); } g.restore(); return; }
+      poly(base); g.fillStyle = shade(S, -0.14); g.fill(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = Math.max(0.04, tw * 0.012); g.stroke();
+      poly(roofP); g.fillStyle = shade(S, 0.03); g.fill(); g.strokeStyle = 'rgba(0,0,0,.2)'; g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,.2)'; g.beginPath(); for (let j = 0; j < base.length; j++) { g.moveTo(base[j][0], base[j][1]); g.lineTo(roofP[j][0], roofP[j][1]); } g.stroke();
+      if (w.hide) { g.fillStyle = 'rgba(10,12,13,.6)'; g.fillRect(cxm - tl * 0.1, -w.bw * 0.7, front - cxm + tl * 0.08, w.bw * 1.4); }   // the slot the barrel lies in, its doors shut over it
+      else { g.fillStyle = shade(S, -0.2); for (const sy of [-1, 1]) g.fillRect(rear + tl * 0.16, sy * tw * 0.2 - 0.18, tl * 0.3, 0.36); }   // the rail gun's power leads
+      g.restore(); return; }
     if (w.open || (wid === 'g120t' && (st === 'uk' || st === 'it' || st === 'de'))) { drawShield(g, w, st, shadow, S, hR); g.restore(); return; }
     const f = turretForm(st, w), outer = filletPoly(f.pts);
     const inner = insetPoly(outer, (nx, ny) => Math.max(0, nx) ** 2 * f.face + ny * ny * f.side + Math.max(0, -nx) ** 2 * f.rear);
@@ -1186,7 +1212,7 @@ function halfBeamAt(d, x) { const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr =
 function facet(g, P, base, roof, h0, h1, o = {}) {
   const S = P.sup, n = base.length, poly = pts => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
   const mix = k => base.map(([x, y], i) => [x + (roof[i][0] - x) * k, y + (roof[i][1] - y) * k]);
-  if (HM.on) { const steps = 28; for (let i = 0; i <= steps; i++) { poly(mix(i / steps)); pfill(g, null, h0 + (h1 - h0) * i / steps); } return; }
+  if (HM.on) { const steps = 64; for (let i = 0; i <= steps; i++) { poly(mix(i / steps)); pfill(g, null, h0 + (h1 - h0) * i / steps); } return; }
   if (!o.noAo) aoUnder(g, k => poly(base.map(([x, y]) => [x + Math.sign(x - (base[0][0] + base[n >> 1][0]) / 2) * k, y + Math.sign(y) * k])), 0.4);
   poly(base); g.fillStyle = shade(S, -0.1 + (o.lift || 0)); g.fill(); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.1; g.stroke();
   poly(roof); g.fillStyle = shade(S, 0.03 + (o.lift || 0)); g.fill(); g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.08; g.stroke();
@@ -1205,6 +1231,19 @@ function facetBlock(g, P, x0, x1, hw, h0, h1, o = {}) {
 function stealthTop(g, d, P) {
   const p = d.p, S = P.sup, sp = p.stealth;
   let top = 0;
+  if (sp && sp.shell) { // the whole ship one faceted shell (the Sea Shadow): plates leaning in from the waterline to a narrow roof, the launch cells let into it
+    const half = pts => pts.map(([x, y]) => [x, -y]).concat(pts.slice().reverse()), o = p.outline, r = sp.shell;
+    // the roof is given with fewer points than the outline: each outline point leans to the nearest roof point along the length
+    const near = x => r.reduce((b, q) => Math.abs(q[0] - x) < Math.abs(b[0] - x) ? q : b, r[0]);
+    const base = half(o), roof = base.map(([x, y]) => { const q = near(x); return [q[0], Math.sign(y) * q[1]]; });
+    facet(g, P, base, roof, 0, sp.shellH, { noAo: true, lift: -0.04 });
+    if (!HM.on) {
+      const rp = half(r); g.beginPath(); rp.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillStyle = shade(S, 0.0); g.fill(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.1; g.stroke();
+      for (const sl of d.slots) if (sl.s === 'V') { const cw = 5.2, ch = 4.4; g.fillStyle = shade(P.deck, -0.3); g.fillRect(sl.x - cw / 2, sl.y - ch / 2, cw, ch);   // launch cells, their lids flush with the roof
+        g.strokeStyle = 'rgba(200,205,205,.2)'; g.lineWidth = 0.1; g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(sl.x - cw / 2 + i * cw / 4, sl.y - ch / 2); g.lineTo(sl.x - cw / 2 + i * cw / 4, sl.y + ch / 2); } g.moveTo(sl.x - cw / 2, sl.y); g.lineTo(sl.x + cw / 2, sl.y); g.stroke(); }
+      g.fillStyle = 'rgba(16,22,26,.8)'; for (const sy of [-1, 1]) { g.save(); g.translate(r[0][0] + 1.6, sy * (r[0][1] + 1.3)); g.rotate(sy * 0.9); g.fillRect(-1.1, -0.22, 2.2, 0.44); g.restore(); }   // the bridge windows, low in the forward plates
+      g.fillStyle = P.ens; g.fillRect(-d.L / 2 + 0.4, -0.6, 1.4, 1.2); }
+    return; }
   (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
     const h1 = tiers * DECK_H, r = facetBlock(g, P, x - len / 2, x + len / 2, w / 2, 0, h1, { kf: bi ? 0.8 : 0.5, ka: 0.8 });
     if (bi === 0) top = h1;

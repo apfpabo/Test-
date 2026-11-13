@@ -1129,7 +1129,7 @@ func _friends() -> void:
 	ok(sim.torp_fouls(a, a.pos, e.pos, w, e) == b, "but steaming towards the track at 12 m/s she will cross it, and fouls it")
 	b.pos = Vector2(6500, 7000); b.a = 0.0
 	var hw := {"speed": 20.0, "range": 5000.0, "count": 2, "kind": "torp", "homing": true}
-	b.pos = e.pos + Vector2(-150, 130); b.v = 0.0
+	b.pos = e.pos + Vector2(-100, 250); b.v = 0.0
 	var w1 := {"speed": 23.0, "range": 4500.0, "count": 1, "kind": "torp"}
 	ok(sim.torp_fouls(a, a.pos, e.pos, w1, e) == null and sim.torp_fouls(a, a.pos, e.pos, hw, e) == b, "a friend close by the target, clear of the track, fouls a homer (her seeker would hear the friend first) but not a straight runner")
 	# a captain holds his torpedoes for a friend in the track, and fires once she is clear

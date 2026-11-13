@@ -16,6 +16,7 @@ func _process(_d: float) -> void:
 		page.mine_mods[0].fit[0] = "g460"; page.mine_mods[0].up["fc"] = 1; page._edit(page.mine, page.mine_mods, 0)
 	if f == 12:
 		var sc: ScrollContainer = page.get_child(1); sc.scroll_vertical = 600
+	if f == 14: page.edit_sel = 2; page._edit(page.mine, page.mine_mods, 0)
 	if f == 18: get_viewport().get_texture().get_image().save_png(out + "/skirmish_editor.png")
 	if f == 20:
 		var B = load("res://scripts/battle.gd").new()

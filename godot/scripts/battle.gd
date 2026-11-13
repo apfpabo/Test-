@@ -1047,8 +1047,8 @@ class Drawer extends Node2D:
         var z: float = battle.zoom(); var mn: float = 1.0 / z
         var sun: Vector2 = BattleSim.SUN.normalized(); var wind: Vector2 = BattleSim.WIND.normalized()
         for q in battle.splash_parts()[0]:
-            var e: float = q.life; var sz: float = q.size; var R: float = sz * 1.4; var H: float = sz * 4.6; var stand: float = BattleSim.col_stand(sz)
-            var rise: float = minf(1.0, e / 1.6); var fallK: float = clampf((e - 1.6 - stand) / 2.4, 0.0, 1.0)
+            var e: float = q.life; var sz: float = q.size; var R: float = sz * 1.4; var H: float = sz * 4.6; var stand: float = BattleSim.col_stand(sz) + q.ext
+            var rise: float = minf(1.0, e / 1.6); var fallK: float = clampf((e - 1.6 - stand) / BattleSim.COL_FALL, 0.0, 1.0)
             var h: float = H * sin(rise * PI * 0.5) * (1.0 - fallK)
             var nk: float = _night_k(q.pos); var cl: Texture2D = GameData.fx_tex("cloud%d" % int(maxi(0, q.v) % 4))
             var big: bool = R * z > 2.0     # far out a column is a few pixels: no shadow
@@ -1072,7 +1072,7 @@ class Drawer extends Node2D:
                     var an: float = float(q.v) * 1.3 + i * TAU / 9.0 + (j2 - 0.5) * 1.6
                     var r1: float = rr * (0.45 + 0.75 * jag)
                     _rpuff(foam_t, q.pos + Vector2.from_angle(an) * r1, R * (0.45 + 0.4 * j2) * (1.0 + 0.6 * fallK), an * 2.0, Color(0.9 * nk, 0.96 * nk, 0.95 * nk, 0.42 * (1.0 - fallK) * (0.4 + 0.6 * jag)))
-                var sk: float = clampf((e - 1.6 - stand) / 6.0, 0.0, 1.0)
+                var sk: float = clampf((e - 1.6 - stand) / 4.0, 0.0, 1.0)
                 if sk < 1.0:   # the skirt: soft foam spreading round the fall, thinning as it goes
                     _rpuff(foam_t, q.pos, R * (1.4 + 2.2 * sk), float(q.v) + sk, Color(0.86 * nk, 0.94 * nk, 0.93 * nk, 0.3 * (1.0 - sk) * smoothstep(0.0, 0.15, sk + 0.05)))
             # the column's top, leaning downwind (the owner found the soft puffs alone read as a cloud): jets of water flung
@@ -1112,8 +1112,7 @@ class Drawer extends Node2D:
         # (two drawn rims crossed each other where a salvo fell close)
         var bowls := []
         for q in battle.splash_parts()[1]:
-            var bk0: float = q.life / 5.0
-            if bk0 < 1.0 and q.size * z >= 1.5: bowls.append([q, q.size * (1.25 + 1.5 * sqrt(bk0))])
+            if q.dep > 0.0 and q.size * z >= 1.5: bowls.append([q, q.size * (1.15 + 0.75 * sqrt(q.open))])   # (its width only ever grows, and its depth is its own: nothing jumps when another shell falls in it)
         bowls.sort_custom(func(x, y): return x[1] > y[1])
         var drawn := []
         for b in bowls:
@@ -1121,9 +1120,9 @@ class Drawer extends Node2D:
             for d in drawn: if q.pos.distance_to(d[0].pos) < float(d[1]) * 1.3: inside = true; break
             if inside: continue
             drawn.append(b)
-            var e: float = q.life; var bk: float = e / 5.0
             var rb: float = float(b[1]) * 1.5
-            draw_rect(Rect2(q.pos - Vector2(rb, rb), Vector2(rb, rb) * 2.0), Color(bk, fposmod(float(q.side) * 0.0613, 1.0), _night_k(q.pos), 1.0))
+            # red: how deep; green: a seed; blue: the light; alpha: where the ripples are in their run (the battle's clock, wrapped)
+            draw_rect(Rect2(q.pos - Vector2(rb, rb), Vector2(rb, rb) * 2.0), Color(q.dep, fposmod(float(q.side) * 0.0613, 1.0), _night_k(q.pos), fposmod(BattleSim.rclock * 0.3 + float(q.side) * 0.37, 1.0)))
 
     ## What the new splash leaves on the sea: paler churned water, then a thin lace of foam with dark water between,
     ## stretched downwind, drifting and fading (GameData.lace_tex). Drawn on the sea, under the ships.

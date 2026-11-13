@@ -169,6 +169,13 @@ class Part:
     var drag = 0.16       # fraction of speed kept per second
     var spin = 0.0        # radians per second (smoke and fireballs turn as they roll)
     var s0 = 0.0          # the size a splash began at: what it may grow to is reckoned from this, not from what it has grown to
+    # a splash's hollow in the sea (the slick's part carries it; the owner, 13 Nov 2026: shells on one spot "reset" it).
+    # Nothing in it is ever set back: a shell pushes it down for a moment, then it fills by itself
+    var dep = 0.0         # how deep the hollow is, 0..1
+    var push = 0.0        # seconds a shell that has just fallen in it still presses it down
+    var open = 0.0        # how far it has opened out, 0..1: it only ever widens
+    var tsz = 0.0         # the size it is growing to (eased, not jumped to)
+    var ext = 0.0         # a column's extra seconds standing, from shells that fell into it while it stood
 
 var AW = 26000.0
 var AH = 22000.0
@@ -1165,7 +1172,10 @@ func _scars_fx(dtv: float) -> void:
 ## that rises in about 1.6 s and stands by its calibre (`col_stand`) before it falls back as a curtain of spray, drawn by
 ## the battle screen with its height and its shadow on the sea; and a thin lacy slick of foam over paler churned water,
 ## drifting downwind and fading over 15 to 35 s. `size` is as the classic splash takes it (a shell's is 6 to 20).
-static func col_stand(size: float) -> float: return 0.25 * size
+static func col_stand(size: float) -> float: return 0.13 * size   # (half what it was: the owner asked for the column to be gone sooner, 13 Nov 2026)
+const COL_FALL := 1.5   # seconds a column takes to fall back (it was 2.4)
+const BOWL_PUSH := 0.3   # seconds a shell takes to press the hollow down
+const BOWL_FILL := 2.2   # and seconds the sea takes to fill it again
 ## A gun's calibre in millimetres, read from its id (g356 is 356 mm); 0 for anything else.
 ## A shell's penetration of side armour struck square, in mm (armour by place, 12 Nov 2026), from her calibre and how
 ## far out she was fired against her gun's range (0 close in, 1 at the limit): a heavy gun's shell beats about twice its
@@ -1195,7 +1205,7 @@ func shell_splash(sh: Dictionary, sz: float) -> float:
     var mm: int = int(sh.get("mm", 0))
     if modern and splash_new and mm >= 300: return 20.4 * float(mm) / 406.0
     return 6.0 * sz
-static func col_life(size: float) -> float: return 1.6 + col_stand(size) + 2.4
+static func col_life(size: float) -> float: return 1.6 + col_stand(size) + COL_FALL
 ## The new splash's columns and slicks, kept apart from the particle list as well (so neither the drawing nor the
 ## joining of shells has to walk every particle for them: that cost a ten-ship action two milliseconds a frame)
 var splash_cols: Array = []
@@ -1205,22 +1215,31 @@ func fx_splash_new(p: Vector2, size: float) -> void:
     # the new style showed crossed rims and a column that shrank and rose again at every hit, 12 Nov 2026): a shell
     # within a column's width of a young one joins it; a column already up stays up (it does not start rising again)
     # and grows a little; the sea's bowl stays one bowl, kept deep while the hits go on
-    var merged: Part = _near_part(splash_cols, p, size, 1.0, 1.6 + col_stand(size) + 0.4)
+    # (13 Nov 2026, the owner's clip of a destroyer firing on one point: every shell set the column and the hollow back
+    # to an earlier moment, so both jumped. Now no clock is ever put back. A column still standing stands a while longer;
+    # one already falling is left to fall and the shell throws up its own. The hollow is pressed down again from whatever
+    # depth it has, and moves and widens by easing, not by a step.)
+    var merged: Part = null; var bd := INF
+    for q in splash_cols:
+        if q.life < 0.0 or q.life > 1.6 + col_stand(q.size) + q.ext: continue
+        var dq: float = q.pos.distance_to(p)
+        if dq < maxf(q.size, size) * 1.8 and dq < bd: bd = dq; merged = q   # (wide enough to catch one that has leaned off downwind: else steady fire left a trail of columns)
     if merged != null:
         if merged.s0 <= 0.0: merged.s0 = merged.size
-        merged.size = minf(maxf(merged.size, size) * 1.06, maxf(merged.s0, size) * 1.5)   # (capped from where it began: shells on one spot grew it without end)
-        if merged.life > 1.6: merged.life = 1.6   # standing again, from the top of its rise: no shrinking, no jump
-        merged.mx = col_life(merged.size)
+        merged.size = minf(maxf(merged.size, size) * 1.04, maxf(merged.s0, size) * 1.4)   # (capped from where it began: shells on one spot grew it without end)
+        merged.ext = minf(maxf(merged.ext, merged.life - 1.6 + 0.5), 6.0)   # it stands a little longer, but not for ever under steady fire: it falls and another rises
+        merged.mx = col_life(merged.size) + merged.ext
     else:
         var c := part(P.COLUMN, p, col_life(size), size, Vector2.ZERO, true); c.v = randi() % 4; c.a = randf() * TAU; c.side = randi() % 997; splash_cols.append(c)   # (side: its own seed for the drawing; it drifts with the wind, so its place cannot be one)
     var fl: Part = _near_part(splash_laces, p, size, 2.7, 5.0)   # a salvo's shells, tens of metres apart, sink one stretch of sea
     if fl != null:
         var d: float = fl.pos.distance_to(p)
-        fl.pos = fl.pos.lerp(p, 0.35)   # centred among the shells that made it
+        fl.vel += (p - fl.pos) * 0.35 * 1.83   # it slides towards the middle of the shells that made it (with the drag below it travels 0.35 of the way)
         if fl.s0 <= 0.0: fl.s0 = fl.size
-        fl.size = minf(maxf(fl.size, size) * 1.02 + d * 0.1, maxf(fl.s0, size) * 1.25)   # (it grows to swallow the salvo, but never past a quarter more than it began: the owner saw it grow without end under fire on one spot)
-        fl.life = minf(fl.life, 2.0)   # the bowl held deep while the shells keep coming; its slick starts when they stop
-    else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997; splash_laces.append(l)
+        fl.tsz = minf(maxf(maxf(fl.size, fl.tsz), size) * 1.02 + d * 0.1, maxf(fl.s0, size) * 1.25)   # (it grows to swallow the salvo, but never past a quarter more than it began)
+        fl.push = BOWL_PUSH
+    else:
+        var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997; l.push = BOWL_PUSH; l.tsz = size; splash_laces.append(l)
     for i in 3 + int(size * 0.25):   # droplets thrown out at the first instant
         var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.6 + randf() * 0.7, size * (0.18 + randf() * 0.16), rdir() * (size * 1.2 + randf() * size * 3.0)); q.drag = 0.18
 func fx_splash(p: Vector2, size: float) -> void:
@@ -2879,6 +2898,13 @@ func fx(dtv: float) -> void:
             parts.remove_at(i)
             if q.t == P.COLUMN: splash_cols.erase(q)
             elif q.t == P.LACE: splash_laces.erase(q)
+    for q in splash_laces:   # the hollows: pressed down while a shell is going in, filling after; the slick waits while shells still fall
+        if q.push > 0.0:
+            q.push -= dtv; q.dep = minf(1.0, q.dep + dtv / BOWL_PUSH)
+            if q.life > 2.0: q.life = maxf(2.0, q.life - 3.0 * dtv)   # its foam draws back in as it is churned again (eased: it was a jump)
+        elif q.dep > 0.0: q.dep = maxf(0.0, q.dep - dtv / BOWL_FILL)
+        if q.dep > 0.0: q.open = minf(1.0, q.open + dtv / 1.6)
+        if q.tsz > q.size: q.size = minf(q.tsz, q.size + q.tsz * 0.25 * dtv)
     flash = maxf(0.0, flash - dtv * 1.4)
     if parts.size() > 3200:
         parts.reverse(); parts.resize(3200); parts.reverse()

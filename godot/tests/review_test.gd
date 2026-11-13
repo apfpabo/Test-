@@ -1444,6 +1444,18 @@ func _levels() -> void:
 	ok(kinds.has(BattleSim.P.SPLASH) and kinds.has(BattleSim.P.WASH) and not kinds.has(BattleSim.P.COLUMN), "classic splashes are as they were")
 	ok(Settings.SPLASH_DEFAULT == "new" and BattleSim.col_stand(20.4) > BattleSim.col_stand(6.0) * 3.0, "a heavy shell's column stands far longer than a light one's")
 	sp.splash_new = true
+	# shells on one spot never put a splash's clock back (the owner's clip, 13 Nov 2026: the hollow "reset" at every shell)
+	sp.parts.clear(); sp.splash_cols.clear(); sp.splash_laces.clear(); sp.fx_splash(Vector2(500, 500), 8.0)
+	for i in 12: sp.fx(0.1)
+	var bw: BattleSim.Part = sp.splash_laces[0]; var cw: BattleSim.Part = sp.splash_cols[0]
+	var b_dep: float = bw.dep; var b_life: float = bw.life; var b_pos: Vector2 = bw.pos; var b_size: float = bw.size; var c_life: float = cw.life
+	sp.fx_splash(Vector2(504, 500), 8.0)
+	ok(sp.splash_laces.size() == 1 and sp.splash_cols.size() == 1 and bw.dep == b_dep and bw.life == b_life and bw.pos == b_pos and bw.size == b_size and cw.life == c_life and b_dep > 0.5 and b_dep < 1.0, "a second shell in a hollow changes nothing at the instant it falls: no clock put back, no jump")
+	for i in 3: sp.fx(0.1)
+	ok(bw.dep > b_dep and bw.vel.x > 0.0 and bw.vel.length() < 4.0, "it is pressed down again from the depth it had, and slides towards the new shell")
+	for i in 40: sp.fx(0.1)
+	ok(bw.dep == 0.0 and sp.splash_cols.is_empty(), "three seconds after the last shell the hollow has filled, and a light gun's column is gone within five")
+	ok(preload("res://scripts/skirmish.gd").ERA_TECH.has(4) and preload("res://scripts/skirmish.gd").ERA_TECH[4].has("stealth"), "the quick battle has Era IV")
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1
 

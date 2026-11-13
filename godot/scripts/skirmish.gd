@@ -2,7 +2,7 @@ extends Control
 ## Battle setup: pick a preset engagement or build both squadrons from the design registers.
 ## Quick battles outside the campaign.
 
-const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"], 3: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"]}
+const ERA_TECH := {1: [], 2: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"], 3: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink"], 4: ["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel", "helo", "ecm", "ciws", "aegis", "vls", "reactors", "datalink", "netcentric", "stealth", "precision", "drones"]}
 const PRESETS := [
     {"name": "Destroyer action", "desc": "Three Tidewater destroyers against three Strelsk destroyers. Fast, close, torpedoes in the water.", "player": ["dd_fletcher", "dd_fletcher", "dd_gearing"], "enemy": ["dd_narvik", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
     {"name": "Cruiser action", "desc": "A Sovereign-class heavy cruiser and an Arbiter-class light cruiser with a destroyer screen against two Feldherr-class cruisers.", "player": ["ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"], "enemy": ["ca_hipper", "ca_hipper", "dd_narvik", "dd_narvik"], "fac": "directorate", "era": 1},
@@ -18,6 +18,9 @@ var theirs: Array = []
 var mine_mods: Array = []    # one per ship in `mine`: {} or {fit, up} chosen in the ship editor
 var theirs_mods: Array = []
 var editor_box: VBoxContainer   # the ship editor, under the lists
+var edit_sel := 0            # the mount picked in the ship editor
+var edit_key := []           # which ship the editor last showed (side, index): a new ship starts at her first mount
+const WM = preload("res://scripts/world_map.gd")   # for the ship plan, the mount picture and the weapon lines of the campaign's refit page
 var design_pick: OptionButton
 var fac_pick: OptionButton
 var era_pick: OptionButton
@@ -58,7 +61,7 @@ func _ready() -> void:
     fac_pick = OptionButton.new(); for f in ["directorate", "pacific", "concord", "combine", "republic", "freeport", "raiders"]: fac_pick.add_item(GameData.fac[f].name); fac_pick.set_item_metadata(fac_pick.item_count - 1, f)
     row2.add_child(fac_pick)
     var l2 = Label.new(); l2.text = "   Technology"; row2.add_child(l2)
-    era_pick = OptionButton.new(); era_pick.add_item("Era I · Late war"); era_pick.add_item("Era II · Jet age"); era_pick.add_item("Era III · Missile age"); row2.add_child(era_pick)
+    era_pick = OptionButton.new(); era_pick.add_item("Era I · Late war"); era_pick.add_item("Era II · Jet age"); era_pick.add_item("Era III · Missile age"); era_pick.add_item("Era IV · Network age"); row2.add_child(era_pick)
     var l3 = Label.new(); l3.text = "   Weather"; row2.add_child(l3)
     wx_pick = OptionButton.new(); for n in ["Calm", "Moderate sea", "Rough sea", "Storm", "Fog"]: wx_pick.add_item(n)
     row2.add_child(wx_pick)
@@ -86,7 +89,7 @@ func _add(arr: Array) -> void:
 
 ## The research a side's ship is fitted from: the era picked, or her own if she is newer (as _start reckons it).
 func _tech_for(id: String) -> Array:
-    return ERA_TECH[maxi(era_pick.selected + 1, mini(3, int(GameData.hulls[id].get("era", 1))))]
+    return ERA_TECH[maxi(era_pick.selected + 1, mini(4, int(GameData.hulls[id].get("era", 1))))]
 
 ## The ship editor (the owner, 13 Nov 2026): a weapon for each mount, the marks of each system, her weight against what
 ## her hull can carry, and Remove. What is chosen goes into the battle with her (battle.gd _recs).
@@ -98,25 +101,52 @@ func _edit(arr: Array, mods: Array, i: int) -> void:
     var m: Dictionary = mods[i]
     if not m.has("fit"): m.fit = BattleSim.default_fit(d, tech)
     if not m.has("up"): m.up = {}
-    var h := Label.new(); h.text = "%s · %s class · %s" % [d.name, d.dn, "your squadron" if is_same(arr, mine) else "the enemy"]; h.add_theme_font_size_override("font_size", 18); h.add_theme_color_override("font_color", Color(0.89, 0.7, 0.24)); editor_box.add_child(h)
+    var ours: bool = is_same(arr, mine); var pal: String = "player" if ours else String(fac_pick.get_item_metadata(fac_pick.selected))
+    if edit_key != [ours, i]: edit_key = [ours, i]; edit_sel = 0
+    edit_sel = clampi(edit_sel, 0, maxi(0, d.slots.size() - 1))
+    var h := Label.new(); h.text = "%s · %s class · %s" % [d.name, d.dn, "your squadron" if ours else "the enemy"]; h.add_theme_font_size_override("font_size", 18); h.add_theme_color_override("font_color", Color(0.89, 0.7, 0.24)); editor_box.add_child(h)
+    # her plan with her guns on it, as on the campaign's refit page (the owner, 13 Nov 2026): the mount being chosen is
+    # ringed in gold, and a click on any mount chooses it
+    if d.slots.size() > 0 and GameData.sprites.ships.has(id):
+        var info: Dictionary = GameData.sprites.ships[id]
+        var th = WM.ShipThumb.new(); th.id = id; th.pal = pal; th.fit = m.fit; th.sel = edit_sel
+        th.custom_minimum_size = Vector2(620, minf(620.0 * float(info.h) / float(info.w) + 4.0, 190.0)); th.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+        th.on_pick = func(k): edit_sel = k; _edit(arr, mods, i)
+        th.mouse_filter = Control.MOUSE_FILTER_STOP; th.tooltip_text = "Click a mount on the plan to choose it."; editor_box.add_child(th)
+    editor_box.add_child(UI.label("%s t · %s kn · Hull %d" % [Campaign.fmt(d.t), str(d.kn), d.hull], UI.DIM, 14))
     var ld: Dictionary = BattleSim.loading(d, m.fit, m.up)
     var wl := Label.new(); wl.add_theme_color_override("font_color", Color(0.85, 0.35, 0.3) if not ld.ok else Color(0.62, 0.67, 0.67))
     wl.text = "Weight: %d t carried against %d t designed, %s%s" % [int(ld.tons), int(ld.std), ("%d t in hand" % int(-float(ld.over_t))) if float(ld.over_t) <= 0.0 else ("%d t over her margin, %d%% slower" % [int(ld.over_t), int(round((1.0 - float(ld.speed)) * 100))]), "" if ld.ok else ". A yard would not pass this fit."]
     editor_box.add_child(wl)
-    var grid := GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 10); editor_box.add_child(grid)
+    var body := HBoxContainer.new(); body.add_theme_constant_override("separation", 18); editor_box.add_child(body)
+    var rows := VBoxContainer.new(); body.add_child(rows)
     var sizes := {"S": "Small gun", "M": "Medium gun", "L": "Large gun", "H": "Heavy gun", "A": "AA / close-in", "T": "Torpedoes", "V": "Launch cells"}
+    var std_fit: Array = BattleSim.default_fit(d, tech)
     for si in d.slots.size():
-        var sl: Dictionary = d.slots[si]
-        var lab := Label.new(); lab.text = "%s · %s" % [sizes.get(sl.s, sl.s), "fwd" if sl.x > 10 else ("aft" if sl.x < -10 else "mid")]; lab.custom_minimum_size.x = 150; grid.add_child(lab)
-        var ob := OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, ""); ob.custom_minimum_size.x = 250
+        var sl: Dictionary = d.slots[si]; var sx: int = si
+        var cur: String = m.fit[si] if m.fit[si] != null else ""; var was: String = std_fit[si] if std_fit[si] != null else ""
+        var lab := UI.label(("▸ " if si == edit_sel else "") + "%s · %s" % [sizes.get(sl.s, sl.s), "fwd" if sl.x > 10 else ("aft" if sl.x < -10 else "mid")] + (" *" if cur != was else ""), UI.INK if si == edit_sel else UI.DIM, 14); lab.custom_minimum_size.x = 180
+        var ob := OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, ""); ob.custom_minimum_size.x = 290
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
             if not _fits(wid, sl.s) or (w.has("tech") and not tech.has(w.tech)): continue
-            ob.add_item(String(w.name)); ob.set_item_metadata(ob.item_count - 1, wid)
-            if wid == m.fit[si]: ob.selected = ob.item_count - 1
-        var sx: int = si
-        ob.item_selected.connect(func(j): m.fit[sx] = ob.get_item_metadata(j); _edit(arr, mods, i))
-        grid.add_child(ob)
+            ob.add_item(String(w.name) + " · %d t" % int(BattleSim.weapon_tons(wid))); ob.set_item_metadata(ob.item_count - 1, wid)
+            if wid == cur: ob.selected = ob.item_count - 1
+        ob.item_selected.connect(func(j): m.fit[sx] = ob.get_item_metadata(j); edit_sel = sx; _edit(arr, mods, i))
+        ob.pressed.connect(func(): if edit_sel != sx: edit_sel = sx; _edit.call_deferred(arr, mods, i))
+        rows.add_child(UI.row([lab, ob, UI.button("Details", func(): edit_sel = sx; _edit(arr, mods, i), si == edit_sel)]))
+    # the chosen mount's weapon: its picture and what it does, against the standard one
+    if d.slots.size() > 0:
+        var card := VBoxContainer.new(); card.custom_minimum_size.x = 300; body.add_child(card)
+        var cw: String = m.fit[edit_sel] if m.fit[edit_sel] != null else ""; var sw: String = std_fit[edit_sel] if std_fit[edit_sel] != null else ""
+        if cw == "": card.add_child(UI.label("Mount left empty.", UI.DIM, 14))
+        else:
+            var w2: Dictionary = GameData.weapons[cw]
+            card.add_child(UI.label(String(w2.name), UI.INK, 16))
+            var pic = WM.MountPicture.new(); pic.wid = cw; pic.style = GameData.style_of(id); pic.custom_minimum_size = Vector2(300, 120); pic.material = GameData.mount_material(pal); card.add_child(pic)
+            var lines: Array = WM._weapon_lines(w2, GameData.weapons.get(sw, {}) if sw != cw else {})
+            for line in lines: if not String(line).begins_with("Price"): card.add_child(UI.label(line, UI.DIM, 13))
+            card.add_child(UI.label("Her standard weapon here" if sw == cw else (("Standard: " + String(GameData.weapons[sw].name)) if sw != "" else "Standard: empty"), UI.DIM, 13))
     var sh := Label.new(); sh.text = "Ship systems"; sh.add_theme_color_override("font_color", Color(0.62, 0.67, 0.67)); editor_box.add_child(sh)
     var g2 := GridContainer.new(); g2.columns = 4; g2.add_theme_constant_override("h_separation", 10); editor_box.add_child(g2)
     for k in BattleSim.UPGRADES:
@@ -160,7 +190,7 @@ func _start(p: Array, e: Array, fac: String, era: int) -> void:
     # went to sea with empty launch tubes (the owner, 13 Nov 2026)
     var side_era := func(ids: Array) -> int:
         var e2 := era
-        for id in ids: e2 = maxi(e2, mini(3, int(GameData.hulls[id].get("era", 1))))
+        for id in ids: e2 = maxi(e2, mini(4, int(GameData.hulls[id].get("era", 1))))
         return e2
     GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "player_mods": (mine_mods if is_same(p, mine) else []).duplicate(true), "enemy_mods": (theirs_mods if is_same(e, theirs) else []).duplicate(true), "enemy_fac": fac, "player_tech": ERA_TECH[side_era.call(p)], "enemy_tech": ERA_TECH[side_era.call(e)], "islands": randi_range(0, 4), "weather": Weather.battle(w)}
     get_tree().change_scene_to_file("res://scenes/battle.tscn")

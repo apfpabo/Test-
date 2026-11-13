@@ -2442,7 +2442,7 @@ func _weapon_card(s: Dictionary, plan: Array, i: int) -> Control:
     col.add_child(UI.label(("Fitted now: " + GameData.weapons[was].name) if was != "" and was != wid else ("Fitted now" if was == wid else "Mount empty now"), UI.DIM, 13))
     return col
 
-func _weapon_lines(w: Dictionary, o: Dictionary) -> Array:
+static func _weapon_lines(w: Dictionary, o: Dictionary) -> Array:
     var cmp = func(k: String, v: float, better_low := false) -> String:
         if o.is_empty() or not o.has(k): return ""
         var dv: float = v - float(o[k])

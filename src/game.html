@@ -528,7 +528,7 @@ const DESIGN_LIST = [
   // the owner's own wish (13 Nov 2026): the Sea Shadow test ship, given a fighting fit she never had. No guns: launch cells in her roof.
   { id: 'co_shadow', cls: 'corvette', name: 'Stealth Missile Boat', tech: 'stealth', yard: 'tidewater', dn: 'Umbra', model: 'Sea Shadow test ship (a fighting fit she never carried)', year: 1985, era: 4, L: 50, B: 18.4, t: 560, kn: 28, td: 300, armor: 0, crew: 24, price: 95000, radar: true,
     // traced from the model the owner sent (13 Nov 2026): a long six-sided plan pointed at both ends, plates leaning in to a narrow flat roof. `dark`: painted near black
-    p: { outline: [[25, 0.15], [21.5, 3.5], [17.8, 6.8], [14.3, 8.3], [10.8, 8.8], [0, 9.1], [-10.8, 8.8], [-17.8, 8.0], [-21.5, 4.7], [-25, 0.15]], stealth: { tumble: true, dark: 0.62, shell: [[19, 0.2], [16.1, 2.2], [0, 2.8], [-15, 3.2], [-17.7, 2.7], [-20.6, 0.2]], shellH: 9 } },
+    p: { outline: [[25, 0.15], [14.5, 9.1], [-17.5, 9.1], [-25, 0.15]], stealth: { tumble: true, dark: 0.62, mid: [[22.6, 0.15], [14.8, 6.2], [-17, 6.2], [-23, 0.15]], shell: [[18.6, 0.15], [15.4, 2.5], [-16.2, 2.5], [-20.4, 0.15]], shellH: 9 } },   // (straight edges only, at his word: 'more angular and edgy')
     slots: [sl('V', 8, 0, ALL, 'ssm'), sl('V', 0, 0, ALL, 'ssm'), sl('V', -8, 0, ALL, 'sam')] },
   { id: 'cv_ford', cls: 'cv', name: 'Nuclear Carrier', tech: 'netcentric', nuc: true, yard: 'tidewater', dn: 'Dominion', model: 'Gerald R. Ford-class carrier', year: 2017, era: 4, L: 337, B: 41, t: 100000, kn: 31, td: 1300, armor: 64, crew: 4550, hangar: 8, price: 640000,
     p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 56, len: .985, x: 0, isl: [-80, 26, 10], ang: true, modern: true, cats: 4, stbd: [-118, 78, 7], lifts: [[36, 1], [-18, 1], [-92, -1]] } },
@@ -1247,19 +1247,24 @@ function panes(g, r) {
 function stealthTop(g, d, P) {
   const p = d.p, S = P.sup, sp = p.stealth;
   let top = 0;
-  if (sp && sp.shell) { // the whole ship one faceted shell (the Sea Shadow): plates leaning in from the waterline to a narrow roof, the launch cells let into it
-    const half = pts => pts.map(([x, y]) => [x, -y]).concat(pts.slice().reverse()), o = p.outline, r = sp.shell;
-    // each point of the outline leans to the point of the roof at the same share of its length, so every side is one flat plate
+  if (sp && sp.shell) { // the whole ship one faceted shell (the Sea Shadow): flat plates from the waterline to a knuckle (`mid`), flatter ones from there to a narrow roof, the launch cells let into it.
+    // The outline, the knuckle and the roof are each given as the same number of points, bow to stern, so every plate is flat and every crease runs true.
+    const half = pts => pts.map(([x, y]) => [x, -y]).concat(pts.slice().reverse()), o = p.outline, m = sp.mid, r = sp.shell;
     const rw = x => { for (let i = 1; i < r.length; i++) if (x >= r[i][0]) { const [x0, y0] = r[i - 1], [x1, y1] = r[i]; return y1 + (y0 - y1) * (x - x1) / (x0 - x1); } return r[r.length - 1][1]; };
-    const ox0 = o[o.length - 1][0], ox1 = o[0][0], rx0 = r[r.length - 1][0], rx1 = r[0][0];
-    const base = half(o), roof = base.map(([x, y]) => { const xr = rx0 + (x - ox0) / (ox1 - ox0) * (rx1 - rx0); return [xr, Math.sign(y || 1) * rw(xr)]; });
-    const SD = sp.dark ? shade(S, -sp.dark) : S;
-    facet(g, P, base, roof, 0, sp.shellH, { noAo: true, lift: -0.04, col: SD });
+    const SD = sp.dark ? shade(S, -sp.dark) : S, hk = sp.shellH * 0.45;
+    facet(g, P, half(o), half(m), 0, hk, { noAo: true, lift: -0.06, col: SD });
+    facet(g, P, half(m), half(r), hk, sp.shellH, { noAo: true, lift: 0.0, col: SD });
     if (!HM.on) {
-      const rp = half(r); g.beginPath(); rp.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillStyle = shade(SD, 0.0); g.fill(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.1; g.stroke();
+      const poly = pts => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
+      poly(half(r)); g.fillStyle = shade(SD, 0.04); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = 0.09; poly(half(m)); g.stroke(); poly(half(r)); g.stroke();   // the light along each knuckle: hard edges
       for (const sl of d.slots) if (sl.s === 'V') { const cw = 5.2, ch = Math.min(4.4, rw(sl.x) * 2 - 1); g.fillStyle = sp.dark ? shade(SD, -0.45) : shade(P.deck, -0.3); g.fillRect(sl.x - cw / 2, sl.y - ch / 2, cw, ch);   // launch cells, their lids flush with the roof
         g.strokeStyle = 'rgba(200,205,205,.2)'; g.lineWidth = 0.1; g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(sl.x - cw / 2 + i * cw / 4, sl.y - ch / 2); g.lineTo(sl.x - cw / 2 + i * cw / 4, sl.y + ch / 2); } g.moveTo(sl.x - cw / 2, sl.y); g.lineTo(sl.x + cw / 2, sl.y); g.stroke(); }
-      for (const sy of [-1, 1]) { g.save(); g.translate(r[1][0] + 1.6, sy * (r[1][1] + 1.5)); g.rotate(-sy * 0.75); g.fillStyle = '#27485c'; g.fillRect(-1.6, -0.45, 3.2, 0.9); g.fillStyle = 'rgba(150,190,205,.6)'; g.fillRect(-1.6, sy > 0 ? -0.45 : 0.2, 3.2, 0.25); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 0.08; g.strokeRect(-1.6, -0.45, 3.2, 0.9); g.restore(); }   // the bridge windows, in the forward plates
+      // the bridge windows: one band of glass round the bow, just under the roof (the owner's sketch, 13 Nov 2026)
+      const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], neg = q => [q[0], -q[1]];
+      const top = [neg(mix(r[1], r[2], 0.14)), neg(r[1]), neg(r[0]), r[0], r[1], mix(r[1], r[2], 0.14)], foot = [neg(mix(m[1], m[2], 0.14)), neg(m[1]), neg(m[0]), m[0], m[1], mix(m[1], m[2], 0.14)];
+      const band = (t0, t1, col) => { g.beginPath(); top.forEach((q, i) => { const [x, y] = mix(q, foot[i], t0); i ? g.lineTo(x, y) : g.moveTo(x, y); }); for (let i = top.length - 1; i >= 0; i--) { const [x, y] = mix(top[i], foot[i], t1); g.lineTo(x, y); } g.closePath(); g.fillStyle = col; g.fill(); };
+      band(0.14, 0.52, '#2a556f'); band(0.14, 0.24, 'rgba(170,210,225,.6)');
       g.fillStyle = P.ens; g.fillRect(-d.L / 2 + 0.4, -0.6, 1.4, 1.2); }
     return; }
   (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {

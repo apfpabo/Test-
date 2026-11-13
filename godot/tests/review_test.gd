@@ -452,7 +452,7 @@ func _decisions() -> void:
 	G.tech = ["nuclear", "missiles", "nukes"]; G.fleet = [Campaign.new_ship("ssn_charlie", "Boat", "player", G.tech)]; G.credits = 1000000.0; G.cargo.food = 5000.0; G.cargo.fuel = 500.0
 	ok(Structures.can_arm("player").begins_with("Warheads are made"), "you cannot fit a warhead without a plant")
 	var mine: Dictionary = Structures.plants_of("combine")[0]; mine.fac = "player"; mine.from = ""; mine.garrison = 150; mine.pile = int(G.day)
-	ok(Structures.can_arm("player").begins_with("Your plant has no warhead ready"), "nor until your plant has made one")
+	ok(Structures.can_arm("player").begins_with("No warhead is ready yet"), "nor until your plant has made one")
 	for i in 31: Campaign.new_day(false)
 	ok(Structures.stock() == 1 and Structures.can_arm("player") == "", "a month on, the plant has made one (%d in store)" % Structures.stock())
 	Structures.arm()

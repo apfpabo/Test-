@@ -21,7 +21,7 @@ func _ready() -> void:
 	G.tech = t3 + ["nukes"]
 	ok(Structures.can_arm("player").begins_with("Warheads are made at a nuclear plant"), "no warhead without a nuclear plant of your own")
 	var plant: Dictionary = Structures.plants_of("concord")[0]; plant.fac = "player"; plant.garrison = 150; plant.pile = int(G.day)
-	ok(Structures.can_arm("player").begins_with("Your plant has no warhead ready"), "nor before the plant has made one: " + Structures.can_arm("player"))
+	ok(Structures.can_arm("player").begins_with("No warhead is ready yet"), "nor before the plant has made one: " + Structures.can_arm("player"))
 	G.warStock = 2
 	ok(Structures.can_arm("concord") != "" and Structures.can_arm("player") == "", "fitted only at a port or base of your own")
 	Structures.arm(); Structures.arm()

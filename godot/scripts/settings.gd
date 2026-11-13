@@ -114,7 +114,7 @@ func panel() -> Control:
 	var spl := UI.label("Shell splashes", UI.INK, 14); spl.custom_minimum_size.x = 220
 	var spo := OptionButton.new(); for n in ["New", "Classic"]: spo.add_item(n)
 	spo.selected = 0 if splash == "new" else 1; spo.item_selected.connect(func(i): splash = "new" if i == 0 else "classic"; save())
-	box.add_child(UI.row([spl, spo, UI.label("New: tall columns with shadows, a falling curtain, a lacy slick. Classic: the look before.", UI.DIM, 12)]))
+	box.add_child(UI.row([spl, spo, UI.label("New is the current look. Classic is the older, simpler one.", UI.DIM, 12)]))
 	var sl2 := UI.label("Sensor ranges", UI.INK, 14); sl2.custom_minimum_size.x = 220
 	var so := OptionButton.new(); for n in ["Shown", "Hidden"]: so.add_item(n)
 	so.selected = 0 if sensors else 1; so.item_selected.connect(func(i): sensors = i == 0; save())
@@ -128,7 +128,7 @@ func panel() -> Control:
 func keys_panel() -> Control:
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 4)
 	box.add_child(UI.label("KEYS", UI.DIM, 12))
-	box.add_child(UI.label("Click a key, then press the one you want. A key already used on that screen swaps with it. The arrow keys, Esc, Home, + and - always work.", UI.DIM, 12, true))
+	box.add_child(UI.label("Click a key, then press the one you want. If that key is already taken on the same screen, the two swap. The arrow keys, Esc, Home, + and − always work.", UI.DIM, 12, true))
 	for ctx in ["battle", "chart"]:
 		box.add_child(UI.label("In battle" if ctx == "battle" else "On the chart", UI.GOLD, 15))
 		var grid := GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 10); box.add_child(grid)

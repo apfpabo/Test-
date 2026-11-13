@@ -9,8 +9,8 @@ const CHART := [
 	["Your ships", "The tabs along the bottom are your Command pages. Open FLEET to see your ships: hull, readiness, crew and wear.", "fleet"],
 	["A course", "Click a harbour on the chart to sail there, or open LOCATIONS and press Set course. A harbour whose name is not red will have you.", "course"],
 	["Time", "Time passes as you sail. The buttons at the top run the clock at 1× to 8×; Space pauses it.", "clock"],
-	["In harbour", "When you make harbour its panel opens: fuel and food in the MARKET, repairs in REPAIRS & CREW, paid work under CONTRACTS.", "port"],
-	["At sea", "Put to sea when you are ready. Ships that mean you harm bring a choice: battle stations, or try to break off. The panel gives you the odds; weigh them.", "contact"],
+	["In harbour", "When you reach a harbour its page opens. Fuel and food are in MARKET, repairs in REPAIRS & CREW, and paid work in CONTRACTS.", "port"],
+	["At sea", "Put to sea when you're ready. If hostile ships find you, you choose: fight, or try to break off. The panel shows your odds.", "contact"],
 ]
 const BATTLE := [
 	["Battle stations", "You command the flagship. W and S set her engines, A and D her rudder.", "helm"],
@@ -18,7 +18,7 @@ const BATTLE := [
 	["Your squadron", "The bar at the top gives orders to the rest of your ships: engage, form on the flagship, line ahead, withdraw. Esc pauses and opens the menu.", "orders"],
 	["Other weapons", "T fires torpedoes at the cursor (press it twice if a friend is in the way), F flies off aircraft or a cruiser's floatplane, K makes smoke.", "time"],
 ]
-const AFTER := ["After the action", "Here are the ships sunk and taken, prizes to keep, wrecks you may raise and what your boats salvaged. That is the guide: the CODEX tab has the rest. Good hunting."]
+const AFTER := ["After the action", "This page lists the ships sunk and taken, prizes you can keep, wrecks you can raise and anything your boats salvaged. That's the end of the guide. The CODEX tab has the rest. Good hunting."]
 
 var host        # world_map or battle
 var in_battle := false

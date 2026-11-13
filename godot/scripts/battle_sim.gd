@@ -1793,7 +1793,7 @@ func ff_warning(kind: String) -> String:
     var f: CShip = player_torp_foul() if kind == "torp" else (dc_fouls(flag) if flag != null and flag.alive else null)
     if f == null: return ""
     if kind == "torp": return "Check fire: the %s lies in the torpedo track. T again to fire." % f.rec.name
-    if f == flag: return "Too slow to clear her own charges: they would burst under her. Z again to drop."
+    if f == flag: return "She's too slow to clear her own charges and they would burst under her. Press Z again to drop anyway."
     return "Check fire: the %s is within the burst of a pattern. Z again to drop." % f.rec.name
 func ff_confirm(kind: String) -> bool:   # true: go ahead (no danger, or the player has been warned and pressed again)
     var wn := ff_warning(kind)
@@ -1896,7 +1896,7 @@ func shell_result(tg: CShip, sh: Dictionary) -> Dictionary:
     tg.armor = float(tg.ar.belt)
     if place == "tur" and mount != null:   # through the face: the turret is out of action
         mount.dead = true
-        if tg.side == 0: say("A shell has pierced a %s turret on the %s: it is out of action!" % [mount.w.name, tg.rec.name], 2.5)
+        if tg.side == 0: say("A shell has gone through a %s turret on the %s. The turret is out of action!" % [mount.w.name, tg.rec.name], 2.5)
     if ends and place != "tur" and (sh.size == "H" or sh.size == "L"):   # holed at the bow or stern: water comes in and she trims and lists a little
         tg.list = clampf(tg.list + (signf(l.y) if absf(l.y) > 0.5 else 1.0) * 0.04, -1.0, 1.0)
     var nm: String = {"tur": "Turret penetration", "deck": "Deck penetration", "belt": "Belt penetration"}[place]
@@ -2027,7 +2027,7 @@ func systems_tick(s: CShip, dt: float) -> void:
     var dc: float = (1.0 + 0.3 * s.sk.dc) * (1.3 + 0.1 * tech_up(s.tech, "dc") if s.tech.has("dc") else 1.0) * CREW[s.cq].dc   # damage control schools, and the crew's own worth
     if s.deck_out > 0.0:
         s.deck_out = maxf(0.0, s.deck_out - dt * dc * dc_k(s, "fire"))
-        if s.deck_out <= 0.0 and s.side == 0: say("The %s's flight deck is patched: she can fly again." % s.rec.name, 2.5)
+        if s.deck_out <= 0.0 and s.side == 0: say("The %s's flight deck is patched and she can fly again." % s.rec.name, 2.5)
     if s != flag and absf(s.list) > 0.6 and s.alive: counter_flood(s)   # other captains right a bad list themselves
     if s.mag_fire > 0:
         s.mag_fire -= dt
@@ -2252,7 +2252,7 @@ func ai_ship(s: CShip, dt: float) -> void:
     s.v_cmd = -1.0; s.brake = -1.0
     # a cautious captain of yours, badly hurt and left to fight as he sees fit, takes his ship out of it
     if s.side == 0 and s != flag and s.tm == "cautious" and s.hull / s.max_hull < 0.35 and ord_of(s) == "engage":
-        s.ord = "retreat"; say("The %s's captain takes her out of the fight: she is badly hurt." % s.rec.name, 2.0)
+        s.ord = "retreat"; say("The %s is badly hurt. Her captain takes her out of the fight." % s.rec.name, 2.0)
     # smoke: a ship that is running, or badly hurt with the enemy in sight, covers herself (and those behind her)
     if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else ord_of(s) == "retreat") or s.hull / s.max_hull < temper_k(s, 0.2, 0.4, 0.6)):
         if nearest_enemy(s.pos, s.side, 10000.0) != null: make_smoke(s, true)
@@ -2288,11 +2288,11 @@ func ai_ship(s: CShip, dt: float) -> void:
             if s.alive: say("The %s has %s and rejoins." % [s.rec.name, ("fired her torpedoes" if tubes else "lost her tubes") if tt != null else "no target for her torpedoes"], 1.8)
         elif s.foul_by != null and t - s.foul_at < 3.0 and t - s.foul_since > TORP_GIVEUP:
             # she has held her torpedoes this long for a friend in the track: she gives the attack up rather than circle for ever
-            if s.alive: say("The %s gives up her torpedo attack: the %s stays in the track. She rejoins." % [s.rec.name, s.foul_by.rec.name], 2.5)
+            if s.alive: say("The %s gives up her torpedo attack because the %s is still in the way. She rejoins." % [s.rec.name, s.foul_by.rec.name], 2.5)
             s.ord = ""; s.ord_tgt = null; s.foul_by = null; s.foul_said = false; o = ord_of(s)
         else:
             if s.foul_by != null and t - s.foul_at >= 3.0: s.foul_by = null; s.foul_said = false
-            if s.foul_by != null and not s.foul_said: s.foul_said = true; say("The %s holds her torpedoes: the %s is in the track." % [s.rec.name, s.foul_by.rec.name], 2.2)
+            if s.foul_by != null and not s.foul_said: s.foul_said = true; say("The %s holds her torpedoes. The %s is in the way." % [s.rec.name, s.foul_by.rec.name], 2.2)
             s.target = tt; var td := s.pos.distance_to(tt.pos); var bearing := (tt.pos - s.pos).angle()
             if td > reach * 0.6: s.rudder = helm(s, steer_avoid(s, bearing)); s.throttle = 4
             else: s.rudder = helm(s, steer_avoid(s, bearing - s.pref_side * PI / 2)); s.throttle = 3   # beam on: the tubes bear
@@ -2456,7 +2456,7 @@ func update_air(dt: float) -> void:
                 q.sq.n = 0; q.sq.state = "lost"; alt.squads.append(guest); q.sq = guest; q.home = alt
                 if q.state == "land": q.state = "home"
                 elif q.state == "form": q.state = "out"
-                if q.side == 0: say("The %s is gone: her aircraft make for the %s." % [home.rec.name, alt.rec.name], 3.0)
+                if q.side == 0: say("The %s is gone. Her aircraft are making for the %s." % [home.rec.name, alt.rec.name], 3.0)
                 home = alt; on_deck = false
             elif on_deck:
                 if q.state == "land": q.n = 0   # nowhere to come down

@@ -224,7 +224,7 @@ func can_strike(s: Dictionary) -> String:
 	if not Weather.air_ok(wx, jets()): return "Your aircraft cannot fly: %s." % ("a storm" if int(wx.sea) >= 3 else ("fog" if wx.fog else "it is night, and only jets fly by night"))
 	var reach := Campaign.strike_reach(G.fleet); var d := Campaign.mdist(P.x, P.y, s.x, s.y)
 	if d > reach: return "Out of reach: %d km away, and your strike reach is %d km." % [int(d * Campaign.KM_PER_UNIT), int(reach * Campaign.KM_PER_UNIT)]
-	if strike_wait() > 0.0: return "The air groups are rearming: ready in %d hours." % int(ceil(strike_wait() * 24.0))
+	if strike_wait() > 0.0: return "The air groups are rearming and will be ready in %d hours." % int(ceil(strike_wait() * 24.0))
 	return ""
 
 ## Striking this structure breaks the armistice with its flag (a fleet's guns would too).
@@ -507,7 +507,7 @@ func can_arm(at_fac: String) -> String:
 	if stock() <= 0:
 		var soonest := WARHEAD_DAYS
 		for s in plants_of("player"): soonest = mini(soonest, WARHEAD_DAYS - (int(G.day) - int(s.get("pile", G.day))))
-		return "Your plant has no warhead ready: the next in about %d days." % maxi(1, soonest)
+		return "No warhead is ready yet. The next is about %d days away." % maxi(1, soonest)
 	if nuke_capacity() <= 0: return "You have no missile submarine: a nuclear boat with missile tubes carries them."
 	if nukes() >= nuke_capacity(): return "Every missile tube that can take a warhead has one (%d)." % nuke_capacity()
 	if int(G.credits) < NUKE_COST: return "A warhead costs %s." % Campaign.fmt(NUKE_COST)

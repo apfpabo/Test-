@@ -43,7 +43,7 @@ func _ready() -> void:
 func _home() -> void:
     for c in pc.get_children(): c.queue_free()
     var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box); home = box
-    var intro := UI.label("The Meridian War ended in an armistice nobody honours. Legacy empires, successor states, corporations and pirates contest the world's oceans, and sea control is the only currency that counts. You are a free captain with one tired ship.", UI.DIM, 15, true)
+    var intro := UI.label("March 1946. The guns of the Meridian War fell silent last November, nobody has signed a peace, and every navy is rearming. You have one tired ship and nobody to answer to.", UI.DIM, 15, true)
     intro.custom_minimum_size.x = 500; box.add_child(intro)
     if Campaign.has_save() and Campaign.save_version() < Campaign.SAVE_VERSION:
         box.add_child(UI.label("The world has been redrawn: your saved campaign was played on the old chart of the real Earth and cannot be continued. A new campaign replaces the old save.", UI.GOLD, 14, true))
@@ -58,13 +58,31 @@ func _home() -> void:
             GameData.pending = {"editor": true, "player": ["dd_fletcher"], "enemy": ["dd_narvik"], "enemy_fac": "directorate", "player_tech": [], "enemy_tech": [], "islands": 2}
             get_tree().change_scene_to_file("res://scenes/battle.tscn")),
         UI.button("The world", func(): go(func(): _codex(pc, home))),
-        UI.button("Settings", func(): go(func(): _settings(pc, home)))]
+        UI.button("Settings", func(): go(func(): _settings(pc, home))),
+        UI.button("Credits", func(): go(_credits))]
     for b in btns: b.custom_minimum_size = Vector2(0, 42); b.add_theme_font_size_override("font_size", 17); box.add_child(b)
     if not can_go: btns[0].visible = false
     if Campaign.slots().is_empty(): btns[1].visible = false
-    # required by the CC BY licences of the music (4.0), the engine-room recording (4.0), the propeller loop (3.0), the coins (3.0) and the yard's press (4.0); the other sounds are CC0 (assets/sfx/CREDITS.md)
-    var cr := UI.label("Music: 'Lost Frontier', 'Long Note Two' and 'Steel and Seething' by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 (levelled and faded). Sound: engine room of the icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering (CC BY 4.0; trimmed, filtered and looped). Propeller aircraft: 'Airplane Prop Loop' by AntumDeluge (CC BY 3.0; levelled and looped). Coins: 'Coin Sounds' by Varkalandar (CC BY 3.0; levelled). The yard's press: 'Mechanical Pack Vol 1' by JC Sounds (CC BY 4.0; levelled). Jets: a Saab J35D Draken passing, recorded by Work With Sounds / Torsten Nilsson (CC BY 4.0; trimmed and looped). Other sound effects are CC0, by thimras, qubodup, Joth, rubberduck, rango-mango, Spiceman, aquinn, AntumDeluge, kindland, TinyWorlds and BMacZero on OpenGameArt.", Color(UI.DIM, 0.7), 11, true)
-    cr.custom_minimum_size.x = 500; box.add_child(cr)
+
+## Who made the music and the sounds. The CC BY licences of the music (4.0), the engine-room recording (4.0), the
+## propeller loop (3.0), the coins (3.0), the yard's press (4.0) and the jet (4.0) require it; the rest are CC0
+## (assets/sfx/CREDITS.md). It was a block of small print under the title buttons until the UI pass of 13 Nov 2026.
+const CREDITS := [
+    ["Music", "'Lost Frontier', 'Long Note Two' and 'Steel and Seething' by Kevin MacLeod (incompetech.com), CC BY 4.0. Levelled and faded."],
+    ["Engine room", "The icebreaker Kuna, recorded by Work With Sounds / Museum of Municipal Engineering, CC BY 4.0. Trimmed, filtered and looped."],
+    ["Jets", "A Saab J35D Draken passing, recorded by Work With Sounds / Torsten Nilsson, CC BY 4.0. Trimmed and looped."],
+    ["Propeller aircraft", "'Airplane Prop Loop' by AntumDeluge, CC BY 3.0. Levelled and looped."],
+    ["Coins", "'Coin Sounds' by Varkalandar, CC BY 3.0. Levelled."],
+    ["The yard's press", "'Mechanical Pack Vol 1' by JC Sounds, CC BY 4.0. Levelled."],
+    ["Everything else", "CC0 recordings by thimras, qubodup, Joth, rubberduck, rango-mango, Spiceman, aquinn, AntumDeluge, kindland, TinyWorlds, BMacZero, syncopika, yd and Cassie-OrbitGames, from OpenGameArt."]]
+func _credits() -> void:
+    for c in pc.get_children(): c.queue_free()
+    var box = VBoxContainer.new(); box.add_theme_constant_override("separation", 10); pc.add_child(box); home = box
+    box.add_child(UI.title("Credits"))
+    for c in CREDITS:
+        var l := UI.label(c[0], UI.INK, 15); var t := UI.label(c[1], UI.DIM, 13, true); t.custom_minimum_size.x = 500
+        box.add_child(l); box.add_child(t)
+    box.add_child(UI.button("Back", _home))
 
 ## The saved games (Campaign.slots): load one, or delete it.
 func _load_page() -> void:

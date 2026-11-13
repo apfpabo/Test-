@@ -44,7 +44,7 @@ func found(flag_name_: String) -> String:
 	apply()
 	Diplomacy.news("A NEW FLAG. %s is proclaimed. The chancelleries of the powers take note, and wait to see what it is worth." % nm, true)
 	Campaign.log_ev("Founded " + nm); Campaign.save()
-	return "%s is founded. Ports you storm now fly your flag: bring troops." % nm
+	return "%s is founded. Any port you storm now flies your flag, so bring troops." % nm
 
 # ------------------------------------------------------------------ ports
 func ports() -> Array: return g().ports.filter(func(p): return p.fac == "player")
@@ -275,7 +275,7 @@ func can_peace(fac: String) -> String:
 	if not Campaign.at_war(fac): return "You are not at war with them."
 	# a war that is your commission's or a contract's is not theirs to end: paying would change nothing
 	if int(G.rep.get(fac, 0)) > Campaign.WAR_STANDING and Campaign.incident_days(fac) <= 0 and held_from(fac).is_empty() and not g().get("nukedFacs", []).has(fac) and not (Campaign.perk("outlaw", []) as Array).has(fac):
-		return "Your quarrel with them is your commission's, not your own: there is nothing between you to settle."
+		return "Your quarrel with them comes from your commission. You have nothing of your own to settle with them."
 	if g().get("nukedFacs", []).has(fac): return "They will never treat with you: you used the bomb on them."
 	if (Campaign.perk("outlaw", []) as Array).has(fac): return "They will not treat with you: your quarrel with them is older than your flag."
 	if int(G.credits) < peace_cost(fac): return "Their terms: %s." % Campaign.fmt(peace_cost(fac))

@@ -466,7 +466,7 @@ func _key(k: int) -> void:
             sim.say("Squadron: make smoke!" if n > 0 else "No ship of the squadron has smoke to make.", 2.0)
         KEY_G:   # star shell over the point of aim
             if s == null or not sim.can_star(s): sim.say("This ship has no gun to fire star shell.", 1.2)
-            elif not sim.wx.get("night", false): sim.say("Star shell is for the dark: it is daylight.", 1.4)
+            elif not sim.wx.get("night", false): sim.say("No star shell in daylight.", 1.4)
             elif sim.fire_star(s, world.get_global_mouse_position()): sim.say("Star shell!", 1.2)
             else: sim.say("The star-shell gun is reloading.", 1.0)
         KEY_B:   # where the flagship's damage-control parties go first

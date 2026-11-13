@@ -17,11 +17,11 @@ var keys_a := 0.45   # how bright the list of keys is drawn
 var _tip := ""   # explanation for whatever the mouse is over, drawn last
 const TIPS := {
     "crew": "Crew fit for duty. Losses slow the guns' reloading, damage control and the ship's speed.",
-    "fire": "Fires burning aboard: they eat at the hull until damage control puts them out. MAG means a fire has reached a magazine: unless it is flooded in time, it explodes.",
-    "engine": "Machinery: the power for speed. Hits amidships cut it; a heavy hit stops the engines for a while (STOP). Damage control gets some of it back.",
+    "fire": "Fires aboard. They eat at the hull until damage control puts them out. MAG means a fire has reached a magazine, and it will explode unless it's flooded in time.",
+    "engine": "Machinery, which drives her speed. Hits amidships cut it, and a heavy hit stops the engines for a while (STOP). Damage control wins some of it back.",
     "ammo": "Main-battery shells left. Every mount has a magazine; refill them in port (Rearm).",
     "helm": "Steering gear, right aft. A hit can jam the rudder where it lies (JAM) until it is cleared.",
-    "fc": "Fire control: the directors and rangefinders in the bridge. Damage to them widens your salvos.",
+    "fc": "Fire control, the directors and rangefinders on the bridge. Damage here makes your salvos spread wider.",
     "map": "Damage shows on the plan only where it is. Red: machinery (amidships), steering (aft) or fire control (bridge) damaged, deeper red is worse. Black with a red cross: a wrecked mount. Amber dot: a mount out of ammunition. Orange: a fire. Flashing box: a burning magazine. Blue box: a flooded magazine (its turret is out of action).",
 }
 

@@ -424,7 +424,7 @@ func can_accept(c: Dictionary) -> String:
 	var G := g()
 	if G.contracts.size() >= int(D.contracts.max_active): return "You can hold %d contracts at once." % int(D.contracts.max_active)
 	var cm = G.get("commission")
-	if cm != null and c.get("target", "") == cm.fac: return "You serve the %s: you cannot sign on against your own flag." % GameData.fac[cm.fac].short
+	if cm != null and c.get("target", "") == cm.fac: return "You serve the %s and can't sign on against your own flag." % GameData.fac[cm.fac].short
 	if (c.kind == "delivery" or c.kind == "smuggle") and Campaign.cargo_cap() - Campaign.cargo_used() < int(c.qty): return "Not enough room in the hold (%d needed)." % int(c.qty)
 	return ""
 

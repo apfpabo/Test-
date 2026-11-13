@@ -6,7 +6,7 @@ itself is not in the repository; with it in hand:
 ```bash
 python3 -I tools/sea_shadow/read_obj.py <Sea_Shadow_IX-529.obj> /tmp/ss_tri
 python3 -I tools/sea_shadow/to_ship_axes.py /tmp/ss_tri.npy /tmp/ss
-python3 -I tools/sea_shadow/bake.py /tmp/ss_ship.npy /tmp/ssb 4.4
+python3 -I tools/sea_shadow/bake.py /tmp/ss_ship.npy /tmp/ssb 4.4 /tmp/ss_tri_obj.npy
 ```
 
 `bake.py` looks down on the model cut at the waterline (4.4 m above the keel, her real draught) and writes a picture (her

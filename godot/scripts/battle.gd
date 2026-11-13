@@ -589,6 +589,7 @@ class ShipView extends Node2D:
         detail_top = Detail.new(); detail_top.view = self; detail_top.upper = true; detail_top.scale = Vector2(spr, spr); top.add_child(detail_top)
         top.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
         style = GameData.style_of(id)
+        if not s.boxes.is_empty(): var bx = BoxLayer.new(); bx.view = self; add_child(bx)
         var mmat = GameData.mount_material(s.pal); mount_mat = mmat
         for lvl in range(0, s.max_lvl + 1):
             for lit in [false, true]:
@@ -651,8 +652,61 @@ class Keel extends Node2D:
             var grey := Color(0.3, 0.32, 0.34); var red := Color(0.5, 0.15, 0.12); var deep := Color(0.3, 0.1, 0.09)
             if view.s.d.p.get("stealth", {}).has("dark"): grey = Color(0.1, 0.105, 0.115)   # a ship painted near black shows a dark side too (the Sea Shadow)
             draw_primitive(PackedVector2Array([a0, b0, b1, a1]), PackedColorArray([grey, grey, grey.darkened(0.25), grey.darkened(0.25)]), PackedVector2Array())
+            if view.s.d.p.has("swath"): continue   # a twin-hulled ship has no bottom there: her pontoon is drawn below
             draw_primitive(PackedVector2Array([a1, b1, b2, a2]), PackedColorArray([red, red, deep, deep]), PackedVector2Array())
             draw_line(a1, b1, Color(0.08, 0.08, 0.08, 0.8), 0.25)   # the boot-topping
+        if view.s.d.p.has("swath"):
+            # a twin-hulled ship (the Sea Shadow; the owner, 13 Nov 2026): as she heels, the pontoon on her high side comes up
+            # through the surface outboard of her, red below the waterline, on its strut. Its place follows the heel: a point
+            # y out and z down turns about her length.
+            var sw: Dictionary = view.s.d.p.swath; var ang: float = absf(h) * 0.9
+            var py: float = float(sw.y) * cos(ang) + float(sw.z) * sin(ang)
+            var em: float = clampf((float(sw.y) * sin(ang) - float(sw.z) * cos(ang) + float(sw.r)) / (2.0 * float(sw.r)), 0.0, 1.0)
+            if em > 0.0:
+                var x0: float = float(sw.x0); var x1: float = float(sw.x1); var st: float = float(sw.strut); var n := 24
+                var dark := Color(0.1, 0.105, 0.115); var red2 := Color(0.5, 0.15, 0.12); var deep2 := Color(0.28, 0.09, 0.08)
+                draw_primitive(PackedVector2Array([Vector2(-st, hi * (view.battle.sim.hull_half(view.s.d, -st) - 0.5)), Vector2(st, hi * (view.battle.sim.hull_half(view.s.d, st) - 0.5)), Vector2(st * 0.9, hi * py), Vector2(-st * 0.9, hi * py)]), PackedColorArray([dark, dark, dark.darkened(0.3), dark.darkened(0.3)]), PackedVector2Array())
+                for i in n:
+                    var xa: float = lerpf(x0, x1, i / float(n)); var xb: float = lerpf(x0, x1, (i + 1) / float(n))
+                    var wa: float = float(sw.r) * em * sqrt(maxf(0.0, 1.0 - pow(absf((xa - (x0 + x1) * 0.5) / ((x1 - x0) * 0.5)), 6.0)))
+                    var wb: float = float(sw.r) * em * sqrt(maxf(0.0, 1.0 - pow(absf((xb - (x0 + x1) * 0.5) / ((x1 - x0) * 0.5)), 6.0)))
+                    draw_primitive(PackedVector2Array([Vector2(xa, hi * (py - wa)), Vector2(xb, hi * (py - wb)), Vector2(xb, hi * py), Vector2(xa, hi * py)]), PackedColorArray([deep2, deep2, red2, red2]), PackedVector2Array())
+                    draw_primitive(PackedVector2Array([Vector2(xa, hi * py), Vector2(xb, hi * py), Vector2(xb, hi * (py + wb)), Vector2(xa, hi * (py + wa))]), PackedColorArray([red2, red2, deep2, deep2]), PackedVector2Array())
+                # her detail, as far as she shows (the owner: 'a bit more detailed'): the light along her crown, plate seams round her,
+                # the boot-topping where the strut meets her, the stabilising fins inboard, and the screw at her tail
+                var rr: float = float(sw.r) * em; var seam := Color(0, 0, 0, 0.28)
+                draw_line(Vector2(x0 + 3.0, hi * (py - rr * 0.25)), Vector2(x1 - 4.0, hi * (py - rr * 0.25)), Color(0.78, 0.36, 0.3, 0.55 * em), maxf(0.12, rr * 0.16))
+                var xs: float = x0 + 4.0
+                while xs < x1 - 3.0:
+                    var ws: float = rr * sqrt(maxf(0.0, 1.0 - pow(absf((xs - (x0 + x1) * 0.5) / ((x1 - x0) * 0.5)), 6.0)))
+                    draw_line(Vector2(xs, hi * (py - ws)), Vector2(xs, hi * (py + ws)), seam, 0.1); xs += 4.2
+                draw_line(Vector2(-st * 0.9, hi * (py - rr * 0.9)), Vector2(st * 0.9, hi * (py - rr * 0.9)), Color(0.05, 0.05, 0.05, 0.85 * em), 0.22)
+                # her one fin, on the outboard side by the tail, as the model has it (the owner: they were inboard, fore and aft)
+                var fx: float = x0 + 3.6
+                draw_colored_polygon(PackedVector2Array([Vector2(fx, hi * (py + rr * 0.6)), Vector2(fx + 3.4, hi * (py + rr * 0.6)), Vector2(fx + 2.2, hi * (py + rr * 0.6 + 2.8 * em)), Vector2(fx + 0.6, hi * (py + rr * 0.6 + 2.8 * em))]), Color(0.3, 0.1, 0.09, em))
+                if em > 0.35:   # the screw: a boss and two blades standing across it
+                    var tail := Vector2(x0 - 0.3, hi * py)
+                    draw_line(tail + Vector2(0, -1.25 * em), tail + Vector2(0, 1.25 * em), Color(0.45, 0.36, 0.2), 0.3)
+                    draw_line(tail + Vector2(-0.5, -0.7 * em), tail + Vector2(0.5, 0.7 * em), Color(0.5, 0.4, 0.22), 0.26)
+                    draw_circle(tail, 0.32, Color(0.3, 0.24, 0.14))
+
+class BoxLayer extends Node2D:   # deck cargo (BattleSim.deck_boxes): each stack where it stands, or where it has slid to; its shadow first
+    var view
+    const COLS := [Color("7a3b32"), Color("35566b"), Color("6b6a3a"), Color("3f5d48"), Color("70583c"), Color("4b4f58")]
+    func _draw() -> void:
+        var s: BattleSim.CShip = view.s
+        if s.boxes.is_empty() or view.battle.zoom() * s.d.L < 30: return
+        var sun: Vector2 = BattleSim.SUN.rotated(-s.a); var foot: float = view.lean * view.freeboard
+        var nk: float = 0.4 if view.battle.sim.wx.get("night", false) else 1.0
+        for b in s.boxes:
+            var c := Vector2(float(b.x), float(b.y) + float(b.off) + foot) + sun * float(b.h) * 0.75
+            draw_rect(Rect2(c - Vector2(float(b.l), float(b.w)) * 0.5, Vector2(float(b.l), float(b.w))), Color(0, 0, 0, 0.3))
+        for b in s.boxes:
+            var c := Vector2(float(b.x), float(b.y) + float(b.off) + foot + view.lean * float(b.h))
+            var col: Color = COLS[int(b.c)].lightened(0.06 * float(b.h) / 2.6 + 0.1 * float(b.tone) - 0.05); col = Color(col.r * nk, col.g * nk, col.b * nk)
+            var r := Rect2(c - Vector2(float(b.l), float(b.w)) * 0.5, Vector2(float(b.l), float(b.w)))
+            draw_rect(r, col); draw_rect(r, Color(0, 0, 0, 0.35), false, 0.12)
+            draw_line(Vector2(c.x, r.position.y), Vector2(c.x, r.end.y), Color(0, 0, 0, 0.15), 0.1)
 
 class Detail extends Node2D:   # soot and shell holes, kept where they struck
     var view

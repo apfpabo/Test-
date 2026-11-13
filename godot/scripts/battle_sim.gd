@@ -43,6 +43,7 @@ class Mount:
     var clear := PackedByteArray()   # 1 per 2-degree bearing bin (ship frame) where the barrels clear the ship's own structure
 
 class CShip:
+    var boxes: Array = []   # deck cargo still aboard (deck_boxes)
     var rec: Dictionary
     var d: Dictionary
     var pal: String
@@ -382,6 +383,7 @@ func set_side(s: CShip, side: int) -> void:
 func make_ship(rec: Dictionary, side: int, p: Vector2, a: float, tech: Array) -> CShip:
     var s = CShip.new(); var d: Dictionary = GameData.hulls[rec.type]
     s.rec = rec; s.d = d; s.pal = rec.pal if side == 1 else "player"; s.side = side; s.pos = p; s.a = a
+    s.boxes = deck_boxes(d)
     s.up = rec.get("up", {})   # other navies' ships carry their refits into action too
     s.eng = 1.0 - 0.2 * clampf(float(rec.get("wear", 0.0)), 0.0, 1.0)   # worn machinery (Campaign.WEAR_ENG): damage control can bring it to 0.8 at best, as for a hit
     s.tech = tech
@@ -2083,8 +2085,8 @@ func systems_tick(s: CShip, dt: float) -> void:
     if s.fc < 0.85: s.fc = minf(0.85, s.fc + dt * 0.002 * dc)
 
 ## A hit leaves a scorch (and a hole for shells) in ship space; heavier hits may start a fire or knock out a mount.
-func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool, fire_k := 1.0) -> void:
-    if not s.alive: return
+func mark_hit(s: CShip, wp: Vector2, sz: float, hole: bool, fire_k := 1.0, hulk := false) -> void:
+    if not s.alive and not hulk: return
     var l = (wp - s.pos).rotated(-s.a)
     var x = clampf(l.x, -s.d.L * 0.46, s.d.L * 0.46); var hh = hull_half(s.d, x) * 0.85; var y = clampf(l.y, -hh, hh)
     # a heavy hit that gets in tears a gash in the plating (jagged, with a torn rim) instead of a neat hole; near the
@@ -2427,6 +2429,38 @@ const DECK_GAP := 4.0     # seconds between one machine and the next
 const DECK_LIST := 0.6    # a list beyond this and nothing can fly
 ## How far a lost ship has gone down, 0..1. A big ship takes longer about it than a small one (some 20 s for a
 ## destroyer, over 30 for a battleship, at the battle's ordinary speed): she settles, the sea comes over her low side, and she is gone.
+const HULK_GONE := 0.8   # how far down a lost ship is before shells no longer find her
+const BOX_SLIP := 0.2    # the list at which deck cargo begins to slide
+## Containers stowed on deck (a design's `boxes`: [[x forward, x aft]]): bays across the beam, each stack its own height
+## and colour, the same every time for a design. They are the game's to draw and to lose: in a list they slide to the
+## low side and go over it (the owner's wish, 13 Nov 2026).
+func deck_boxes(d: Dictionary) -> Array:
+    var out := []
+    if not d.p.has("boxes"): return out
+    var rng := RandomNumberGenerator.new(); rng.seed = hash(str(d.dn))
+    var bl := 12.4; var bw := 2.5; var rows := int((float(d.B) - 3.0) / bw)
+    for seg in d.p.boxes:
+        var x: float = float(seg[0]) - bl
+        while x >= float(seg[1]):
+            for i in rows:
+                var y: float = -rows * bw / 2.0 + i * bw; var far: float = maxf(absf(y), absf(y + bw)) + 0.8
+                var c: int = rng.randi() % 6; var tone: float = rng.randf(); var tall: int = 1 + rng.randi() % 3; var k: float = 0.7 + rng.randf() * 0.6
+                if hull_half(d, x) < far or hull_half(d, x + bl) < far: continue
+                out.append({"x": x + bl / 2.0, "y": y + bw / 2.0, "l": bl, "w": bw - 0.16, "h": tall * 2.6, "c": c, "tone": tone, "k": k, "off": 0.0, "v": 0.0})
+            x -= bl + 1.2
+    return out
+func _boxes(dt: float) -> void:
+    for s in ships:
+        if s.boxes.is_empty(): continue
+        var hl: float = maxf(absf(s.list), minf(1.0, sink_k(s) * 1.6))   # (her heel as she is drawn: a sinking ship lies over)
+        if hl <= BOX_SLIP: continue
+        var lo: float = signf(s.list) if s.list != 0.0 else 1.0
+        for i in range(s.boxes.size() - 1, -1, -1):
+            var b: Dictionary = s.boxes[i]
+            b.v = float(b.v) + (hl - BOX_SLIP) * 9.0 * float(b.k) * dt; b.off = float(b.off) + lo * float(b.v) * dt
+            if absf(float(b.y) + float(b.off)) > hull_half(s.d, float(b.x)) + 0.6:   # over the side
+                var wp: Vector2 = s.pos + Vector2(float(b.x), float(b.y) + float(b.off)).rotated(s.a)
+                fx_splash(wp, 3.5); sound("splash", wp, 0.06); s.boxes.remove_at(i)
 func sink_k(s: CShip) -> float: return 0.0 if s.alive else minf(1.0, s.sink / (14.0 + float(s.d.L) * 0.07))
 func deck_ok(s: CShip) -> bool: return s.alive and s.deck_out <= 0.0 and absf(s.list) < DECK_LIST
 ## Another carrier of the same side for aircraft whose own is lost: the nearest still afloat and in the action.
@@ -2708,6 +2742,7 @@ func step(dtv: float) -> void:
     torp_blocked = false; torp_fired = false
     want_torp = false; want_msl = false
     _collisions()
+    _boxes(dt)
     # shells land
     for i in range(shells.size() - 1, -1, -1):
         var sh: Dictionary = shells[i]; sh.t += dt; var k: float = minf(1.0, sh.t / sh.T); sh.pos = sh.s.lerp(sh.e, k)
@@ -2715,12 +2750,16 @@ func step(dtv: float) -> void:
         shells.remove_at(i)
         var hit: CShip = null
         for s in ships:
-            if s == sh.who or not active(s) or submerged(s): continue   # a shell hurts whatever it lands on, friend or foe (owner's word, 11 Nov 2026)
+            if s == sh.who or s.escaped or submerged(s): continue   # a shell hurts whatever it lands on, friend or foe (owner's word, 11 Nov 2026)
+            if not s.alive and sink_k(s) > HULK_GONE: continue   # a lost ship is still there to be struck until the sea has all but closed over her (the owner, 13 Nov 2026: shells passed through a sinking ship)
             var l: Vector2 = (sh.pos - s.pos).rotated(-s.a)
             if absf(l.x) < s.d.L / 2 + 3 and absf(l.y) < s.d.B / 2 + 3: hit = s; break
         var sz: float = {"S": 1.0, "M": 1.5, "L": 2.3, "H": 3.4}[sh.size]
         if sh.get("tgt") != null: spot(sh.who, sh.tgt, float(sh.get("rel", 6.0)))   # the fall of shot is seen and the next salvo corrected
-        if hit != null:
+        if hit != null and not hit.alive:   # a hulk: the shell bursts on her and tears her, but there is nothing left to reckon
+            mark_hit(hit, sh.pos, sz * 0.8, true, 0.0, true); fx_boom(sh.pos, 6 * sz, 0.6); sound("hit", sh.pos, 0.12 * sz); _log("shell on a hulk")
+            for k3 in (6 if modern else 2): part(P.SPARK, sh.pos, 0.4 + randf() * 0.4, 1 + sz * 0.6, Vector2(randf() - 0.5, randf() - 0.5) * (160.0 if modern else 60.0))
+        elif hit != null:
             spare = null; var res := shell_result(hit, sh); _log("shell " + res.kind); _log("shell %s %s" % [res.kind, res.get("place", "")])
             if hit.side == sh.side: _log("shell on a friend"); ff_dmg += sh.dmg * res.k
             mark_hit(hit, sh.pos, sz * (1.0 if res.kind == "pen" else 0.5), res.kind != "rico", float(res.get("fire", 1.0)))

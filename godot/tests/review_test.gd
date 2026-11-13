@@ -1470,6 +1470,23 @@ func _levels() -> void:
 		hm.recoil = 1.0; for i in 12: hs.step(0.1)
 		ok(in_ == 0.0 and hm.out == 1.0, "a concealed gun lies in while it is quiet and runs out when it fires (%.1f, %.1f)" % [in_, hm.out])
 	ok(not GameData.hulls["co_shadow"].slots.any(func(q): return ["S", "M", "L", "H", "A"].has(q.s)) and GameData.hulls["co_shadow"].slots.size() == 3, "the Sea Shadow carries launch cells and no guns")
+	# deck cargo slides off in a list, and a ship going down can still be struck (the owner, 13 Nov 2026)
+	var cs := BattleSim.new(); cs.modern = true; cs.setup([Campaign.new_ship("fr_container", "C", "player", [])], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], [], [], 0)
+	var cship: BattleSim.CShip = cs.ships[0]; var nb: int = cship.boxes.size()
+	for i in 50: cs._boxes(0.1)
+	var level_n: int = cship.boxes.size()
+	cship.list = 0.6; for i in 20: cs._boxes(0.1)
+	var mid_n: int = cship.boxes.size()
+	for i in 300: cs._boxes(0.1)
+	ok(nb > 30 and level_n == nb and mid_n < nb and cship.boxes.is_empty(), "a container ship's deck cargo stays put on an even keel and goes over the side in a list (%d, %d, %d)" % [nb, mid_n, cship.boxes.size()])
+	var hk: BattleSim.CShip = cs.ships[1]; hk.alive = false; hk.sink = 2.0
+	cs.shells.append({"s": hk.pos + Vector2(0, -400), "e": hk.pos, "pos": hk.pos, "t": 0.0, "T": 0.05, "dmg": 100, "side": 0, "size": "H", "pen": 400.0, "fall": 0.3, "who": cship, "ammo": "ap", "tgt": null, "rel": 30.0, "mm": 406})
+	cs.sys_log.clear(); cs.step(0.1)
+	ok(int(cs.sys_log.get("shell on a hulk", 0)) == 1, "a shell bursts on a ship that is going down")
+	hk.sink = 999.0
+	cs.shells.append({"s": hk.pos + Vector2(0, -400), "e": hk.pos, "pos": hk.pos, "t": 0.0, "T": 0.05, "dmg": 100, "side": 0, "size": "H", "pen": 400.0, "fall": 0.3, "who": cship, "ammo": "ap", "tgt": null, "rel": 30.0, "mm": 406})
+	cs.step(0.1)
+	ok(int(cs.sys_log.get("shell on a hulk", 0)) == 1, "and falls in the sea once she is under")
 	ok(preload("res://scripts/skirmish.gd").ERA_TECH.has(4) and preload("res://scripts/skirmish.gd").ERA_TECH[4].has("stealth"), "the quick battle has Era IV")
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1

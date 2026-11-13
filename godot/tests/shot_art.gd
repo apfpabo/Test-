@@ -27,6 +27,7 @@ func _process(_d: float) -> void:
             for i in s0.d.slots.size(): if s0.d.slots[i].s == "M": s0.rec.fit[i] = OS.get_environment("GUN")
             sim.fit_mounts(s0); battle.rebuild_view(s0)
             for m in s0.mounts: m.ta = 0.0 if m.slot.x > 0 else PI
+        if OS.get_environment("SLIDE") != "": for k in int(float(OS.get_environment("SLIDE")) * 10.0): sim._boxes(0.1)   # SLIDE=<seconds>: deck cargo left to slide that long in her list
         for s in sim.ships: if s.side == 1: s.pos = Vector2(9000, 9000)
         battle.cam_free = true; battle.camera.position = Vector2.from_angle(hd) * (float(args[4]) if args.size() > 4 else 0.0); battle.camera.zoom = Vector2.ONE * float(args[1] if args.size() > 1 else "2.5")
         battle.paused = true; battle.hud.visible = false

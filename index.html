@@ -513,16 +513,17 @@ const DESIGN_LIST = [
     slots: [sl('V', -152, -24, ALL, 'sam'), sl('V', -152, 24, ALL, 'sam'), sl('V', 122, 26, ALL, 'sam'), ...pair('A', 108, 27.6, 'ciws'), ...pair('A', -124, 27.6, 'ciws')] },
   // ---------------------------------------------------------------- Era IV · Network age (the owner's go-ahead, 11 Nov 2026)
   { id: 'ddg_zumwalt', cls: 'ddg', tech: 'stealth', yard: 'tidewater', dn: 'Wraith', model: 'Zumwalt-class destroyer', year: 2016, era: 4, L: 190, B: 24.6, t: 15700, kn: 30, td: 900, armor: 25, crew: 175, price: 260000,
-    p: { bow: .42, run: .16, stern: 't', tw: .7, sup: [[-22, 46, 19, 3]], helo: [[-78, 9]], boats: [[-50, 1]] },
-    slots: [sl('M', 62, 0, FWD, 'g127s'), sl('M', 50, 0, FWD, 'g127s'), sl('V', 36, -7, ALL, 'ssm'), sl('V', 36, 7, ALL, 'sam'), sl('V', -58, -8, ALL, 'sam'), sl('V', -58, 8, ALL, 'ssm'), sl('A', 6, 0, ALL, 'ciws')] },
+    // a wave-piercing hull, widest abaft amidships, its sides leaning inboard; one great slab-sided deckhouse and nothing else standing
+    p: { outline: [[95, 0.3], [91, 1.5], [72, 5.0], [48, 8.6], [24, 11.0], [2, 12.1], [-40, 12.3], [-78, 11.7], [-95, 10.7]], stealth: { tumble: true, up: [[-10, 30, 12.5, 2]] }, sup: [[-14, 52, 19.5, 3]], helo: [[-78, 9]] },
+    slots: [sl('M', 62, 0, FWD, 'g127s'), sl('M', 50, 0, FWD, 'g127s'), sl('V', 30, -6, ALL, 'ssm'), sl('V', 30, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
   { id: 'ddg_gorshkov', cls: 'ddg', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 170000,
-    p: { bow: .38, run: .2, stern: 't', tw: .6, sup: [[14, 30, 13, 4]], fun: [[-8, 3.2, 2.4]], mast: [[18, 'l']], helo: [[-55, 7]], boats: [[-12, 1]] },
+    p: { bow: .38, run: .2, stern: 't', tw: .6, stealth: { up: [[17, 15, 8.5, 2]] }, sup: [[14, 30, 13, 2]], fun: [[-8, 3.2, 2.4]], mast: [[15, 'l']], helo: [[-55, 7]] },
     slots: [sl('M', 52, 0, FWD, 'g130t'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 32, 0, ALL, 'sam'), sl('V', -30, 0, ALL, 'sam'), ...pair('A', -20, 5.6, 'ciws'), sl('T', -6, 0, BEAM, 'torh')] },
   { id: 'co_visby', cls: 'corvette', name: 'Stealth Corvette', tech: 'stealth', yard: 'clydemouth', dn: 'Shade', model: 'Visby-class corvette', year: 2009, era: 4, L: 72.7, B: 10.4, t: 640, kn: 35, td: 380, armor: 0, crew: 43, price: 60000, radar: true,
-    p: { bow: .36, run: .18, stern: 't', tw: .7, sup: [[4, 22, 8, 2]] },
+    p: { outline: [[36.35, 0.2], [31, 1.7], [19, 4.1], [7, 5.1], [-22, 5.2], [-36.35, 4.7]], stealth: { tumble: true }, sup: [[3, 25, 8.4, 2]], mast: [[1, 'l']] },
     slots: [sl('S', 26, 0, FWD, 'g76'), sl('V', -14, 0, ALL, 'ssm'), sl('T', -24, 0, BEAM, 'torh')] },
   { id: 'cv_ford', cls: 'cv', name: 'Nuclear Carrier', tech: 'netcentric', nuc: true, yard: 'tidewater', dn: 'Dominion', model: 'Gerald R. Ford-class carrier', year: 2017, era: 4, L: 337, B: 41, t: 100000, kn: 31, td: 1300, armor: 64, crew: 4550, hangar: 8, price: 640000,
-    p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 56, len: .985, x: 0, isl: [-80, 18, 8], ang: true } },
+    p: { bow: .3, run: .18, stern: 't', tw: .6, fd: { w: 56, len: .985, x: 0, isl: [-80, 26, 10], ang: true, modern: true, cats: 4, stbd: [-118, 78, 7], lifts: [[36, 1], [-18, 1], [-92, -1]] } },
     slots: [sl('V', -152, -24, ALL, 'sam'), sl('V', -152, 24, ALL, 'sam'), sl('V', 122, 26, ALL, 'sam'), ...pair('A', 108, 27.6, 'ciws'), ...pair('A', -124, 27.6, 'ciws')] },
   { id: 'ssn_virginia', cls: 'ssn', tech: 'stealth', yard: 'tidewater', dn: 'Sentry', model: 'Virginia-class submarine', year: 2004, era: 4, L: 115, B: 10.4, t: 7800, kn: 20, subKn: 34, td: 520, armor: 0, crew: 135, price: 240000,
     p: { sail: [[22, 9, 2.4]], casing: .22, smooth: true, tear: true, tubes: [[49, 43, 3, 1.5]], pod: 1 },
@@ -978,7 +979,11 @@ function drawPlan(g, d, P, part = 'all') {
   }
   // hull, deck and planking
   hullPath(g, d); g.fillStyle = shade(P.hull, -0.12); g.fill(); g.lineWidth = 0.3; g.strokeStyle = edge; g.stroke();
-  const inset = Math.min(0.7, B * 0.045); hullPath(g, d, inset); crownFill(g, deckCol, b);
+  const tumble = p.stealth && p.stealth.tumble;   // sides that lean inboard from the waterline to a narrower deck
+  const inset = tumble ? B * 0.085 : Math.min(0.7, B * 0.045);
+  if (tumble) { hullPath(g, d); crownFill(g, shade(P.hull, 0.02), b, -0.04); g.lineWidth = 0.3; g.strokeStyle = edge; g.stroke(); }
+  hullPath(g, d, inset); crownFill(g, deckCol, b);
+  if (tumble) { g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.12; hullPath(g, d, inset); g.stroke(); }
   g.save(); hullPath(g, d, inset); g.clip();
   if (p.teak) {   // a steel deck with teak laid between two stations (Yamato, the A-150): planks only on the wood
     const [xa, xf] = p.teak, ka = p.teak[2] || 0, kf = p.teak[3] || 0;   // ka, kf: how far the boundary's middle stands from where it meets the side (a chevron, as Yamato's)
@@ -997,17 +1002,17 @@ function drawPlan(g, d, P, part = 'all') {
   g.restore();
   g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 0.2; hullPath(g, d, inset + 0.25); g.stroke();
   if (d.kind === 'carrier') { drawFlightDeck(g, d, P); if (part === 'all') drawIslandTop(g, d, P); return; }
-  detailDeck(g, d, P, deckCol, inset);
+  if (!p.stealth) detailDeck(g, d, P, deckCol, inset);
   const fe = (p.bow || .33) * L, guns = d.slots.filter(s => GUN_SIZES.includes(s.s) && s.y === 0 && s.x > 0);
   // ground tackle: hawse pipes, cables and windlass
   const cx = h - fe * 0.42; g.strokeStyle = 'rgba(20,22,24,.7)'; g.lineWidth = Math.max(0.12, B * 0.012);
-  g.beginPath(); for (const sy of [-1, 1]) { g.moveTo(h - fe * 0.1, sy * b * 0.18); g.lineTo(cx, sy * b * 0.22); } g.stroke();
-  g.fillStyle = shade(P.sup, -0.35); for (const sy of [-1, 1]) { g.beginPath(); g.arc(cx, sy * b * 0.22, Math.max(0.3, B * 0.03), 0, TAU); g.fill(); }
+  if (!tumble) { g.beginPath(); for (const sy of [-1, 1]) { g.moveTo(h - fe * 0.1, sy * b * 0.18); g.lineTo(cx, sy * b * 0.22); } g.stroke();
+  g.fillStyle = shade(P.sup, -0.35); for (const sy of [-1, 1]) { g.beginPath(); g.arc(cx, sy * b * 0.22, Math.max(0.3, B * 0.03), 0, TAU); g.fill(); } }
   // breakwater ahead of the forward guns
-  if (guns.length && L > 60) { const fx = Math.max(...guns.map(s => s.x)), wid = WEAPONS[guns.find(s => s.x === fx).def]; const bx = fx + (wid ? wid.tl * 0.55 + 1.5 : 3);
+  if (guns.length && L > 60 && !tumble) { const fx = Math.max(...guns.map(s => s.x)), wid = WEAPONS[guns.find(s => s.x === fx).def]; const bx = fx + (wid ? wid.tl * 0.55 + 1.5 : 3);
     g.strokeStyle = shade(P.sup, -0.05); g.lineWidth = Math.max(0.2, B * 0.02); g.beginPath(); g.moveTo(bx - b * 0.7, -b * 0.72); g.lineTo(bx, 0); g.lineTo(bx - b * 0.7, b * 0.72); g.stroke(); }
   // bollards and fairleads along the deck edge
-  g.fillStyle = shade(P.sup, -0.4); for (let x = -h * 0.85; x < h * 0.7; x += Math.max(6, L / 9)) for (const sy of [-1, 1]) { g.beginPath(); g.arc(x, sy * (b - inset - 0.5), Math.max(0.15, B * 0.012), 0, TAU); g.fill(); }
+  g.fillStyle = shade(P.sup, -0.4); if (!p.stealth) for (let x = -h * 0.85; x < h * 0.7; x += Math.max(6, L / 9)) for (const sy of [-1, 1]) { g.beginPath(); g.arc(x, sy * (b - inset - 0.5), Math.max(0.15, B * 0.012), 0, TAU); g.fill(); }
   // merchant hatches and derricks
   if (p.tanker) { // a tanker: the catwalk fore and aft, cargo piping and round tank hatches
     const xs = p.holds || [], xa = Math.min(...xs) - 6, xf = Math.max(...xs) + 6;
@@ -1178,6 +1183,59 @@ function tub(g, P, x, y, r, h) { // an AA tub: a ring of plating round the gun
 function halfBeamAt(d, x) { const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr = (d.p.run || .2) * d.L; let half = d.B / 2;
   if (x > h - fe) half *= Math.sqrt(Math.max(0, (h - x) / fe)); else if (x < -h + fr) half *= Math.max(d.p.stern === 't' ? (d.p.tw || .5) : 0.2, Math.sqrt(Math.max(0, (x + h) / fr))); return half; }
 
+// Faceted, slab-sided structures of the stealth designs (Era IV; the owner, 13 Nov 2026: they looked like ordinary ships).
+// A block is a base polygon and a smaller roof polygon above it, so every side is a flat plate leaning inboard. In height
+// mode the slope is laid in steps between the two, and Godot lights each plate from the sun as it does everything else.
+function facet(g, P, base, roof, h0, h1, o = {}) {
+  const S = P.sup, n = base.length, poly = pts => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
+  const mix = k => base.map(([x, y], i) => [x + (roof[i][0] - x) * k, y + (roof[i][1] - y) * k]);
+  if (HM.on) { const steps = 28; for (let i = 0; i <= steps; i++) { poly(mix(i / steps)); pfill(g, null, h0 + (h1 - h0) * i / steps); } return; }
+  if (!o.noAo) aoUnder(g, k => poly(base.map(([x, y]) => [x + Math.sign(x - (base[0][0] + base[n >> 1][0]) / 2) * k, y + Math.sign(y) * k])), 0.4);
+  poly(base); g.fillStyle = shade(S, -0.1 + (o.lift || 0)); g.fill(); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.1; g.stroke();
+  poly(roof); g.fillStyle = shade(S, 0.03 + (o.lift || 0)); g.fill(); g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.08; g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 0.07; g.beginPath(); for (let i = 0; i < n; i++) { g.moveTo(base[i][0], base[i][1]); g.lineTo(roof[i][0], roof[i][1]); } g.stroke();   // the creases between plates
+}
+// An eight-sided block lying fore and aft: x0 aft, x1 forward, half-width hw, the corners cut by c; `k` narrows the ends.
+function oct(x0, x1, hw, c, kf = 0.55, ka = 0.7, y = 0) { return [[x0, y - hw * ka], [x0 + c, y - hw], [x1 - c, y - hw], [x1, y - hw * kf], [x1, y + hw * kf], [x1 - c, y + hw], [x0 + c, y + hw], [x0, y + hw * ka]]; }
+function facetBlock(g, P, x0, x1, hw, h0, h1, o = {}) {
+  const c = Math.min((x1 - x0) * 0.22, hw * 0.9), ins = (h1 - h0) * (o.slope || 0.34), y = o.y || 0;
+  facet(g, P, oct(x0, x1, hw, c, o.kf, o.ka, y), oct(x0 + ins * 1.3, x1 - ins * 1.6, Math.max(0.4, hw - ins), Math.max(0.2, c - ins * 0.3), o.kf, o.ka, y), h0, h1, o);
+  return { x0: x0 + ins * 1.3, x1: x1 - ins * 1.6, hw: Math.max(0.4, hw - ins) };
+}
+// The upper works of a stealth design, from the same plan fields as any other: each `sup` block a faceted deckhouse
+// (and `p.stealth.up`, [x, length, width, tiers], a second house standing on the first), `fun` a slab-sided stack with
+// its exhausts let into the top, `mast` a closed pyramid with flat array panels on its faces. Nothing stands in the open.
+function stealthTop(g, d, P) {
+  const p = d.p, S = P.sup, sp = p.stealth;
+  let top = 0;
+  (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
+    const h1 = tiers * DECK_H, r = facetBlock(g, P, x - len / 2, x + len / 2, w / 2, 0, h1, { kf: bi ? 0.8 : 0.5, ka: 0.8 });
+    if (bi === 0) top = h1;
+    if (!HM.on) { // plate seams, flush hatches, and a hangar door line at the after end
+      g.strokeStyle = 'rgba(0,0,0,.07)'; g.lineWidth = 0.07; g.beginPath(); for (let xx = r.x0 + 3; xx < r.x1 - 1; xx += 3.2) { g.moveTo(xx, -r.hw + 0.3); g.lineTo(xx, r.hw - 0.3); } g.stroke();
+      g.fillStyle = 'rgba(0,0,0,.14)'; for (const sy of [-1, 1]) g.fillRect(r.x0 + (r.x1 - r.x0) * 0.3, sy * r.hw * 0.55 - 0.3, 1.4, 0.6); }
+  });
+  for (const [x, len, w, tiers] of (sp && sp.up) || []) {
+    const h1 = top + tiers * DECK_H, r = facetBlock(g, P, x - len / 2, x + len / 2, w / 2, top, h1, { kf: 0.45, ka: 0.75, slope: 0.3, lift: 0.03 });
+    if (!HM.on) { // bridge windows as one dark band across the forward plate; array panels flat on the corner plates
+      g.strokeStyle = 'rgba(16,22,26,.8)'; g.lineWidth = 0.35; g.beginPath(); g.moveTo(x + len / 2 - 0.5, -w * 0.2); g.lineTo(x + len / 2 - 0.5, w * 0.2); g.stroke();
+      g.fillStyle = shade(S, 0.16); for (const sx of [-1, 1]) for (const sy of [-1, 1]) { g.save(); g.translate(x + sx * (len / 2 - len * 0.12), sy * (w / 2 - 0.5)); g.rotate(sx * sy * 0.5); g.fillRect(-1.3, -0.28, 2.6, 0.56); g.restore(); } }
+    top = Math.max(top, h1);
+  }
+  const hf = clamp(d.B * 0.5, 3.5, 17);
+  for (const [x, rx, ry, y = 0] of p.fun || []) { // the stack: a slab-sided box, the uptakes dark slots in its top
+    const r = facetBlock(g, P, x - rx * 1.5, x + rx * 1.5, ry * 1.25, 0, hf, { kf: 0.75, ka: 0.75, slope: 0.12, y });
+    if (!HM.on) { g.fillStyle = '#17191a'; for (const k of [-0.35, 0.35]) g.fillRect(x + k * rx - rx * 0.22, y - r.hw * 0.6, rx * 0.44, r.hw * 1.2); } }
+  const hm = clamp(d.B * 0.9, 6, 30);
+  for (const [x] of p.mast || []) { // the mast: a closed four-sided pyramid, cut off at the top, an array panel on each face
+    const bs = Math.max(2.2, d.B * 0.2), ts = bs * 0.32, sq = k => [[x - k, -k], [x + k, -k], [x + k, k], [x - k, k]];
+    facet(g, P, sq(bs), sq(ts), top, top + hm * 0.8, { lift: 0.05 });
+    if (!HM.on) { g.fillStyle = shade(S, 0.2); const m = (bs + ts) / 2; for (const [dx, dy, ww, hh] of [[m, 0, 0.3, 1.5], [-m, 0, 0.3, 1.5], [0, m, 1.5, 0.3], [0, -m, 1.5, 0.3]]) g.fillRect(x + dx - ww / 2, dy - hh / 2, ww, hh);
+      g.beginPath(); g.arc(x, 0, ts * 0.45, 0, TAU); g.fillStyle = '#1c1f21'; g.fill(); }
+    else { g.beginPath(); g.arc(x, 0, ts * 0.45, 0, TAU); pfill(g, null, top + hm); } }
+  if (!HM.on) { g.fillStyle = P.ens; g.fillRect(-d.L / 2 + 0.4, -0.6, 1.4, 1.2); }
+}
+
 // The forward (main) block, built after the school.
 function supMain(g, d, P, st, x, len, w, tiers) {
   const x0 = x - len / 2, x1 = x + len / 2, hw = w / 2, H = t => (t + 1) * DECK_H, cap = xx => Math.max(hw, halfBeamAt(d, xx) - 0.5), big = d.L > 150, mid = d.L > 100;
@@ -1331,6 +1389,7 @@ function drawPlanTop(g, d, P) {
   // the long deckhouse (01 level) that the bridge, funnels and after control stand on
   for (const [x, len, w] of p.house || []) { level(g, P, x - len / 2, x + len / 2, w / 2, DECK_H * 0.8, { front: 'taper', rear: 'round' }); houseDetail(g, d, P, x, len, w); }
   for (const [x, y, r, hh] of p.tubs || []) tub(g, P, x, y, r, hh || 1.4);
+  if (p.stealth) { stealthTop(g, d, P); return; }
   // superstructure blocks
   (p.sup || []).forEach(([x, len, w, tiers = 1], bi) => {
     if (bi === 0) supMain(g, d, P, st, x, len, w, tiers); else supAft(g, d, P, st === 'tower' ? 'uk' : st, x, len, w, tiers);
@@ -1372,7 +1431,13 @@ function drawFlightDeck(g, d, P) {
   const f = d.p.fd, L = d.L, fl = L * f.len, fx = f.x || 0, w = f.w, x0 = fx - fl / 2, x1 = fx + fl / 2;
   const deck = f.wood ? shade(TEAK, -0.18) : shade(P.deck, -0.05), path = (k = 0) => { g.beginPath(); g.moveTo(x0 - k, -w / 2 - k); g.lineTo(x1 - w * 0.25, -w / 2 - k); g.lineTo(x1 + k, -w * 0.28); g.lineTo(x1 + k, w * 0.28); g.lineTo(x1 - w * 0.25, w / 2 + k); g.lineTo(x0 - k, w / 2 + k); g.closePath(); };
   const angPath = () => { g.beginPath(); g.moveTo(x0 + fl * 0.02, -w / 2); g.lineTo(fx + fl * 0.02, -w / 2 - w * 0.34); g.lineTo(fx + fl * 0.16, -w / 2 - w * 0.34); g.lineTo(fx + fl * 0.22, -w / 2); g.closePath(); };
+  // a modern supercarrier's deck (the Era IV carrier; the owner, 13 Nov 2026: hers was bare): the starboard side built out
+  // for the island and two deck-edge lifts (`stbd`: [x aft, x forward, metres out]), a third lift on the port quarter
+  const sb = f.stbd, stbdPath = () => { g.beginPath(); g.moveTo(sb[0], w / 2 - 0.2); g.lineTo(sb[0] + sb[2] * 1.4, w / 2 + sb[2]); g.lineTo(sb[1] - sb[2] * 1.4, w / 2 + sb[2]); g.lineTo(sb[1], w / 2 - 0.2); g.closePath(); };
+  const liftRect = ([lx, sd]) => sd > 0 ? [lx - 13, w / 2 + (sb ? sb[2] : 6) - 15, 26, 15] : [lx - 13, -w / 2 - 6, 26, 15];
   contact(g, path, 0.5); path(); crownFill(g, deck, w / 2);
+  if (sb) { stbdPath(); crownFill(g, deck, w); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.2; g.stroke(); }
+  for (const lf of f.lifts || []) if (lf[1] < 0) { const [rx, ry, rw, rh] = liftRect(lf); g.beginPath(); g.rect(rx, ry, rw, rh); crownFill(g, deck, w); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.2; g.stroke(); }
   if (f.ang) { angPath(); crownFill(g, deck, w); }
   if (f.edge !== undefined) { g.beginPath(); g.rect(f.edge - 9, -w / 2 - 10, 18, 10.4); crownFill(g, deck, w); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.2; g.stroke(); }   // deck-edge lift
   g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.2; path(); g.stroke();
@@ -1380,12 +1445,24 @@ function drawFlightDeck(g, d, P) {
   const mk = 'rgba(214,214,204,.42)'; g.strokeStyle = mk; g.lineWidth = 0.35; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x0 + 3, 0); g.lineTo(x1 - 4, 0);
   g.stroke(); g.setLineDash([]);
   g.strokeStyle = 'rgba(214,214,204,.25)'; g.lineWidth = 0.25; g.beginPath(); if (!f.ang) for (let i = 0; i < 6; i++) { const x = x0 + fl * 0.06 + i * 2.6; g.moveTo(x, -w * 0.3); g.lineTo(x, w * 0.3); } g.stroke();  // arrester wires
-  g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.2; for (const ex of [0.62, 0.3, -0.25]) g.strokeRect(fx + fl * ex / 2 - 6, -6, 12, 12);                                   // lifts
+  g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 0.2; if (!f.lifts) for (const ex of [0.62, 0.3, -0.25]) g.strokeRect(fx + fl * ex / 2 - 6, -6, 12, 12);                                   // lifts
+  for (const lf of f.lifts || []) { const [rx, ry, rw, rh] = liftRect(lf);   // deck-edge lifts: the platform's outline and its safety line
+    g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(rx, ry, rw, rh); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.25; g.strokeRect(rx, ry, rw, rh);
+    g.strokeStyle = 'rgba(226,200,90,.35)'; g.lineWidth = 0.25; g.setLineDash([1.5, 1.5]); g.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2); g.setLineDash([]); }
   // tie-down points, the catapult tracks at the bow, crash barriers, and the gun galleries hung below the deck edge
   g.fillStyle = 'rgba(0,0,0,.16)'; for (let x = x0 + 4; x < x1 - 6; x += 4) for (let yy = -w / 2 + 2.5; yy < w / 2 - 2; yy += 4) g.fillRect(x, yy, 0.22, 0.22);
-  if (!f.wood) { g.strokeStyle = 'rgba(20,22,24,.5)'; g.lineWidth = 0.45; g.beginPath(); for (const cy of f.ang ? [-w * 0.2, w * 0.14] : [-w * 0.18, w * 0.18]) { g.moveTo(x1 - w * 0.3, cy); g.lineTo(x1 - w * 0.3 - Math.min(75, fl * 0.24), cy); } g.stroke(); }
+  if (!f.wood) { g.strokeStyle = 'rgba(20,22,24,.5)'; g.lineWidth = 0.45; g.beginPath(); for (const cy of f.ang ? [-w * 0.2, w * 0.14] : [-w * 0.18, w * 0.18]) { g.moveTo(x1 - w * 0.3, cy); g.lineTo(x1 - w * 0.3 - (f.cats ? 92 : Math.min(75, fl * 0.24)), cy); } g.stroke(); }
+  if (f.cats) { g.strokeStyle = 'rgba(226,200,90,.3)'; g.lineWidth = 0.3; g.beginPath(); g.moveTo(x0 + 6, w / 2 - 2.2); g.lineTo(x1 - w * 0.3, w / 2 - 2.2); g.moveTo(fx + fl * 0.24, -w / 2 + 2.2); g.lineTo(x1 - w * 0.3, -w / 2 + 2.2); g.stroke();   // the safety line inside the deck edge
+    g.strokeStyle = 'rgba(200,70,60,.4)'; g.setLineDash([2.5, 2.5]); g.beginPath(); g.moveTo(x0 + 10, w * 0.2); g.lineTo(fx + fl * 0.2, -w * 0.3); g.stroke(); g.setLineDash([]); }   // the foul line along the landing area
+  if (f.cats) { // four catapults: two at the bow (drawn above), two in the waist across the angle; a blast deflector behind each
+    const tr = [[x1 - w * 0.3, -w * 0.2, 0], [x1 - w * 0.3, w * 0.14, 0], [fx + fl * 0.14, -w * 0.5, -0.07], [fx + fl * 0.11, -w * 0.66, -0.1]], len = 92;
+    for (const [tx, ty, ta] of tr) { g.save(); g.translate(tx, ty); g.rotate(ta);
+      if (ta) { g.strokeStyle = 'rgba(20,22,24,.5)'; g.lineWidth = 0.45; g.beginPath(); g.moveTo(0, 0); g.lineTo(-len, 0); g.stroke(); }
+      g.strokeStyle = 'rgba(214,214,204,.16)'; g.lineWidth = 0.12; g.beginPath(); g.moveTo(0, -1.1); g.lineTo(-len, -1.1); g.moveTo(0, 1.1); g.lineTo(-len, 1.1); g.stroke();   // the track's cover plates
+      g.fillStyle = 'rgba(0,0,0,.16)'; g.fillRect(-len - 9, -5, 3.2, 10); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.18; g.strokeRect(-len - 9, -5, 3.2, 10);   // the deflector, lying flush
+      g.restore(); } }
   g.strokeStyle = 'rgba(226,226,214,.2)'; g.lineWidth = 0.3; g.beginPath(); if (!f.ang) for (const bx of [0.3, 0.36]) { const x = x0 + fl * bx; g.moveTo(x, -w * 0.46); g.lineTo(x, w * 0.46); } g.stroke();
-  g.fillStyle = shade(P.hull, -0.3); for (const sy of [-1, 1]) for (const gx of [0.16, 0.42, 0.7, 0.86]) { const x = x0 + fl * gx; if (f.isl && sy > 0 && Math.abs(x - f.isl[0]) < f.isl[1] * 0.7) continue; rrect(g, x - 5, sy * (w / 2 + 0.9) - 0.9, 10, 1.8, 0.5); g.fill(); }
+  g.fillStyle = shade(P.hull, -0.3); for (const sy of [-1, 1]) for (const gx of [0.16, 0.42, 0.7, 0.86]) { const x = x0 + fl * gx; if (f.isl && sy > 0 && Math.abs(x - f.isl[0]) < f.isl[1] * 0.7) continue; if (sb && sy > 0 && x > sb[0] - 6 && x < sb[1] + 6) continue; if ((f.lifts || []).some(l => l[1] === sy && Math.abs(l[0] - x) < 20)) continue; rrect(g, x - 5, sy * (w / 2 + 0.9) - 0.9, 10, 1.8, 0.5); g.fill(); }
   if (f.ang) { // the angled deck: a landing area running from the stern out over the port sponson, its edges solid, its centre line dashed,
     // the arrester wires across it near the stern; drawn in its own axes and clipped to the deck
     const ax = x0 + 3, ay = -w * 0.1, bxx = fx + fl * 0.13, byy = -w / 2 - w * 0.19, ang = Math.atan2(byy - ay, bxx - ax), len = Math.hypot(bxx - ax, byy - ay), hwd = w * 0.15;
@@ -1409,6 +1486,15 @@ function drawIslandTop(g, d, P) { // the carrier's island: stepped levels, the f
     for (const sy of [-1, 1]) { g.strokeStyle = HM.on ? hgrey(hd + 7) : 'rgba(14,18,20,.85)'; g.lineWidth = 0.3; g.beginPath(); g.moveTo(x1 - d.L * 0.3, sy * (w / 2 - 0.4)); g.lineTo(x1 - d.L * 0.3, sy * (w / 2 + 5)); g.stroke(); }   // hinged radio masts, lowered outboard
     return; }
   const [ix, il, iw] = f.isl, iy = w / 2 - iw / 2 + 1.2;
+  if (f.modern) { // a small slab-sided island well aft, flat array panels on its faces, and a closed mast on it
+    const r = facetBlock(g, P, ix - il / 2, ix + il / 2, iw / 2, hd, hd + 4 * DECK_H, { y: iy, kf: 0.6, ka: 0.7, slope: 0.1 });
+    const r2 = facetBlock(g, P, ix - il * 0.3, ix + il * 0.42, iw * 0.36, hd + 4 * DECK_H, hd + 6 * DECK_H, { y: iy, kf: 0.5, ka: 0.7, slope: 0.12, lift: 0.04 });
+    const mx = ix - il * 0.12, bs = iw * 0.24, ts = bs * 0.35, sq = k => [[mx - k, iy - k], [mx + k, iy - k], [mx + k, iy + k], [mx - k, iy + k]];
+    facet(g, P, sq(bs), sq(ts), hd + 6 * DECK_H, hd + 6 * DECK_H + 12, { lift: 0.06, noAo: true });
+    if (!HM.on) { g.strokeStyle = 'rgba(16,22,26,.8)'; g.lineWidth = 0.35; g.beginPath(); g.moveTo(r2.x1 + 0.2, iy - r2.hw * 0.5); g.lineTo(r2.x1 + 0.2, iy + r2.hw * 0.5); g.stroke();
+      g.fillStyle = shade(P.sup, 0.18); for (const sx of [-1, 1]) for (const sy of [-1, 1]) g.fillRect(ix + sx * il * 0.3 - 1.4, iy + sy * (iw / 2 - 0.55) - 0.25, 2.8, 0.5);
+      g.beginPath(); g.arc(mx, iy, ts * 0.5, 0, TAU); g.fillStyle = '#1c1f21'; g.fill(); }
+    return; }
   for (let t = 0; t < 4; t++) { const ll = il * (1 - t * 0.17), ww = iw * (1 - t * 0.14), xx = ix + t * il * 0.05;
     level(g, P, xx - ll / 2, xx + ll / 2, ww / 2, hd + (t + 1) * DECK_H, { y: iy, front: 'round', windows: t === 2, open: t === 3 }); }
   if (!d.nuc && !f.sidefun) { g.beginPath(); g.ellipse(ix - il * 0.12, iy, il * 0.13, iw * 0.3, 0, 0, TAU); pfill(g, '#1b1d1e', hd + 12); }

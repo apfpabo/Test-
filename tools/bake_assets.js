@@ -16,9 +16,12 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
   const combos = {}; for (const [id, d] of Object.entries(data.HULLS)) { const set = new Set(['player', 'raiders']);
     for (const [f, mk] of Object.entries(data.FAC_MAKERS)) if (mk && (mk.includes(d.yard) || ['ap', 'ao', 'ae', 'ar'].includes(d.klass))) set.add((data.FAC[f] && data.FAC[f].paint) || f);
     combos[id] = [...set].filter(k => data.PAL[k]); }
-  const manifest = { ships: {}, mounts: {} }; let bytes = 0;
+  // ONLY=id,id: bake those designs alone and leave every other picture, the mounts and the effects as they are
+  const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
+  const manifest = only ? JSON.parse(fs.readFileSync(path.join(OUT, 'data', 'sprites.json'), 'utf8')) : { ships: {}, mounts: {} }; let bytes = 0;
   const save = (rel, url) => { const f = path.join(OUT, 'assets', rel); fs.mkdirSync(path.dirname(f), { recursive: true }); const buf = Buffer.from(url.split(',')[1], 'base64'); fs.writeFileSync(f, buf); bytes += buf.length; };
   for (const [id, pals] of Object.entries(combos)) {
+    if (only && !only.includes(id)) continue;
     const res = await p.evaluate(([id, pals]) => {
       const d = HULLS[id], wide = spriteWide(d), spr = Math.round(clamp(1500 / d.L, 5, 16)), pad = 8;
       const mk = (fn) => { const c = document.createElement('canvas'); c.width = Math.ceil((d.L + pad) * spr); c.height = Math.ceil((wide + pad) * spr); const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.scale(spr, spr); fn(g); return c; };
@@ -40,6 +43,7 @@ const ROOT = path.resolve(__dirname, '..'), OUT = path.join(ROOT, 'godot');
     manifest.ships[id] = { spr: res.spr, w: res.w, h: res.h, pals };
     for (const [k, url] of Object.entries(res.img)) save('ships/' + id + '/' + k + (url.startsWith('data:image/png') ? '.png' : '.webp'), url);
   }
+  if (only) { fs.writeFileSync(path.join(OUT, 'data', 'sprites.json'), JSON.stringify(manifest)); console.log('baked', only.join(', '), (bytes / 1e6).toFixed(1), 'MB'); await b.close(); return; }
   // gun mounts, AA and torpedo tubes, in each national style (the shipbuilder's), baked in neutral grey and tinted
   // with the flag's paint in Godot. Each image packs the grey in R and B, the height in metres / H_MAX in G, and alpha.
   // Guns are baked as housing and barrels apart, so only the barrels run back on recoil; ao is a soft contact shadow.

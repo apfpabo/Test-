@@ -939,6 +939,15 @@ func has_kind(s: CShip, k: String) -> bool:
     return false
 
 ## Whether a mount can bear on a local bearing: x is 1 if it can, y is the bearing clamped to its arc.
+## A fixed bow or stern tube fires on a gyro angle: the torpedo leaves the tube and turns onto her course, so the tube
+## bears on anything within TORP_GYRO of its axis (the owner, 13 Nov 2026: submarines with loaded tubes did not fire
+## unless pointed almost straight at the target; their tubes' arcs are only 17 degrees either side).
+const TORP_GYRO := 1.4
+func tube_check(slot: Dictionary, local: float) -> Vector2:
+    var wide := {"arcs": slot.arcs.map(func(a): return [a[0], maxf(float(a[1]), TORP_GYRO)] if float(a[1]) < 0.4 else a)}
+    return arc_check(wide, local)
+var torp_blocked := false   # T was pressed and a loaded tube could not bear (said once, at the end of the step)
+var torp_fired := false
 func arc_check(slot: Dictionary, local: float) -> Vector2:
     var best := 0.0; var bd := INF
     for arc in slot.arcs:
@@ -1630,8 +1639,8 @@ func update_weapons(s: CShip, dt: float) -> void:
                 if is_player:
                     if not want_torp: continue
                     var want = ang_diff((mouse_world - p).angle(), s.a)
-                    if not arc_check(m.slot, want).x > 0: continue
-                    m.ta = want; m.cd = w.rel; fire_torps(s, m, mouse_world); continue
+                    if not tube_check(m.slot, want).x > 0: torp_blocked = true; continue
+                    m.ta = want; m.cd = w.rel; torp_fired = true; fire_torps(s, m, mouse_world); continue
                 if holding(s): continue   # holding fire: no torpedoes from the rest of the squadron
                 # straight-running torpedoes pass over a submerged boat; acoustic homers can go after one that is held on sonar
                 var homer: bool = w.get("homing", false)
@@ -1640,7 +1649,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var tg: CShip = s.target if (s.target != null and engageable(s.target) and visible_to(s.target, s.side) and ok_t.call(s.target)) else nearest_enemy(s.pos, s.side, rng * reach_k, ok_t)
                 if tg == null or p.distance_to(tg.pos) > rng * reach_k: continue
                 var lp = lead_point(p, tg, w.speed); var want = ang_diff((lp - p).angle(), s.a)
-                var ac = arc_check(m.slot, want)
+                var ac = tube_check(m.slot, want)
                 if ac.x == 0: m.ta += ang_diff(ac.y, m.ta) * minf(1.0, dt * 2); continue
                 if s.foul_by != null and t - s.foul_at < 1.0: continue   # held for a friend a moment ago: look again shortly
                 var fo: CShip = torp_fouls(s, p, lp, w, tg) if ff_care else null
@@ -1784,7 +1793,7 @@ func player_torp_foul() -> CShip:
     if s == null or not s.alive: return null
     for m in s.mounts:
         if m.w.kind != "torp" or m.dead or m.ammo == 0 or m.cd > 0: continue
-        if not arc_check(m.slot, ang_diff((mouse_world - s.pos).angle(), s.a)).x > 0: continue
+        if not tube_check(m.slot, ang_diff((mouse_world - s.pos).angle(), s.a)).x > 0: continue
         return torp_fouls(s, world_pt(s, m.slot.x, m.slot.y), mouse_world, m.w, null)
     return null
 ## A warning for the player before he fires or drops with a friend in danger: "" if none; else what to say. The first
@@ -2665,6 +2674,8 @@ func step(dtv: float) -> void:
             if f.t <= 0: s.fires.remove_at(i); continue
             f.st -= dtv
             if f.st <= 0: f.st = 0.35; part(P.SMOKE, world_pt(s, f.x, f.y), 8.0 + randf() * 5.0, 3.0 + f.r * 2.5, Vector2.ZERO, true)
+    if want_torp and torp_blocked and not torp_fired and flag != null: say("The tubes do not bear. Bring her bow or stern round towards the target.", 1.8)
+    torp_blocked = false; torp_fired = false
     want_torp = false; want_msl = false
     _collisions()
     # shells land

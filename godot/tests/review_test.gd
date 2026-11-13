@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew(); _slots_keys()
-	ok(sections == 23, "every section ran to its end (%d of 23)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew(); _slots_keys(); _subs()
+	ok(sections == 24, "every section ran to its end (%d of 24)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1584,4 +1584,18 @@ func _slots_keys() -> void:
 	var cf := ConfigFile.new(); cf.load(Settings.PATH)
 	ok(int(cf.get_value("keys", "battle", {}).get(KEY_T, 0)) == KEY_Q, "the bindings are saved")
 	Settings.reset_keys(); ok(Settings.binds.battle.is_empty(), "reset")
+	sections += 1
+
+## Submarines (the owner, 13 Nov 2026): a missile boat picked in a quick battle of an earlier era carries her missiles;
+## fixed tubes fire on a gyro angle, so a boat need not point straight at her target.
+func _subs() -> void:
+	var sk = load("res://scripts/skirmish.gd")
+	var tech: Array = sk.ERA_TECH[3]
+	var fit: Array = BattleSim.default_fit(GameData.hulls["ssn_typhoon"], tech)
+	ok(fit.count("ssm") == 4, "a Typhoon-type boat in Era III carries her four missile tubes (%s)" % str(fit))
+	var sim := BattleSim.new()
+	sim.setup([{"type": "ss_gato", "name": "A", "hullFrac": 1.0, "fit": BattleSim.default_fit(GameData.hulls["ss_gato"], []), "pal": "player"}], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], [], [], 0)
+	var b: BattleSim.CShip = sim.ships[0]; var tube: BattleSim.Mount = null
+	for m in b.mounts: if m.w.kind == "torp" and absf(float(m.slot.arcs[0][0])) < 0.1: tube = m; break
+	ok(tube != null and sim.arc_check(tube.slot, 0.9).x == 0 and sim.tube_check(tube.slot, 0.9).x > 0 and sim.tube_check(tube.slot, 2.0).x == 0, "a bow tube bears 50 degrees off the bow on a gyro angle, not 115")
 	sections += 1

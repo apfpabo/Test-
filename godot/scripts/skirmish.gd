@@ -86,5 +86,11 @@ func _refresh() -> void:
 
 func _start(p: Array, e: Array, fac: String, era: int) -> void:
     var w := {"sea": mini(wx_pick.selected, 3) if wx_pick.selected < 4 else 0, "fog": wx_pick.selected == 4, "night": hour_pick.selected > 0, "moon": 1.0 if hour_pick.selected == 1 else 0.1}
-    GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "enemy_fac": fac, "player_tech": ERA_TECH[era], "enemy_tech": ERA_TECH[era], "islands": randi_range(0, 4), "weather": Weather.battle(w)}
+    # each side has at least the research its newest ship was built round: a missile submarine picked in an earlier era
+    # went to sea with empty launch tubes (the owner, 13 Nov 2026)
+    var side_era := func(ids: Array) -> int:
+        var e2 := era
+        for id in ids: e2 = maxi(e2, mini(3, int(GameData.hulls[id].get("era", 1))))
+        return e2
+    GameData.pending = {"player": p.duplicate(), "enemy": e.duplicate(), "enemy_fac": fac, "player_tech": ERA_TECH[side_era.call(p)], "enemy_tech": ERA_TECH[side_era.call(e)], "islands": randi_range(0, 4), "weather": Weather.battle(w)}
     get_tree().change_scene_to_file("res://scenes/battle.tscn")

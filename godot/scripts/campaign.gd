@@ -440,9 +440,14 @@ func refit_text(ships: Array) -> String:
         for k in up: if BattleSim.UPGRADES.has(k): kinds[String(BattleSim.UPGRADES[k].name).to_lower()] = true
     if n == 0: return ""
     return "%d of them %s been refitted (%s)." % [n, "has" if n == 1 else "have", ", ".join(kinds.keys())]
+## Motor torpedo boats count for PT_STRENGTH_MULT times their price (the owner, 13 Nov 2026, decision 8d: three boats
+## sank a destroyer the contact panel called their equal), on either side.
+const PT_STRENGTH_MULT := 2.0
+## The least chance of breaking off from a contact, whatever the speeds (was 0.1; the owner, 13 Nov 2026).
+const EVADE_FLOOR := 0.22
 func strength(ships: Array) -> float:
     var t = 0.0
-    for s in ships: t += ship_value(s) * (0.3 + 0.7 * s.hullFrac)
+    for s in ships: t += ship_value(s) * (0.3 + 0.7 * s.hullFrac) * (PT_STRENGTH_MULT if hull(s).klass == "pt" else 1.0)
     return t
 func cargo_cap() -> int:
     var t = 0
@@ -611,12 +616,40 @@ func pick_temper(bold := 0.3, cautious := 0.25) -> String:
     var r := randf()
     return "bold" if r < bold else ("cautious" if r < bold + cautious else "steady")
 func temper(o: Dictionary) -> String: return String(o.get("temper", "steady"))
+## Traits (the owner, 13 Nov 2026): an officer earns one at level 3 and another at level 5 (two at most), and each
+## tells in the ship he commands (a CShip's `traits`; BattleSim.TRAIT_* and trait(s, id)) or, for the blockade runner,
+## in the squadron he leads. An officer from before has none.
+const OFFICER_TRAITS := {
+    "night_owl": {"name": "Night Fighter", "desc": "At night her lookouts see 18% further and her salvos fall 15% closer together."},
+    "iron_dc": {"name": "Damage Control Ace", "desc": "Fires are put out and flooding is stopped 25% faster."},
+    "torp_master": {"name": "Torpedo Specialist", "desc": "Tubes are reloaded 20% sooner and a spread is laid 15% tighter."},
+    "flak_director": {"name": "Air Defence Director", "desc": "Her guns are 20% better against aircraft and missiles."},
+    "blockade_runner": {"name": "Blockade Runner", "desc": "Commanding the flagship: 8% more speed on the chart and 10% more chance of breaking off."},
+    "gunnery_scholar": {"name": "Director Master", "desc": "Beyond 60% of her guns' reach, spotted salvos close on the target 25% faster."}}
+const TRAIT_LEVELS := [3, 5]
+func traits(o: Dictionary) -> Array: return o.get("traits", [])
+func trait_names(o: Dictionary) -> String:
+    return ", ".join(traits(o).filter(func(k): return OFFICER_TRAITS.has(k)).map(func(k): return String(OFFICER_TRAITS[k].name)))
+func grant_officer_trait(o: Dictionary) -> String:
+    if not o.has("traits"): o.traits = []
+    var avail: Array = OFFICER_TRAITS.keys().filter(func(k): return not o.traits.has(k))
+    if avail.is_empty() or o.traits.size() >= 2: return ""
+    var pick: String = avail.pick_random()
+    o.traits.append(pick)
+    return String(OFFICER_TRAITS[pick].name)
+## The flagship's captain, if he has the trait `id`.
+func flag_trait(id: String) -> bool:
+    if G.is_empty() or G.fleet.is_empty(): return false
+    var o = officer_of(G.fleet[0])
+    return o != null and traits(o).has(id)
+func trait_evade() -> float: return 0.10 if flag_trait("blockade_runner") else 0.0
 func new_officer(lvl: int) -> Dictionary:
     var o = {"id": str(randi()), "name": C.OFFICER_FIRST.pick_random() + " " + C.OFFICER_LAST.pick_random(), "lvl": lvl, "xp": 0, "pts": 0, "sk": {"gun": 0, "helm": 0, "dc": 0, "ord": 0}, "ship": null, "temper": pick_temper()}
     for i in lvl:
         var k = ["gun", "helm", "dc", "ord"].pick_random()
         if o.sk[k] < 3: o.sk[k] += 1
         else: o.pts += 1
+    for tl in TRAIT_LEVELS: if lvl >= tl: grant_officer_trait(o)
     return o
 
 # ------------------------------------------------------------------ age, wear and laying up
@@ -746,7 +779,7 @@ const SPEEDS := {"slow": [0.5, 0.35, "Slow", "Slow ahead"], "half": [0.75, 0.6, 
 const SPEED_ORDER := ["slow", "half", "cruise", "full", "flank"]
 func speed_order() -> String: return str(G.player.get("spd", "cruise"))
 ## Your squadron's speed on the chart at the ordered setting (before fuel, ice and tows).
-func player_speed() -> float: return fleet_map_speed(G.fleet) * float(SPEEDS[speed_order()][0])
+func player_speed() -> float: return fleet_map_speed(G.fleet) * float(SPEEDS[speed_order()][0]) * (1.08 if flag_trait("blockade_runner") else 1.0)
 ## Fuel burned a day at the ordered setting.
 func fuel_burn() -> float: return fuel_use() * float(SPEEDS[speed_order()][1])
 
@@ -985,7 +1018,7 @@ func build_to_strength(pool: Array, want: float, mx: int, fac: String, tech: Arr
     var val := {}   # each design's worth with her standard fit
     for c in pool:
         var id = design_for(c, fac, tech)
-        if id != "" and not val.has(id): val[id] = ship_value(new_ship(id, null, fac, tech))
+        if id != "" and not val.has(id): val[id] = strength([new_ship(id, null, fac, tech)])   # (as strength() counts her: torpedo boats double)
     if val.is_empty(): return ships
     var ids: Array = val.keys(); ids.sort_custom(func(a, b): return float(val[a]) < float(val[b]))
     var got := 0.0
@@ -996,7 +1029,7 @@ func build_to_strength(pool: Array, want: float, mx: int, fac: String, tech: Arr
         var fit: Array = ids.filter(func(id): return float(val[id]) <= room * 1.1 and float(val[id]) >= room / left * 0.6)
         var under: Array = ids.filter(func(id): return float(val[id]) <= room * 1.1)
         var t: String = fit.pick_random() if not fit.is_empty() else (under.back() if not under.is_empty() else ids[0])
-        var sh := new_ship(t, null, fac, tech); ships.append(sh); got += ship_value(sh)
+        var sh := new_ship(t, null, fac, tech); ships.append(sh); got += strength([sh])
         if under.is_empty(): break
     return ships
 
@@ -1034,9 +1067,15 @@ const BOUNTY_GRACE := 30
 const BOUNTY_SIZE := Vector2(0.8, 2.5)
 const BOUNTY_FLOOR := 15000.0
 const BOUNTY_CEIL := 2500000.0
-const HUNT_K := 1.5
-const HUNT_FLOOR := 20000.0
-const HUNT_GRACE := 40
+const HUNT_K := 1.15           # (was 1.5; the owner, 13 Nov 2026) and HUNT_RAMP more by HUNT_RAMP_DAYS after the grace
+const HUNT_RAMP := 0.30
+const HUNT_RAMP_DAYS := 400.0
+const HUNT_FLOOR := 18000.0
+const HUNT_GRACE := 45
+## Raider packs made only of motor torpedo boats keep within PT_TETHER units (about 330 km) of a den or a harbour
+## (the owner, 13 Nov 2026, decision 8b: boats of 50 t do not roam mid-ocean).
+const PT_TETHER := 60.0
+func hunt_k() -> float: return HUNT_K + clampf(float(G.day - HUNT_GRACE) / HUNT_RAMP_DAYS, 0.0, 1.0) * HUNT_RAMP
 ## Raider flotillas keep the same grace (tuning round 1, the owner's choice B, 12 Nov 2026: four of eleven Merchants lost
 ## in 16 runs were caught by raiders on days 29-38).
 func bounty_grace(f: Dictionary) -> bool: return (f.get("kind", "") == "bounty" or f.get("kind", "") == "raiders") and int(G.get("day", 0)) <= BOUNTY_GRACE
@@ -1077,7 +1116,15 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         for g in C.GOODS: if randf() < 0.55: f.cargo[g.id] = randi_range(15, 50) * n
         f.cargo.fuel = int(f.cargo.get("fuel", 0)) + randi_range(40, 120)   # bunker fuel to spare: a merchant will sell it
         f.cash = randi_range(8, 25) * 1000
-    elif kind == "raiders": f.name = "Raider flotilla"; f.ships = build_by_budget(C.PATROL_POOL.raiders, (12000 + randf() * 30000) * scale, 6, "raiders", tl)
+    elif kind == "raiders":
+        f.name = "Raider flotilla"; f.ships = build_by_budget(C.PATROL_POOL.raiders, (12000 + randf() * 30000) * scale, 6, "raiders", tl)
+        if not f.ships.is_empty() and f.ships.all(func(s): return hull(s).klass == "pt"):   # boats alone: tethered to a den or a harbour
+            var anchors: Array = G.get("pois", []).filter(func(q): return q.get("kind", "") == "den")
+            anchors.append_array(G.ports.filter(func(q): return q.fac != "enclave"))
+            for i in 12:
+                var a: Dictionary = anchors.pick_random(); var cp: Vector2 = water_point(8, Vector2(a.get("sx", a.x), a.get("sy", a.y)), PT_TETHER)
+                if i == 11 or mdist(cp.x, cp.y, P.x, P.y) > 300:
+                    f.x = cp.x; f.y = cp.y; f.home = {"x": cp.x, "y": cp.y}; f.tether = PT_TETHER; break
     else:
         f.captain = ["\"Hook\" Marlowe", "Ysolde Crane", "\"Bosun\" Teague", "Anika Vell", "Black Corwin", "Mother Grist", "\"Lantern\" Pike", "Severin Oakes"].pick_random()
         f.name = "Bounty: " + f.captain
@@ -1126,7 +1173,7 @@ func spawn_hunter(h: Dictionary) -> Dictionary:
     var tl = enemy_tech(fac_era(fac)); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
     # sized to the squadron it is sent after (HUNT_K), no bigger than the origin's budget for it (which grows with the date)
     var cap: float = float(h.budget) * (1.0 + G.day / 200.0)
-    f.ships = build_to_strength(pool, clampf(HUNT_K * strength(G.fleet), minf(HUNT_FLOOR, cap), cap), 4, fac, tl)
+    f.ships = build_to_strength(pool, clampf(hunt_k() * strength(G.fleet), minf(HUNT_FLOOR, cap), cap), 4, fac, tl)
     if f.ships.is_empty(): f.ships.append(new_ship("dd", null, fac, tl))
     f.capt = randi_range(4, 7)   # they send a good man after you
     G.fleets.append(f)
@@ -1499,7 +1546,7 @@ func update(dt: float) -> void:
                     var w = water_point(6, Vector2(P.x, P.y), 140.0)   # casting about where you were last reported
                     if not set_course(f, w.x, w.y): f.route = null
                 else:
-                    var w = water_point(6, Vector2(f.home.x, f.home.y), 120.0 if (f.get("mission", false) or f.kind == "bounty") else 320.0)
+                    var w = water_point(6, Vector2(f.home.x, f.home.y), 120.0 if (f.get("mission", false) or f.kind == "bounty") else float(f.get("tether", 320.0)))
                     if not set_course(f, w.x, w.y): f.route = null
         # a fleet's own speed and turning circle change only with its ships and their damage: looked at again a few times a second
         _spd_n += 1
@@ -2124,6 +2171,9 @@ func apply_battle(sim: BattleSim) -> Dictionary:
             while o.xp >= o.lvl * 100 and o.lvl < 8:
                 o.xp -= o.lvl * 100; o.lvl += 1; o.pts += 1
                 r.notes.append("%s is promoted to level %d. Assign the new skill point in Command, under Officers." % [o.name, o.lvl])
+                if TRAIT_LEVELS.has(int(o.lvl)):
+                    var tn: String = grant_officer_trait(o)
+                    if tn != "": r.notes.append("%s has made a name as a %s." % [o.name, tn])
     for s in r.lost:
         for o in G.officers.duplicate():
             if o.get("lastShip") == s.id: G.officers.erase(o); r.notes.append("%s went down with the %s." % [o.name, s.name])

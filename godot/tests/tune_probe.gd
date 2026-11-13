@@ -107,7 +107,7 @@ func _met(f: Dictionary) -> void:
 	var G: Dictionary = Campaign.G; var P: Dictionary = G.player
 	if Campaign.hostile_fleet(f):
 		var ratio: float = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
-		var evade: float = clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0, 0.1, 0.92)
+		var evade: float = clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0 + Campaign.trait_evade(), Campaign.EVADE_FLOOR, 0.92)
 		tried = false
 		if ratio > 0.8:
 			var got: bool = randf() < evade

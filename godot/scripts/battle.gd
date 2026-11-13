@@ -49,7 +49,7 @@ func _ready() -> void:
             if sh.side == 0:
                 sh.cf = cfg.get("crew_frac", 1.0) * (0.7 + 0.3 * Campaign.readiness(sh.rec))   # a tired ship fights as if short-handed
                 if cfg.get("no_fuel", false): sh.fuel_k = 0.25   # dry bunkers: emergency reserves give steerage way, little more
-                for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk; sh.tm = Campaign.temper(o)
+                for o in cfg.get("officers", []): if o.ship == sh.rec.id: sh.sk = o.sk; sh.tm = Campaign.temper(o); sh.traits = Campaign.traits(o)
             else:
                 sh.sk = {"gun": mini(2, int(Campaign.G.day / 80)), "helm": 0, "dc": 0, "ord": 0}
                 # their captains have tempers too: a bounty squadron's or a hunter group's are bold, a convoy's escorts careful
@@ -660,6 +660,9 @@ class ShipView extends Node2D:
             m.set_shader_parameter("size_m", size_m); m.set_shader_parameter("beam", float(s.d.B))
             m.set_shader_parameter("hmap", hm); m.set_shader_parameter("use_h", hm != null); m.set_shader_parameter("h_max", float(GameData.sprites.get("h_max", 40)))
         lit_top.set_shader_parameter("is_top", true)
+        # the upper works cast their shadow on the turrets beside them (the owner's shader, 13 Nov 2026)
+        mount_mat.set_shader_parameter("ship_hmap", hm); mount_mat.set_shader_parameter("use_ship_h", hm != null)
+        mount_mat.set_shader_parameter("ship_size_m", size_m); mount_mat.set_shader_parameter("freeboard", freeboard)
 
     func _sprite(t: Texture2D, sc: float) -> Sprite2D:
         var sp = Sprite2D.new(); sp.texture = t; sp.scale = Vector2(sc, sc); add_child(sp); return sp
@@ -686,7 +689,9 @@ class ShipView extends Node2D:
         lean = ln; freeboard = fb
         base.position.y = deck_shift; top.position.y = deck_shift
         lit_top.set_shader_parameter("lean", ln)
-        mount_mat.set_shader_parameter("lean", ln); mount_mat.set_shader_parameter("sun_ship", sun_local)   # each point of the upper works is carried over by its own height, in the shader
+        mount_mat.set_shader_parameter("lean", ln); mount_mat.set_shader_parameter("sun_ship", sun_local); mount_mat.set_shader_parameter("freeboard", fb)
+        var inv: Transform2D = global_transform.affine_inverse()   # the battle's coordinates to her own frame, for the shadow of her upper works on her turrets
+        mount_mat.set_shader_parameter("ship_ix", inv.x); mount_mat.set_shader_parameter("ship_iy", inv.y); mount_mat.set_shader_parameter("ship_io", inv.origin)   # each point of the upper works is carried over by its own height, in the shader
         for c in get_children():
             if c is Fires: c.position.y = ln * (fb + 1.0)
             if c is Node2D and not (c is Sprite2D): c.queue_redraw()

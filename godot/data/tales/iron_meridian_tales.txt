@@ -1,0 +1,416 @@
+# Iron Meridian — Foundational Lore Tales Pack (iron_meridian_tales.txt)
+# Drop this file into godot/data/tales/iron_meridian_tales.txt.
+# Written strictly to the docs/WRITING_TALES.md specification and https://www.google.com/search?q=docs/lore/foundational\_lore.md hooks.
+
+=== lost_squadron_1
+title: The Signalman at Halbrook
+when: arriving
+where: port Halbrook, port Calder Roads, port Halvardsby
+needs: origin survivor
+days: 5+
+art: port
+
+--- start
+An elderly petty officer with a knitted scarf and a scarred wrist waits by the harbour steps as {flagship}'s boat makes fast. He looks at your ship's lines for a long moment before speaking.
+
+"You were with the Fourth Division in the Central Hesperian," he says quietly. "I was chief telegraphist aboard the tender at Halbrook the night the wireless went dead. The Admiralty inquiry wrote down enemy submarines. That was a lie."
+
+He glances back toward the customs shed. "I kept a carbon of the last bearing before the flagship broke transmission, Captain. For the price of a passage inland before the Provost's men ask why I am still in port, it is yours."
+
+* [credits >= 1500] Pay his passage and take the carbon copy (1,500) -> buy_bearing
+* Press him on duty to the dead without paying -> press_duty
+* Walk away: the past has already cost you enough -> decline
+
+--- buy_bearing
+He slips a folded wax-paper sheet into your coat pocket. Pencilled in a shaking hand are a latitude in the Central Hesperian, a strange call-sign that belongs to neither coalition, and a single margin note: "Ordered to hold station by Admiralty cipher 44-Zero."
+! credits -1500
+! rp +12
+! flag halloran_bearing
+! log "Bought the final wireless bearing of the Lost Squadron in {port}"
+* Return to {flagship} -> end
+
+--- press_duty
+He stares at the wet cobbles, then sighs. "We were both there in spirit, I suppose. Take it. Only do not mention my name if you ever take {flagship} out to that meridian."
+! rp +8
+! flag halloran_bearing
+! log "Received the final wireless bearing of the Lost Squadron in {port}"
+* Return to {flagship} -> end
+
+--- decline
+He nods once, pulls his collar up against the wind, and disappears behind the coaling cranes. Whatever was on that paper stays buried with the rest of the squadron.
+* Return to {flagship} -> end
+
+
+=== lost_squadron_2
+title: The Drift in the Central Hesperian
+when: at sea
+where: sea Hesperian Ocean, sea South Hesperian
+needs: flag halloran_bearing, day >= 35
+chance: 7%
+repeat: no
+art: survey
+
+--- start
+Two hours before dawn, in a long glassy swell near the coordinates from the signalman's carbon, {flagship}'s lookouts sight a darkened buoy rolling in the trough. Around it floats a slick of old bunker oil and a half-submerged life-raft stencilled with the number of your old task force.
+
+As your boat hooks the buoy's casing, the radar room calls down: an unmarked destroyer and two fast boats are closing from the mist at twenty-five knots, guns already trained. They have been watching the marker.
+
+* Clear for action and hold the buoy -> fight_watchers
+* Cut the buoy's instrument canister free and run before they close -> snatch_and_run
+* Leave the marker and slip back into the fog -> slip_away
+
+--- fight_watchers
+! fight concord dd pt pt "Silent Watcher" -> won_watchers
+
+--- won_watchers
+With the unmarked picket driven off, your engineers haul the buoy's sealed canister aboard. Inside are hydrophone reels from November 1945—and telemetry of an experimental guided weapon test fired by both sides' scientists working under a joint black-site code.
+! rp +35
+! electronics +10
+! clear halloran_bearing
+! flag lost_squadron_truth
+! log "Recovered the black-box telemetry of the Lost Squadron in the Hesperian Ocean"
+* Secure the canister in the safe -> end
+
+--- snatch_and_run
+Your boat's crew hacks the upper instrument drum loose with axes as the first starshell bursts overhead. {flagship} comes hard round at full power; two salvos straddle your wake before the fog swallows you.
+! hull -8%
+! fuel -15
+! rp +20
+! clear halloran_bearing
+! flag lost_squadron_truth
+! log "Snatched partial telemetry from the Lost Squadron's marker under fire"
+* Steady on course -> end
+
+--- slip_away
+You bring the helm over without flashing a lamp. Behind you in the mist, the unmarked ships circle the buoy and drop charges on the wreck below to make sure nothing more floats up.
+! clear halloran_bearing
+* Carry on -> end
+
+
+=== throat_whispers
+title: Whispers from the Throat
+when: at sea
+where: sea Sable Sea, sea Cradle Sea
+days: 20+
+chance: 5%
+repeat: every 90 days
+art: contact
+
+--- start
+Off the rocky headlands of the inner Sable Sea, your wireless operator takes off his headphones with a frown. A directional burst—short, pulsed telemetry on a pre-armistice Vargan frequency—is coming from the ruined casemates of the Throat Research Anchorage ashore.
+
+Officially, the complex was gutted by bombardment in 1945. Through the glasses, you can see a small coaling lighter moored under the broken crane and a searchlight shutter blinking toward the sea.
+
+* Send an armed cutter into the cove after dark -> send_cutter
+* [standing directorate >= 15] Hail the station using Directorate recognition signals -> hail_station
+* Log the coordinates and sell the intercept at the next harbour -> sell_log
+
+--- send_cutter
+Your cutter slips past the sunken breakwater at midnight. The men inside the ruin are ragged technicians packing vacuum tubes and gyroscopes into crates for a smuggler who has not arrived. Outnumbered, they trade two crates of guidance parts for twenty tons of food and your word to say nothing.
+! food -15
+! electronics +12
+! rp +18
+! standing directorate -6
+! log "Traded rations for guidance parts at the Throat Research Anchorage"
+* Hoist the cutter aboard -> end
+
+--- hail_station
+After a tense silence, the shutter blinks back a valid Strelsk naval cipher. A junior commissar comes out in the lighter: their generator fuel is nearly gone. If you can spare twenty tons of bunker oil, the Naval Staff will remember the service—and share their calibration tables.
+! fuel -20
+! rp +15
+! standing directorate +8
+! credits +2500
+* Weigh anchor -> end
+
+--- sell_log
+You keep {flagship} well clear of the mined shallows while your wireless room records a full hour of the pulsed signal. Intelligence brokers at the next port pay handsomely for proof that the Throat is still alive.
+! credits +3500
+! rp +6
+* Carry on -> end
+
+
+=== dry_dock_zero
+title: Dry Dock Zero
+when: arriving
+where: port Port Saffron
+days: 25+
+chance: 20%
+repeat: no
+art: port
+
+--- start
+Port Saffron is never quiet, but tonight the inner basin beneath the old cliff fortifications is cordoned off by Syndicate gun-launches. Heavy welding arcs flash blue behind tarpaulins stretched across the rock-cut cavern the dockers call Dry Dock Zero.
+
+In a tavern above the mole, a dismissed shipyard draughtsman with a bandaged hand sits alone over an empty glass. He notices your captain's coat and taps a rolled blueprint case against his knee.
+
+* [credits >= 4000] Buy the draughtsman's roll and his silence (4,000) -> buy_print
+* Report the leak to the Syndicate's Brokers' Table -> report_syndicate
+* Leave him to his drink -> leave_be
+
+--- buy_print
+The linen sheets inside the tube are stamped with three different navies' classification marks. Below the cliff, the Syndicate is grafting captured Vargan rocket-motor rails and Halcyon radar aerials onto a salvaged cruiser hull. The structural stress calculations alone are worth a month of dockyard trials.
+! credits -4000
+! rp +30
+! standing freeport -4
+! flag zero_blueprints
+! log "Bought the smuggled blueprints of Port Saffron's Dry Dock Zero"
+* Return to {flagship} -> end
+
+--- report_syndicate
+Two quiet men in oilskins arrive within ten minutes and escort the draughtsman out by the back alley. The next morning, the Brokers' Table sends twenty tons of munitions and a purse to {flagship} with a short note: "Friends who mind the house are welcome in it."
+! credits +3000
+! munitions +20
+! standing freeport +10
+* Return to {flagship} -> end
+
+--- leave_be
+In Port Saffron, curiosity kills as many captains as heavy flak. By morning the draughtsman's stool is empty, and the welding arcs behind the cliff tarpaulins have gone dark.
+* Return to {flagship} -> end
+
+
+=== corvo_canal_customs
+title: The Demilitarised Canal
+when: at sea
+where: near Puerto Corvo 350, near Isla Parda 350
+days: 15+
+chance: 6%
+repeat: every 75 days
+art: contact
+
+--- start
+On paper, the Corvo Canal Zone is demilitarised under the 1945 armistice. In practice, as {flagship} rounds the southern buoys at dusk, a fast Tarsene gunboat and an unmarked Combine cutter lie hove-to beside a grounded coaster.
+
+Both vessels signal you at once: the Tarsene lieutenant claims the coaster is running contraband fire-control gear to Ombrian junta forces; the Combine agent on the cutter offers hard currency for an escort out to open water before a Tarsene prize crew boards her.
+
+* Back the Tarsene lieutenant and help search the coaster -> back_republic
+* Escort the Combine cutter and her cargo clear of the zone -> back_combine
+* Threaten both with your main battery and take the cargo yourself -> seize_cargo
+
+--- back_republic
+Under {flagship}'s guns, the Combine cutter shears off into the dusk. In the coaster's lower hold, Tarsene boarders uncover crates of Strelsk rangefinders—and share a case of spare optics and prize money with your crew.
+! credits +2500
+! rp +10
+! standing republic +8
+! standing combine -6
+* Stand out to sea -> end
+
+--- back_combine
+You bring {flagship} between the Tarsene gunboat and the coaster until the three-mile limit is astern. Once in deep water, the Combine agent transfers a draft on the Bank of Kotaraya and ten tons of high-grade electronics.
+! credits +4500
+! electronics +10
+! standing combine +8
+! standing republic -6
+* Stand out to sea -> end
+
+--- seize_cargo
+! fight republic dd pt "Centinela" -> won_canal
+
+--- won_canal
+With the patrol boat driven off and the Combine cutter fleeing south, your boarding party empties the coaster's strongroom before coastal batteries can range the channel. Neither Tarsa nor Kotaraya will forgive the piracy soon.
+! credits +6000
+! electronics +15
+! munitions +15
+! standing republic -12
+! standing combine -10
+* Clear the channel at full speed -> end
+
+
+=== skarn_ice_archive
+title: The Skarn Strait Hulk
+when: at sea
+where: sea Skarn Passages, sea The Rime
+days: 30+
+chance: 6%
+repeat: every 90 days
+art: storm
+
+--- start
+Grinding through brash ice in the grey northern twilight, your lookouts spot the listing superstructure of a wartime battlecruiser wedged against a basalt skerry. The cold water of the Skarn Passages has kept her upper works intact, ice hanging in white curtains from her rangefinders.
+
+Half a mile off, the Halvard Enclave icebreaker *Vardø* lies at anchor, her signal lamp flashing a blunt warning: the wreck lies inside Enclave salvage jurisdiction, and the pack ice is closing the lead before nightfall.
+
+* [standing enclave >= 10, credits >= 2500] Purchase a six-hour salvage permit from the Halvard captain (2,500) -> legal_salvage
+* Put a party across the ice before the icebreaker can interfere -> wildcat_salvage
+* Respect the Enclave's warning and steer for open water -> respect_enclave
+
+--- legal_salvage
+The *Vardø*'s master accepts your draft and even lends an ice-pilot to guide your whaleboat through the floes. From the armoured plotting room below the bridge, your men recover an intact mechanical fire-control computer and thirty tons of high-tensile armour plate.
+! credits -2500
+! rp +25
+! steel +30
+! standing enclave +4
+! log "Salvaged a wartime plotting room in the Skarn Passages under Halvard licence"
+* Clear the ice lead -> end
+
+--- wildcat_salvage
+Your men work with crowbars and blowtorches while the *Vardø* blows her siren and swings her bow toward the channel. You haul up the plotting-room records and twenty tons of steel just as the pack pinches shut—scraping {flagship}'s plating on the way out.
+! hull -10%
+! rp +22
+! steel +20
+! standing enclave -10
+* Force the pack at full power -> end
+
+--- respect_enclave
+You dip your ensign to the *Vardø* and come round before the lead freezes over. The Halvard master signals back current ice soundings and a safe course south, saving you a day's hard steaming.
+! fuel +12
+! standing enclave +5
+* Steer south -> end
+
+
+=== amakura_courier
+title: The Courier from Amakura
+when: arriving
+where: power pacific
+days: 20+
+chance: 15%
+repeat: no
+art: capital
+
+--- start
+As {flagship} anchors in the roads at {port}, a fast motor sampan slides alongside your accommodation ladder in the rain. The passenger who climbs aboard wears a plain merchant's oilskin, but his briefcase is chained to his wrist and his boots are Federation naval issue.
+
+"I am bound for a neutral port, Captain," he says without preamble. "In this case are microfilms from the Amakura Black Archives—captured Concord turbine trials and Directorate acoustic torpedo curves. Both embassies ashore have men watching the passenger steamers. Take me out, or name your price for the film."
+
+* Give him quiet passage and share copies of the microfilm -> share_film
+* [credits >= 5000] Buy the entire briefcase outright (5,000) -> buy_case
+* Turn him over to the Halcyon harbour guard -> turn_in
+
+--- share_film
+Your ship's photographer spends the night duplicating the reels in a darkened magazine before you land the courier at a fishing cove down the coast. The turbine and torpedo curves jump your technical notebooks ahead by months.
+! rp +28
+! standing pacific -4
+! log "Copied microfilm from the Amakura Black Archives"
+* Weigh anchor -> end
+
+--- buy_case
+Five thousand credits buys the key to the wrist-chain and the original celluloid reels. There are enough wind-tunnel and cavitation tables in the folder to keep a naval architect busy for a year.
+! credits -5000
+! rp +45
+! log "Purchased original reels from the Amakura Black Archives in {port}"
+* Lock the reels in the cabin safe -> end
+
+--- turn_in
+A Federation security launch arrives within the hour. The officer in charge counts the reels, salutes with cold precision, and authorizes the dockyard to credit your account and top up your bunkers from the naval tanks.
+! credits +3500
+! fuel +35
+! standing pacific +10
+* Return to the bridge -> end
+
+
+=== austral_beacon
+title: The Austral Barrier Frequency
+when: at sea
+where: sea Howling Seas
+days: 40+
+chance: 8%
+repeat: no
+art: storm
+
+--- start
+In the long, mountainous grey rollers of the Howling Seas, where no merchantman sails by choice, your radio direction-finder locks onto a mechanical Morse transmitter repeating a 1938 meteorological group every four minutes.
+
+Leeward of a snow-streaked volcanic tooth stands a pre-war Austral Barrier scientific station. Its windmill still turns in the gale, and sealed copper drums sit stacked on the stone jetty above the surf.
+
+* Send a boat through the surf to strip the station's instruments -> strip_station
+* Repair the transmitter's batteries and copy the weather logs -> copy_logs
+* Stand clear of the lee shore before the gale worsens -> stand_clear
+
+--- strip_station
+The boat nearly swamps in the kelp-choked surge, and three men come back with bruised ribs, but the copper drums hold preserved barographs, high-latitude magnetic charts, and untouched pre-war medical stores.
+! crew -2
+! rp +30
+! medicine +18
+! electronics +8
+! log "Recovered sealed instrument drums from an Austral Barrier station"
+* Claw off the lee shore -> end
+
+--- copy_logs
+Your electrician replaces the corroded lead cells and transcribes eight years of uninterrupted southern-ocean storm and ice-drift recordings—data any northern admiralty or Halvard archive would pay to read.
+! rp +22
+! credits +2000
+! log "Transcribed eight years of automated logs at an Austral Barrier station"
+* Return to {flagship} -> end
+
+--- stand_clear
+No archive is worth piling {flagship} onto basalt pinnacles three thousand miles from a drydock. You keep sea room and let the station's windmill spin on in the sleet.
+* Hold your course -> end
+
+
+=== tarsene_gate_inspection
+title: Guns of the Tarsene Gate
+when: at sea
+where: near Tarsa 300, near Gatehold 300
+days: 12+
+chance: 5%
+repeat: every 60 days
+art: contact
+
+--- start
+Where the narrows of the Tarsene Gate pinch the shipping lane between Tarsa and Gatehold, a Concord frigate and a Tarsene coastal destroyer are steaming on parallel courses four cables apart, both at action stations.
+
+The Concord captain flashes by lamp: "Stand by to be boarded for armistice contraband inspection." Almost at the same instant, the heavy casemate battery on the Tarsa headland trains its twin guns toward the channel and signals: "Proceed under Republic guarantee; refuse foreign search."
+
+* Heave to and allow the Concord inspection party aboard -> submit_concord
+* Crowd on steam under the cover of the Tarsene shore battery -> run_to_tarsa
+* Train your own guns and refuse both sides' orders -> defy_gate
+
+--- submit_concord
+The Concord lieutenant inspects your manifest with maddening slowness, confiscates two crates of "dual-use spares", and stamps your clearance. Gatehold records you as compliant; Tarsa's signal station logs your submission with contempt.
+! credits -800
+! standing concord +6
+! standing republic -6
+* Proceed through the Gate -> end
+
+--- run_to_tarsa
+You ring up full speed and edge inside the three-mile line under the shadow of Tarsa's headland casemates. The Concord frigate fires a single blank round across your wake but dares not exchange salvos with the shore guns.
+! fuel -10
+! standing republic +8
+! standing concord -6
+* Proceed through the Gate -> end
+
+--- defy_gate
+You run up battle colours and clear the main battery. Neither captain wants to be the officer who restarts the Meridian War over a single independent squadron; after three tense minutes, both vessels sheer off and log the incident.
+! standing concord -4
+! standing republic -4
+! rp +5
+* Hold the centre of the channel -> end
+
+
+=== disgraced_file_opened
+title: An Old File Opened
+when: arriving
+where: power concord, power directorate
+needs: origin disgraced, day >= 25
+chance: 25%
+repeat: no
+art: capital
+
+--- start
+While {flagship} takes on stores at {port}, a commander from your old academy class meets you under the stone colonnade behind the harbour master's office. He does not offer to shake hands where the sentries can see.
+
+"The rear-admiral who presided over your court of inquiry is retiring next month," he says low. "Before he leaves, he is purging the confidential docket from the Saffron Sea retreat. For three thousand credits to the registry clerk, your reprimand can go into the furnace with the rest—or I can pull the testimony that proves who actually gave the order to fall back."
+
+* [credits >= 3000] Burn the reprimand and clear your name in the service (3,000) -> burn_file
+* [credits >= 3000] Buy the sealed testimony for leverage (3,000) -> buy_testimony
+* Let the docket stand: your record is written at sea now -> let_stand
+
+--- burn_file
+Two weeks' work by a quiet clerk erases the black mark beside your name on the reserve rolls. Dockyard officers at your old flag's ports suddenly remember your rank again.
+! credits -3000
+! standing concord +12
+! standing directorate +12
+! log "Cleared the court-of-inquiry reprimand from the naval registry"
+* Return to the quay -> end
+
+--- buy_testimony
+The photostats name three senior captains who countermanded your reconnaissance reports—and who now sit on the ordnance procurement board. Whenever you sell prizes or buy stores through intermediaries, that leverage pays dividends.
+! credits +4500
+! rp +15
+! flag inquiry_leverage
+! log "Acquired the sealed court-of-inquiry testimony in {port}"
+* Return to the quay -> end
+
+--- let_stand
+"Tell the rear-admiral he can keep the file on his desk," you answer. Your classmate gives a thin, almost envious smile and touches his cap as you walk back toward {flagship}.
+! rp +8
+* Return to the quay -> end

@@ -1,0 +1,36 @@
+# Iron Meridian — Development Changelog & Session History (`CHANGELOG.md`)
+
+> Extracted from `CLAUDE.md` and `ROADMAP.md` so historical context, restore points, and dated playtest decisions remain preserved without bloating agent prompt context on every turn.
+
+## Restore Points & Git Tags
+
+* `before-realism-patch` (commit `89506c7`, and `IronMeridian-full.zip` sent to the owner that day): Restore point before the 13 Nov 2026 realism and hunter patch, officer traits and turret shadows. To go back: `git checkout 89506c7`.
+* `before-ui-humanize` (and `build/IronMeridian-before-ui-humanize.zip`): Restore point before the 13 Nov 2026 UI copy pass.
+* `splash-classic` (commit `fcae2e2`): Restore point before the 12 Nov 2026 height-field shell splash (`sink.gdshader`) overhaul.
+* `backup-before-fx` (commit `3dbf780`, `IronMeridian_backup_before_fx.zip`): Restore point before the 9 Nov 2026 Modern battle effects overhaul.
+* Commit `8a2e75e`: Restore point before land structures (9 Nov 2026).
+
+## Chronological Session Log
+
+### 13 November 2026
+* **Realism + Hunter Fix preset, officer traits, turret shadows (the owner's patch):** Break-off floor 10% to 22%; motor torpedo boats count double in strength; hunters at 1.15 times your strength rising to 1.45, none before day 45; torpedo-boat raider packs tethered within 60 units of a den or harbour; torpedo ranges 2,000 / 4,200 / 2,600 m; CIWS 900 m inside the Bofors. Officers earn traits at levels 3 and 5 (six traits). The upper works cast shadows on turrets. The owner's ten foundational-lore tales added. `CLAUDE.md` replaced by the streamlined reference; the notes it replaced are `docs/AGENT_NOTES.md`.
+* **UI Copy Pass:** Converted player-facing text from colon/semicolon chains to natural prose; formatted ship counts via `world_map._counts` ("a Vespa-class motor torpedo boat and two..."); moved credits to `main_menu._credits`. Added `tests/shot_tour.tscn`.
+* **Stealth Art, Era IV Guns & Sea Shadow:** Redrew Era IV superstructures with faceted houses (`stealthTop`, continuous front glass bands, slim 8-sided mast towers) and modern carrier islands. Added concealed gun cupolas (`hide`: `g57s`, `g155s`) and `rail` (`railgun` research, `"slug"` shell, requires `power` hull). Added `co_shadow` (Umbra-class *Sea Shadow*) rendered from the owner's 3D model (`SHADOW_ART`, SWATH twin submerged pontoons in `Keel`). Added sliding deck cargo (`BattleSim.deck_boxes`, `BoxLayer`) and hulk shell hits (`HULK_GONE`).
+* **Frigates & Era III/IV Shipyard Expansion:** Added class `ff` (Frigate) and 37 new Era III and Era IV designs across all seven yards (`ff_perry`, `ff_independence`, `ddg_type42`, `ddg_type45`, `ff_bremen`, `ss_212`, `cv_kuznetsov`, `ssn_yasen`, `ddg_kongo`, `ff_mogami`, `ff_maestrale`, `ddg_doria`, `fr_container`, `cve_invincible`, `ssn_trafalgar`, `cv_qe`, `ssn_astute`, `ss_206`, `co_gepard`, `ff_sachsen`, `co_braunschweig`, `co_karakurt`, `co_steregushchiy`, `ddg_hatsuyuki`, `ss_harushio`, `cve_izumo`, `ss_soryu`, `cve_garibaldi`, `co_sparviero`, `ff_thaon`, `cv_cavour`, `ao_provider`, `ap_lpd`, `co_opv`, `ap_tarawa`, `ap_sanantonio`, `cg_thunder`). Priced via `tests/duel_measure.tscn`.
+* **Northern Passage & Route Safety:** Carved the Northern Passage along 80°N in `world.json`, increased `EDGE` to 6 cells, added `Campaign.off_edge`, updated `nearest_open_port()` to use actual course length, and added `tests/route_stress.tscn`.
+* **Tactical Additions:** Added shell-follow camera (`E` key in `battle.gd`), standing ship orders (`O` key / `s.own`), custom division leads (`s.lead`), moulded stations (`s.st_off`), jet air groups armed with stand-off missiles (`"ms"`) and dive bombs (`"db"`), globe order routing (`world_map.order_at`), light AA missile point-defence (`HAND_PD`, `HAND_PD_FC`), and owner-supplied jet/dive sound effects (`tools/owner_sounds`).
+
+### 12 November 2026
+* **Tuning Round 1:** Applied owner choices A (Merchant `evade: 25`), B (raider flotillas added to 30-day `bounty_grace`), and C (Survivor back-pay pension of 2,000 every 30 days for 180 days).
+* **Armour by Place & Refit Warnings:** Implemented zone armour (`belt`, `deck`, `tur`, `cit` in `BattleSim.armour_of`), angle of fall (`fall_angle`, `deck_share`), armour refits (`BattleSim.armour_tons`), ship reconstruction (`Campaign.reconstruct`), and naval architect overweight warnings (`refit_warn`).
+* **Electronic Warfare:** Added active radar jamming (`jam_on`), chaff clouds (`chaff`, `fire_chaff`), and sea-skimming vs. high-diving missile profiles (`missile_profile`).
+* **Super Battleships & Research Levels:** Added six Era II paper battleships (`Montana`, `Alsace`, `Sovetsky Soyuz`, `H-39`, `Lion`, `A-150`) with `g381q`, `g406t`, `g510t` and hybrid steel/teak decks. Added 3-level technology research (`TECH_MAX`, `TECH_LV_COST`, `TECH_UP`).
+* **Tales, Save Slots & Keybindings:** Built the plain-text encounter system (`scripts/tales.gd`, `docs/WRITING_TALES.md`), multiple save slots (`user://saves/`), and key rebinding (`Settings.ACTIONS`).
+* **New Shell Splashes & Performance:** Added height-field splash bowls (`shaders/sink.gdshader`), column shadows, and lacy foam slicks (`fx_splash_new`). Optimized 10v10 battle frame time at far zoom from 25 ms to 16.5 ms (`fx_far`, 129-point `hull_half` table) and moved 3-day autosaves to a worker thread.
+
+### 11 November 2026
+* **Submarine Sound, Depth Charges & Friendly Fire:** Reworked submarine detection to pure acoustics (`sonar_on`, `pings`, `passive_range`), added EMCON for AI night actions (`_emcon`), rebuilt 6-charge depth-charge patterns (`drop_dcs`), added stem/side ramming physics (`ram_hull`), and enabled friendly fire for shells, torpedoes, and depth charges with AI check-fire rules (`friend_near`, `torp_fouls`, `dc_fouls`).
+* **World & Campaign Depth:** Added the 3D shader globe (`chart_globe.gd`, `globe.gdshader`), ship age/wear/overhaul/lay-up, post-battle wreck raising (`recover`, `DEFECTS`), land-based air raids (`Structures._air_raids`), procedural points of interest (`POI_GEN`), officer tempers (`bold`, `steady`, `cautious`), Era IV (Network age), usable cruiser/battleship floatplanes (`launch_spotter`), and the interactive New Captain's Guide (`scripts/guide.gd`).
+
+### 9–10 November 2026
+* **Godot 4 Port, Worldgen & Art Passes:** Completed port to Godot 4.3; built seeded world generator (`tools/worldgen`, seed 16); implemented 9-power diplomacy, 384 land structures, player-founded flags (`scripts/flag.gd`), supply-based fleet limits, weight-based refits, height-map lit national turret/superstructure styles (`ship_light.gdshader`, `mount_light.gdshader`), single-aircraft carrier deck operations, and Canva gouache officer portraits/scene banners (`docs/ART.md`).

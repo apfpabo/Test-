@@ -110,7 +110,15 @@ Four fights a pair is a small sample, and submarines cannot be priced this way (
 loses). **To decide:** whether these stand, and whether any of the losers should be given more to fight with instead of
 being made cheaper.
 
-## 8. A lone ship and the raiders (three rounds of test campaigns, 13 Nov 2026). His to decide
+## ~~8. A lone ship and the raiders~~ Decided 13 Nov 2026 (his "Realism + Hunter Fix" preset): (b) and (d), and more
+
+Built: torpedo-boat packs tethered within 60 units of a den or harbour (b); torpedo boats count double in strength (d);
+the least chance of breaking off 22% (was 10%); hunters at 1.15 times your strength rising to 1.45, none before day 45
+(was 1.5 and day 40); torpedoes reach 2,000 / 4,200 / 2,600 m (were 4,500 / 9,000 / 5,000), inside a 5-inch gun's
+range; CIWS 900 m inside the Bofors' 1,250 m. Not yet measured by test campaigns. Still open from his realism table:
+national 5-inch mounts (`g127_jp`, `g133_uk`) and the Typhoon's loadout, which his prompt did not ask for.
+
+What was found, for the record:
 
 Thirty-two unattended campaigns of 240 days (eight origins, four seeds, the honest-money captain) were played three
 times as the routes and the test captain were mended. Campaigns lost: 11, 15 and 16 of 32. The differences between
@@ -135,5 +143,5 @@ The agent's recommendation: (b) and (d).
 
 - The realism review of 11 Nov 2026 (gun and torpedo ranges, a few designs' armament): [`ROADMAP.md`](ROADMAP.md),
   "Realism review".
-- Torpedo and CIWS ranges, held for the owner's tuning pass; every number marked "untuned" in the docs.
+- ~~Torpedo and CIWS ranges~~ (set by the owner, 13 Nov 2026). Every number marked "untuned" in the docs is still open.
 - The tuning sheet's open questions: [`TUNING_SHEET.md`](TUNING_SHEET.md).

@@ -19,8 +19,8 @@ func _ready() -> void:
 	seed(7)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	Campaign.new_game("commission")
-	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew(); _slots_keys(); _subs()
-	ok(sections == 24, "every section ran to its end (%d of 24)" % sections)
+	_battle(); _campaign(); _world(); _chart(); _sounds(); _decisions(); _economy(); _supply(); _fighting(); _divisions(); _night_and_dc(); _gunnery(); _weights(); _flying(); _sound(); _friends(); _grace(); _ageing(); _levels(); _armour(); _rebuilds(); _ew(); _slots_keys(); _subs(); _traits()
+	ok(sections == 25, "every section ran to its end (%d of 25)" % sections)
 	Weather.force = null
 	print("REVIEW TEST ", "PASSED" if fails == 0 else "FAILED (%d)" % fails)
 	get_tree().quit(1 if fails else 0)
@@ -1129,13 +1129,13 @@ func _friends() -> void:
 	ok(sim.torp_fouls(a, a.pos, e.pos, w, e) == b, "but steaming towards the track at 12 m/s she will cross it, and fouls it")
 	b.pos = Vector2(6500, 7000); b.a = 0.0
 	var hw := {"speed": 20.0, "range": 5000.0, "count": 2, "kind": "torp", "homing": true}
-	b.pos = e.pos + Vector2(-200, 250); b.v = 0.0
+	b.pos = e.pos + Vector2(-150, 130); b.v = 0.0
 	var w1 := {"speed": 23.0, "range": 4500.0, "count": 1, "kind": "torp"}
 	ok(sim.torp_fouls(a, a.pos, e.pos, w1, e) == null and sim.torp_fouls(a, a.pos, e.pos, hw, e) == b, "a friend close by the target, clear of the track, fouls a homer (her seeker would hear the friend first) but not a straight runner")
 	# a captain holds his torpedoes for a friend in the track, and fires once she is clear
 	sim = _sim(["dd_fletcher", "dd_fletcher"], ["dd_narvik"]); a = sim.ships[0]; b = sim.ships[1]; e = sim.ships[2]
-	a.pos = Vector2(8000, 8000); a.a = PI / 2; e.pos = Vector2(10500, 8000); e.a = PI / 2; e.v = 0.0; e.ai_off = true; e.throttle = 0; e.hold = true
-	b.pos = Vector2(9200, 8000); b.a = PI / 2; b.ai_off = true; b.v = 0.0; b.throttle = 0; b.hold = true; a.ai_off = true; a.throttle = 0; a.v = 0.0
+	a.pos = Vector2(8000, 8000); a.a = PI / 2; e.pos = Vector2(9300, 8000); e.a = PI / 2; e.v = 0.0; e.ai_off = true; e.throttle = 0; e.hold = true
+	b.pos = Vector2(8650, 8000); b.a = PI / 2; b.ai_off = true; b.v = 0.0; b.throttle = 0; b.hold = true; a.ai_off = true; a.throttle = 0; a.v = 0.0
 	for m in a.mounts:
 		if m.w.kind == "gun" or m.w.kind == "aa": m.ammo = 0
 		if m.w.kind == "torp": m.cd = 0.0
@@ -1696,4 +1696,61 @@ func _subs() -> void:
 	var b: BattleSim.CShip = sim.ships[0]; var tube: BattleSim.Mount = null
 	for m in b.mounts: if m.w.kind == "torp" and absf(float(m.slot.arcs[0][0])) < 0.1: tube = m; break
 	ok(tube != null and sim.arc_check(tube.slot, 0.9).x == 0 and sim.tube_check(tube.slot, 0.9).x > 0 and sim.tube_check(tube.slot, 2.0).x == 0, "a bow tube bears 50 degrees off the bow on a gyro angle, not 115")
+	sections += 1
+
+## The realism and hunter patch, and officers' traits (the owner, 13 Nov 2026).
+func _traits() -> void:
+	Campaign.new_game("academy"); var G: Dictionary = Campaign.G
+	# the balance preset
+	var pt: Dictionary = Campaign.new_ship("pt_elco", "P", "raiders", []); var dd: Dictionary = Campaign.new_ship("dd_fletcher", "D", "raiders", [])
+	ok(is_equal_approx(Campaign.strength([pt]), Campaign.ship_value(pt) * Campaign.PT_STRENGTH_MULT) and is_equal_approx(Campaign.strength([dd]), Campaign.ship_value(dd)), "a motor torpedo boat counts double in a force's strength; a destroyer as she is")
+	G.day = Campaign.HUNT_GRACE
+	var k0: float = Campaign.hunt_k(); G.day = Campaign.HUNT_GRACE + 200; var k1: float = Campaign.hunt_k(); G.day = 2000
+	ok(is_equal_approx(k0, 1.15) and is_equal_approx(k1, 1.30) and is_equal_approx(Campaign.hunt_k(), 1.45), "hunters come at 1.15 times your strength, rising to 1.45 and no more (%.2f, %.2f, %.2f)" % [k0, k1, Campaign.hunt_k()])
+	G.day = 60
+	var W: Dictionary = GameData.weapons
+	ok(int(W.tor.range) == 2000 and int(W.tor93.range) == 4200 and int(W.torh.range) == 2600 and int(W.ciws.range) < int(W.aa40.range) and int(W.g127.range) > int(W.tor.range), "torpedoes reach 2,000, 4,200 and 2,600 m, inside a 5-inch gun's range; the CIWS is the inner screen")
+	var packs := 0; var far := 0
+	for i in 300:
+		var f = Campaign.spawn_fleet("raiders", "raiders")
+		if f == null: continue
+		if f.ships.all(func(x): return Campaign.hull(x).klass == "pt"):
+			packs += 1
+			var near: float = INF
+			for q in G.pois: if q.get("kind", "") == "den": near = minf(near, Campaign.mdist(q.x, q.y, f.x, f.y))
+			for q in G.ports: near = minf(near, Campaign.mdist(q.sx, q.sy, f.x, f.y))
+			if near > Campaign.PT_TETHER + 1.0 or not f.has("tether"): far += 1
+		G.fleets.erase(f)
+	ok(packs > 0 and far == 0, "raider packs of torpedo boats alone start within reach of a den or a harbour (%d packs, %d far out)" % [packs, far])
+	# traits
+	var o: Dictionary = Campaign.new_officer(1)
+	ok(Campaign.traits(o).is_empty(), "a junior officer has no trait")
+	var o5: Dictionary = Campaign.new_officer(5)
+	ok(Campaign.traits(o5).size() == 2 and Campaign.grant_officer_trait(o5) == "", "an officer of level 5 has two, and never a third (%s)" % Campaign.trait_names(o5))
+	var o3: Dictionary = Campaign.new_officer(3)
+	ok(Campaign.traits(o3).size() == 1, "one of level 3 has one")
+	o.traits = ["blockade_runner"]; o.ship = G.fleet[0].id; G.officers = [o]
+	var v0: float = Campaign.fleet_map_speed(G.fleet) * float(Campaign.SPEEDS[Campaign.speed_order()][0])
+	ok(is_equal_approx(Campaign.player_speed(), v0 * 1.08) and is_equal_approx(Campaign.trait_evade(), 0.10), "a blockade runner in the flagship gives the squadron 8% more speed and 10% more chance of breaking off")
+	o.ship = null
+	ok(is_equal_approx(Campaign.player_speed(), v0) and Campaign.trait_evade() == 0.0, "ashore, he gives nothing")
+	var sim := BattleSim.new(); sim.setup([Campaign.new_ship("dd_fletcher", "A", "player", [])], [Campaign.new_ship("dd_fletcher", "B", "raiders", [])], [], [], 0)
+	var a: BattleSim.CShip = sim.ships[0]
+	Weather.force = {"sea": 0, "fog": false, "night": true, "moon": 0.0}; sim.wx = Weather.battle(Weather.force)
+	var s0: float = sim.sight(a); var d0: float = sim.dc_k(a, "fire"); var p0: float = sim.gun_pd(a)
+	a.traits = ["night_owl", "iron_dc", "flak_director"]
+	ok(is_equal_approx(sim.sight(a), s0 * BattleSim.TRAIT_NIGHT_SIGHT) and is_equal_approx(sim.dc_k(a, "fire"), d0 * BattleSim.TRAIT_DC) and is_equal_approx(sim.dc_k(a, "mach"), 1.0) and is_equal_approx(sim.gun_pd(a), p0 * BattleSim.TRAIT_FLAK), "a night fighter sees further in the dark, a damage-control ace mends faster, an air defence director's guns are better against missiles")
+	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}; sim.wx = Weather.battle(Weather.force)
+	ok(is_equal_approx(sim.sight(a), sim.sight(sim.ships[1])), "by day the night fighter sees as anyone does")
+	var tm = null
+	for m in a.mounts: if m.w.kind == "torp": tm = m
+	if tm != null:
+		a.traits = []; a.ai_off = true; sim.ships[1].ai_off = true; tm.cd = 100.0; sim.step(1.0); var c0: float = 100.0 - tm.cd
+		a.traits = ["torp_master"]; tm.cd = 100.0; sim.step(1.0); var c1: float = 100.0 - tm.cd
+		ok(c0 > 0.0 and is_equal_approx(c1 / c0, BattleSim.TRAIT_TORP_RELOAD), "a torpedo specialist's tubes reload a quarter faster (%.2f)" % (c1 / maxf(c0, 0.001)))
+	var r := {"notes": []}
+	var lv: Dictionary = Campaign.new_officer(2); lv.traits = []; lv.lvl = 3
+	var got: String = Campaign.grant_officer_trait(lv)
+	ok(got != "" and Campaign.traits(lv).size() == 1 and Campaign.OFFICER_TRAITS.has(lv.traits[0]), "a trait is granted by name (%s)" % got)
+	Campaign.new_game("academy")
 	sections += 1

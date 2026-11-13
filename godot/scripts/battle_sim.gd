@@ -151,6 +151,7 @@ class CShip:
     var dc_held_at := -99.0     # when she last held a pattern for a friend (a measure: see sys_log)
     var fp := 0                 # floatplanes aboard on her catapults (see launch_spotter)
     var blown := false          # lost to her own magazine: nothing left to raise (Campaign wrecks)
+    var traits: Array = []      # her captain's traits (Campaign.OFFICER_TRAITS; read with has_trait(s, id))
     var tm := "steady"          # her captain's temper: "bold", "steady" or "cautious" (Campaign.TEMPERS, temper_k)
     var fp_t := 0.0             # until her captain will next think of flying one off
     var jam_r = 0.0        # where it jammed
@@ -682,6 +683,7 @@ func _radar_plot(dt: float) -> void:
 
 func sight(o: CShip) -> float:
     var v: float = float(wx.vis)
+    if wx.get("night", false) and has_trait(o, "night_owl"): v *= TRAIT_NIGHT_SIGHT
     if has_radar(o): v = maxf(v, float(wx.radar) * (1.0 + 0.15 * upg(o, "radar")) * (1.15 + 0.05 * tech_up(o.tech, "datalink") if o.tech.has("datalink") else 1.0))
     return v
 func limited() -> bool: return float(wx.vis) > 0.0
@@ -759,7 +761,16 @@ const HIGH_PD := 0.7
 const HAND_PD := 0.15
 const HAND_PD_FC := 0.5
 func gun_pd(s: CShip) -> float:
-    return HAND_PD_FC if s.tech.has("missiles") else HAND_PD
+    return (HAND_PD_FC if s.tech.has("missiles") else HAND_PD) * (TRAIT_FLAK if has_trait(s, "flak_director") else 1.0)
+## Officers' traits (Campaign.OFFICER_TRAITS): what each is worth in the ship her captain commands.
+const TRAIT_NIGHT_SIGHT := 1.18
+const TRAIT_NIGHT_SPREAD := 0.85
+const TRAIT_DC := 1.25
+const TRAIT_TORP_RELOAD := 1.25    # the rate: reloads in 0.8 of the time
+const TRAIT_TORP_SPREAD := 0.85
+const TRAIT_FLAK := 1.2
+const TRAIT_SPOT := 0.75
+func has_trait(s: CShip, id: String) -> bool: return s != null and s.traits.has(id)
 var decoys: Array = []   # chaff clouds: {pos, t, side}
 var _jammers: Array = []
 func jam_mult(s: CShip) -> float:
@@ -1398,6 +1409,7 @@ func spot(s: CShip, tg: CShip, reload: float) -> void:
     if has_radar(s): keep = 0.36
     elif wx.get("night", false) and not star_lit(tg.pos): keep = 0.78
     if not eye_sees(tg, s.side): keep = maxf(keep, 0.7 if has_radar(s) else 0.92)   # behind smoke or beyond sight: the plot alone
+    if has_trait(s, "gunnery_scholar") and s.pos.distance_to(tg.pos) > 0.6 * max_gun_range(s): keep *= TRAIT_SPOT
     if spotter_over(s.side, tg.pos): keep *= SPOT_HELP   # her floatplane is over the target, calling the fall of shot
     if s.tech.has("netcentric"): keep *= 0.8 - 0.05 * tech_up(s.tech, "netcentric")   # cooperative engagement (Era IV): the squadron's picture, whoever spots
     keep = clampf(keep * CREW[s.cq].spot, 0.2, 0.95)
@@ -1431,6 +1443,7 @@ func fire_barrel(s: CShip, m: Mount, aim: Vector2, i: int, tgt: CShip = null) ->
     var rng: float = gun_range(s, w); var d = minf(rng, p.distance_to(aim))
     var fc = (0.6 - 0.05 * tech_up(s.tech, "radar") if s.tech.has("radar") else 1.0) * (1 - 0.12 * s.sk.gun) * (1 - 0.12 * upg(s, "fc")) * (1.0 + (s.ld_spread - 1.0) * (1.0 + 0.5 * int(wx.sea))) * (1.0 + 0.7 * absf(s.list)) * (1.15 if s.side == 1 else 1.0) * (0.85 - 0.05 * tech_up(s.tech, "datalink") if s.tech.has("datalink") else 1.0)
     fc *= 1.0 + 0.1 * int(wx.sea)                                         # a moving platform
+    if wx.get("night", false) and has_trait(s, "night_owl"): fc *= TRAIT_NIGHT_SPREAD
     if s.rec.get("defects", []).has("fc"): fc *= 1.15                     # a raised wreck's fire control, never quite true again
     if wx.night and not has_radar(s): fc *= 1.35                           # spotting the fall of shot by eye in the dark
     s.lit_t = 0.0
@@ -1459,7 +1472,7 @@ func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y); var base = (aim - p).angle()
     var en: float = maxf(150.0, p.distance_to(aim) - HOMER_SHORT) / w.speed   # a homer's seeker comes on short of the aim point
     for i in int(w.count):
-        var a: float = base + (i - (w.count - 1) / 2.0) * 0.06
+        var a: float = base + (i - (w.count - 1) / 2.0) * 0.06 * (TRAIT_TORP_SPREAD if has_trait(s, "torp_master") else 1.0)
         torps.append({"pos": p, "a": a, "speed": w.speed, "life": gun_range(s, w) / w.speed, "dmg": w.dmg, "side": s.side, "homing": w.get("homing", false), "arm": 150.0 / w.speed, "en": en, "who": s, "ear": homer_ear(s)})
     boom(p, 0.1, 900.0)
     if s.sub: s.reveal_t = 20.0
@@ -1591,6 +1604,7 @@ func kill_missile(ms: Dictionary) -> void:
     ms.dead = true; fx_boom(ms.pos, 18.0, 0.5)
 
 func flak(s: CShip, m: Mount, sq: Dictionary, chance: float) -> void:
+    if has_trait(s, "flak_director"): chance *= TRAIT_FLAK
     var p = world_pt(s, m.slot.x, m.slot.y)
     if m.w.kind == "gun" and not use_round(m, int(m.w.get("barrels", 1))): return
     if m.w.kind == "gun": # dual-purpose guns firing at aircraft: a real gun report, flash and recoil
@@ -1610,7 +1624,7 @@ func update_weapons(s: CShip, dt: float) -> void:
         return
     for m in s.mounts:
         if m.dead: m.st = ""; continue
-        var w = m.w; m.cd -= dt * reload_mult(s, w); m.recoil = maxf(0.0, m.recoil - dt * 0.5)
+        var w = m.w; m.cd -= dt * reload_mult(s, w) * (TRAIT_TORP_RELOAD if w.kind == "torp" and has_trait(s, "torp_master") else 1.0); m.recoil = maxf(0.0, m.recoil - dt * 0.5)
         if w.get("hide", false):   # a concealed gun runs its barrel out when it has a target or is firing, and in again after ten quiet seconds
             m.quiet = 0.0 if (m.tgt != null or not m.queue.is_empty() or m.recoil > 0.0) else m.quiet + dt
             m.out = move_toward(m.out, 1.0 if m.quiet < 10.0 else 0.0, dt / 0.9)
@@ -1785,7 +1799,7 @@ const HOMER_EAR := 1200.0    # how far a homing torpedo's seeker hears a ship ah
 ## Her seeker's reach with the firer's homing research: a seventh farther for each level past the first.
 func homer_ear(s: CShip) -> float: return HOMER_EAR * (1.0 + 0.15 * (tech_up(s.tech, "homing") if s != null else 0))
 const HOMER_CONE := 0.7      # and how wide its cone is either side of her heading (radians)
-const HOMER_SHORT := 700.0   # her seeker is switched on this far short of the point she was aimed at (m)
+const HOMER_SHORT := 450.0   # her seeker is switched on this far short of the point she was aimed at (m)
 const DC_SHIP := 30.0        # a burst this near a surface ship's hull hurts her (shock under the keel)
 const DC_SHIP_DMG := 110.0   # and this is the worst it does, hard under her
 const DC_MARGIN := 15.0      # a captain keeps his friends this much farther than that from a pattern
@@ -2084,7 +2098,7 @@ func detonate(s: CShip) -> void:
 ## Where the damage-control parties go first (the flagship's to choose; other ships work evenly): the chosen work
 ## goes twice as fast and the rest at six tenths.
 const DC_PRI := {"": "evenly", "fire": "fires first", "flood": "flooding first", "mach": "machinery and steering first"}
-func dc_k(s: CShip, what: String) -> float: return 1.0 if s.dc_pri == "" else (2.0 if s.dc_pri == what else 0.6)
+func dc_k(s: CShip, what: String) -> float: return (1.0 if s.dc_pri == "" else (2.0 if s.dc_pri == what else 0.6)) * (TRAIT_DC if what != "mach" and has_trait(s, "iron_dc") else 1.0)
 ## Flood the burning magazine now: the turret above it is lost, the ship is not.
 func flood_magazine(s: CShip) -> bool:
     if s.mag_fire <= 0: return false

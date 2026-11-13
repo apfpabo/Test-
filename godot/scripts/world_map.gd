@@ -1244,7 +1244,7 @@ func _on_encounter(f: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; P.tx = null; P.route = null; P.follow = null
     var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
     var odds = "They badly outgun you." if ratio > 1.6 else ("They have the heavier squadron." if ratio > 1.1 else ("It would be an even fight." if ratio > 0.75 else "You outgun them."))
-    var evade = int(round(clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0, 0.1, 0.92) * 100))
+    var evade = int(round(clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0 + Campaign.trait_evade(), Campaign.EVADE_FLOOR, 0.92) * 100))
     open_panel(func(box):
         if not Campaign.hostile_fleet(f):
             _hail_body(box, f)
@@ -2515,7 +2515,8 @@ func _officers(box: Control, p: Dictionary) -> void:
             var sk = []
             for k in Campaign.C.SKILLS: if o.sk[k]: sk.append("%s %d" % [Campaign.C.SKILLS[k][0], o.sk[k]])
             var tl := UI.label(Campaign.temper(o).capitalize(), UI.GOLD, 13); tl.tooltip_text = Campaign.TEMPERS[Campaign.temper(o)]; tl.mouse_filter = Control.MOUSE_FILTER_PASS
-            box.add_child(UI.row([UI.label("%s · level %d" % [o.name, o.lvl], UI.INK), tl, UI.label((" · ".join(sk) if sk.size() else "Green, but eager") + " · salary %d a day" % (40 * o.lvl), UI.DIM, 13),
+            var head: Array = [UI.label("%s · level %d" % [o.name, o.lvl], UI.INK), tl]; head.append_array(_trait_labels(o))
+            box.add_child(UI.row(head + [UI.label((" · ".join(sk) if sk.size() else "Green, but eager") + " · salary %d a day" % (40 * o.lvl), UI.DIM, 13),
                 UI.button("Sign on · " + Campaign.fmt(cost), func():
                     G.credits -= cost; p.officers.erase(o); var free = null
                     for s in Campaign.all_ships():
@@ -2536,6 +2537,7 @@ func _officers(box: Control, p: Dictionary) -> void:
             var key: String = k
             skills.append(UI.label("%s %s%s" % [Campaign.C.SKILLS[k][0], "■".repeat(o.sk[k]), "□".repeat(3 - o.sk[k])], UI.DIM, 13))
             if o.pts and o.sk[k] < 3: skills.append(UI.button("+", func(): o.sk[key] += 1; o.pts -= 1; _rerender()))
+        skills.append_array(_trait_labels(o))
         var fl := _flow(skills); fl.size_flags_horizontal = Control.SIZE_EXPAND_FILL; fl.size_flags_vertical = Control.SIZE_SHRINK_CENTER; row.add_child(fl)
         # dismissing is for good: it asks once more, as scuttling does (UI review, 12 Nov 2026)
         if _dismiss_id == str(o.id):
@@ -2545,6 +2547,15 @@ func _officers(box: Control, p: Dictionary) -> void:
             var db := UI.button("Dismiss", func(): _dismiss_id = str(o.id); _rerender()); db.size_flags_vertical = Control.SIZE_SHRINK_CENTER; row.add_child(db)
         box.add_child(row)
     _p(box, ". ".join(Campaign.C.SKILLS.values().map(func(v): return v[0] + ": " + v[1].to_lower())) + ".", UI.DIM, 13)
+
+## An officer's traits as gold labels, each saying what it does when the pointer rests on it.
+func _trait_labels(o: Dictionary) -> Array:
+    var out := []
+    for k in Campaign.traits(o):
+        if not Campaign.OFFICER_TRAITS.has(k): continue
+        var l := UI.label("★ " + String(Campaign.OFFICER_TRAITS[k].name), UI.GOLD, 13); l.tooltip_text = String(Campaign.OFFICER_TRAITS[k].desc); l.mouse_filter = Control.MOUSE_FILTER_PASS
+        out.append(l)
+    return out
 
 func rp_price(p: Dictionary) -> int: return 6000 if p.get("fac") == "enclave" else (8000 if p.get("capital", false) and p.get("fac") == "concord" else 0)
 

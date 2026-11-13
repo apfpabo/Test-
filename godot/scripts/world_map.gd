@@ -2740,26 +2740,80 @@ func _lead_pic(f: Dictionary) -> Control:
 
 # ------------------------------------------------------------------ land structures
 ## Your structures ashore: what each yields, who holds it, where its goods go, and the goods waiting for you.
+## The Holdings page (reworked 13 Nov 2026 at the owner's word): the whole at the top (what you hold, what it earns and
+## costs), then what is under threat, then harbours and structures, each with what can be done from the list, then the
+## goods waiting, and the flag's own business (the chancery) last.
+var _own_rows := false
 func _holdings(box: Control) -> void:
-    var G: Dictionary = Campaign.G; var hs: Array = Structures.held()
-    _flag_section(box)
-    if hs.is_empty():
+    var G: Dictionary = Campaign.G; var hs: Array = Structures.held(); var ps: Array = Flag.ports() if Flag.founded() else []
+    if hs.is_empty() and ps.is_empty():
+        _flag_section(box)
         _p(box, "You hold nothing ashore yet. Bomb a structure until its defences go quiet, then bring the fleet off the coast and demand its surrender. Or land a garrison on one nobody holds. Each one you hold pays every month.", UI.DIM, 14)
         return
-    var money := 0
+    # the whole
+    var dues := 0; var money := 0
+    for p in ps: dues += Flag.tax(p)
     for s in hs: money += int(Structures.yield_of(s).get("money", 0))
-    _p(box, "%d structures held by %d men (wages %s a day). Paid on the 30th: %s a month, and goods to the nearest open port or your naval base." % [hs.size(), Structures.garrison_total(), Campaign.fmt(Structures.garrison_total() * 0.15), Campaign.fmt(money)], UI.DIM, 14)
-    for s in hs:
-        var y := Structures.yield_of(s); var yl := []
-        for g in y: yl.append(Campaign.fmt(y[g]) if g == "money" else "%d %s" % [y[g], g])
-        var dp = Structures.depot_of(s)
-        var row := [UI.label(s.name, UI.GOLD, 14), UI.label("%s · garrison %d · %s%s" % [Structures.kind(s).name, int(s.garrison), ", ".join(yl) if yl.size() else "no income", (" → " + ("held there" if dp == s else Structures.depot_name(dp))) if not y.is_empty() and y.keys() != ["money"] else ""], UI.DIM, 13)]
-        row.append(UI.button("Details", func(): open_struct(s)))
+    var wages: int = int(Structures.garrison_total() * 0.15 * 30.0)
+    box.add_child(UI.label("THE WHOLE", UI.DIM, 12))
+    for line in [["Harbours under your flag", "%d, held by %s men" % [ps.size(), Campaign.fmt(Flag.garrison_total())]] if not ps.is_empty() else null,
+            ["Structures ashore", "%d, held by %s men" % [hs.size(), Campaign.fmt(Structures.garrison_total())]] if not hs.is_empty() else null,
+            ["Coming in each month", "%s (harbour dues %s, structures %s)" % [Campaign.fmt(dues + money), Campaign.fmt(dues), Campaign.fmt(money)]],
+            ["Garrison wages each month", Campaign.fmt(wages)] if wages > 0 else null]:
+        if line != null: box.add_child(UI.row([UI.label(line[0]), UI.label(line[1], UI.DIM)]))
+    # what is under threat
+    box.add_child(UI.label("UNDER THREAT", UI.DIM, 12))
+    var threats := 0
+    for f in G.fleets:
+        var tp = null; var what := ""
+        if Flag.is_relief(f) and int(f.portAssault) < G.ports.size(): tp = G.ports[int(f.portAssault)]; what = tp.name
+        elif Structures._is_assault(f) and int(f.assault) < Structures.all().size() and Structures.all()[int(f.assault)].fac == "player": tp = Structures.all()[int(f.assault)]; what = tp.name
+        if tp == null: continue
+        threats += 1
+        var kp: Vector2 = Campaign.known_pos(f) if f.get("vis", true) or f.has("seenX") else Vector2(-1, -1)
+        var where: String = "%d km from it" % int(Campaign.mdist(kp.x, kp.y, tp.get("sx", tp.x), tp.get("sy", tp.y)) * Campaign.KM_PER_UNIT) if kp.x >= 0.0 else "somewhere at sea, not yet sighted"
+        var row := [UI.label(what, UI.RED, 14), UI.label("The %s, %d ships, is making for it: %s." % [Campaign.fname(f), f.ships.size(), where], UI.INK, 13)]
+        row.append(UI.button("Show", func(): _show_place(tp.x, tp.y)))
         box.add_child(UI.row(row))
+    for p in ps:
+        if int(p.get("men", 0)) < Flag.hold_need(p):
+            threats += 1
+            box.add_child(UI.row([UI.label(p.name, UI.GOLD, 14), UI.label("Garrison %s of the %s it wants: dues are cut and it is easier to storm." % [Campaign.fmt(int(p.get("men", 0))), Campaign.fmt(Flag.hold_need(p))], UI.INK, 13), UI.button("Show", func(): _show_place(p.x, p.y))]))
+    if threats == 0: _p(box, "Nothing threatens your holdings that you know of.", UI.DIM, 13)
+    # harbours
+    if not ps.is_empty():
+        box.add_child(UI.label("HARBOURS", UI.DIM, 12))
+        for p in ps:
+            var wk := []
+            for k in Flag.WORKS:
+                var n: int = Flag.works(p, k); var b: int = Flag.works_building(p, k)
+                if n > 0: wk.append(String(Flag.WORKS[k].name).to_lower() + (" ×%d" % n if n > 1 else ""))
+                if b > 0: wk.append("%s building, %d days" % [String(Flag.WORKS[k].name).to_lower(), b])
+            var l1 := "%sgarrison %s of %s · dues %s a month%s" % ["capital · " if p.get("capital", false) else "", Campaign.fmt(int(p.get("men", 0))), Campaign.fmt(Flag.hold_need(p)), Campaign.fmt(Flag.tax(p)), (" · taken from the " + GameData.fac[p.from].short) if p.get("from", "") != "" and GameData.fac.has(p.from) else ""]
+            var l2 := "Works: %s. %s." % [", ".join(wk) if not wk.is_empty() else "none", "A guard squadron lies here" if Flag.guard(p) != null else "No guard squadron"]
+            var info := VBoxContainer.new(); info.size_flags_horizontal = Control.SIZE_EXPAND_FILL; info.add_child(UI.label(l1, UI.INK, 13)); info.add_child(UI.label(l2, UI.DIM, 13))
+            var nm := UI.label(p.name, UI.GOLD, 14); nm.custom_minimum_size.x = 150
+            box.add_child(UI.row([nm, info, UI.button("Show", func(): _show_place(p.x, p.y)), UI.button("Plot a course", func(): if Campaign.set_course(G.player, p.sx, p.sy): free_cam = false; close_panel())]))
+        _p(box, "Works, the garrison and a guard squadron are ordered in the harbour itself.", UI.DIM, 13)
+    # structures
+    if not hs.is_empty():
+        box.add_child(UI.label("STRUCTURES ASHORE", UI.DIM, 12))
+        _p(box, "Paid on the 30th, and goods to the nearest open port or your naval base.", UI.DIM, 13)
+        for s in hs:
+            var y := Structures.yield_of(s); var yl := []
+            for g in y: yl.append(Campaign.fmt(y[g]) if g == "money" else "%d %s" % [y[g], g])
+            var dp = Structures.depot_of(s)
+            var nm2 := UI.label(s.name, UI.GOLD, 14); nm2.custom_minimum_size.x = 150
+            var row2 := [nm2, UI.label("%s · garrison %d · %s%s" % [Structures.kind(s).name, int(s.garrison), ", ".join(yl) if yl.size() else "no income", (" → " + ("held there" if dp == s else Structures.depot_name(dp))) if dp != null and y.keys().any(func(k): return k != "money") else ""], UI.INK, 13)]
+            row2.append(UI.button("Show", func(): _show_place(s.x, s.y))); row2.append(UI.button("Details", func(): open_struct(s)))
+            box.add_child(UI.row(row2))
     var stores := []
     for p in G.ports: if not Structures.store_of(p).is_empty(): stores.append("%s: %s" % [p.name, ", ".join(Structures.store_of(p).keys().map(func(k): return "%d %s" % [int(Structures.store_of(p)[k]), k]))])
     for s in hs: if not Structures.store_of(s).is_empty(): stores.append("%s: %s" % [s.name, ", ".join(Structures.store_of(s).keys().map(func(k): return "%d %s" % [int(Structures.store_of(s)[k]), k]))])
-    if stores.size(): box.add_child(UI.label("GOODS WAITING", UI.DIM, 12)); for t in stores: _p(box, t, UI.INK, 13)
+    if stores.size():
+        box.add_child(UI.label("GOODS WAITING", UI.DIM, 12))
+        for t in stores: _p(box, t, UI.INK, 13)
+    _own_rows = true; _flag_section(box); _own_rows = false
 
 ## Your own flag: found it, and the ports that fly it.
 var _flag_name := ""
@@ -2781,7 +2835,7 @@ func _flag_section(box: Control) -> void:
     _p(box, "%s, founded %s. %s, held by %s men; dues %s a month." % [G.flag.name, Campaign.date_str(int(G.flag.day)), "One port flies it" if ps.size() == 1 else "%d ports fly it" % ps.size(), Campaign.fmt(Flag.garrison_total()), Campaign.fmt(dues)], UI.GOLD, 14)
     if ps.is_empty(): _p(box, "No port flies it yet. Embark troops and lie off a harbour to storm it. A closed harbour offers the assault as you approach; an open one has it under Repairs & crew.", UI.DIM, 13)
     if int(G.flag.get("trade", 0)) > 0: _p(box, "Your convoys have earned %s so far." % Campaign.fmt(int(G.flag.trade)), UI.DIM, 13)
-    for p in ps:
+    for p in ([] if _own_rows else ps):   # (the Holdings page lists the harbours itself, with more about each)
         box.add_child(UI.row([UI.label(p.name, UI.GOLD, 14), UI.label("garrison %s of %s · dues %s%s" % [Campaign.fmt(int(p.get("men", 0))), Campaign.fmt(Flag.hold_need(p)), Campaign.fmt(Flag.tax(p)), (" · taken from the " + GameData.fac[p.from].short) if p.get("from", "") != "" else ""], UI.DIM, 13),
             UI.button("Plot a course", func(): if Campaign.set_course(G.player, p.sx, p.sy): free_cam = false; close_panel())]))
     _chancery(box)

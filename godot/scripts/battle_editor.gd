@@ -139,7 +139,7 @@ func rebuild() -> void:
             _btn("Mend", func(): _mend(p); rebuild()),
             _btn("Hit 25%", func(): var g: bool = p.god; p.god = false; sim.damage(p, p.max_hull * 0.25, "resolved"); p.god = g; rebuild()),
             _btn("Set afire", func(): sim.mark_hit(p, p.pos + Vector2((randf() - 0.5) * p.d.L * 0.5, 0).rotated(p.a), 3.0, false, 20.0)),
-            _btn("Torpedo her", func(): var g2: bool = p.god; p.god = false; sim.hit_systems(p, p.pos + Vector2(0, p.d.B * 0.4).rotated(p.a), 400.0, "torp"); sim.damage(p, 400.0, "torp"); sim.part(BattleSim.P.GEYSER, p.pos, 1.6, 40.0); sim.sound("torp_hit", p.pos, 0.7); p.god = g2; rebuild()),
+            _btn("Torpedo her", func(): var g2: bool = p.god; p.god = false; sim.hit_systems(p, p.pos + Vector2(0, p.d.B * 0.4).rotated(p.a), 400.0, "torp"); sim.damage(p, 400.0, "torp"); sim.fx_torp(p.pos + Vector2(0, p.d.B * 0.4).rotated(p.a)); sim.sound("torp_hit", p.pos, 0.7); p.god = g2; rebuild()),
             _btn("Engines out", func(): p.eng_out = 60.0), _btn("Jam rudder", func(): p.jam = 60.0; p.jam_r = 0.8),
             _btn("Cannot be hurt" if not p.god else "Can be hurt", func(): p.god = not p.god; rebuild(), p.god),
             _btn("Sink", func(): p.god = false; sim.damage(p, p.max_hull * 10.0, "resolved"); rebuild()),

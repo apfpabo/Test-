@@ -1320,6 +1320,15 @@ func fx_splash_new(p: Vector2, size: float) -> void:
         var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997; l.push = BOWL_PUSH; l.tsz = size; splash_laces.append(l)
     for i in 3 + int(size * 0.25):   # droplets thrown out at the first instant
         var q = part(P.SPRAY, p + rdir() * size * 0.15, 0.6 + randf() * 0.7, size * (0.18 + randf() * 0.16), rdir() * (size * 1.2 + randf() * size * 3.0)); q.drag = 0.18
+## A torpedo's burst against a hull, and a depth charge's: in the new splash style they throw the same column, with its
+## shadow, falling curtain and the sea's hollow, as a heavy shell (the owner, 13 Nov 2026: they still went up the old
+## way). Classic keeps its geyser and dome.
+const TORP_SPLASH := 30.0   # a 16-inch shell's is 20.4
+const DC_SPLASH := 22.0
+func fx_torp(p: Vector2) -> void:
+    if modern and splash_new: fx_splash_new(p, TORP_SPLASH)
+    else: part(P.GEYSER, p, 1.6, 40.0)
+
 func fx_splash(p: Vector2, size: float) -> void:
     if modern and splash_new: fx_splash_new(p, size); return
     # shells falling together on one spot make one column, not a stack of them (the owner: "the water columns look weird
@@ -2916,7 +2925,7 @@ func step(dtv: float) -> void:
                 if absf(l.x) < s.d.L / 2 and absf(l.y) < s.d.B / 2 + 2:
                     if s.side == tp.side: _log("torpedo on a friend"); ff_dmg_t += tp.dmg
                     else: _log("torpedo hit")
-                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); part(P.GEYSER, tp.pos, 1.6, 40.0); var tw = part(P.WASH if modern else P.FOAM, tp.pos, 16.0 if modern else 12.0, 45.0 if modern else 60.0); tw.over = modern   # a torpedo's burst throws its water over her decks for a moment
+                    mark_hit(s, tp.pos, 4.0, false); hit_systems(s, tp.pos, tp.dmg, "torp"); damage(s, tp.dmg, "torp"); fx_torp(tp.pos); var tw = part(P.WASH if modern else P.FOAM, tp.pos, 16.0 if modern else 12.0, 45.0 if modern else 60.0); tw.over = modern   # a torpedo's burst throws its water over her decks for a moment
                     sound("torp_hit", tp.pos, 0.55); gone = true; break
         if not gone and not modern and randf() < dtv * 4: part(P.TWAKE, tp.pos, 4.0, 1.5)
         if modern:   # her wake: a narrow track like a ship's, laid point by point (battle.gd draws it as a ribbon)
@@ -3013,11 +3022,13 @@ func step(dtv: float) -> void:
             if sh == null or not sh.alive: dcs.remove_at(i); continue
             q.pos = world_pt(sh, -sh.d.L / 2, float(q.lat)); q.t = DC_SINK * (0.92 + randf() * 0.16); q.erase("rel"); q["src"] = sh; q.erase("ship")
             var plop = part(P.FOAM, q.pos, 3.0, 5.0)   # the small splash as it goes in
-            var b = part(P.DC, q.pos, 1.4, 24.0); b.life = -float(q.t) / BT; b.side = q.side   # the burst, drawn when it comes
+            if not (modern and splash_new):
+                var b = part(P.DC, q.pos, 1.4, 24.0); b.life = -float(q.t) / BT; b.side = q.side   # the burst, drawn when it comes (the classic dome; the new style throws its column when it bursts, below)
             continue
         q.t -= dt
         if q.t > 0: continue
         dcs.remove_at(i); sound("depth", q.pos, 0.3)
+        if modern and splash_new: fx_splash_new(q.pos, DC_SPLASH)   # the same column, falling curtain and hollow as a heavy shell's (the owner, 13 Nov 2026)
         if modern:   # spray flung out of the dome, a ring across the water, and the foam it leaves
             for j in 9:
                 var sp = part(P.SPRAY, q.pos + rdir() * 8.0, 0.8 + randf() * 0.9, 7.0 + randf() * 6.0, rdir() * (40.0 + randf() * 110.0)); sp.drag = 0.2

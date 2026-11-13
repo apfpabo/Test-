@@ -202,3 +202,19 @@ Vane-Smythe; two or three tales each), and the tales for a squadron, a harbour a
 **Still not built:** new openings for the Survivor and the Disgraced Officer (each already has a tale of the
 owner's). The two powers' descriptions on the game's own panels (`FAC` in `src/game.html`) are still the agent's
 placeholders.
+
+## The narrative pack (13 Nov 2026)
+
+**In:** the two faction overviews (pasted under The Major Factions), the polished contract lines, `origin_chains.txt`
+(8 tales that pay off the origin openings' flags) and `mid_late_game_tales.txt` (4 tales).
+
+**Held back, for the owner to settle** (they parse cleanly; the question is the story):
+- `mystery_chains.txt`: `dry_dock_zero_2` describes "a cut-down battlecruiser hull fitted with Vargan missile rails",
+  not the *Leviathan* of the canon, and has her at sea trials from day 65 though the bible's chain ends with her
+  launch; `lost_squadron_3` gives a new truth (Cipher 44-Zero signed so that "a mutual massacre would shock both
+  parliaments") beside the declassified one (an ambush by a Directorate cruiser-submarine); `skarn_vault_2` has the
+  Halvard Moot hand over reactor drawings from a cellar, where the canon keeps them in the two wrecked cruisers;
+  `austral_telemetries_2` fires the rockets from northern Varga (the bible: southern Varga) and needs no earlier step.
+  `task_force_kestrel_1` and `_2` contradict nothing.
+- `recurring_figures.txt`: Rear-Admiral Alistair Croft and the broker Selene Maren fill the same places as the
+  bible's Vice Admiral Alistair Vance and Master Broker Kaelen Thorne; Commodore Vardy is new.

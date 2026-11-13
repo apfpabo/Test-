@@ -103,13 +103,13 @@
    },
    "ombria": {
     "name": "Ombrian Protectorate",
-    "home": "Sefira (Southern Varga / Cradle Sea)",
-    "text": ""
+    "home": "Sefira (Ombria)",
+    "text": "An old maritime duchy and trading league occupying Varga’s southern lobe along the Cradle Sea. Overrun and “protected” by the Vargan Directorate in the opening year of the war, the Protectorate maintains its own naval ensign and coastal flotillas under the watchful eyes of Strelsk’s advisers in Sefira. Publicly obedient to the Continental Compact, its admirals quietly despise their northern overlords and turn a blind eye to smugglers, blockade-runners, and independent captains who weaken Strelsk’s grip on the Cradle Sea."
    },
    "isles": {
     "name": "Outer Isles League",
-    "home": "Port Vesper (Outer Archipelago)",
-    "text": ""
+    "home": "Port Vesper (Halcyon Reefs)",
+    "text": "A loose defensive confederation of impoverished, storm-battered archipelagos along the southern fringes of the Halcyon Ocean. Having bled heavily for the Oceanic Entente during the war, the islanders were left outside the security guarantees of the November 1945 Skarn Armistice. Beset by raider flotillas and ignored by Calder Roads, the League keeps its sea lanes open with ageing destroyers, armed trawlers, and hard-won pragmatism—welcoming any independent captain willing to hunt pirates or haul medicine and steel to the outer reefs."
    }
   },
   "profiles": {

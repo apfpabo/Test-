@@ -49,6 +49,14 @@ Not a state but a loose, heavily armed association of freeports, smugglers, priv
 Home: Halvardsby (Rime Isles)  
 Hardy northern settlements and naval stations in the ice-fringed Rime and Skarn Passages. Traditionally neutral, isolationist, and respected for their seamanship and ice navigation. They sell pilotage, cold-weather expertise, and limited docking rights to anyone who can pay and behave. Quietly sitting on some of the best remaining wartime technical archives.
 
+**Ombrian Protectorate**  
+Home: Sefira (Ombria)  
+An old maritime duchy and trading league occupying Varga’s southern lobe along the Cradle Sea. Overrun and “protected” by the Vargan Directorate in the opening year of the war, the Protectorate maintains its own naval ensign and coastal flotillas under the watchful eyes of Strelsk’s advisers in Sefira. Publicly obedient to the Continental Compact, its admirals quietly despise their northern overlords and turn a blind eye to smugglers, blockade-runners, and independent captains who weaken Strelsk’s grip on the Cradle Sea.
+
+**Outer Isles League**  
+Home: Port Vesper (Halcyon Reefs)  
+A loose defensive confederation of impoverished, storm-battered archipelagos along the southern fringes of the Halcyon Ocean. Having bled heavily for the Oceanic Entente during the war, the islanders were left outside the security guarantees of the November 1945 Skarn Armistice. Beset by raider flotillas and ignored by Calder Roads, the League keeps its sea lanes open with ageing destroyers, armed trawlers, and hard-won pragmatism—welcoming any independent captain willing to hunt pirates or haul medicine and steel to the outer reefs.
+
 ### Current Atmosphere (March 1946)
 - The great powers are rebuilding and rearming while publicly insisting the armistice is permanent.
 - Raider activity is rising in the Saffron Sea, the approaches to the Tarsene Gate, and the open Hesperian.

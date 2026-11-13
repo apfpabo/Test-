@@ -1,0 +1,325 @@
+# Iron Meridian — Origin Story Chains (origin_chains.txt)
+# Drop into godot/data/tales/origin_chains.txt.
+# Continues the opening hooks from origin_openings.txt and iron_meridian_tales.txt
+# into mid-campaign payoffs across all eight starting backgrounds.
+
+=== hijacker_crate_buyer
+title: A Quiet Berth in Kesselport
+when: arriving
+where: port Kesselport, port Port Saffron, port Mbaraka
+needs: origin hijacker, flag ashen_crate, day >= 25
+chance: 35%
+art: port
+
+--- start
+Before {flagship}'s gangway is even rigged at {port}, a woman in a waxed linen coat steps aboard without asking leave of the quartermaster. Behind her stand two dockhands carrying a heavy brass-bound sampling case.
+
+"Word travels fast when a stolen freighter puts into a freeport with an extra bulkhead," she says, lighting a thin cheroot. "The Meridian Combine will pay twelve thousand in clean drafts for those gyro-stabilisers—no questions, no bounty hunters in the channel. Or, if you prefer to keep the Directorate's engineers happy, Strelsk's agent ashore will double that in munitions and fuel."
+
+* Sell the crate to the Combine factor and clear your name in Kotaraya (12,000) -> sell_combine
+* Trade the crate to Strelsk's agent for war stores and Directorate backing -> sell_directorate
+* Keep the crate: when you fly your own colours, your yards will build from it -> keep_tech
+
+--- sell_combine
+The sampling case clicks shut over the serial plates. By dusk, the Combine factor's clerk has wired a clean clearance to every Lantern Strait harbour—and your bounty notices quietly vanish from the customs boards.
+! credits +12000
+! standing combine +18
+! standing concord +6
+! clear ashen_crate
+! flag ashen_settled
+! log "Sold the Ashen Wake's prototype stabilisers to a Combine factor in {port}"
+* Return to the bridge -> end
+
+--- sell_directorate
+At midnight, an unmarked lighter slides alongside to take the crate while armed stevedores roll casks of shell and bunker hoses across your deck. Strelsk does not forget a useful pirate.
+! credits +6000
+! fuel +60
+! munitions +40
+! standing directorate +18
+! standing concord -10
+! clear ashen_crate
+! flag ashen_settled
+! log "Traded the Ashen Wake's gyro-stabilisers to Directorate agents in {port}"
+* Cast off before dawn -> end
+
+--- keep_tech
+The woman studies your face, snaps her case shut, and nods once. "Bold, Captain. Foolish, perhaps—the Combine's recovery flotilla is already quartering the Saffron Sea."
+! rp +25
+! standing combine -12
+! flag ashen_hunted
+! log "Refused to sell the Ashen Wake's prototype crate in {port}"
+* Double the lookout watch -> end
+
+
+=== hijacker_recovery_flotilla
+title: The Combine's Ledger
+when: at sea
+where: sea Saffron Sea, sea Hesperian Ocean, sea Cradle Sea
+needs: origin hijacker, flag ashen_hunted, day >= 50
+chance: 8%
+art: contact
+
+--- start
+At first light, three grey silhouettes break out of the sea haze astern—clean-lined, modern, and flying the house flag of a Meridian Combine security detachment. Their signal lamp blinks without preamble: "Heave to and surrender Combine property stolen from the Ashen Wake."
+
+* Clear for action: the crate belongs to whoever holds the deck -> fight_combine
+* Jettison the crate in a marker buoy and make smoke -> dump_buoy
+
+--- fight_combine
+! fight combine cl dd corvette "Auditor" -> won_combine
+
+--- won_combine
+With the security cruiser limping away under smoke, your chief engineer unpacks the remaining gyro-stabilisers in the wardroom. Stripped to their brass bearings, they reveal the Combine's next-generation fire-control geometry.
+! rp +40
+! electronics +15
+! clear ashen_hunted
+! flag ashen_settled
+! log "Defeated a Combine recovery squadron and kept the Ashen Wake's prototypes"
+* Secure the prize -> end
+
+--- dump_buoy
+You heave the crate over the stern on a kapok float and lay a thick chemical smoke screen. The Combine ships slow to haul the buoy aboard, leaving {flagship} free—at the cost of a small fortune.
+! fuel -20
+! clear ashen_hunted
+! flag ashen_settled
+! log "Surrendered the Ashen Wake's prototype crate to shake off a Combine squadron"
+* Steady on course -> end
+
+
+=== merchant_navy_charter
+title: The Sealed Manifest
+when: arriving
+where: power concord, power combine, power pacific
+needs: origin merchant, flag requisitioned, day >= 30
+chance: 30%
+art: port
+
+--- start
+The harbour master at {port} brings a sealed envelope aboard himself—no clerk, no messenger boy. Inside is a commendation from the Admiralty Transport Board for delivering the 1943 requisition shells without losing a round, accompanied by an offer few merchant masters ever see.
+
+A fast auxiliary convoy is forming for a blockaded outstation. The pay is three times commercial freight rates, and the Board offers an armed escort licence that lets {flagship} mount naval-grade fire control without customs interference.
+
+* Accept the permanent Transport Board charter -> take_charter
+* Decline politely: independent holds earn more when wars flare up -> decline_charter
+
+--- take_charter
+Your ship's papers are stamped with the blue anchor of a reserve auxiliary. Harbour dues drop across half the ocean, and convoy commodores treat you as one of their own.
+! credits +8000
+! rp +15
+! standing concord +10
+! standing pacific +6
+! clear requisitioned
+! log "Accepted a permanent auxiliary charter at {port}"
+* Return to {flagship} -> end
+
+--- decline_charter
+The harbour master pockets the envelope with a dry nod. "Suit yourself, Captain. Free traders live longer—until they don't."
+! credits +2500
+! clear requisitioned
+* Return to {flagship} -> end
+
+
+=== merchant_prize_court
+title: Stolen Brass
+when: arriving
+where: power concord, power pacific, power combine
+needs: origin merchant, flag requisition_broken, day >= 25
+chance: 35%
+art: port
+
+--- start
+Two port-police launches block the inner mole at {port} as {flagship} approaches. An inspector boards with a clipboard and compares your hull number against a telegraphed list of missing wartime ordnance.
+
+"Thirty tons of Concord shells vanished off a requisition lighter last month," he says, tapping the coaming. "We can impound your cargo and fine you double—or if you happen to have five thousand credits for a clerical 're-manifestation', your holds are clean."
+
+* [credits >= 5000] Pay the harbour inspector to rewrite the manifest (5,000) -> pay_inspector
+* Bluff him with forged Syndicate salvage papers -> bluff_inspector
+* Put the helm over and shoot your way out of the roads -> break_out
+
+--- pay_inspector
+Silver changes hands in the chartroom. By noon, your stolen shells carry legitimate customs seals and can be sold in any port on the chart.
+! credits -5000
+! standing concord +5
+! clear requisition_broken
+! log "Bought clean customs papers for the requisitioned shells in {port}"
+* Moor alongside -> end
+
+--- bluff_inspector
+He squints at the Port Saffron stamp, mutters something about Syndicate lawyers, and waves his launches clear. You keep the shells, though your name stays on his desk.
+! standing concord -6
+! clear requisition_broken
+! log "Bluffed port inspectors over the missing requisition shells in {port}"
+* Moor alongside -> end
+
+--- break_out
+! fight concord corvette pt "Customs Cutter" -> won_breakout
+
+--- won_breakout
+With the harbour launches drifting astern in smoke, {flagship} clears the breakwater at full speed. Every legitimate customs house on the coast now knows your funnel mark.
+! standing concord -15
+! standing freeport +10
+! clear requisition_broken
+! log "Fought clear of port-police launches in {port}"
+* Shape a course for freeport waters -> end
+
+
+=== privateer_prize_court
+title: Letters of Reprisal
+when: arriving
+where: port Tarsa, port Puerto Corvo, port Port Saffron
+needs: origin privateer, day >= 35
+chance: 30%
+art: capital
+
+--- start
+In the smoke-hazed back room of the Admiralty Prize Court at {port}, the clerk lays a leather-bound register before you. Your early captures have drawn notice—not all of it welcome.
+
+A Directorate envoy has lodged a formal protest claiming your letter of marque expired with the November 1945 armistice, and Strelsk has posted a private bounty on {flagship}. At the same time, the Republic's defence committee offers to upgrade your paper to a Special Reprisal Warrant—authorising strikes against coastal installations—if you swear exclusive service.
+
+* Accept the Special Reprisal Warrant and bind yourself to the cause -> take_reprisal
+* Keep your broad letter of marque: flexibility pays better than zeal -> keep_broad
+* [flag marque_torn] Buy a fresh Syndicate letter of marque under an assumed hull name (3,000) -> buy_syndicate_paper
+
+--- take_reprisal
+The ink is still wet when the clerk hands you a cipher book for Republic shore batteries and a war chest for ammunition. You are no longer a freelance; you are an instrument of state.
+! credits +7500
+! munitions +25
+! standing republic +15
+! standing directorate -15
+! flag reprisal_captain
+! log "Accepted a Special Reprisal Warrant in {port}"
+* Return to {flagship} -> end
+
+--- keep_broad
+"A cautious answer, Captain," the clerk says, closing the ledger. "Keep bringing in prizes and the court will keep stamping your drafts."
+! credits +3000
+! standing republic +4
+! log "Renewed standard privateering terms in {port}"
+* Return to {flagship} -> end
+
+--- buy_syndicate_paper
+For three thousand credits, a Port Saffron notary produces an immaculate letter of marque signed by three island syndics. Nobody in Tarsa likes it, but every freeport honours it.
+! credits -3000
+! standing freeport +12
+! clear marque_torn
+! log "Purchased a fresh Syndicate letter of marque in {port}"
+* Return to {flagship} -> end
+
+
+=== defector_handler_summons
+title: The Interrogation Room
+when: arriving
+where: power concord, power directorate, power pacific
+needs: origin defector, flag cipher_kept, day >= 35
+chance: 30%
+art: capital
+
+--- start
+Two men in civilian overcoats wait at the foot of {flagship}'s gangway at {port}, flanked by armed naval ratings. They present credentials from Special Intelligence.
+
+"You kept back the second half of your wartime cipher tables when you came over, Captain," the older man says evenly. "A Directorate sub-tender slipped through the Skarn Passages last week using frequencies you still hold. Hand over the rest of the notebooks today, or we revoke your safe-conduct and let Strelsk's hunters have you."
+
+* Surrender the remaining cipher tables for a full pardon and research grant -> surrender_cipher
+* Trade only the submarine frequencies and keep the missile-site keys for yourself -> partial_cipher
+* Refuse and cast off immediately: nobody owns you twice -> refuse_handlers
+
+--- surrender_cipher
+You spend two days locked in an Admiralty strongroom dictating every frequency and dry-dock schedule in your memory. When you walk out, your new patrons trust you at last—and your pockets are heavy.
+! credits +10000
+! rp +25
+! standing concord +15
+! standing directorate -15
+! clear cipher_kept
+! flag cipher_given
+! log "Surrendered the remaining wartime cipher tables to Special Intelligence in {port}"
+* Return to {flagship} -> end
+
+--- partial_cipher
+You give them enough to catch the Skarn sub-tender while holding back the deep-archive coordinates. The intelligence officer suspects as much, but the catch is too good to refuse.
+! credits +5000
+! rp +20
+! standing concord +6
+! clear cipher_kept
+! log "Traded partial submarine ciphers to intelligence handlers in {port}"
+* Return to {flagship} -> end
+
+--- refuse_handlers
+You order steam raised while the ratings are still on the quay. As {flagship} backs out into the channel, you know every embassy in {port} will have your description by nightfall.
+! standing concord -15
+! standing directorate -10
+! standing freeport +8
+! clear cipher_kept
+! log "Broke with intelligence handlers and steamed out of {port}"
+* Clear the harbour -> end
+
+
+=== smuggler_scientist_debt
+title: A Note from the Laboratory
+when: arriving
+where: port Kotaraya, port Amakura, port Port Saffron
+needs: origin smuggler, flag passenger_delivered, day >= 35
+chance: 30%
+art: port
+
+--- start
+A messenger boy in dockyard overalls hands your quartermaster a sealed tin tube at {port}. Inside is a single sheet of graph paper covered in nozzle-throat equations and a brief note written in the cramped hand of the rocket scientist you ran through the Gate.
+
+"A promise kept is rarer than platinum in 1946," the note reads. "My new employers think I am designing weather rockets. Use the enclosed fuel-pump tolerances before they classify the entire project—and if you ever need a quiet berth in the Lantern Sea, ask for Doctor Kael."
+
+* Have your chief engineer integrate the pump tolerances at once -> apply_notes
+* Sell copies of the rocket equations to the highest bidder in port -> auction_notes
+
+--- apply_notes
+Your engineers spend three nights in the machine shop modifying fuel injectors and guidance relays. {flagship}'s trials jump forward by half a year.
+! rp +35
+! electronics +10
+! clear passenger_delivered
+! log "Received rocket-propulsion equations from the defecting scientist in {port}"
+* Return to duty -> end
+
+--- auction_notes
+By dawn, two rival consulates have bid the price up to nine thousand credits in unmarked notes. Doctor Kael may not thank you, but your war chest is full.
+! credits +9000
+! rp +12
+! standing directorate -6
+! clear passenger_delivered
+! log "Auctioned the defecting scientist's equations in {port}"
+* Return to duty -> end
+
+
+=== academy_wager_paid
+title: The Professor's Due
+when: arriving
+where: power concord, power directorate, power pacific
+needs: origin academy, flag instructors_wager, kills >= 3, day >= 30
+chance: 35%
+art: capital
+
+--- start
+A small wooden crate and an unsealed Admiralty dispatch await you at the harbour office in {port}. Inside the crate is a brass sextant engraved with your academy class year; inside the dispatch is a transfer order signed by your old tactics professor.
+
+"Three confirmed kills in a cast-off hull," his letter reads. "The Rear-Admiral paid his bet in front of the entire mess last night. I have used the winnings to pry a proper set of fire-control tables and a draft of trained gunners out of the depot for you. Do not let them go to waste."
+
+* Muster the new gunners aboard and log the commendation -> accept_commendation
+* Ask your professor to quietly steer you toward a real command opening -> ask_posting
+
+--- accept_commendation
+The depot draft marches aboard in clean blues, bringing precision rangefinding gear and an unmistakable pride in serving under an officer who proved the desk admirals wrong.
+! crew +25
+! rp +20
+! credits +4000
+! standing concord +10
+! standing pacific +8
+! clear instructors_wager
+! log "Won the old instructor's wager and received trained gunners in {port}"
+* Return to {flagship} -> end
+
+--- ask_posting
+Two weeks later, a coded signal arrives with coordinates for an unguarded wartime supply cache—your professor's parting gift before he retires to the country.
+! credits +7500
+! munitions +30
+! fuel +40
+! rp +15
+! clear instructors_wager
+! log "Used the old instructor's influence to claim a wartime supply cache"
+* Return to {flagship} -> end

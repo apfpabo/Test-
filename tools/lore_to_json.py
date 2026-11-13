@@ -59,7 +59,7 @@ for t, b in blocks(section('Additional Faction Profiles (1946)')):
     home = re.match(r'Home: (.+?)\s*\n', b + '\n').group(1)
     prof = {}
     for m in re.finditer(r'^- \*\*(.+?)\*\*: (.+?)\s*$', b, re.M): prof[m.group(1)] = m.group(2)
-    world['powers'][key_of(t, FAC)] = {'name': t, 'home': home, 'text': ''}; world['profiles'][key_of(t, FAC)] = prof
+    world['powers'].setdefault(key_of(t, FAC), {'name': t, 'home': home, 'text': ''}); world['profiles'][key_of(t, FAC)] = prof   # (the overview under The Major Factions, if there is one, is kept)
 world['mysteries'].append({'name': 'The Halcyon Lost Fleet: Task Force Kestrel', 'text': section('The Halcyon Lost Fleet', '#### ')})
 KEYS = {'Lost Squadron': 'lost_squadron', 'Throat': 'throat'}
 world['declassified'] = []

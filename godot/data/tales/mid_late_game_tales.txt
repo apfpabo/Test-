@@ -1,0 +1,169 @@
+# Iron Meridian — Mid- & Late-Game Tales (mid_late_game_tales.txt)
+# Drop into godot/data/tales/mid_late_game_tales.txt.
+# Written for captains with an established squadron (ships >= 4), capital hulls,
+# their own flag, or advanced Missile Horizon technology (era >= 3).
+
+=== squadron_division_rivalry
+title: Line of Battle
+when: at sea
+where: anywhere
+needs: ships >= 5, day >= 45
+chance: 4%
+repeat: every 120 days
+art: contact
+
+--- start
+During morning manoeuvres in a stiff quartering breeze, your two senior division commanders signal conflicting interpretations of your night-cruising orders—and nearly bring two escorts into collision while jockeying for the van position.
+
+In the wardroom after watches, both officers lay their charts on the green baize table, each convinced the other is endangering the squadron.
+
+* Back the aggressive vanguard captain: speed and shock win actions -> back_vanguard
+* Back the cautious screen commander: station-keeping saves hulls -> back_screen
+* Put both on watch-and-watch until they learn to manoeuvre as one squadron -> drill_both
+
+--- back_vanguard
+The vanguard officers toast your decision in the mess; the screening captains turn in early with tight jaws. Your squadron hits harder on the attack, though discipline frays at the edges.
+! rp +10
+! fuel -15
+! log "Favoured aggressive vanguard tactics during squadron manoeuvres"
+* Resume cruising formation -> end
+
+--- back_screen
+Order returns to the column before dusk. Ships hold their intervals to the cable, saving fuel and keeping the auxiliaries tucked safely inside the screen.
+! fuel +20
+! rp +8
+! log "Enforced strict station-keeping across the squadron"
+* Resume cruising formation -> end
+
+--- drill_both
+For forty-eight hours you run the entire squadron through emergency turns, night darkening, and live-fire star-shell drills until every bridge team moves like clockwork.
+! fuel -30
+! munitions -15
+! rp +22
+! log "Drilled the entire squadron for forty-eight hours straight"
+* Secure from drills -> end
+
+
+=== squadron_foreign_attaché
+title: The Observer's Berth
+when: arriving
+where: power concord, power directorate, power pacific, power combine
+needs: ships >= 6, day >= 70
+chance: 20%
+art: capital
+
+--- start
+A squadron of six hulls flying an independent burgee can no longer slip into {port} unnoticed. Before your anchor chain finishes rattling through the hawsepipe, the local naval commandant sends a polite request: a senior staff captain wishes to sail aboard {flagship} as a "neutral naval observer" for one month.
+
+Everyone in the harbour knows an observer is half diplomat, half spy—but carrying one opens dockyard stores and pays handsomely.
+
+* Welcome the observer aboard and show off your squadron's gunnery -> host_observer
+* [credits >= 4000] Host him in luxury ashore while keeping your cipher rooms locked (4,000) -> wine_observer
+* Refuse: no foreign uniform walks your quarterdeck -> refuse_observer
+
+--- host_observer
+The staff captain takes meticulous notes during every engagement and leaves a glowing report with the Admiralty—along with a generous retainer and upgraded fire-control tables.
+! credits +9000
+! rp +20
+! standing concord +10
+! standing pacific +10
+! log "Hosted a foreign naval observer aboard {flagship}"
+* Weigh anchor -> end
+
+--- wine_observer
+Four thousand credits of vintage claret and harbour hospitality keep the observer happily ashore while your squadron refits undisturbed. He writes a warm report anyway.
+! credits -4000
+! standing concord +8
+! standing combine +8
+! log "Entertained a naval observer ashore at {port}"
+* Weigh anchor -> end
+
+--- refuse_observer
+"A private captain's privilege," the commandant replies stiffly. Fuel and ammunition invoices at {port} seem to take twice as long to clear thereafter.
+! standing concord -6
+! standing directorate -6
+! log "Refused a foreign naval observer at {port}"
+* Weigh anchor -> end
+
+
+=== own_flag_embassy_crisis
+title: Credentials at the Gate
+when: arriving
+where: port Tarsa, port Port Saffron, port Kotaraya, port Amakura
+needs: ships >= 5, day >= 100
+chance: 20%
+art: flag
+
+--- start
+As {flagship} enters {port}, the harbour saluting battery fires seven guns—not the three accorded to a merchantman, nor the eleven of a sovereign admiral, but the deliberate, ambiguous salute reserved for an armed power the world has not yet decided how to name.
+
+Ashore, envoys from the Tarsene Free Republic and the Meridian Combine both request a private audience at the customs house before you sail. Each wants to know where your guns will point when the armistice finally cracks.
+
+* Promise mutual defence of free sea lanes and sign a commercial accord -> sign_accord
+* Demand full belligerent recognition and favourable port dues before committing -> demand_recognition
+* Keep both envoys guessing: ambiguity is the sharpest weapon a new flag owns -> stay_ambiguous
+
+--- sign_accord
+The agreement is modest on paper, but by evening your ensign flies beside the Republic's and Combine's on the harbour exchange. Trade convoys begin routing through your waters.
+! credits +10000
+! standing republic +12
+! standing combine +10
+! log "Signed a maritime accord with free envoys in {port}"
+* Return to {flagship} -> end
+
+--- demand_recognition
+The envoys balk at your tone, then concede half your terms after glancing out the window at {flagship}'s turrets. Respect at sea is measured in broadsides.
+! credits +6000
+! rp +15
+! standing republic +5
+! standing combine +5
+! log "Extracted formal maritime concessions in {port}"
+* Return to {flagship} -> end
+
+--- stay_ambiguous
+Neither envoy leaves satisfied, and both wire their capitals recommending caution—and larger bribes—next time your squadron appears on the horizon.
+! rp +18
+! log "Kept foreign envoys guessing about your flag's intentions in {port}"
+* Return to {flagship} -> end
+
+
+=== missile_horizon_awakening
+title: The End of the Gunline
+when: at sea
+where: anywhere
+needs: era >= 3, day >= 110
+chance: 8%
+art: bomb
+
+--- start
+Forty miles off your starboard beam, a high-altitude plume of white condensation arcs cleanly above the horizon, followed three minutes later by the dull, double thump of a supersonic detonation rolling across the swell.
+
+Your radar plot shows a decommissioned target dreadnought—towed out by naval engineers for classified trials—breaking in half after a single hit from an over-the-horizon guided missile. In the plotting room, your gunnery officer stares silently at his mechanical range-clock. Six centuries of naval warfare have just become obsolete in a single afternoon.
+
+* Send boats into the exclusion zone to sample the missile's seeker wreckage -> sample_seeker
+* Hold full-fleet electronic warfare and CIWS drills immediately -> drill_ew
+* Signal the test range and offer your squadron as paid picket security -> offer_picket
+
+--- sample_seeker
+Your boats recover scorched magnesium fins and an intact active-radar seeker head before the test-range destroyers arrive. Your engineers have their hands on the future.
+! rp +50
+! electronics +20
+! standing concord -8
+! standing directorate -8
+! log "Recovered active-radar seeker wreckage from a classified missile trial"
+* Clear the range -> end
+
+--- drill_ew
+You spend the next two days running chaff bursts, radar-silencing drills, and close-in point-defence tracking against target drones. When the missiles fly in earnest, your crews will be ready.
+! munitions -20
+! fuel -20
+! rp +35
+! log "Conducted fleet-wide electronic warfare and point-defence drills"
+* Resume patrol -> end
+
+--- offer_picket
+The test director gratefully accepts: keeping Syndicate snoopers out of the range earns you twelve thousand credits and an invitation to observe the next firing.
+! credits +12000
+! rp +25
+! log "Screened a classified guided-missile test range for hard currency"
+* Take station on the perimeter -> end

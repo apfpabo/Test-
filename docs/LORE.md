@@ -208,13 +208,14 @@ placeholders.
 **In:** the two faction overviews (pasted under The Major Factions), the polished contract lines, `origin_chains.txt`
 (8 tales that pay off the origin openings' flags) and `mid_late_game_tales.txt` (4 tales).
 
-**Held back, for the owner to settle** (they parse cleanly; the question is the story):
-- `mystery_chains.txt`: `dry_dock_zero_2` describes "a cut-down battlecruiser hull fitted with Vargan missile rails",
-  not the *Leviathan* of the canon, and has her at sea trials from day 65 though the bible's chain ends with her
-  launch; `lost_squadron_3` gives a new truth (Cipher 44-Zero signed so that "a mutual massacre would shock both
-  parliaments") beside the declassified one (an ambush by a Directorate cruiser-submarine); `skarn_vault_2` has the
-  Halvard Moot hand over reactor drawings from a cellar, where the canon keeps them in the two wrecked cruisers;
-  `austral_telemetries_2` fires the rockets from northern Varga (the bible: southern Varga) and needs no earlier step.
-  `task_force_kestrel_1` and `_2` contradict nothing.
-- `recurring_figures.txt`: Rear-Admiral Alistair Croft and the broker Selene Maren fill the same places as the
-  bible's Vice Admiral Alistair Vance and Master Broker Kaelen Thorne; Commodore Vardy is new.
+**Settled by the owner (13 Nov 2026): rewrite to the canon, keep the pack's figures, replace drafts where best.**
+- `mystery_chains.txt` is in, four tales rewritten: `dry_dock_zero_2` meets a trials ship firing the *Leviathan*'s
+  launch tubes while she is still in her cavern; `lost_squadron_3` has Cipher 44-Zero as the order to hold station,
+  signed by men who did not know of the ambush that both admiralties then buried; `skarn_vault_2` gives the Armistice
+  Commission's survey of the two wrecked cruisers, not the drawings (which are still in them), and opens the way to
+  The Cold Breach; `austral_telemetries_2` launches from southern Varga and gives the tape that The High Arc asks for.
+  The two Task Force Kestrel tales are as he wrote them.
+- `recurring_figures.txt` is in as written: Croft, Maren and Vardy. The drafts of Vance and Thorne are removed; the
+  late draft of the Blockade Squadron is now `croft_3`; the Dry Dock Zero drafts name Maren. Two Austral drafts are
+  removed, replaced by his tale. 31 drafts remain in `zz_bible_drafts.txt`.
+- His narrative bible still names Vance and Thorne: the game follows the pack.

@@ -1,0 +1,229 @@
+# Iron Meridian — Recurring Named Characters (recurring_figures.txt)
+# Drop into godot/data/tales/recurring_figures.txt.
+# Introduces three recurring personalities who track the player's career across
+# multiple encounters: Commodore Tomaž Vardy (Directorate), Selene Maren (Syndicate),
+# and Rear-Admiral Alistair Croft (Concord).
+
+=== vardy_1_gate
+title: The Man on the Strelsk Cruiser
+when: at sea
+where: sea Cradle Sea, sea Hesperian Ocean, near Gatehold 400
+days: 20+
+chance: 4%
+art: contact
+
+--- start
+In the grey chop off the Tarsene Gate approaches, a heavy Directorate cruiser alters course to parallel {flagship} two miles to port. Her signal lamp flashes with crisp, unhurried precision:
+
+"From Commodore Tomaž Vardy, commanding *Perun*. Your handling in the swell is credit to your service, Captain. Enjoy the armistice while the politicians keep it—when the whistles blow again, I look forward to measuring your armour against Strelsk steel."
+
+* Dip your ensign in professional courtesy and hold course -> salute_vardy
+* Train your main turrets onto his bridge to test his nerve -> train_guns
+* Signal an invitation to parley by boat while the truce holds -> parley_vardy
+
+--- salute_vardy
+Vardy's cruiser dips her red-and-iron ensign in return and hauls off toward the Strelsk Sounds. A worthy adversary has entered your name in his private log.
+! standing directorate +4
+! flag met_vardy
+! log "Exchanged naval courtesies with Commodore Tomaž Vardy"
+* Steady on course -> end
+
+--- train_guns
+For thirty seconds, two dozen heavy barrels track each other across the grey water. Neither fires. Vardy flashes a single word—"Noted"—before sheering away into the mist.
+! rp +8
+! standing directorate -6
+! flag met_vardy
+! log "Faced down Commodore Tomaž Vardy in a tense gunnery standoff"
+* Stand down from action stations -> end
+
+--- parley_vardy
+Over black tea in *Perun*'s wardroom, Vardy proves a gaunt, scholarly seaman who despises Strelsk's commissars almost as much as he distrusts Calder Roads. He shares current minefield charts for the Cradle Sea before seeing you to the gangway.
+! rp +15
+! fuel +15
+! standing directorate +8
+! flag met_vardy
+! flag vardy_respect
+! log "Parleyed aboard cruiser Perun with Commodore Tomaž Vardy"
+* Return to {flagship} -> end
+
+
+=== vardy_2_showdown
+title: Vardy's Challenge
+when: at sea
+where: sea Hesperian Ocean, sea Skarn Passages, sea Cradle Sea
+needs: flag met_vardy, ships >= 3, day >= 65
+chance: 6%
+art: contact
+
+--- start
+Through a squall line at dusk, the unmistakable three-funnelled silhouette of Commodore Vardy's flagship emerges dead ahead, flanked by two modern escorts. His wireless calls you directly on the open tactical frequency:
+
+"We meet again, Captain. No politicians today, and no observers from the armistice commission. Strelsk orders me to clear this sector of independent squadrons. Strike your colours, or give me the clean fight you promised."
+
+* Accept the challenge and engage Vardy's squadron -> fight_vardy
+* [flag vardy_respect] Remind him of your parley and propose a bloodless withdrawal -> persuade_vardy
+
+--- fight_vardy
+! fight directorate ca dd dd "Perun" -> won_vardy
+
+--- won_vardy
+With *Perun* dead in the water and her forward turrets wrecked, Vardy strikes his command pennant rather than throw away his surviving crew. Before your prize crew boards, he hands over his personal tactical notebooks with a wry, blood-streaked smile.
+! credits +14000
+! rp +40
+! munitions +30
+! clear met_vardy
+! flag vardy_beaten
+! log "Defeated Commodore Tomaž Vardy's squadron in open battle"
+* Secure the prizes -> end
+
+--- persuade_vardy
+Silence hangs on the wireless for a full minute. "My orders say clear the sector," Vardy replies at last. "If you are hull-down over the horizon by nightfall, my log will record the sector empty. Until the next war, Captain."
+! standing directorate +6
+! clear met_vardy
+! flag vardy_ally
+! log "Avoided a bloodbath with Commodore Vardy through mutual respect"
+* Haul off toward the horizon -> end
+
+
+=== maren_1_saffron
+title: The Ledger of Selene Maren
+when: arriving
+where: port Port Saffron, port Kesselport
+days: 18+
+chance: 20%
+art: port
+
+--- start
+In the mahogany-panelled counting house above Port Saffron's inner harbour, Selene Maren—the Syndicate's sharpest intelligence broker—sets a brass balance scale between two glasses of plum brandy.
+
+"Every captain who survives six months in these waters eventually buys information from me, Captain," she says, tapping a stack of decoded Admiralty signals. "Give me a modest retainer today, and whenever a bounty hunter or naval task force takes a contract on your head, my wireless operators will warn you a week before they clear the breakwater."
+
+* [credits >= 3500] Pay Selene Maren's intelligence retainer (3,500) -> pay_maren
+* Offer to pay in salvaged technical data instead of coin -> trade_maren
+* Decline: you trust your own lookouts more than Port Saffron's spies -> decline_maren
+
+--- pay_maren
+She enters {flagship}'s name in a slim red ledger and hands you a set of Syndicate warning ciphers. Within an hour, two local bounty captains quietly cancel their sailing plans.
+! credits -3500
+! standing freeport +10
+! flag maren_client
+! log "Retained intelligence broker Selene Maren in {port}"
+* Return to {flagship} -> end
+
+--- trade_maren
+Maren examines your captured fire-control sketches through a jeweller's loupe and smiles. "Better than silver. Consider yourself on my protected list."
+! rp -10
+! standing freeport +12
+! flag maren_client
+! log "Traded technical notes for Selene Maren's intelligence protection in {port}"
+* Return to {flagship} -> end
+
+--- decline_maren
+"A brave creed," Maren murmurs, corking the brandy. "When the hunters corner you off the Gate, remember my rate doubles in a gale."
+* Return to {flagship} -> end
+
+
+=== maren_2_warning
+title: A Red Envelope at Sea
+when: at sea
+where: anywhere
+needs: flag maren_client, day >= 55
+chance: 7%
+art: contact
+
+--- start
+A fast Syndicate dispatch lugger runs alongside {flagship} in moderate seas and passes a weighted red oilskin envelope across by line before sheering off without a word.
+
+Inside is a note in Selene Maren's neat hand: a Combine treasure transport carrying refined electronics and gold bullion has lost a propeller shaft two hundred miles east—and a Directorate wolfpack is closing in to claim her as "abandoned salvage."
+
+* Steam at full speed to reach the disabled transport first -> rescue_transport
+* Sell Maren's tip to the nearest Concord naval station -> sell_tip
+
+--- rescue_transport
+You arrive just as the first submarine periscopes feather the swell. Driving off the wolfpack's surface tender, you take the crippled transport in tow and collect a princely salvage award from Kotaraya.
+! credits +15000
+! electronics +15
+! standing combine +15
+! clear maren_client
+! log "Acted on Selene Maren's intelligence to salvage a Combine transport"
+* Resume patrol -> end
+
+--- sell_tip
+A Concord cruiser squadron scrambles within the hour, intercepting the Directorate boats and wiring a quiet finder's fee to your account.
+! credits +8000
+! standing concord +10
+! clear maren_client
+! log "Sold Selene Maren's wolfpack intercept to the Concord Admiralty"
+* Steady on course -> end
+
+
+=== croft_1_gatehold
+title: Rear-Admiral Croft's Inspection
+when: arriving
+where: port Gatehold, port Calder Roads
+days: 22+
+chance: 22%
+art: capital
+
+--- start
+At {port}, the Admiralty's foremost hardliner—Rear-Admiral Alistair Croft, a man who still wears his 1941 battle-scarred greatcoat—summons you to the fortress casemate overlooking the eastern Tarsene Gate.
+
+"The moderates in Calder Roads think paper armistices hold back Vargan submarines," Croft barks, stabbing a swagger stick at the wall chart. "I know better. I need independent captains willing to push reconnaissance sweeps right up to the Strelsk minefields. Do it well, and the Concord's best shipyards will open their slips to you."
+
+* Accept Croft's forward reconnaissance mission -> accept_croft
+* Warn him that provoking Strelsk risks restarting a war nobody can afford -> argue_croft
+
+--- accept_croft
+Croft nods once and slides a sealed pouch of gold sovereigns and naval recognition flares across the oak table. "Good. Bring me photographs of their coastal missile batteries, not excuses."
+! credits +4500
+! standing concord +8
+! standing directorate -5
+! flag croft_agent
+! log "Accepted a forward reconnaissance assignment from Rear-Admiral Croft at {port}"
+* Return to {flagship} -> end
+
+--- argue_croft
+Croft's jaw tightens. "I asked for a sea captain, not a parliamentary clerk. Dismissed."
+! standing concord -6
+! log "Clashed with Rear-Admiral Alistair Croft over armistice policy at {port}"
+* Return to {flagship} -> end
+
+
+=== croft_2_ultimatum
+title: The Gatehold Incident
+when: at sea
+where: near Gatehold 350, near Tarsa 350
+needs: flag croft_agent, day >= 75
+chance: 7%
+art: contact
+
+--- start
+Approaching the Tarsene Gate in heavy haze, {flagship} encounters Rear-Admiral Croft's flagship leading three destroyers toward Tarsa's territorial waters. Croft signals you to join his line:
+
+"A Directorate freighter carrying rocket fuel just slipped inside Tarsa's batteries. Follow my column in and help us seize her before she unloads—this will force Tarsa into our camp once and for all!"
+
+* Join Croft's squadron and force the harbour entrance -> back_croft
+* Refuse and warn Tarsa's coastal batteries by wireless before Croft can strike -> betray_croft
+
+--- back_croft
+! fight republic ca dd dd "Libertad" -> won_croft_raid
+
+--- won_croft_raid
+Under cover of Croft's 8-inch broadsides, your boarding parties seize the rocket-fuel freighter while Tarsa's batteries burn behind you. Croft pins a Concord Naval Cross to your coat—though every free port on the chart now calls you a butcher.
+! credits +18000
+! rp +30
+! standing concord +25
+! standing republic -35
+! standing freeport -15
+! clear croft_agent
+! log "Joined Rear-Admiral Croft's raid on the Tarsene Gate"
+* Withdraw to Gatehold -> end
+
+--- betray_croft
+Your warning gives Tarsa's casemates ten precious minutes to range the channel. Faced with twenty-four heavy coastal guns ready to fire, Croft is forced to abort the raid in humiliation—while Tarsa hails you as the saviour of the Republic.
+! credits +10000
+! standing republic +30
+! standing concord -30
+! clear croft_agent
+! log "Warned Tarsa of Rear-Admiral Croft's surprise raid on the Gate"
+* Slip away into the Cradle Sea -> end

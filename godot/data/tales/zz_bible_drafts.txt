@@ -1,6 +1,9 @@
-# Drafts from the owner's narrative bible (13 Nov 2026): the five mystery chains, the six named figures, and the
+# Drafts from the owner's narrative bible (13 Nov 2026): the five mystery chains, four of its named figures, and the
 # tales for a squadron, a harbour and a flag. The outlines, names, truths and arcs are the owner's. The scenes,
 # choices and rewards are Claude's drafts to those outlines, for the owner to rewrite: this is not his text.
+# The owner's narrative pack replaced some of these (13 Nov 2026): Croft and Maren stand where the bible had Vance and
+# Thorne (croft_3 here follows his croft tales); his Austral tale gives the tape that The High Arc asks for; his Skarn
+# tale is a second way into The Cold Breach.
 # The file's name starts with zz so that the owner's own tales, read first, win when two could come up together.
 
 # ============================================================ A. Dry Dock Zero
@@ -41,7 +44,7 @@ needs: flag dz_passenger
 art: port
 
 --- start
-Two men in oilskins meet the engineer at the foot of your gangway and walk him towards the cliff. A third counts notes into your hand and tells you that Master Broker Thorne remembers people who deliver.
+Two men in oilskins meet the engineer at the foot of your gangway and walk him towards the cliff. A third counts notes into your hand and tells you that Selene Maren remembers people who deliver.
 ! credits +5000
 ! standing freeport +6
 ! standing combine -6
@@ -63,7 +66,7 @@ art: capital
 A Concord intelligence officer has heard that you are welcome in Port Saffron. He would like to know what is going into the cavern lock under the cliff, and he will pay a great deal for photographs taken from inside the outer minefields.
 
 * Agree to make the run -> agree
-* Take the offer to Thorne instead -> thorne
+* Take the offer to Selene Maren instead -> maren
 * Decline -> end
 
 --- agree
@@ -71,8 +74,8 @@ He gives you a camera, a chart of the swept channels as of last spring, and no p
 ! flag dz_recon
 * Return to {flagship} -> end
 
---- thorne
-Thorne listens without smiling, which is unusual, and pays you for the Concord officer's name.
+--- maren
+Selene Maren listens without smiling, which is unusual, and pays you for the Concord officer's name.
 ! credits +5000
 ! standing freeport +8
 ! standing concord -6
@@ -502,58 +505,6 @@ Your landing party holds the bunker. On the bench is the transmitter set, and be
 
 # ============================================================ E. The Austral Barrier Stations
 
-=== ab_1
-title: Static on 410 kHz
-when: at sea
-where: sea Howling Seas
-days: 30+
-chance: 8%
-art: storm
-
---- start
-Skirting the southern pack, your wireless operator logs a burst of five-figure groups, repeating, from a station the charts mark as abandoned since 1941. It is not weather code.
-
-* Take a bearing and log it -> log
-* It is none of your business -> end
-
---- log
-! rp +5
-! flag ab_bearing
-! log "Logged telemetry from an Austral Barrier station marked abandoned"
-* Carry on -> end
-
-=== ab_2
-title: Whiteout Run
-when: at sea
-where: sea Howling Seas
-days: 100+
-chance: 15%
-needs: flag ab_bearing
-art: storm
-
---- start
-The station is ahead, somewhere in a wind off the ice that takes the tops off the seas. A shore party could reach it. A shore party could also not come back.
-
-* Land them now -> now
-* Stand off until it eases, whatever the fuel -> wait
-* Turn north -> end
-
---- now
-They find the crew frozen at their posts, and a tape recorder still turning on wind power.
-! crew -4
-! rp +20
-! flag ab_tape
-! log "Brought a telemetry tape off an Austral Barrier station"
-* Get clear of the ice -> end
-
---- wait
-Three days. Then an hour of calm, and they find the crew frozen at their posts and a tape recorder still turning on wind power.
-! fuel -25
-! rp +20
-! flag ab_tape
-! log "Brought a telemetry tape off an Austral Barrier station"
-* Get clear of the ice -> end
-
 === ab_3
 title: The High Arc
 when: arriving
@@ -599,74 +550,16 @@ It makes very little smoke.
 
 # ============================================================ The named figures
 
-=== vance_1
-title: Papers, Captain
-when: arriving
-where: port Gatehold
-days: 5+
-chance: 40%
-art: capital
-
---- start
-Vice Admiral Alistair Vance inspects independents' papers himself when it amuses him. He has a burn scar across the left side of his jaw and the manner of a man correcting a midshipman.
-
-"Driftwood has its uses," he says, turning your clearance over. "It shows which way the current runs."
-
-* Answer his questions civilly -> civil
-* Remind him the armistice gives you the right to be here -> rights
-
---- civil
-! standing concord +3
-! flag met_vance
-* Return to {flagship} -> end
-
---- rights
-"The armistice," he says, "was cowardice with a seal on it." He returns your papers all the same.
-! standing concord -3
-! flag met_vance
-* Return to {flagship} -> end
-
-=== vance_2
-title: A Deniable Matter
-when: arriving
-where: power concord
-days: 120+
-chance: 20%
-needs: flag met_vance, ships >= 2
-art: capital
-
---- start
-Vance has a task that the Gatehold Blockade Squadron cannot be seen to perform: a Tarsene picket that has grown inconvenient. He does not ask whether you will do it. He tells you what it pays.
-
-* Do it -> do
-* Decline -> decline
-
---- do
-! fight republic dd pt "Tarsene picket" -> done_it
-
---- done_it
-! credits +12000
-! standing concord +8
-! standing republic -15
-! log "Sank a Tarsene picket for Vice Admiral Vance"
-* Carry on -> end
-
---- decline
-"Then you are of no use," he says, and means it as a sentence passed.
-! standing concord -5
-! standing republic +4
-* Return to {flagship} -> end
-
-=== vance_3
+=== croft_3
 title: The Blockade Squadron
 when: at sea
 where: sea Cradle Sea
 chance: 8%
-needs: flag met_vance, ports >= 1
+needs: done croft_1_gatehold, ports >= 1
 art: contact
 
 --- start
-The Gatehold Blockade Squadron is waiting for you in line ahead. Vance signals in plain language that an independent flag this close to the Cradle Sea is a breach of good order, and that he has come to restore it.
+The Gatehold Blockade Squadron is waiting for you in line ahead. Rear-Admiral Croft signals in plain language that an independent flag this close to the Cradle Sea is a breach of good order, and that he has come to restore it.
 
 * Fight him -> fight
 * Turn away and give him the sea today -> away
@@ -677,7 +570,7 @@ The Gatehold Blockade Squadron is waiting for you in line ahead. Vance signals i
 --- won
 ! rp +20
 ! standing concord -15
-! log "Beat off Vice Admiral Vance's squadron in the Cradle Sea"
+! log "Beat off Rear-Admiral Croft's squadron in the Cradle Sea"
 * Carry on -> end
 
 --- away
@@ -738,54 +631,6 @@ Voronova meets you at {port} without her greatcoat. Strelsk has begun purging it
 --- report
 ! standing directorate +8
 ! log "Reported Commissar-Captain Voronova to her own service"
-* Return to {flagship} -> end
-
-=== thorne_1
-title: The Price of Everything
-when: arriving
-where: port Port Saffron
-days: 3+
-chance: 50%
-art: port
-
---- start
-Master Broker Kaelen Thorne is cheerful, sharp-suited, and missing two fingers of his left hand. He prices {flagship} from the quay, aloud, to the nearest hundred, and is right.
-
-"Everybody who comes through Saffron ends up on my books, Captain. Better to start in credit." He offers a line of credit, no paper, to be squared later.
-
-* Take it -> take
-* Decline -> end
-
---- take
-! credits +3000
-! flag thorne_debt
-* Return to {flagship} -> end
-
-=== thorne_2
-title: Squaring the Book
-when: arriving
-where: port Port Saffron
-days: 90+
-needs: flag thorne_debt
-art: port
-
---- start
-Thorne has your account open. He is still cheerful.
-
-* [credits >= 4000] Pay him (4,000) -> pay
-* Offer him what you have heard on the lanes -> news
-
---- pay
-! credits -4000
-! clear thorne_debt
-! standing freeport +4
-* Return to {flagship} -> end
-
---- news
-He takes it as payment, and looks at you as a man looks at an asset.
-! rp -5
-! clear thorne_debt
-! standing freeport +2
 * Return to {flagship} -> end
 
 === marlow_1

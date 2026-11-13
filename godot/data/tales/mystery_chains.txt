@@ -1,0 +1,244 @@
+# Iron Meridian — Mystery Payoff Chains (mystery_chains.txt)
+# Drop into godot/data/tales/mystery_chains.txt.
+# Resolves the remaining mysteries from foundational_lore.md through multi-stage chains.
+
+=== dry_dock_zero_2
+title: Sea Trials in the Dark
+when: at sea
+where: sea Saffron Sea, sea Hesperian Ocean
+needs: flag zero_blueprints, day >= 65
+chance: 7%
+art: contact
+
+--- start
+Three hours after midnight in a flat calm off Saffron Isle, your radar operator reports a single large echo moving fast without navigation lights, with two smaller ones in company. Nothing on the Syndicate's books should be out here.
+
+Through night glasses, you catch the silhouette for ten seconds against a break in the cloud: an old cruiser cut down to the weather deck, with a block of vertical launch tubes where her forward turrets stood. The *Leviathan* is still in her cavern. Dry Dock Zero has sent her weapons to sea first, in a trials ship.
+
+* Shadow her on passive sensors to record her trial telemetry -> shadow_trials
+* Close to gun range and challenge the vessel -> challenge_hull
+* [standing freeport >= 25] Flash Syndicate recognition signals and offer to act as range safety escort -> escort_trials
+
+--- shadow_trials
+Running dark with radar switched off, {flagship} tracks the trials ship for forty miles while your wireless room records every telemetry burst and radar pulse she emits. It is the single richest intelligence haul of the armistice.
+! rp +45
+! electronics +12
+! clear zero_blueprints
+! flag zero_shadowed
+! log "Recorded telemetry from Dry Dock Zero's trials ship, firing the Leviathan's launch tubes"
+* Break off before dawn -> end
+
+--- challenge_hull
+! fight freeport cg dd "Saffron trials ship" -> won_leviathan
+
+--- won_leviathan
+Battered and burning aft, the trials ship breaks off into a squall, leaving floating wreckage and two undamaged missile-guidance canisters in her wake. Port Saffron will never forgive the ambush, but your engineers now hold the weapon every admiralty fears.
+! rp +65
+! electronics +25
+! steel +30
+! standing freeport -30
+! standing concord +12
+! clear zero_blueprints
+! log "Fought and crippled Dry Dock Zero's trials ship in the Saffron Sea"
+* Haul the canisters aboard -> end
+
+--- escort_trials
+The trials ship slows and blinks back a Syndicate cipher. For six hours, {flagship} screens her northern flank while Port Saffron's engineers test-fire dummy boosters into the empty sea. At dawn, a cutter brings across a chest of gold sovereigns and a duplicate set of fire-control tables.
+! credits +12000
+! rp +35
+! standing freeport +15
+! clear zero_blueprints
+! log "Screened Dry Dock Zero's trials ship during secret firings"
+* Part company at sunrise -> end
+
+
+=== task_force_kestrel_1
+title: The Lantern Strait Drift
+when: arriving
+where: port Amakura, port Lumaya, port Sanpo
+needs: origin survivor, navy pacific, day >= 5
+art: port
+
+--- start
+On the rain-slicked teak jetty at {port}, a retired Halcyon flight-deck officer wearing an faded Archipelago Squadron cap stops beside {flagship}'s gangway. He looks at your survivor's ribbon and lowers his voice.
+
+"Task Force Kestrel didn't hit a minefield off the Lantern Strait," he says, glancing toward the harbour office. "I was on the carrier *Kestrel*'s bridge when our air search painted four low, flat wakes closing at forty knots—no funnels, no masts, nothing on the recognition cards. Before our fighters could launch, missiles came out of the fog. If you ever take a ship back to those reefs, look for the *Agano*'s floating beacon."
+
+* [credits >= 1500] Pay him for his hand-drawn reef chart (1,500) -> buy_kestrel_chart
+* Give him your word to find what sank the task force -> swear_kestrel
+* Tell him the war is over and walk aboard -> ignore_kestrel
+
+--- buy_kestrel_chart
+He presses an oilskin packet into your hand containing soundings of an uncharted coral atoll east of the Lantern Isles and the pulse frequency of *Kestrel*'s emergency buoy.
+! credits -1500
+! rp +12
+! flag kestrel_chart
+! log "Bought a survivor's reef chart of Task Force Kestrel's last position in {port}"
+* Return to {flagship} -> end
+
+--- swear_kestrel
+The old airman straightens his shoulders and salutes. "Then listen well: steer three leagues east of the False Atoll and listen on 410 kilocycles. Something out there is still guarding the wreck."
+! rp +8
+! flag kestrel_chart
+! log "Learned the last bearing of Task Force Kestrel in {port}"
+* Return to {flagship} -> end
+
+--- ignore_kestrel
+He nods slowly as the rain drips from his cap brim. "Aye, Captain. Most folks in Amakura prefer not to remember either."
+* Return to {flagship} -> end
+
+
+=== task_force_kestrel_2
+title: Ghosts of the False Atoll
+when: at sea
+where: sea Lantern Sea, sea North Halcyon, sea The Arcs
+needs: flag kestrel_chart, day >= 40
+chance: 7%
+art: survey
+
+--- start
+In the glassy dawn calm east of the Lantern Isles, {flagship}'s hydrophones pick up a steady, metallic pinging from a submerged coral shelf. Through the clear turquoise water below your keel lies the broken flight deck of the carrier *Kestrel*, her aircraft still lashed to the forward lift.
+
+Before your divers can go over the side, two sleek, low-freeboard gunboats—painted in flat grey with no national ensigns—slip out from behind the atoll's palm spit, training radar-directed autocannons on your bridge.
+
+* Engage the unmarked guard boats and secure the wreck -> fight_kestrel_guard
+* Launch a fast cutter to snatch the carrier's armoured log-box under fire -> snatch_kestrel_box
+* Sheer off before they open fire -> leave_kestrel
+
+--- fight_kestrel_guard
+! fight combine ff dd "Atoll Picket" -> won_kestrel_guard
+
+--- won_kestrel_guard
+With the unmarked picket driven onto the reef, your divers enter *Kestrel*'s flooded chartroom. The brass log-cylinder proves the truth: Task Force Kestrel was ambushed by pre-armistice prototype missile craft funded through a shell syndicate in Kotaraya to keep the Federation out of the strait.
+! rp +45
+! electronics +15
+! credits +6000
+! clear kestrel_chart
+! flag kestrel_avenged
+! log "Uncovered the truth behind Task Force Kestrel's destruction in the Lantern Sea"
+* Recover the divers -> end
+
+--- snatch_kestrel_box
+Your cutter darts across the reef under a hail of 40 mm tracer, hooks the *Kestrel*'s buoyant cipher safe from the bridge wing, and regains {flagship} as you lay smoke.
+! hull -8%
+! rp +28
+! clear kestrel_chart
+! flag kestrel_avenged
+! log "Recovered Task Force Kestrel's cipher safe under fire"
+* Clear the atoll -> end
+
+--- leave_kestrel
+You ring up full ahead and leave the lagoon astern. Behind you, the unmarked boats settle back into the shadow of the palms, guarding a secret neither Amakura nor Kotaraya wants aired.
+! clear kestrel_chart
+* Steady on course -> end
+
+
+=== skarn_vault_2
+title: The Sealed Vault of Grimvik
+when: arriving
+where: port Grimvik, port Halvardsby, port Isfjell
+needs: standing enclave >= 15, rp >= 40, day >= 55
+chance: 25%
+art: storm
+
+--- start
+At {port}, an elder of the Halvard Moot invites you into a stone cellar warmed by a driftwood stove. On the oak table between you rests a frost-rimed steel cylinder stamped with the double-eagle of the 1945 Skarn Armistice Commission.
+
+"Every power on the map wants what lies under our ice," the elder says, pouring clear northern spirits. "Two cruisers went down in the Passages locked together, one of each side, and what drove them still warms the water. Concord, Directorate, Combine—all of them offer gold for leave to dive. This is the Commission's survey of the place. The Moot prefers to entrust it to a captain who respects the sea more than flags."
+
+* Accept custody of the Commission's survey and swear not to sell it to the great powers -> take_vault
+* Offer to broker the survey to the highest bidder and split the coin with the Moot -> broker_vault
+
+--- take_vault
+The cylinder holds the Armistice Commission's soundings of the two interlocked cruisers, the readings its divers took before they were ordered out, and a pilot's track through the floes to the place. What the wrecks carry is still down there. Now you know where, and the Moot will look the other way when you pass.
+! rp +15
+! standing enclave +20
+! flag skarn_custodian
+! flag sk_seen
+! log "Entrusted with the Armistice Commission's survey of the Skarn wrecks at {port}"
+* Return to {flagship} -> end
+
+--- broker_vault
+The elder closes his hand over the cylinder and shakes his head. "We misjudged you, Captain. Keep your gold; the ice will keep our secrets."
+! standing enclave -15
+* Leave the cellar -> end
+
+
+=== austral_telemetries_2
+title: Voices from the Ice
+when: at sea
+where: sea Howling Seas, sea South Hesperian
+needs: rp >= 50, day >= 75
+chance: 6%
+art: survey
+
+--- start
+Four hundred miles south of the shipping lanes, where grey albatrosses wheel above tabular icebergs, {flagship}'s direction-finder intercepts a high-frequency burst coming not from a ship, but from an automated concrete tower anchored to the Austral Barrier shelf.
+
+Landing in a brief lull between gales, your wireless officer discovers why both superpowers have quietly funded polar "weather" expeditions since 1945: the tower is a down-range tracking station measuring the upper-atmosphere re-entry of trans-oceanic ballistic rockets launched from secret test ranges in southern Varga and Austrine.
+
+* Copy the ballistic re-entry telemetry for your own research staff -> copy_ballistics
+* Destroy the tracking aerials to blind both powers' rocket programs -> wreck_tower
+* Leave a dead-drop beacon so the Halvard Enclaves can monitor the tests -> alert_halvards
+
+--- copy_ballistics
+Your engineers strip the magnetic wire recorders from the concrete bunker before the next gale closes the pack ice. Inside are guidance equations worth a decade of trial and error.
+! rp +30
+! electronics +15
+! flag ab_tape
+! log "Recovered ballistic rocket re-entry telemetry from the Austral Barrier"
+* Return to {flagship} -> end
+
+--- wreck_tower
+Two demolition charges bring the steel lattice mast crashing onto the ice shelf. Somewhere in Strelsk and Calder Roads, rocket engineers will spend the next year wondering why their telemetry went dead.
+! rp +25
+! standing enclave +10
+! standing concord -8
+! standing directorate -8
+! log "Demolished a secret ballistic tracking mast on the Austral Barrier"
+* Weigh anchor -> end
+
+--- alert_halvards
+You splice a repeating relay onto the tower's windmill generator tuned to Halvardsby's emergency frequency. Nothing stays secret forever in the southern ice.
+! rp +30
+! standing enclave +18
+! log "Linked an Austral Barrier rocket-tracking station to Halvard wireless"
+* Weigh anchor -> end
+
+
+=== lost_squadron_3
+title: Cipher 44-Zero
+when: arriving
+where: port Calder Roads, port Strelsk, port Amakura
+needs: flag lost_squadron_truth, day >= 80
+chance: 30%
+art: capital
+
+--- start
+Word of the hydrophone reels you pulled out of the Central Hesperian has reached the highest corridor in {port}. Late at night, a Vice-Admiral in plain evening dress boards {flagship} with a single marine orderly and an attaché case.
+
+"Cipher 44-Zero ordered the squadron to hold its station," he says without emotion. "Nobody who signed it knew what was waiting there: one submarine, and torpedoes that follow a ship down a wire. When we learned, both admiralties agreed to bury it. They were right to. If those reels reach the press, the hardliners will have their war by Tuesday. Name your terms for the canister, Captain."
+
+* Hand over the reels in exchange for an Admiralty commission, dry-dock priority, and war reparations -> trade_reels
+* Refuse: publish the truth across every neutral wireless frequency on the ocean -> publish_truth
+
+--- trade_reels
+The Vice-Admiral locks the canister inside his attaché case. By morning, dockyard cranes are already swinging new plates and stores aboard {flagship}, and a substantial draft sits in your ledger.
+! credits +25000
+! rp +30
+! standing concord +20
+! standing directorate +15
+! clear lost_squadron_truth
+! log "Traded the Lost Squadron's hydrophone reels to the Admiralty in {port}"
+* Return to duty -> end
+
+--- publish_truth
+Your wireless room transmits the hydrophone logs and Cipher 44-Zero in clear text on every maritime distress band for six straight hours. Across the Hesperian and Cradle seas, admirals resign, hardliners howl, and independent captains salute your colours as you pass.
+! rp +40
+! standing republic +25
+! standing freeport +20
+! standing concord -25
+! standing directorate -25
+! clear lost_squadron_truth
+! log "Broadcast the truth of Cipher 44-Zero across every maritime frequency"
+* Clear the harbour at full speed -> end

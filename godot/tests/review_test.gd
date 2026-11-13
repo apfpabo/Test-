@@ -1512,6 +1512,19 @@ func _levels() -> void:
 	ok(os.station(fd) == Vector2(-200.0, 300.0), "and keep a station you gave her")
 	fc.alive = false
 	ok(os.lead_of(fd) == os.flag, "her lead lost, she forms on the flagship")
+	# jets carry missiles and bombs, never torpedoes (the owner, 13 Nov 2026)
+	var js := BattleSim.new(); js.setup([Campaign.new_ship("cv_forrestal", "J", "player", ["jets"])], [Campaign.new_ship("ca_hipper", "H", "raiders", [])], ["jets", "radar", "missiles"], [], 0)
+	js.sep = 9000.0; Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}; js.wx = Weather.battle(Weather.force)
+	js.launch_strike(js.ships[0], js.ships[1])
+	var jt: Array = js.air.map(func(q): return q.type)
+	ok(not jt.is_empty() and jt.has("ms") and not jt.has("tb") and js.air.all(func(q): return q.jet), "a jet carrier's strike is armed with missiles and bombs (%s)" % str(jt))
+	var ps := BattleSim.new(); ps.setup([Campaign.new_ship("cv_essex", "P", "player", [])], [Campaign.new_ship("ca_hipper", "H", "raiders", [])], [], [], 0); ps.wx = Weather.battle(Weather.force)
+	ps.launch_strike(ps.ships[0], ps.ships[1])
+	ok(ps.air.map(func(q): return q.type).has("tb"), "a propeller air group still carries torpedoes")
+	for i in 6000:
+		js.step(0.1)
+		if int(js.sys_log.get("air missiles", 0)) > 0: break
+	ok(int(js.sys_log.get("air missiles", 0)) > 0 and js.torps.is_empty(), "the jets let their missiles go from well off, and drop no torpedo")
 	ok(preload("res://scripts/skirmish.gd").ERA_TECH.has(4) and preload("res://scripts/skirmish.gd").ERA_TECH[4].has("stealth"), "the quick battle has Era IV")
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1
@@ -1626,6 +1639,22 @@ func _ew() -> void:
 		sim.missiles = [mq]; sim.step(0.02)
 		if mq.has("lure"): lured += 1
 	ok(lured > 12 and lured < 40, "chaff leads %d of 60 missiles off" % lured)
+	# hand-laid light guns against missiles (the owner, 13 Nov 2026)
+	var shot := [0, 0]
+	for k in 2:
+		var tk: Array = [] if k == 0 else ["radar", "missiles"]
+		var w2 := BattleSim.new(); w2.setup([Campaign.new_ship("bb_yamato", "Y", "player", tk)], [Campaign.new_ship("ddg_burke", "B", "directorate", tech)], tk, tech, 0)
+		var y: BattleSim.CShip = w2.ships[0]; y.pos = Vector2.ZERO; w2.ships[1].pos = Vector2(60000, 0); w2.ships[1].ai_off = true; w2.editor = true; y.god = true
+		ok(is_equal_approx(w2.gun_pd(y), BattleSim.HAND_PD if k == 0 else BattleSim.HAND_PD_FC), "light guns' chance against a missile follows the ship's fire control (%d)" % k)
+		for i in 40:
+			var mq2 := {"pos": Vector2(4000, 0).rotated(i * 0.7), "a": i * 0.7 + PI, "v": 250.0, "speed": 250.0, "life": 30.0, "dmg": 1, "side": 1, "target": y, "kind": "ssm", "delay": 0.0, "prof": "skim", "sk": 0.0, "age": 1.0}
+			w2.missiles = [mq2]
+			for n in 500:
+				w2.step(0.05)
+				if mq2.get("dead", false): shot[k] += 1; break
+				if w2.missiles.is_empty(): break
+	print("  missiles shot down of 40 by a Second World War battleship: %d with her own fire control, %d with the missile age's" % shot)
+	ok(shot[0] < 14 and shot[1] > shot[0], "a Second World War ship's light guns stop few missiles (%d of 40; %d with later directors)" % shot)
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	sections += 1
 

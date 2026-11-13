@@ -40,7 +40,29 @@ func _process(_d: float) -> void:
     if f == 85:
         var p = Campaign.G.ports[3]; var q = g.project(p.x, p.y)
         ok(g.visible and q.z > 0.97 and g.pin != null, "Show on the Locations tab turns the globe to the place and marks it (facing %.2f)" % q.z)
-        _shot("show"); g.close(Vector2(p.x, p.y))
+        _shot("show")
+        # orders from the globe are the chart's own (the owner, 13 Nov 2026): a click on a harbour sets the same course
+        var P: Dictionary = Campaign.G.player; P.route = null; P.destPort = null; P.tx = null
+        map.order_at(Vector2(p.x, p.y), map.zoom)
+        var want_port = P.destPort; var want_len: int = P.route.size() if P.get("route") != null else -1
+        P.route = null; P.destPort = null; P.tx = null
+        for down in [true, false]:
+            var ev := InputEventMouseButton.new(); ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = down; ev.position = Vector2(q.x, q.y); g._gui_input(ev)
+        var got_len: int = P.route.size() if P.get("route") != null else -1
+        ok(g.is_open() and want_port == p.id and P.destPort == p.id and got_len == want_len and got_len > 0, "a click on a harbour on the globe sets the course the chart would (%d legs, %d on the chart), and the globe stays up" % [got_len, want_len])
+        var fl = null
+        for x in Campaign.G.fleets:   # one at sea, on the side of the world that faces us, with no harbour beside her
+            if x.fac == "player" or fl != null or g.project(x.x, x.y).z < 0.3: continue
+            if Campaign.G.ports.all(func(pp): return Campaign.mdist(pp.x, pp.y, x.x, x.y) > 90.0): fl = x
+        fl.vis = true; var fq = g.project(fl.x, fl.y)
+        ok(map.fleet_at(Vector2(fl.x, fl.y), g.scale_at()) != null, "a fleet in sight can be picked at the globe's scale")
+        P.route = null; P.destPort = null; P.follow = null
+        if fq.z > 0.1:
+            for down in [true, false]:
+                var ev := InputEventMouseButton.new(); ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = down; ev.position = Vector2(fq.x, fq.y); g._gui_input(ev)
+            ok(P.get("follow") != null, "a click on a fleet on the globe locks an intercept, as on the chart")
+        P.follow = null; Campaign.paused = true
+        g.close(Vector2(p.x, p.y))
     if f == 120:
         var p = Campaign.G.ports[3]
         ok(not g.visible and map.free_cam and absf(Campaign.wdx(map.cam.x, p.x)) < 1.0 and absf(map.cam.y - p.y) < get_viewport().get_visible_rect().size.y / map.zoom * 0.5, "closing it puts the chart at the place chosen (the chart keeps its own top and bottom in view)")

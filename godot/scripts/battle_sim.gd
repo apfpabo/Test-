@@ -753,6 +753,13 @@ const CHAFF_LURE := 0.4
 ## before); a high diver is seen far off but comes down steeply, where close-in guns hit her at HIGH_PD of their chance.
 const SKIM_SEEN := 2200.0
 const HIGH_PD := 0.7
+## Hand-laid light guns (Oerlikon, Bofors) against a missile (the owner, 13 Nov 2026: ships of the Second World War
+## should have a much harder time of it): a mount laid by eye on a ship whose fire control predates missiles hits one at
+## HAND_PD of its figure; with the directors of the missile age, at HAND_PD_FC. A CIWS is unchanged.
+const HAND_PD := 0.15
+const HAND_PD_FC := 0.5
+func gun_pd(s: CShip) -> float:
+    return HAND_PD_FC if s.tech.has("missiles") else HAND_PD
 var decoys: Array = []   # chaff clouds: {pos, t, side}
 var _jammers: Array = []
 func jam_mult(s: CShip) -> float:
@@ -1673,7 +1680,7 @@ func update_weapons(s: CShip, dt: float) -> void:
                 var ms = nearest_missile(s.side, p, w.range)
                 if ms != null:
                     m.ta = ang_diff((ms.pos - p).angle(), s.a); m.cd = w.rel; aa_shot(s, m, p, ms.pos)
-                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else 1.0) * (HIGH_PD if ms.get("prof", "skim") == "high" else 1.0): kill_missile(ms)
+                    if randf() < w.pd * (1.0 + 0.1 * tech_up(s.tech, "ciws") if m.wid == "ciws" else gun_pd(s)) * (HIGH_PD if ms.get("prof", "skim") == "high" else 1.0): kill_missile(ms)
                     done = true
                 if not done:
                     var sq = nearest_air(s.side, p, w.range)
@@ -2466,6 +2473,8 @@ const DECK_GAP := 4.0     # seconds between one machine and the next
 const DECK_LIST := 0.6    # a list beyond this and nothing can fly
 ## How far a lost ship has gone down, 0..1. A big ship takes longer about it than a small one (some 20 s for a
 ## destroyer, over 30 for a battleship, at the battle's ordinary speed): she settles, the sea comes over her low side, and she is gone.
+const AIR_MSL_RANGE := 5000.0   # how far off a jet strike lets its missiles go
+const AIR_MSL_DMG := 0.6         # an air-launched missile against a ship's own (lighter, as carried by an aircraft)
 const HULK_GONE := 0.8   # how far down a lost ship is before shells no longer find her
 const BOX_SLIP := 0.2    # the list at which deck cargo begins to slide
 ## Containers stowed on deck (a design's `boxes`: [[x forward, x aft]]): bays across the beam, each stack its own height
@@ -2539,7 +2548,8 @@ func launch_strike(s: CShip, tg: CShip) -> bool:
         if q.state != "ready" or q.n <= 0: continue
         var jet = s.tech.has("jets")
         air.append({"side": s.side, "home": s, "sq": q, "pos": world_pt(s, deck_span(s).y + 150.0, 0.0), "a": s.a, "n": q.n, "n0": q.n, "up": 0, "dk": q.n, "ops": 0, "wait": 0.0,
-            "type": "tb" if launched % 2 == 0 else "db", "jet": jet, "ju": tech_up(s.tech, "jets"), "target": tg, "state": "form"})
+            "type": ("ms" if jet else "tb") if launched % 2 == 0 else "db", "jet": jet,   # (jets carry missiles and bombs, never torpedoes: the owner, 13 Nov 2026)
+            "ju": tech_up(s.tech, "jets"), "target": tg, "state": "form"})
         q.state = "out"; launched += 1
     if launched and s.side == 0: say(str(launched) + " squadron" + ("s" if launched > 1 else "") + " taking off.", 2.0)
     if launched and s.side == 1: say("Enemy aircraft are taking off!" if visible_to(s, 0) else "Enemy aircraft inbound!", 2.5)
@@ -2587,6 +2597,13 @@ func update_air(dt: float) -> void:
                 var lp = lead_point(q.pos, tg, 18.0)
                 for k in int(q.n): torps.append({"pos": q.pos + Vector2(randf() - 0.5, randf() - 0.5) * 150.0, "a": (lp - q.pos).angle() + (k - q.n / 2.0) * 0.05, "speed": 18.0, "life": 110.0, "dmg": 520 if q.jet else 420, "side": q.side, "homing": false, "arm": 8.0})
                 q.state = "home"; boom(q.pos, 0.1, 900.0)
+            elif q.type == "ms" and d < AIR_MSL_RANGE and absf(ang_diff((tg.pos - q.pos).angle(), q.a)) < 0.4:
+                # a jet strike with stand-off missiles: one from each machine, let go well outside the guns, running in low
+                var wm: Dictionary = GameData.weapons["ssm"]
+                for k in int(q.up):
+                    missiles.append({"pos": q.pos + Vector2(randf() - 0.5, randf() - 0.5) * 160.0, "a": (tg.pos - q.pos).angle() + (randf() - 0.5) * 0.15, "v": 220.0, "speed": float(wm.speed), "life": AIR_MSL_RANGE / float(wm.speed) * 1.8,
+                        "dmg": float(wm.dmg) * AIR_MSL_DMG, "side": q.side, "target": tg, "kind": "ssm", "delay": k * 0.5, "prof": "skim", "sk": 0.05 * int(q.get("ju", 0))})
+                q.state = "home"; _log("air missiles")
             elif q.type == "db" and d < 120:
                 for k in int(q.n):
                     var hit = randf() < (0.55 if q.jet else 0.4) + 0.05 * int(q.get("ju", 0))

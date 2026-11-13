@@ -821,8 +821,26 @@ class Detail extends Node2D:   # soot and shell holes, kept where they struck
                     for k in 7:
                         draw_line(bite[k], bite[k] + Vector2(0, side * g * (0.95 + 0.3 * fposmod(sin(float(m.sd) + k * 2.1) * 5.7, 1.0))), Color(0.3, 0.28, 0.26), maxf(0.12, g * 0.07))
                     draw_polyline(shelf.slice(7, 14), Color(0.34, 0.32, 0.3, 0.9), maxf(0.1, g * 0.06))
+                    # shading round the break (the owner, 13 Nov 2026: its borders were hard): the deck scorched towards the torn
+                    # edge, the shadow her side throws down into the gap, and the bent lip of the plating catching the light
+                    for band in [[0.9, 0.1], [0.55, 0.16], [0.28, 0.22]]:
+                        var sc_ := PackedVector2Array(); for k in 7: sc_.append(bite[k])
+                        for k in range(6, -1, -1): sc_.append(bite[k] - Vector2(0, side * g * float(band[0])))
+                        draw_colored_polygon(sc_, Color(0.03, 0.025, 0.02, float(band[1])))
+                    for band in [[0.5, 0.2], [0.24, 0.3]]:
+                        var sh_ := PackedVector2Array(); for k in 7: sh_.append(bite[k])
+                        for k in range(6, -1, -1): sh_.append(bite[k] + Vector2(0, side * g * float(band[0])))
+                        draw_colored_polygon(sh_, Color(0.0, 0.0, 0.0, float(band[1])))
+                    for k in 6:
+                        var e0: Vector2 = bite[k]; var e1: Vector2 = bite[k + 1]; var en: Vector2 = (e1 - e0).orthogonal().normalized() * -side
+                        draw_line(e0, e1, Color(0.3, 0.3, 0.31).lerp(Color(0.86, 0.85, 0.8), clampf(en.dot(-sunl), 0.0, 1.0)), maxf(0.1, g * 0.11))
                 draw_texture_rect(tx, Rect2(m.x - r * 2.2, m.y - r * 0.7, r * 2.4, r * 1.4), false, Color(0.05, 0.04, 0.03, 0.4))   # soot aft
+                for band in [[1.55, 0.09], [1.32, 0.13], [1.15, 0.2]]:   # the plating scorched and dished round the tear: darker towards its edge
+                    var halo := PackedVector2Array(); for p in pts: halo.append(c + (p - c) * float(band[0]))
+                    draw_colored_polygon(halo, Color(0.03, 0.025, 0.02, float(band[1])))
                 draw_colored_polygon(pts, Color(0.03, 0.03, 0.03, 0.95))
+                var wall := PackedVector2Array(); for p in pts: wall.append(c + (p - c) * 0.9 - sunl * g * 0.05)   # the cut edge of the plate, going down into the dark
+                draw_colored_polygon(wall, Color(0.065, 0.065, 0.07, 0.95))
                 # inside the tear: the deck below a shade lighter where the light reaches it, the frames across the
                 # ship and a girder along her, cut to the shape of the hole
                 var low := PackedVector2Array(); for p in pts: low.append(c + (p - c) * 0.78 - sunl * g * 0.12)

@@ -998,9 +998,14 @@ func _zoom_at(f: float, sp: Vector2) -> void:
     var before = to_world(sp); zoom = clampf(zoom * f, GLOBE_AT, 14)
     if free_cam: cam += before - to_world(sp)
 
-func _click(sp: Vector2) -> void:
-    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); w.x = Campaign.wrap_x(w.x)
-    var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / zoom   # r in screen pixels
+func _click(sp: Vector2) -> void: order_at(to_world(sp), zoom)
+
+## A left click's order at a place on the chart: a course, an intercept, a harbour or site to make for or open. The
+## flat chart and the globe both give their orders through this, so the two cannot differ (the owner, 13 Nov 2026);
+## `z` is the view's scale there, screen pixels to a chart unit (the chart's zoom).
+func order_at(w: Vector2, z: float) -> void:
+    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; w.x = Campaign.wrap_x(w.x)
+    var near = func(x: float, y: float, r: float) -> bool: return Campaign.mdist(x, y, w.x, w.y) < r / z   # r in screen pixels
     if P.get("towed") != null: _toast("You are under tow. Right-click to cast off the tow."); return
     if Campaign.dead_in_water(): _toast("Your squadron is dead in the water: no fuel, no reserve. Send a distress call (the red button), or right-click the sea to call a merchant convoy for fuel.")
     if Input.is_key_pressed(KEY_CTRL) and P.get("route") != null and P.get("follow") == null and P.get("escort") == null:   # another waypoint
@@ -1012,7 +1017,10 @@ func _click(sp: Vector2) -> void:
         else: _toast("No sea route to that point.")
         return
     P.destPort = null; P.follow = null; P.escort = null; Campaign.paused = false
-    var hit = fleet_at(w)
+    var hit = fleet_at(w, z)
+    if hit != null:   # seen from far off a fleet's mark covers a harbour beside it: the nearer of the two is the one meant
+        for p in G.ports:
+            if (near.call(p.x, p.y, 14) or near.call(p.sx, p.sy, 10)) and Campaign.mdist(p.x, p.y, w.x, w.y) <= Campaign.mdist(hit.x, hit.y, w.x, w.y): hit = null; break
     for f in ([hit] if hit != null else []):
         if f.fac == "player": _toast("Your own ships: the %s." % f.name.trim_prefix("Your ")); return
         P.follow = f.id; P.repathT = 0.0; f.cool = 0.0; _toast("Intercept course locked on the " + Campaign.fname(f) + ". You will close and make contact."); return
@@ -1026,17 +1034,19 @@ func _click(sp: Vector2) -> void:
         if near.call(q.x, q.y, 12):
             if Campaign.mdist(q.x, q.y, P.x, P.y) < 22: open_survey(q); return
             Campaign.set_course(P, q.x, q.y); return
-    if zoom >= 0.3:
-        var st = Structures.at_point(w.x, w.y, maxf(10.0 / zoom, struct_r(Structures.at_point(w.x, w.y, 40.0)) if zoom >= 3.0 else 0.0))
-        if st != null and (st.fac == "player" or zoom >= (0.3 if Structures.kind(st).military else 0.45)): open_struct(st); return
+    if z >= 0.3:
+        var st = Structures.at_point(w.x, w.y, maxf(10.0 / z, struct_r(Structures.at_point(w.x, w.y, 40.0)) if z >= 3.0 else 0.0))
+        if st != null and (st.fac == "player" or z >= (0.3 if Structures.kind(st).military else 0.45)): open_struct(st); return
     if Campaign.on_land(w.x, w.y): _toast("That is land. Pick a point on the water."); return
     if not Campaign.set_course(P, w.x, clampf(w.y, 4, Campaign.MH - 4)): P.tx = null; _toast("No sea route to that point.")
 
 ## Right-click on a fleet: orders for it. Friendly fleets: escort, close and hail, cancel; hostile ones: intercept.
 var _menu: PopupMenu
-func _context(sp: Vector2) -> void:
-    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var w = to_world(sp); var hit = null
-    hit = fleet_at(Vector2(Campaign.wrap_x(w.x), w.y))
+func _context(sp: Vector2) -> void: menu_at(to_world(sp), sp, zoom)
+## The right-click menu for a place on the chart, put up at `sp` on the screen (the chart and the globe both use it).
+func menu_at(w: Vector2, sp: Vector2, z: float) -> void:
+    var G: Dictionary = Campaign.G; var P: Dictionary = G.player; var hit = null
+    hit = fleet_at(Vector2(Campaign.wrap_x(w.x), w.y), z)
     if _menu == null:
         _menu = PopupMenu.new(); _menu.add_theme_font_size_override("font_size", 14); ui.add_child(_menu)
         _menu.id_pressed.connect(_context_pick)
@@ -1095,12 +1105,13 @@ func _context_pick(id: int) -> void:
             _toast("You cast off the tow. The fee is not returned.")
 
 ## The fleet under a chart point: within 16 pixels or about its drawn size, whichever is larger; the nearest wins.
-func fleet_at(w: Vector2):
+func fleet_at(w: Vector2, z := -1.0):
+    if z <= 0.0: z = zoom
     var best = null; var bd := INF
     for f in Campaign.G.fleets:
         if not f.get("vis", true): continue   # you cannot point at what you cannot see
         var d := Campaign.mdist(f.x, f.y, Campaign.wrap_x(w.x), w.y)
-        var r: float = maxf(16.0 / zoom, marks._layout(f.ships)[0][3] * 0.55 if zoom >= 0.32 else 0.0)
+        var r: float = maxf(16.0 / z, marks._layout(f.ships)[0][3] * 0.55 if z >= 0.32 else 0.0)
         if d < r and d < bd: bd = d; best = f
     return best
 

@@ -110,6 +110,27 @@ Four fights a pair is a small sample, and submarines cannot be priced this way (
 loses). **To decide:** whether these stand, and whether any of the losers should be given more to fight with instead of
 being made cheaper.
 
+## 8. A lone ship and the raiders (three rounds of test campaigns, 13 Nov 2026). His to decide
+
+Thirty-two unattended campaigns of 240 days (eight origins, four seeds, the honest-money captain) were played three
+times as the routes and the test captain were mended. Campaigns lost: 11, 15 and 16 of 32. The differences between
+rounds are within chance; what is steady is this:
+
+- **Raiders end half of the lost campaigns** (8 of 16 in the last round; bounty squadrons 3, patrols 3, hunters 2).
+  Raiders are not sized to the captain. A lone ship that meets a pack with torpedo boats cannot break off (the odds of
+  getting away follow speed, and the boats are faster: one chance in ten), and then loses even at a reckoned strength
+  near her own: a 2,050 t destroyer was sunk three times by three motor torpedo boats.
+- The Hijacker (one 50 t boat) was lost in three campaigns of four; the Smuggler, who trades and avoids, in none.
+- The Defector's losses in the last round were squadrons of raised wrecks (a fifth of their hull, with defects) sent
+  into action by the test captain: his fault, not the game's.
+- Money is not the trouble: captains who lived made 20,000 to 95,000 in the eight months.
+
+**To decide:** nothing was changed. Choices, from least to most: (a) leave it (a lone small ship is prey, and the
+answer is company); (b) keep packs made only of torpedo boats within reach of a harbour or den (boats of 50 t far out
+at sea are not grounded anyway); (c) size raiders to the captain for his first months, as bounty squadrons are;
+(d) count torpedo boats for more in the strength shown on the contact panel, so "an even fight" is honest.
+The agent's recommendation: (b) and (d).
+
 ## Older lists still open
 
 - The realism review of 11 Nov 2026 (gun and torpedo ranges, a few designs' armament): [`ROADMAP.md`](ROADMAP.md),

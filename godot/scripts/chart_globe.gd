@@ -1,7 +1,7 @@
 extends Control
 ## The world as a globe: the chart's far overview (owner's choice, 11 Nov 2026: the flat chart stays for play; scrolling
 ## out past its widest view, or the Globe button, shows the world whole). Ports in their powers' colours, your squadron,
-## who is at war with you. Drag to turn it; scroll in, click a place, or Esc to go back to the chart there.
+## who is at war with you. Drag to turn it; scroll in or Esc to go back to the chart. A click or right-click gives the same order the chart would (world_map.order_at, menu_at).
 ## The sphere is ray-cast in shaders/globe.gdshader from the chart's own terrain; the marks are drawn here, projected
 ## the same way (orthographic: `project`).
 var map                     # the chart (world_map.gd)
@@ -41,6 +41,8 @@ func _fit() -> void:
     for c in [sphere, marks]: if c.size != vs: c.position = Vector2.ZERO; c.size = vs
 
 func radius() -> float: return minf(size.x, size.y) * 0.36 * k * (1.0 + 0.5 * (1.0 - _ease(shown)))
+## Screen pixels to a chart unit at the middle of the globe: what the chart calls its zoom, for picking things.
+func scale_at() -> float: return radius() * deg_to_rad(1.0 / float(Campaign.DEG))
 func centre() -> Vector2: return Vector2(size.x * 0.5, size.y * 0.5 + 14.0)
 func _ease(x: float) -> float: return 1.0 - pow(1.0 - clampf(x, 0.0, 1.0), 3.0)
 func lon_of(x: float) -> float: return deg_to_rad(x / float(Campaign.DEG) - 180.0)
@@ -114,15 +116,15 @@ func _gui_input(e: InputEvent) -> void:
             else: k = minf(K_MAX, k * 1.12)
         elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed: k = maxf(K_MIN, k / 1.12)
         elif mb.button_index == MOUSE_BUTTON_LEFT:
-            if mb.pressed: dragging = true; moved = 0.0; spin = Vector2.ZERO
+            if mb.pressed: dragging = true; moved = 0.0; spin = Vector2.ZERO; hover = _port_at(mb.position)
             else:
                 dragging = false
-                if moved < 5.0:   # a click, not a drag: go to the chart there (or at the port clicked)
-                    if hover != null: close(Vector2(hover.x, hover.y))
-                    else:
-                        var w = unproject(mb.position)
-                        if w != null: close(w)
-        elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed: close()
+                if moved < 5.0:   # a click, not a drag: the same order the chart would take there (world_map.order_at)
+                    var w = Vector2(hover.x, hover.y) if hover != null else unproject(mb.position)
+                    if w != null: map.order_at(w, scale_at())
+        elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+            var w2 = unproject(mb.position)
+            if w2 != null: map.menu_at(w2, mb.position, scale_at())
         accept_event()
     elif e is InputEventMouseMotion:
         var mm := e as InputEventMouseMotion
@@ -297,4 +299,4 @@ func draw_marks(ci: Control) -> void:
     var hr: float = fposmod(fposmod(Weather.now(), 1.0) * 24.0 + rad_to_deg(lon0) / 15.0, 24.0)
     ci.draw_string(f13, Vector2(22, 112), "%s · %02d:%02d where the world faces you · fleets shown are those you have in sight" % [Campaign.date_str(int(G.day)), int(hr), int(fmod(hr, 1.0) * 60.0)], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM)
     ci.draw_string(fc, Vector2(22, 74), "THE WORLD", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, UI.INK)
-    ci.draw_string(f13, Vector2(22, 94), "Drag to turn · scroll in, or click a place, to go down to the chart there · Esc: back", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM)
+    ci.draw_string(f13, Vector2(22, 94), "Drag to turn · click the sea, a harbour or a fleet to give the order, right-click for the menu · scroll in to go down to the chart · Esc: back", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM)

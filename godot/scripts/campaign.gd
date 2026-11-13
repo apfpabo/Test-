@@ -1118,7 +1118,7 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         f.cash = randi_range(8, 25) * 1000
     elif kind == "raiders":
         f.name = "Raider flotilla"; f.ships = build_by_budget(C.PATROL_POOL.raiders, (12000 + randf() * 30000) * scale, 6, "raiders", tl)
-        if not f.ships.is_empty() and f.ships.all(func(s): return hull(s).klass == "pt"):   # boats alone: tethered to a den or a harbour
+        if f.ships.filter(func(s): return hull(s).klass == "pt").size() * 2 > f.ships.size():   # mostly boats (the owner, 13 Nov 2026: it was boats alone, one pack in sixteen)   # boats alone: tethered to a den or a harbour
             var anchors: Array = G.get("pois", []).filter(func(q): return q.get("kind", "") == "den")
             anchors.append_array(G.ports.filter(func(q): return q.fac != "enclave"))
             for i in 12:
@@ -1155,7 +1155,7 @@ func maintain_fleets(initial: bool) -> void:
     for h in perk("hunted", []):
         if G.day > int(h.get("until", 0)): continue
         var have: int = G.fleets.filter(func(f): return f.get("hunter", false) and f.name == h.name).size()
-        if have < int(h.max) and not initial and G.day > HUNT_GRACE and randf() < float(h.every): spawn_hunter(h)   # (not in the first HUNT_GRACE days)
+        if have < int(h.max) and not initial and G.day > maxi(HUNT_GRACE, int(h.get("after", 0))) and randf() < float(h.every): spawn_hunter(h)   # (not in the first HUNT_GRACE days)
     if count.call("bounty") < 2 and (initial or randf() < 0.08):
         var f = spawn_fleet("bounty", "raiders", initial)
         if not initial: toast.emit("Bounty posted on %s: %s." % [f.captain, fmt(f.reward)])

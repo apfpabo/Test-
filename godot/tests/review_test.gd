@@ -1776,14 +1776,14 @@ func _traits() -> void:
 	for i in 300:
 		var f = Campaign.spawn_fleet("raiders", "raiders")
 		if f == null: continue
-		if f.ships.all(func(x): return Campaign.hull(x).klass == "pt"):
+		if f.ships.filter(func(x): return Campaign.hull(x).klass == "pt").size() * 2 > f.ships.size():
 			packs += 1
 			var near: float = INF
 			for q in G.pois: if q.get("kind", "") == "den": near = minf(near, Campaign.mdist(q.x, q.y, f.x, f.y))
 			for q in G.ports: near = minf(near, Campaign.mdist(q.sx, q.sy, f.x, f.y))
 			if near > Campaign.PT_TETHER + 1.0 or not f.has("tether"): far += 1
 		G.fleets.erase(f)
-	ok(packs > 0 and far == 0, "raider packs of torpedo boats alone start within reach of a den or a harbour (%d packs, %d far out)" % [packs, far])
+	ok(packs > 0 and far == 0, "raider packs that are mostly torpedo boats start within reach of a den or a harbour (%d packs, %d far out)" % [packs, far])
 	# traits
 	var o: Dictionary = Campaign.new_officer(1)
 	ok(Campaign.traits(o).is_empty(), "a junior officer has no trait")

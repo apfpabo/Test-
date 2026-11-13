@@ -55,7 +55,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			if en != "concord" and navy != "concord": st.rep["concord"] = 5
 			st.perks = {"restricted": [navy], "pension": [{"name": "Half-pay pension", "pay": 2500, "days": 360}]}   # (tuning, 11 Nov 2026: pensioned off, he was broke by day 70)
 		"hijacker":
-			st.fleet = [["fr_liberty", "Ashen Wake", {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
+			st.fleet = [["fr_liberty", "Ashen Wake", {"hull": 0.8}], ["pt_elco", null, {"hull": 0.85}], ["pt_elco", null, {"hull": 0.85}]]; st.credits = 9000; st.officer = 2; st.port = "Kesselport"; st.crew = 0.85
 			st.cargo = {"fuel": 60, "food": 25, "munitions": 20}
 			st.rep = {"concord": -35, "directorate": -35, "pacific": -35, "combine": -45, "republic": -20, "enclave": -15, "freeport": 15}
 			st.perks = {"evade": 5, "outlaw": ["concord", "directorate", "pacific", "combine", "republic", "ombria", "isles"], "hunted": [{"fac": "raiders", "name": "Bounty hunters", "days": 240, "max": 2, "every": 0.06, "budget": 30000}, {"fac": "combine", "name": "Combine reprisal squadron", "days": 150, "max": 1, "every": 0.03, "budget": 45000}]}
@@ -78,7 +78,7 @@ static func build(key: String, navy := "concord") -> Dictionary:
 			var to: String = en
 			st.fleet = [[N.cl, null, {"hull": 0.9}]]; st.credits = 30000; st.officer = 2; st.port = NAVY[to].home if NAVY.has(to) else "Tarsa"
 			st.rep = {navy: -60, to: 5}; for o in GameData.fac: if not st.rep.has(o) and o != "raiders" and o != "freeport": st.rep[o] = -5
-			st.perks = {"rp": 40, "pension": [{"name": "Debriefing retainer", "fac": to, "pay": 4500, "days": 180}], "hunted": [{"fac": navy, "name": GameData.fac[navy].short + " intelligence squadron", "days": 300, "max": 2, "every": 0.04, "budget": 60000}]}
+			st.perks = {"rp": 40, "pension": [{"name": "Debriefing retainer", "fac": to, "pay": 4500, "days": 180}], "hunted": [{"fac": navy, "name": GameData.fac[navy].short + " intelligence squadron", "days": 300, "max": 2, "every": 0.04, "budget": 60000, "after": 60}]}
 		"smuggler":
 			st.fleet = [["dd_soldati", null, {"strip": ["T"]}]]; st.credits = 28000; st.officer = 2; st.port = "Port Saffron"
 			st.cargo = {"fuel": 90, "food": 20, "medicine": 15, "electronics": 10}

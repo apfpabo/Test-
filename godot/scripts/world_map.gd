@@ -916,13 +916,15 @@ var distress_btn: Button
 func _update_dock() -> void:
     if distress_btn == null:
         distress_btn = UI.button("Send a distress call", func(): _toast(Campaign.distress()), true); distress_btn.focus_mode = Control.FOCUS_NONE; ui.add_child(distress_btn); ui.move_child(distress_btn, dock.get_index())
-        distress_btn.set_anchor_and_offset(SIDE_LEFT, 0.5, -130); distress_btn.set_anchor_and_offset(SIDE_RIGHT, 0.5, 130); distress_btn.set_anchor_and_offset(SIDE_TOP, 1.0, -112); distress_btn.set_anchor_and_offset(SIDE_BOTTOM, 1.0, -74)
         _tc(distress_btn, "font_color", Color(0.1, 0.05, 0.04)); var rs := StyleBoxFlat.new(); rs.bg_color = UI.RED; rs.set_corner_radius_all(2); rs.content_margin_left = 12; rs.content_margin_right = 12
         for k in ["normal", "hover", "pressed", "focus"]: distress_btn.add_theme_stylebox_override(k, rs)
         distress_btn.tooltip_text = "The nearest warship that isn't hostile comes and offers a tow to the nearest open port. The fee goes up with distance and down with your standing with her flag: half price at 60, double at -60."
     var G0: Dictionary = Campaign.G
     var coming: bool = G0.fleets.any(func(f): return f.get("answering", false))
     distress_btn.visible = not panel_open and Campaign.dead_in_water() and G0.player.get("towed") == null and not coming
+    # its place is set outright each time, in pixels (on its anchors it once filled half the screen over the globe: the owner, 13 Nov 2026)
+    var dvs: Vector2 = get_viewport_rect().size
+    distress_btn.set_anchors_preset(Control.PRESET_TOP_LEFT); distress_btn.size = Vector2(260, 38); distress_btn.position = Vector2(dvs.x * 0.5 - 130.0, dvs.y - 112.0)
     if panel_open: dock.visible = false; return
     if is_instance_valid(tele_panel) and tele_panel.size.y > 0:   # keep it just above the engines box, however tall that is
         var vy: float = get_viewport_rect().size.y; var top: float = tele_panel.position.y - vy - 8.0
@@ -982,16 +984,17 @@ func _unhandled_input(e: InputEvent) -> void:
             KEY_3: _speed(4)
             KEY_4: _speed(8)
             KEY_C, KEY_HOME: free_cam = false
-            KEY_EQUAL, KEY_KP_ADD: zoom = clampf(zoom * 1.25, ZOOM_MIN, 14)
+            KEY_EQUAL, KEY_KP_ADD: zoom = clampf(zoom * 1.25, GLOBE_AT, 14)
             KEY_MINUS, KEY_KP_SUBTRACT:
-                if zoom <= ZOOM_MIN + 0.0001: globe.open()   # out past the widest view: the world whole
-                zoom = clampf(zoom / 1.25, ZOOM_MIN, 14)
+                if zoom <= GLOBE_AT + 0.0001: globe.open()   # out past the widest view: the world whole
+                zoom = clampf(zoom / 1.25, GLOBE_AT, 14)
 
 ## The chart's widest view: scrolling out past it opens the globe (it was 0.14; the owner wanted the globe sooner).
 const ZOOM_MIN := 0.22
+const GLOBE_AT := 0.42   # scrolling out past this opens the globe (the owner, 13 Nov 2026: it took too much zooming out; the globe hands back a chart no wider than this anyway)
 func _zoom_at(f: float, sp: Vector2) -> void:
-    if f < 1.0 and zoom <= ZOOM_MIN + 0.0001: globe.open(); return   # out past the widest view: the world whole
-    var before = to_world(sp); zoom = clampf(zoom * f, ZOOM_MIN, 14)
+    if f < 1.0 and zoom <= GLOBE_AT + 0.0001: globe.open(); return   # out past the widest view: the world whole
+    var before = to_world(sp); zoom = clampf(zoom * f, GLOBE_AT, 14)
     if free_cam: cam += before - to_world(sp)
 
 func _click(sp: Vector2) -> void:

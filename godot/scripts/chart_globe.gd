@@ -188,11 +188,17 @@ func draw_marks(ci: Control) -> void:
     # the sea lanes you are bound along: the course in hand, laid over the curve of the world
     var route = G.player.get("route")
     if route != null and route is Array and not route.is_empty():
-        var prev := project(G.player.x, G.player.y)
-        for i in range(int(G.player.get("ri", 0)), route.size()):
-            var wp: Vector2 = route[i]; var q := project(wp.x, wp.y)
-            if q.z > 0.0 and prev.z > 0.0: ci.draw_line(Vector2(prev.x, prev.y), Vector2(q.x, q.y), Color(UI.GOLD, 0.55), 1.5, true)
-            prev = q
+        # each leg is laid as she will sail it: straight on the flat chart, so stepped along in chart units and each step
+        # carried to the globe (drawn end to end as one stroke a long leg cut across the world: the owner, 13 Nov 2026)
+        var at := Vector2(G.player.x, G.player.y); var prev := project(at.x, at.y)
+        for i in range(int(G.player.get("ri", 0)) + 1, route.size()):
+            var wp: Vector2 = route[i]; var dx: float = Campaign.wdx(at.x, wp.x); var dy: float = wp.y - at.y
+            var n: int = maxi(1, int(ceil(Vector2(dx, dy).length() / 18.0)))
+            for s in range(1, n + 1):
+                var q := project(Campaign.wrap_x(at.x + dx * s / float(n)), at.y + dy * s / float(n))
+                if q.z > 0.0 and prev.z > 0.0: ci.draw_line(Vector2(prev.x, prev.y), Vector2(q.x, q.y), Color(UI.GOLD, 0.6), 1.6, true)
+                prev = q
+            at = wp
     # wars between the powers: a red line over the curve of the world from capital to capital
     var caps := {}
     for p in G.ports: if p.get("capital", false) and not caps.has(p.fac): caps[p.fac] = p

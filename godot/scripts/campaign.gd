@@ -24,6 +24,7 @@ var mask_w = 3600
 var mask_h = 1600
 var mask: PackedByteArray        # RGBA8: R land, G pilotage waters within two cells of land
 var nav: AStar2D
+var nav_main := {}   # lane points of the open sea (the main network)
 var nav_bucket = {}             # Vector2i cell -> node ids, for finding lane points near a position
 var nav_routes = {}
 var G: Dictionary = {}           # the saved game
@@ -149,6 +150,42 @@ func _load_nav() -> void:
     nav_routes = JSON.parse_string(FileAccess.open("res://data/nav_routes.json", FileAccess.READ).get_as_text()).routes
     if n == 0 or edges.is_empty(): push_error("Sea-lane data is missing (data/nav_*.bin): routes will fail. Check the export include filter.")
     else: print("Sea lanes: %d points, %d links" % [n, edges.size() / 2])
+    # the open sea: every lane point that can be reached from the first one with any links. A pocket of water cut off from
+    # it (an enclosed bay the lanes do not enter) is no place to put a fleet: nothing there could ever leave (13 Nov 2026)
+    nav_main.clear()
+    if n > 0:
+        var start := 0
+        for i in mini(n, 4000): if nav.get_point_connections(i).size() > 3: start = i; break
+        var stack: Array = [start]; nav_main[start] = true
+        while not stack.is_empty():
+            var cur: int = stack.pop_back()
+            for nb in nav.get_point_connections(cur): if not nav_main.has(nb): nav_main[nb] = true; stack.append(nb)
+        if nav_main.size() < n / 2:   # the first point was itself in a pocket: take the other side
+            var other := {}
+            for i in n: if not nav_main.has(i): other[i] = true
+            nav_main = other
+## Is this water part of the open sea (a lane point of the main network close by and in plain sight)?
+func open_sea(x: float, y: float) -> bool:
+    for q in _nodes_near(Vector2(x, y), 45.0): if nav_main.has(int(q[1])) and sight_line(x, y, nav.get_point_position(int(q[1])).x, nav.get_point_position(int(q[1])).y): return true
+    return false
+## A squadron lying on the chart's outermost rows, or on a course that runs along them, cannot move (older charts had
+## lanes there): she is put back on the nearest lane and her course dropped. Run when a game is loaded and each day.
+const EDGE_Y := 12.0
+func off_edge(o: Dictionary) -> bool:
+    var bad: bool = float(o.y) < EDGE_Y or float(o.y) > MH - EDGE_Y
+    var r = o.get("route")
+    if not bad and r is Array: for p in r: if p.y < EDGE_Y or p.y > MH - EDGE_Y: bad = true; break
+    if not bad: return false
+    if float(o.y) < 60.0 or float(o.y) > MH - 60.0:
+        var best := Vector2(float(o.x), clampf(float(o.y), 60.0, MH - 60.0)); var bd := INF
+        for q in _nodes_near(Vector2(float(o.x), clampf(float(o.y), 60.0, MH - 60.0)), 140.0):
+            if not nav_main.has(int(q[1])): continue
+            var np: Vector2 = nav.get_point_position(int(q[1])); var d := mdist(float(o.x), float(o.y), np.x, np.y)
+            if d < bd: bd = d; best = np
+        o.x = wrap_x(best.x); o.y = best.y; o.rx = o.x; o.ry = o.y
+    var tx = o.get("tx"); var ty = o.get("ty"); o.route = null; o.ri = 0; o.jam = 0
+    if tx != null and float(ty) >= EDGE_Y and float(ty) <= MH - EDGE_Y: set_course(o, float(tx), float(ty))
+    return true
 
 func _nodes_near(p: Vector2, r: float) -> Array:
     var out = []; var c = Vector2i(int(wrap_x(p.x) / 20.0), int(p.y / 20.0)); var k = int(ceil(r / 20.0)); var gw = int(MW / 20.0)
@@ -308,7 +345,7 @@ func enemy_tech(era: int) -> Array:
     var t = []
     if era >= 2: t.append_array(["radar", "sonar", "homing", "aa_prox", "dc", "amphib", "missiles", "jets", "nuclear", "snorkel"])
     if era >= 3: t.append_array(["helo", "ecm", "ciws", "aegis", "vls", "reactors"])
-    if era >= 4: t.append_array(["datalink", "netcentric", "stealth", "precision", "drones"])
+    if era >= 4: t.append_array(["datalink", "netcentric", "stealth", "precision", "drones", "railgun"])   # (the rail gun too: the owner, 13 Nov 2026)
     # the powers improve what they have as you do: an era's technologies reach level II when the next era is open,
     # and level III two eras on
     for x in C.TECH:
@@ -936,7 +973,7 @@ func water_point(pad := 8.0, near = null, rad := 0.0) -> Vector2:
         else: x = randf() * MW; y = lat_y(70 - randf() * 125)
         x = wrap_x(x)
         if y < lat_y(76) or y > lat_y(-62): continue
-        if not land_near(x, y, pad): return Vector2(x, y)
+        if not land_near(x, y, pad) and open_sea(x, y): return Vector2(x, y)   # (open sea only: not a pocket nothing can sail out of)
     return Vector2(near.x, near.y) if near != null else Vector2(lon_x(-40), lat_y(40))
 
 func ports_of(f: String) -> Array: return G.ports.filter(func(p): return p.fac == f)
@@ -1273,6 +1310,7 @@ func nearest_poi(max_d: float):
 
 # ------------------------------------------------------------------ the passing of days
 func new_day(moved: bool) -> void:
+    if G.has("player") and off_edge(G.player): toast.emit("Your squadron was lying against the edge of the chart, where no course could reach her. She has been brought back onto the nearest sea lane.")
     G.day += 1
     var P: Dictionary = G.player
     if not G.has("reserve"): G.reserve = reserve_cap()
@@ -2221,6 +2259,8 @@ func load_game() -> bool:
     for o in [G.player] + G.fleets: _restore_route(o)
     _ints(G)
     _pad_fits()
+    if G.has("player"): off_edge(G.player)
+    for f in G.get("fleets", []): off_edge(f)
     paused = false
     return true
 

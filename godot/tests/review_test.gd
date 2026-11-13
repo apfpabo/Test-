@@ -1487,6 +1487,14 @@ func _levels() -> void:
 	cs.shells.append({"s": hk.pos + Vector2(0, -400), "e": hk.pos, "pos": hk.pos, "t": 0.0, "T": 0.05, "dmg": 100, "side": 0, "size": "H", "pen": 400.0, "fall": 0.3, "who": cship, "ammo": "ap", "tgt": null, "rel": 30.0, "mm": 406})
 	cs.step(0.1)
 	ok(int(cs.sys_log.get("shell on a hulk", 0)) == 1, "and falls in the sea once she is under")
+	# the chart's edge (13 Nov 2026: lanes ran along its top row, where a squadron jammed for good and no tow could reach her)
+	var eo := {"x": 5628.0, "y": 3.0, "rx": 5628.0, "ry": 3.0, "h": 0.0, "v": 0.0, "ri": 0, "route": [Vector2(5628, 3), Vector2(5700, 1)]}
+	ok(Campaign.off_edge(eo) and float(eo.y) >= 50.0 and eo.get("route") == null and not Campaign.on_land(eo.x, eo.y) and Campaign.open_sea(eo.x, eo.y), "a squadron lying on the chart's top row is brought back onto a sea lane (%.0f, %.0f)" % [float(eo.x), float(eo.y)])
+	var mid := {"x": 3000.0, "y": 1600.0, "route": null}
+	ok(not Campaign.off_edge(mid), "one in mid-ocean is left alone")
+	var lane_top := 0
+	for id in Campaign.nav.get_point_ids(): if Campaign.nav.get_point_position(id).y < 40.0 or Campaign.nav.get_point_position(id).y > Campaign.MH - 40.0: lane_top += 1
+	ok(lane_top == 0 and Campaign.nav_main.size() > 30000, "no sea lane runs within the chart's edge margin, and the open sea is one network (%d points)" % Campaign.nav_main.size())
 	ok(preload("res://scripts/skirmish.gd").ERA_TECH.has(4) and preload("res://scripts/skirmish.gd").ERA_TECH[4].has("stealth"), "the quick battle has Era IV")
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1

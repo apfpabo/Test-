@@ -26,6 +26,10 @@ log('land generated', world.stats);
 if (world.stats.leaks.length) { console.error('choke points fail:', world.stats.leaks); process.exit(1); }
 
 // ------------------------------------------------------------------ land queries (as in campaign.gd)
+// Routes and lanes keep this many mask cells (two chart units each) clear of the chart's top and bottom edges: the game counts
+// the outermost rows as land, and a course along the very top lay hidden under the chart's top bar (the owner's report and a
+// test campaign's squadron jammed there for six months, 13 Nov 2026).
+const EDGE = 20;
 const onLand = (x, y) => { if (y < 2 || y >= MH - 2) return true; return mask[Math.floor(y / MASK_RES) * CW + Math.floor(wrapX(x) / MASK_RES)] === 1; };
 const landNear = (x, y, pad) => { if (onLand(x, y)) return true; if (!pad) return false; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; if (onLand(x + Math.cos(a) * pad, y + Math.sin(a) * pad)) return true; } return false; };
 function nearestWater(x, y, maxR = 60) {
@@ -147,7 +151,7 @@ function findPath(x0, y0, x1, y1) {
     if (++expanded > 3000000) break;
     const cx = i % CW, cy = (i / CW) | 0, gi = N.g[i];
     for (let k = 0; k < 8; k++) {
-      const dx = DX[k], dy = DY[k], ny = cy + dy; if (ny < 0 || ny >= CH) continue;
+      const dx = DX[k], dy = DY[k], ny = cy + dy; if (ny < EDGE || ny >= CH - EDGE) continue;   // (not the chart's outermost rows: the game counts y < 2 as land, and 82 port routes ran along y = 1, where a ship jams for good; found by a test campaign, 13 Nov 2026)
       const nx = (cx + dx + CW) % CW, j = ny * CW + nx;
       if (mask[j] || N.closed[j] === cur) continue;
       if (dx && dy && (mask[cy * CW + nx] || mask[ny * CW + cx])) continue;
@@ -168,9 +172,9 @@ function findPath(x0, y0, x1, y1) {
   return out;
 }
 
-// lane grid: half-degree points in open water, joined where the straight leg stays at sea
+// lane grid: half-degree points in open water, joined where the straight leg stays at sea (none within the chart's edge margin)
 const S = 20, gw = MW / S, gh = MH / S, nodes = [], idx = new Int32Array(gw * gh).fill(-1), edges = [];
-for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) { const x = (i + 0.5) * S, y = (j + 0.5) * S; if (!landNear(x, y, 4)) { idx[j * gw + i] = nodes.length; nodes.push([x, y]); } }
+for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) { const x = (i + 0.5) * S, y = (j + 0.5) * S; if (y >= EDGE * MASK_RES && y <= MH - EDGE * MASK_RES && !landNear(x, y, 4)) { idx[j * gw + i] = nodes.length; nodes.push([x, y]); } }
 for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
   const a = idx[j * gw + i]; if (a < 0) continue;
   for (const [di, dj] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {

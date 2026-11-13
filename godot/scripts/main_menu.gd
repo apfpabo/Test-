@@ -108,6 +108,7 @@ func _new_campaign() -> void:
     var group := ButtonGroup.new()
     var on := StyleBoxFlat.new(); on.bg_color = Color(UI.GOLD, 0.12); on.border_color = UI.GOLD; on.set_border_width_all(2); on.set_corner_radius_all(3)
     var next := UI.button("Next", func(): if picked != "": go(func(): _origin(pc, box, picked)), true, picked == "")
+    next.custom_minimum_size = Vector2(96, 0); next.clip_text = false   # (its label was cut to "Ne": the owner, 13 Nov 2026)
     for key in Origins.LIST:
         var info: Dictionary = Origins.INFO[key]
         # a card: the origin's name as its heading, the line about it under, both from the top (UI review, 12 Nov 2026:

@@ -1678,6 +1678,16 @@ func _ew() -> void:
 			if int(hd.get("era", 1)) >= 3 and ["g76", "g127s", "g130t"].has(sl.def): wrong.append(id)
 			if int(hd.get("era", 1)) <= 2 and ["g76a", "g127a", "g130a"].has(sl.def): wrong.append(id)
 	ok(wrong.is_empty(), "wartime and missile-age designs do not share gun mounts %s" % str(wrong.slice(0, 5)))
+	# a side mount takes no gun much bigger than the one she was built with there (the owner, 13 Nov 2026)
+	var bd: Dictionary = GameData.hulls["ca_baltimore"]; var wing = null; var mid = null
+	for sl in bd.slots:
+		if sl.s == "M" and float(sl.y) != 0.0 and wing == null: wing = sl
+		if sl.s == "M" and float(sl.y) == 0.0 and mid == null: mid = sl
+	ok(wing != null and not BattleSim.room_for(wing, "g152") and not BattleSim.room_for(wing, "g150t") and BattleSim.room_for(wing, "g130t") and BattleSim.room_for(wing, String(wing.def)) and BattleSim.room_for(wing, ""), "a cruiser's side mount refuses a 6-inch triple and takes a gun of its own size")
+	ok(mid == null or BattleSim.room_for(mid, "g152"), "a centreline mount is as free as before")
+	var all_std := true
+	for id in GameData.hulls: for sl in GameData.hulls[id].slots: if not BattleSim.room_for(sl, String(sl.def)): all_std = false
+	ok(all_std, "every design's own guns fit her mounts")
 	Weather.force = {"sea": 0, "fog": false, "night": false, "moon": 0.5}
 	sections += 1
 

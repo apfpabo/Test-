@@ -129,7 +129,7 @@ func _edit(arr: Array, mods: Array, i: int) -> void:
         var ob := OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, ""); ob.custom_minimum_size.x = 290
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
-            if not _fits(wid, sl.s) or (w.has("tech") and not tech.has(w.tech)) or (w.get("power", false) and not d.get("power", false)): continue
+            if not _fits(wid, sl.s) or not BattleSim.room_for(sl, wid) or (w.has("tech") and not tech.has(w.tech)) or (w.get("power", false) and not d.get("power", false)): continue
             ob.add_item(String(w.name) + " · %d t" % int(BattleSim.weapon_tons(wid))); ob.set_item_metadata(ob.item_count - 1, wid)
             if wid == cur: ob.selected = ob.item_count - 1
         ob.item_selected.connect(func(j): m.fit[sx] = ob.get_item_metadata(j); edit_sel = sx; _edit(arr, mods, i))

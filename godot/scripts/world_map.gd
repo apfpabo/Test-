@@ -2287,7 +2287,7 @@ func _refit(box: Control) -> void:
         var ob = OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, "")
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
-            if not _fits(wid, sl.s) or not Campaign.tech_ok(w.get("tech"), G.tech) or (w.get("power", false) and not d.get("power", false)): continue   # (a rail gun only where the hull has the power)
+            if not _fits(wid, sl.s) or (not BattleSim.room_for(sl, wid) and wid != cur and wid != fitted) or not Campaign.tech_ok(w.get("tech"), G.tech) or (w.get("power", false) and not d.get("power", false)): continue   # (a rail gun only where the hull has the power)
             ob.add_item(w.name + " · %d t" % int(BattleSim.weapon_tons(wid)) + ("" if wid == fitted else " · " + Campaign.fmt(w.price))); ob.set_item_metadata(ob.item_count - 1, wid)
             if wid == cur: ob.selected = ob.item_count - 1
         var idx = i; ob.custom_minimum_size.x = 290

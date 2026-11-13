@@ -5,7 +5,7 @@ extends Node
 ##   godot --headless --path godot res://tests/fit_audit.tscn [-- <out.json>]
 const TECH := ["radar", "sonar", "homing", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datalink", "stealth", "netcentric", "precision", "railgun", "helo", "nuclear"]
 func _core(w: Dictionary, k: float) -> float:   # the housing's half width: a circle that is surely steel whatever way it is trained
-	return 0.5 * minf(float(w.get("tw", 2.0)), float(w.get("tl", 2.0))) * k
+	return 0.5 * float(w.get("tw", 2.0)) * k   # (half her width: half the lesser side under-reported a long house)
 var _img := {}
 func _deck(id: String, x: float, y: float) -> bool:
 	if not _img.has(id):
@@ -34,7 +34,7 @@ func _ready() -> void:
 				opts = []
 				for wid in GameData.weapons:
 					var w: Dictionary = GameData.weapons[wid]
-					if String(w.size) == String(d.slots[i].s) and wid != std[i] and (not w.get("rail", false) or d.get("power", false)): opts.append(wid)
+					if String(w.size) == String(d.slots[i].s) and wid != std[i] and (not w.get("rail", false) or d.get("power", false)) and BattleSim.room_for(d.slots[i], wid): opts.append(wid)   # (only what a yard would fit there)
 			for alt in opts:
 				var rec: Dictionary = base.duplicate(true); rec.fit = std.duplicate()
 				if i >= 0: rec.fit[i] = alt

@@ -151,7 +151,7 @@ func rebuild() -> void:
             var wb := OptionButton.new(); wb.focus_mode = Control.FOCUS_NONE; wb.fit_to_longest_item = false; wb.clip_text = true;  wb.custom_minimum_size.x = 200; wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             wb.add_item("(empty)"); wb.set_item_metadata(0, "")
             for wid in GameData.weapons:
-                if not _fits(wid, slot.s) or (GameData.weapons[wid].get("power", false) and not p.d.get("power", false)): continue
+                if not _fits(wid, slot.s) or not BattleSim.room_for(slot, wid) or (GameData.weapons[wid].get("power", false) and not p.d.get("power", false)): continue
                 wb.add_item(GameData.weapons[wid].name); wb.set_item_metadata(wb.item_count - 1, wid)
                 if wid == cur: wb.selected = wb.item_count - 1
             var idx: int = i

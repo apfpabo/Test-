@@ -161,7 +161,7 @@ func _cond(s: String, fname: String, n: int) -> Dictionary:
 	var c := {"k": k, "a": arg, "op": op, "n": float(rhs) if rhs.is_valid_float() else 0.0, "not": neg, "src": s}
 	if op != "" and not rhs.is_valid_float(): _err(fname, n, "\"%s\": the number after %s is missing" % [s, op]); return {}
 	match k:
-		"credits", "rp", "crew", "day", "era", "ships", "kills":
+		"credits", "rp", "crew", "day", "era", "ships", "kills", "ports", "year":
 			if op == "": _err(fname, n, "\"%s\" needs a comparison, e.g. %s >= 100" % [s, k]); return {}
 		"standing":
 			c.a = _power(arg)
@@ -353,6 +353,8 @@ func test(c: Dictionary) -> bool:
 		"era": v = float(Campaign.player_era())
 		"ships": v = float(Campaign.all_ships().size())
 		"kills": v = float(G.get("kills", 0))
+		"ports": v = float(Flag.ports().size()) if Flag.founded() else 0.0   # harbours under your own flag
+		"year": v = float(Campaign.year())
 		"standing": v = float(G.rep.get(c.a, 0))
 		"cargo": v = float(G.cargo.get(c.a, 0.0))
 		_:

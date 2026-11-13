@@ -80,7 +80,7 @@ Use these in `needs:` and in front of a choice in square brackets. Put `not` in 
 | Condition | True when |
 | --- | --- |
 | `credits >= 5000` | You have at least that much money. Also `<=`, `>`, `<`, `=`, `!=` |
-| `rp >= 50`, `crew >= 200`, `day >= 90`, `era >= 2`, `ships >= 3`, `kills >= 5` | The same, for research points, crew, the day, your era, ships you own, ships you have sunk |
+| `rp >= 50`, `crew >= 200`, `day >= 90`, `era >= 2`, `ships >= 3`, `kills >= 5`, `ports >= 1`, `year >= 1950` | The same, for research points, crew, the day, your era, ships you own, ships you have sunk, harbours under your own flag, the calendar year |
 | `standing directorate >= 20` | Your standing with that power |
 | `cargo munitions >= 50` | Tons of a good in your holds (`cargo munitions` alone means at least one ton) |
 | `flag broker_list` | A story flag you set with `! flag` (see effects) |

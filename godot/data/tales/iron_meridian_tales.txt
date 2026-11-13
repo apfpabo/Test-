@@ -22,7 +22,7 @@ He glances back toward the customs shed. "I kept a carbon of the last bearing be
 * Walk away: the past has already cost you enough -> decline
 
 --- buy_bearing
-He slips a folded wax-paper sheet into your coat pocket. Pencilled in a shaking hand are a latitude in the Central Hesperian, a strange call-sign that belongs to neither coalition, and a single margin note: "Ordered to hold station by Admiralty cipher 44-Zero."
+He slips a folded wax-paper sheet into your coat pocket. Pencilled in a shaking hand are a latitude in the Central Hesperian, a strange call-sign that is in no fleet list, and a single margin note: "Ordered to hold station by Admiralty cipher 44-Zero."
 ! credits -1500
 ! rp +12
 ! flag halloran_bearing
@@ -63,7 +63,7 @@ As your boat hooks the buoy's casing, the radar room calls down: an unmarked des
 ! fight concord dd pt pt "Silent Watcher" -> won_watchers
 
 --- won_watchers
-With the unmarked picket driven off, your engineers haul the buoy's sealed canister aboard. Inside are hydrophone reels from November 1945—and telemetry of an experimental guided weapon test fired by both sides' scientists working under a joint black-site code.
+With the unmarked picket driven off, your engineers haul the buoy's sealed canister aboard. Inside are hydrophone reels from the squadron's last night: the screws of a single very large submarine that is in no recognition book, and then torpedoes that turn to follow their targets, steered down a wire. The squadron did not vanish into myth. It walked into an ambush, and both admiralties have chosen to bury it.
 ! rp +35
 ! electronics +10
 ! clear halloran_bearing
@@ -99,31 +99,29 @@ art: contact
 --- start
 Off the rocky headlands of the inner Sable Sea, your wireless operator takes off his headphones with a frown. A directional burst—short, pulsed telemetry on a pre-armistice Vargan frequency—is coming from the ruined casemates of the Throat Research Anchorage ashore.
 
-Officially, the complex was gutted by bombardment in 1945. Through the glasses, you can see a small coaling lighter moored under the broken crane and a searchlight shutter blinking toward the sea.
+Officially, the complex was gutted by bombardment in 1945. Through the glasses nothing moves ashore: no boat under the broken crane, no smoke, no light. Yet the pulses keep perfect time, and a line of low grey buoys rides the swell off the breakwater.
 
 * Send an armed cutter into the cove after dark -> send_cutter
 * [standing directorate >= 15] Hail the station using Directorate recognition signals -> hail_station
 * Log the coordinates and sell the intercept at the next harbour -> sell_log
 
 --- send_cutter
-Your cutter slips past the sunken breakwater at midnight. The men inside the ruin are ragged technicians packing vacuum tubes and gyroscopes into crates for a smuggler who has not arrived. Outnumbered, they trade two crates of guidance parts for twenty tons of food and your word to say nothing.
-! food -15
+Your cutter slips past the sunken breakwater at midnight. There is nobody in the ruin. In a sealed casemate a generator the size of a ship's boiler hums with no fuel line and no smoke, warm to the hand, feeding cables that run out under the sea to the buoys. Your men cut loose two relay cabinets and a recording drum, and leave the rest listening.
 ! electronics +12
 ! rp +18
 ! standing directorate -6
-! log "Traded rations for guidance parts at the Throat Research Anchorage"
+! log "Took relay gear from the automated listening station at the Throat Research Anchorage"
 * Hoist the cutter aboard -> end
 
 --- hail_station
-After a tense silence, the shutter blinks back a valid Strelsk naval cipher. A junior commissar comes out in the lighter: their generator fuel is nearly gone. If you can spare twenty tons of bunker oil, the Naval Staff will remember the service—and share their calibration tables.
-! fuel -20
+After a tense silence the station answers with a valid Strelsk naval cipher, too quickly and too evenly for any man's hand: a machine acknowledging a machine. Two days later a Directorate launch meets you offshore. A junior commissar thanks you, coldly, for reporting a fault in a navigation beacon, hands over a set of calibration tables, and pays for your silence about how many buoys you counted.
 ! rp +15
 ! standing directorate +8
 ! credits +2500
 * Weigh anchor -> end
 
 --- sell_log
-You keep {flagship} well clear of the mined shallows while your wireless room records a full hour of the pulsed signal. Intelligence brokers at the next port pay handsomely for proof that the Throat is still alive.
+You keep {flagship} well clear of the mined shallows while your wireless room records a full hour of the pulsed signal. Intelligence brokers at the next port pay handsomely for proof that something at the Throat is still listening.
 ! credits +3500
 ! rp +6
 * Carry on -> end
@@ -148,7 +146,7 @@ In a tavern above the mole, a dismissed shipyard draughtsman with a bandaged han
 * Leave him to his drink -> leave_be
 
 --- buy_print
-The linen sheets inside the tube are stamped with three different navies' classification marks. Below the cliff, the Syndicate is grafting captured Vargan rocket-motor rails and Halcyon radar aerials onto a salvaged cruiser hull. The structural stress calculations alone are worth a month of dockyard trials.
+The linen sheets inside the tube are stamped with three different navies' classification marks. Below the cliff, the Syndicate and rogue Combine engineers are rebuilding the hull of the *Leviathan*, a half-scrapped pre-armistice super-battleship, gutting her main turrets to fit vertical launch tubes for anti-ship missiles. The structural stress calculations alone are worth a month of dockyard trials.
 ! credits -4000
 ! rp +30
 ! standing freeport -4

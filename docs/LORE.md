@@ -187,15 +187,18 @@ renamed Port Vesper to match (it was Tamaru). Each power's contracts open in its
 (`godot/data/contract_templates.json`: his sample lines where a kind fits them, the rest drafted to his voice rules).
 Six origins have an opening tale (`godot/data/tales/origin_openings.txt`: his premises, the agent's draft scenes).
 
-**Where the new canon and the owner's own tales differ (his to settle; nothing was changed):**
-- *Dry Dock Zero.* The bible: the super-battleship *Leviathan*, her turrets replaced by missile tubes. His tale
-  `dry_dock_zero`: rocket rails and radar "onto a salvaged cruiser hull".
-- *The Throat.* The expansion: an automated buoy network, "not ghosts or stranded scientists". His tale
-  `throat_whispers`: ragged technicians packing crates, and a junior commissar short of generator fuel.
-- *The Lost Squadron.* The expansion: an ambush by a Directorate cruiser-submarine's wire-guided torpedoes. His tale
-  `lost_squadron_2`: telemetry of a guided weapon test "fired by both sides' scientists working under a joint
-  black-site code".
+**The new canon wins (the owner, 13 Nov 2026).** His three tales were brought into line, changing as little as would
+serve: `dry_dock_zero` now names the *Leviathan* and her launch tubes; `throat_whispers` finds nobody ashore, only the
+generator and the buoys (the cutter takes relay gear; the hail is answered by a machine, and a commissar pays for
+silence; the rations and fuel are no longer spent); `lost_squadron_1` and `_2` speak of a call-sign in no fleet list,
+a very large submarine and wire-guided torpedoes.
 
-**Not built from the bible yet:** the five three-part mystery chains, the six named figures, the mid and late game
-chains, and new openings for the Survivor and the Disgraced Officer (each already has a tale of the owner's).
-The two powers' descriptions on the game's own panels (`FAC` in `src/game.html`) are still the agent's placeholders.
+**Drafted from the bible** (`godot/data/tales/zz_bible_drafts.txt`, 37 tales: the owner's outlines, the agent's
+scenes and rewards, for him to rewrite): the five three-part mystery chains (Dry Dock Zero, the Black Archives, the
+Skarn wrecks, the Corvo Canal, the Austral stations), the six named figures (Vance, Voronova, Thorne, Marlow, Zhao,
+Vane-Smythe; two or three tales each), and the tales for a squadron, a harbour and a flag. Tales can now ask
+`ports >= 1` (harbours under your flag) and `year >= 1950`.
+
+**Still not built:** new openings for the Survivor and the Disgraced Officer (each already has a tale of the
+owner's). The two powers' descriptions on the game's own panels (`FAC` in `src/game.html`) are still the agent's
+placeholders.

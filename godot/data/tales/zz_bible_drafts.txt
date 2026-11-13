@@ -1,0 +1,1170 @@
+# Drafts from the owner's narrative bible (13 Nov 2026): the five mystery chains, the six named figures, and the
+# tales for a squadron, a harbour and a flag. The outlines, names, truths and arcs are the owner's. The scenes,
+# choices and rewards are Claude's drafts to those outlines, for the owner to rewrite: this is not his text.
+# The file's name starts with zz so that the owner's own tales, read first, win when two could come up together.
+
+# ============================================================ A. Dry Dock Zero
+
+=== dz_1
+title: The Missing Welder
+when: arriving
+where: port Kotaraya
+days: 30+
+chance: 25%
+art: port
+
+--- start
+A Syndicate broker finds you in Kotaraya with an offer and a name he will not write down. A Combine propulsion engineer wants to leave the Combine. He wants to reach Port Saffron, and he wants nobody's security launches looking in your hold on the way.
+
+* Take him aboard tonight -> take
+* Tell Combine security where their engineer is sleeping -> inform
+* Decline -> end
+
+--- take
+He comes down the quay with a toolbag and a welder's mask, as if he were reporting for a shift. He does not look back at the yard.
+! flag dz_passenger
+! log "Took a defecting Combine engineer aboard at Kotaraya, bound for Port Saffron"
+* Sail -> end
+
+--- inform
+The Combine pays promptly and thanks you in writing. You do not see the engineer again, or the broker.
+! credits +4000
+! standing combine +6
+! standing freeport -6
+* Carry on -> end
+
+=== dz_1_land
+title: The Missing Welder
+when: arriving
+where: port Port Saffron
+needs: flag dz_passenger
+art: port
+
+--- start
+Two men in oilskins meet the engineer at the foot of your gangway and walk him towards the cliff. A third counts notes into your hand and tells you that Master Broker Thorne remembers people who deliver.
+! credits +5000
+! standing freeport +6
+! standing combine -6
+! clear dz_passenger
+! flag dz_trusted
+! log "Landed the Combine engineer at Port Saffron"
+* Return to {flagship} -> end
+
+=== dz_2
+title: The Basalt Rumour
+when: arriving
+where: power concord
+days: 90+
+chance: 20%
+needs: done dz_1_land
+art: capital
+
+--- start
+A Concord intelligence officer has heard that you are welcome in Port Saffron. He would like to know what is going into the cavern lock under the cliff, and he will pay a great deal for photographs taken from inside the outer minefields.
+
+* Agree to make the run -> agree
+* Take the offer to Thorne instead -> thorne
+* Decline -> end
+
+--- agree
+He gives you a camera, a chart of the swept channels as of last spring, and no promises about the minefields since.
+! flag dz_recon
+* Return to {flagship} -> end
+
+--- thorne
+Thorne listens without smiling, which is unusual, and pays you for the Concord officer's name.
+! credits +5000
+! standing freeport +8
+! standing concord -6
+* Return to {flagship} -> end
+
+=== dz_2_run
+title: The Basalt Rumour
+when: at sea
+where: near Port Saffron 250
+needs: flag dz_recon
+art: contact
+
+--- start
+The cavern mouth shows as a darker patch in a dark cliff. Between it and you lie the outer fields. Something very large is being moved inside on rails.
+
+* Go in at night, close under the cliff -> close
+* Take what you can from outside the fields -> far
+* Turn away: this is not worth the ship -> away
+
+--- close
+A mine goes up astern, close enough to lift the plates. You get four exposures of a hull far too long for any cruiser, with holes in her deck where the turrets were.
+! hull -8%
+! credits +12000
+! rp +15
+! standing concord +8
+! clear dz_recon
+! flag dz_photos
+! log "Photographed the hull in Dry Dock Zero from inside the minefields"
+* Run for open water -> end
+
+--- far
+The plates show a lock gate and a great deal of scaffolding. The Concord pays for them without enthusiasm.
+! credits +4000
+! standing concord +3
+! clear dz_recon
+! flag dz_photos
+* Carry on -> end
+
+--- away
+! clear dz_recon
+You report that the fields have been re-laid. It is probably true.
+* Carry on -> end
+
+=== dz_3
+title: Launch Tide
+when: at sea
+where: near Port Saffron 300
+days: 240+
+chance: 10%
+needs: flag dz_photos
+art: contact
+
+--- start
+Dry Dock Zero is flooding its chamber. The lock gates are opening on the top of the tide, and the *Leviathan* is coming out: a super-battleship with launch tubes where her turrets stood. A Concord squadron and a Directorate one are both closing the cliff, and the Syndicate's guard boats are spread thin.
+
+* Help the Syndicate break her out -> out
+* Help the powers wreck the lock gates -> gates
+* [ships >= 4] Go for the ship herself: her fire-control keys are worth a navy -> keys
+* Stand off and watch -> end
+
+--- out
+! fight concord ca dd dd "Gatehold picket" -> out_won
+
+--- out_won
+The *Leviathan* clears the cliff under her own power and turns south. The freeports have a deterrent, and they know who held the door.
+! credits +20000
+! standing freeport +15
+! standing concord -15
+! flag leviathan_free
+! log "Helped the Leviathan break out of Dry Dock Zero"
+* Carry on -> end
+
+--- gates
+! fight freeport dd dd pt "Syndicate guard" -> gates_won
+
+--- gates_won
+The gates jam half open and the chamber drains. The hull settles back onto her blocks with a sound heard in the town.
+! credits +15000
+! standing concord +12
+! standing directorate +6
+! standing freeport -20
+! flag leviathan_trapped
+! log "Wrecked the lock gates of Dry Dock Zero"
+* Carry on -> end
+
+--- keys
+! fight freeport ca dd "Leviathan's escort" -> keys_won
+
+--- keys_won
+Your boarders come back with a steel case from her plot. Without what is in it she is a very large hulk. With it, she answers to you.
+! rp +60
+! standing freeport -25
+! flag leviathan_keys
+! log "Took the Leviathan's fire-control keys"
+* Carry on -> end
+
+# ============================================================ B. The Amakura Black Archives
+
+=== ba_1
+title: Ink on Salt
+when: at sea
+where: near Senkai Station 400
+days: 15+
+chance: 6%
+art: survey
+
+--- start
+A Halcyon courier boat is drifting beam-on to the swell with nobody aboard. Under the thwart is a weighted diplomatic pouch that somebody failed to throw clear. Inside: half of a Concord battle order, decrypted, in Halcyon characters.
+
+The Federation was neutral in the fight that order belongs to.
+
+* Keep the pouch -> keep
+* Hand it in at a Federation harbour -> hand
+* Sink the boat and the pouch with it -> end
+
+--- keep
+! rp +8
+! flag ba_pouch
+! log "Found a Halcyon pouch holding a decrypted Concord battle order"
+* Carry on -> end
+
+--- hand
+The harbour guard signs for it with great care and asks, twice, whether you read it.
+! credits +2500
+! standing pacific +6
+* Carry on -> end
+
+=== ba_2
+title: The Quiet Bidder
+when: arriving
+where: power freeport, power republic, power enclave
+days: 80+
+needs: flag ba_pouch
+art: port
+
+--- start
+Two strangers are waiting at {port}, on different quays. One is Vargan and one is Hesperian. Each has heard that you carry proof of Halcyon double-dealing in the war, and each offers twice the other's price.
+
+* Sell it to the Concord's man -> concord
+* Sell it to the Directorate's man -> directorate
+* Sell a copy to each -> both
+* Keep it -> keep
+
+--- concord
+! credits +8000
+! standing concord +6
+! standing pacific -6
+! clear ba_pouch
+! flag ba_known
+* Return to {flagship} -> end
+
+--- directorate
+! credits +8000
+! standing directorate +6
+! standing pacific -6
+! clear ba_pouch
+! flag ba_known
+* Return to {flagship} -> end
+
+--- both
+Neither of them will be pleased when he learns of the other. Amakura will be less pleased than either.
+! credits +14000
+! standing pacific -10
+! clear ba_pouch
+! flag ba_known
+* Return to {flagship} -> end
+
+--- keep
+! flag ba_known
+You tell them both it went over the side. Neither believes you.
+* Return to {flagship} -> end
+
+=== ba_3
+title: The Vault Beneath Amakura
+when: arriving
+where: port Amakura
+days: 220+
+needs: flag ba_known
+art: capital
+
+--- start
+A Halcyon admiral receives you without an aide. A group of reformist officers wants the master ledger of the Black Archives out of the vault tonight, before the hardliners burn it. The ledger shows that the Federation read both sides' orders and steered the convoys of 1944 to keep the war going.
+
+They need a ship that is not theirs.
+
+* Bring it out and hand it to the reformists -> reform
+* Bring it out and give it to the world -> publish
+* Bring it out and keep it -> hold
+* Refuse -> end
+
+--- reform
+! credits +15000
+! standing pacific +15
+! flag ba_ledger_returned
+! log "Carried the master ledger of the Black Archives out of Amakura for the reformist admirals"
+* Sail -> end
+
+--- publish
+By the end of the week it is in every newspaper from Calder Roads to Strelsk. The Federation's neutrality does not survive it.
+! rp +30
+! standing concord +8
+! standing directorate +8
+! standing pacific -25
+! flag ba_published
+! log "Published the master ledger of the Black Archives"
+* Sail -> end
+
+--- hold
+You tell the admiral it was lost in the surf. He understands exactly what you mean, and so will Amakura: your ships will find a berth here for as long as the ledger stays unread.
+! credits +6000
+! standing pacific +5
+! flag ba_ledger
+! log "Kept the master ledger of the Black Archives"
+* Sail -> end
+
+# ============================================================ C. The Skarn Strait Wreck Fields
+
+=== sk_1
+title: Ice Pilot's Warning
+when: at sea
+where: sea Skarn Passages
+days: 20+
+chance: 6%
+art: storm
+
+--- start
+A Halvard ice pilot hails you from a cutter and warns you off a stretch of the Passages where, he says, compasses spin and hull plates turn brittle. An hour later your lookouts sight a punctured bathysphere on a floe, and a salvage diver inside it, half frozen and still alive.
+
+* Take him to Halvardsby -> halvard
+* Thaw him out, ask what he saw, and keep his chart -> chart
+* Leave it: the pilot was clear enough -> end
+
+--- halvard
+! standing enclave +6
+! flag sk_seen
+! log "Brought a half-frozen salvage diver out of the Skarn Passages"
+* Carry on -> end
+
+--- chart
+He saw two cruisers, he says, locked together on the bottom, and the water round them was warm.
+! rp +10
+! standing enclave -3
+! flag sk_seen
+! log "A salvage diver spoke of two cruisers locked together under the Skarn ice"
+* Carry on -> end
+
+=== sk_2
+title: The Cold Breach
+when: at sea
+where: sea Skarn Passages
+days: 100+
+chance: 12%
+needs: flag sk_seen
+art: storm
+
+--- start
+You are over the place on the diver's chart. Halvard picket cutters work the edge of the floes to the north. Below you are two experimental cruisers, one Concord and one Directorate, sunk in each other's arms.
+
+* [credits >= 6000] Dive with lead-lined bells bought from the Combine (6,000) -> bells
+* Dive with what you have -> bare
+* Respect the Enclaves' line and go -> end
+
+--- bells
+Your divers cut into the Concord hull in four hours and come up white-faced but well. What powered these ships was not oil.
+! credits -6000
+! rp +25
+! hull -5%
+! flag sk_breach
+! log "Cut into the interlocked cruisers under the Skarn ice"
+* Slip away before the cutters close -> end
+
+--- bare
+They get in. Not all of them are fit for duty afterwards, and the surgeon has no name for what ails them.
+! crew -8
+! rp +15
+! flag sk_breach
+! log "Cut into the interlocked cruisers under the Skarn ice, at a cost"
+* Slip away before the cutters close -> end
+
+=== sk_3
+title: The Heavy Water
+when: at sea
+days: 220+
+chance: 10%
+needs: flag sk_breach
+art: contact
+
+--- start
+The last case out of the wreck holds drawings: a propulsion plant for a submarine that never needs to surface for air. Within a day every wireless on the chart seems to know you have them. A hunter group is already over the horizon.
+
+* Fight your way to a yard that can read them -> run
+* Give them to the Enclaves, who guarded them -> enclave
+* Sell them to the Combine -> combine
+
+--- run
+! fight concord cl dd dd "Hunter group" -> run_won
+
+--- run_won
+! rp +80
+! flag sk_blueprints
+! log "Kept the Skarn reactor drawings from a hunter group"
+* Carry on -> end
+
+--- enclave
+The Halvards take the case without opening it. They will sink it somewhere colder, and they will not forget who brought it back.
+! credits +20000
+! standing enclave +20
+! log "Returned the Skarn reactor drawings to the Halvard Enclaves"
+* Carry on -> end
+
+--- combine
+! credits +40000
+! standing combine +8
+! standing enclave -15
+! log "Sold the Skarn reactor drawings to the Meridian Combine"
+* Carry on -> end
+
+# ============================================================ D. The Corvo Canal Zone
+
+=== cc_1
+title: Toll in Lead
+when: at sea
+where: near Puerto Corvo 300
+days: 25+
+chance: 8%
+art: contact
+
+--- start
+A launch flying an inspection pennant stops you at the Corvo checkpoint. The "neutral inspectors" aboard carry brand-new Combine automatic weapons and want a transit tax that appears in no treaty.
+
+* [credits >= 1500] Pay it (1,500) -> pay
+* Ring down full ahead and run the checkpoint -> run
+* Clear for action -> fight
+
+--- pay
+! credits -1500
+! flag cc_seen
+The receipt is printed, numbered and worthless.
+* Carry on -> end
+
+--- run
+! hull -5%
+! flag cc_seen
+They fire as you pass. Whoever they are, they have been drilled.
+* Carry on -> end
+
+--- fight
+! fight combine pt pt "Lockkeeper launch" -> fight_won
+
+--- fight_won
+! credits +2000
+! standing combine -6
+! flag cc_seen
+! log "Fought off armed inspectors at the Corvo checkpoint"
+* Carry on -> end
+
+=== cc_2
+title: Wiring the Locks
+when: arriving
+where: power ombria
+days: 90+
+chance: 25%
+needs: flag cc_seen
+art: port
+
+--- start
+An Ombrian smuggler unrolls a stolen drawing on a tavern table in {port}. It shows the drainage tunnels of the Corvo Canal, packed with explosives and wired to a transmitter in Kotaraya. The Combine can close the Canal whenever it likes.
+
+* [credits >= 3000] Buy the drawing (3,000) -> buy
+* Tell the Combine what is being passed round in {port} -> tell
+* Walk away -> end
+
+--- buy
+! credits -3000
+! rp +10
+! flag cc_plans
+! log "Bought drawings of the charges under the Corvo Canal"
+* Return to {flagship} -> end
+
+--- tell
+! credits +4000
+! standing combine +6
+* Return to {flagship} -> end
+
+=== cc_3
+title: The Key to the Isthmus
+when: at sea
+where: near Puerto Corvo 300
+days: 200+
+chance: 12%
+needs: flag cc_plans
+art: storm
+
+--- start
+A monsoon squall has shut the Canal Zone down to a cable's length. The Lockkeepers' control bunker is where the drawing says it is, and its guard boats cannot see each other.
+
+* Raid the bunker now -> raid
+* Not today -> end
+
+--- raid
+! fight combine dd pt pt "The Lockkeepers" -> bunker
+
+--- bunker
+Your landing party holds the bunker. On the bench is the transmitter set, and beside it the frequency card.
+
+* Cut the firing circuits: nobody holds the Canal hostage -> disarm
+* Keep the frequency: every fleet that passes will pay you -> seize
+
+--- disarm
+! credits +15000
+! standing concord +10
+! standing directorate +10
+! standing pacific +10
+! standing republic +10
+! standing combine -15
+! log "Disarmed the charges under the Corvo Canal"
+* Carry on -> end
+
+--- seize
+! credits +30000
+! standing combine -25
+! standing concord -10
+! standing directorate -10
+! flag cc_detonator
+! log "Took the firing frequency for the charges under the Corvo Canal"
+* Carry on -> end
+
+# ============================================================ E. The Austral Barrier Stations
+
+=== ab_1
+title: Static on 410 kHz
+when: at sea
+where: sea Howling Seas
+days: 30+
+chance: 8%
+art: storm
+
+--- start
+Skirting the southern pack, your wireless operator logs a burst of five-figure groups, repeating, from a station the charts mark as abandoned since 1941. It is not weather code.
+
+* Take a bearing and log it -> log
+* It is none of your business -> end
+
+--- log
+! rp +5
+! flag ab_bearing
+! log "Logged telemetry from an Austral Barrier station marked abandoned"
+* Carry on -> end
+
+=== ab_2
+title: Whiteout Run
+when: at sea
+where: sea Howling Seas
+days: 100+
+chance: 15%
+needs: flag ab_bearing
+art: storm
+
+--- start
+The station is ahead, somewhere in a wind off the ice that takes the tops off the seas. A shore party could reach it. A shore party could also not come back.
+
+* Land them now -> now
+* Stand off until it eases, whatever the fuel -> wait
+* Turn north -> end
+
+--- now
+They find the crew frozen at their posts, and a tape recorder still turning on wind power.
+! crew -4
+! rp +20
+! flag ab_tape
+! log "Brought a telemetry tape off an Austral Barrier station"
+* Get clear of the ice -> end
+
+--- wait
+Three days. Then an hour of calm, and they find the crew frozen at their posts and a tape recorder still turning on wind power.
+! fuel -25
+! rp +20
+! flag ab_tape
+! log "Brought a telemetry tape off an Austral Barrier station"
+* Get clear of the ice -> end
+
+=== ab_3
+title: The High Arc
+when: arriving
+days: 220+
+needs: flag ab_tape
+art: capital
+
+--- start
+Your navigator has finished with the tape. The figures are the track of a rocket fired from one continent that came down near another. Whoever has this can aim across an ocean. Whoever loses the race will remember who sold it.
+
+* Sell it to the Concord -> concord
+* Sell it to the Directorate -> directorate
+* Keep it for your own yards -> keep
+* Burn it -> burn
+
+--- concord
+! credits +50000
+! standing concord +15
+! standing directorate -20
+! flag high_arc_sold
+! log "Sold the Austral rocket telemetry to the Concord"
+* Return to {flagship} -> end
+
+--- directorate
+! credits +50000
+! standing directorate +15
+! standing concord -20
+! flag high_arc_sold
+! log "Sold the Austral rocket telemetry to the Directorate"
+* Return to {flagship} -> end
+
+--- keep
+! rp +100
+! flag high_arc_kept
+! log "Kept the Austral rocket telemetry"
+* Return to {flagship} -> end
+
+--- burn
+! rp +10
+! log "Burned the Austral rocket telemetry"
+It makes very little smoke.
+* Return to {flagship} -> end
+
+# ============================================================ The named figures
+
+=== vance_1
+title: Papers, Captain
+when: arriving
+where: port Gatehold
+days: 5+
+chance: 40%
+art: capital
+
+--- start
+Vice Admiral Alistair Vance inspects independents' papers himself when it amuses him. He has a burn scar across the left side of his jaw and the manner of a man correcting a midshipman.
+
+"Driftwood has its uses," he says, turning your clearance over. "It shows which way the current runs."
+
+* Answer his questions civilly -> civil
+* Remind him the armistice gives you the right to be here -> rights
+
+--- civil
+! standing concord +3
+! flag met_vance
+* Return to {flagship} -> end
+
+--- rights
+"The armistice," he says, "was cowardice with a seal on it." He returns your papers all the same.
+! standing concord -3
+! flag met_vance
+* Return to {flagship} -> end
+
+=== vance_2
+title: A Deniable Matter
+when: arriving
+where: power concord
+days: 120+
+chance: 20%
+needs: flag met_vance, ships >= 2
+art: capital
+
+--- start
+Vance has a task that the Gatehold Blockade Squadron cannot be seen to perform: a Tarsene picket that has grown inconvenient. He does not ask whether you will do it. He tells you what it pays.
+
+* Do it -> do
+* Decline -> decline
+
+--- do
+! fight republic dd pt "Tarsene picket" -> done_it
+
+--- done_it
+! credits +12000
+! standing concord +8
+! standing republic -15
+! log "Sank a Tarsene picket for Vice Admiral Vance"
+* Carry on -> end
+
+--- decline
+"Then you are of no use," he says, and means it as a sentence passed.
+! standing concord -5
+! standing republic +4
+* Return to {flagship} -> end
+
+=== vance_3
+title: The Blockade Squadron
+when: at sea
+where: sea Cradle Sea
+chance: 8%
+needs: flag met_vance, ports >= 1
+art: contact
+
+--- start
+The Gatehold Blockade Squadron is waiting for you in line ahead. Vance signals in plain language that an independent flag this close to the Cradle Sea is a breach of good order, and that he has come to restore it.
+
+* Fight him -> fight
+* Turn away and give him the sea today -> away
+
+--- fight
+! fight concord ca dd dd "Gatehold Blockade Squadron" -> won
+
+--- won
+! rp +20
+! standing concord -15
+! log "Beat off Vice Admiral Vance's squadron in the Cradle Sea"
+* Carry on -> end
+
+--- away
+! standing concord -4
+* Carry on -> end
+
+=== voronova_1
+title: A Long Memory
+when: arriving
+where: power directorate, power ombria
+days: 20+
+chance: 15%
+art: port
+
+--- start
+A woman in a naval greatcoat is sitting at your table in the harbour office at {port} when you come in. She is soft-spoken and looks as if she has not slept this year. She lights a cheap Vargan cigarette from the last one.
+
+"Commissar-Captain Voronova. I only wanted to see you. The Directorate likes to know its neighbours, and it remembers them for a very long time."
+
+* Hear her out -> hear
+* Leave -> leave
+
+--- hear
+She asks nothing and threatens nothing. She tells you two things about your own ship that you thought nobody ashore knew.
+! rp +5
+! standing directorate +3
+! flag met_voronova
+* Return to {flagship} -> end
+
+--- leave
+! flag met_voronova
+"Another time," she says.
+* Return to {flagship} -> end
+
+=== voronova_2
+title: The Purge
+when: arriving
+where: power ombria
+days: 150+
+chance: 15%
+needs: flag met_voronova
+art: port
+
+--- start
+Voronova meets you at {port} without her greatcoat. Strelsk has begun purging its wartime officers, and her name is on a list. She needs certain papers to be somewhere her own Admiralty cannot reach, and she is practical about what that is worth.
+
+* Carry her papers out -> carry
+* Report her to the Directorate -> report
+* Refuse -> end
+
+--- carry
+! credits +6000
+! standing directorate -4
+! flag voronova_ally
+! log "Carried Commissar-Captain Voronova's papers out of {port}"
+* Return to {flagship} -> end
+
+--- report
+! standing directorate +8
+! log "Reported Commissar-Captain Voronova to her own service"
+* Return to {flagship} -> end
+
+=== thorne_1
+title: The Price of Everything
+when: arriving
+where: port Port Saffron
+days: 3+
+chance: 50%
+art: port
+
+--- start
+Master Broker Kaelen Thorne is cheerful, sharp-suited, and missing two fingers of his left hand. He prices {flagship} from the quay, aloud, to the nearest hundred, and is right.
+
+"Everybody who comes through Saffron ends up on my books, Captain. Better to start in credit." He offers a line of credit, no paper, to be squared later.
+
+* Take it -> take
+* Decline -> end
+
+--- take
+! credits +3000
+! flag thorne_debt
+* Return to {flagship} -> end
+
+=== thorne_2
+title: Squaring the Book
+when: arriving
+where: port Port Saffron
+days: 90+
+needs: flag thorne_debt
+art: port
+
+--- start
+Thorne has your account open. He is still cheerful.
+
+* [credits >= 4000] Pay him (4,000) -> pay
+* Offer him what you have heard on the lanes -> news
+
+--- pay
+! credits -4000
+! clear thorne_debt
+! standing freeport +4
+* Return to {flagship} -> end
+
+--- news
+He takes it as payment, and looks at you as a man looks at an asset.
+! rp -5
+! clear thorne_debt
+! standing freeport +2
+* Return to {flagship} -> end
+
+=== marlow_1
+title: Red Marlow
+when: at sea
+where: sea Saffron Sea
+days: 15+
+chance: 6%
+art: contact
+
+--- start
+A voice comes up on the open merchant frequency, loud and delighted with itself. "Captain! Red Marlow, of the *Blackwake*. I hear there's a price on something you carry. I'm told I should ask nicely first. Consider yourself asked."
+
+A modified destroyer is closing from the west.
+
+* Fight him -> fight
+* [credits >= 2500] Pay him to go away (2,500) -> pay
+* Run -> run
+
+--- fight
+! fight raiders dd "Blackwake" -> won
+
+--- won
+The *Blackwake* breaks off trailing smoke. The voice comes back, laughing. "Well fought! We'll do this again."
+! credits +3000
+! flag marlow_1
+! log "Drove off Red Marlow's Blackwake"
+* Carry on -> end
+
+--- pay
+! credits -2500
+! flag marlow_1
+"A pleasure doing business."
+* Carry on -> end
+
+--- run
+! fuel -15
+! flag marlow_1
+* Carry on -> end
+
+=== marlow_2
+title: A Drink with Marlow
+when: arriving
+where: power freeport
+days: 100+
+chance: 30%
+needs: flag marlow_1
+art: port
+
+--- start
+Red Marlow is at the bar in {port} with bandages showing under his shirt. He buys you a drink before you can decide whether to shoot him.
+
+He proposes a truce, for exactly as long as it takes to raid a Combine bullion convoy that he cannot take alone.
+
+* Join him -> join
+* Decline -> decline
+
+--- join
+! fight combine dd dd freighter "Bullion convoy" -> won
+
+--- won
+He splits it evenly, to the coin, and seems offended that you counted.
+! credits +18000
+! standing combine -12
+! flag marlow_2
+! log "Raided a Combine bullion convoy with Red Marlow"
+* Carry on -> end
+
+--- decline
+! flag marlow_2
+"Your loss. Next time I see you I won't be buying."
+* Return to {flagship} -> end
+
+=== marlow_3
+title: The Blackwake's Last Run
+when: at sea
+days: 260+
+chance: 6%
+needs: flag marlow_2, era >= 3
+art: contact
+
+--- start
+The voice on the merchant frequency has not changed. The ship has: a missile cruiser now, paid for by somebody who wants you dead.
+
+"Nothing personal, Captain. It never was. Shall we?"
+
+* Finish it -> fight
+* Run, and take what he throws after you -> run
+
+--- fight
+! fight raiders cg dd "Blackwake" -> won
+
+--- won
+The frequency is quiet afterwards. It takes you some time to notice.
+! credits +25000
+! rp +20
+! log "Sank Red Marlow's Blackwake"
+* Carry on -> end
+
+--- run
+! hull -10%
+* Carry on -> end
+
+=== zhao_1
+title: Special Projects
+when: arriving
+where: port Kotaraya
+chance: 30%
+needs: rp >= 30
+art: capital
+
+--- start
+Director Mei-Ling Zhao receives you in an office with no window. She is impeccably polite. She knows, to within a few points, what research your ships have picked up, and she regards wars as a kind of weather in the markets.
+
+"The Combine pays the best price for such things. It would be inefficient to sell them elsewhere."
+
+* Sell her some of what you have -> sell
+* Decline -> end
+
+--- sell
+! rp -20
+! credits +12000
+! standing combine +5
+! flag met_zhao
+* Return to {flagship} -> end
+
+=== zhao_2
+title: Foreclosure
+when: arriving
+where: power combine
+chance: 20%
+needs: flag met_zhao, ports >= 1
+art: capital
+
+--- start
+Director Zhao has a file open, and it is yours. The Combine holds notes against the harbour you have taken, bought quietly from its former creditors. She would prefer a settlement to an enforcement action.
+
+* [credits >= 15000] Settle (15,000) -> settle
+* [rp >= 30] Offer research instead -> research
+* Refuse -> refuse
+
+--- settle
+! credits -15000
+! standing combine +5
+* Return to {flagship} -> end
+
+--- research
+! rp -30
+! standing combine +5
+* Return to {flagship} -> end
+
+--- refuse
+"Then the matter passes to another department," she says, and closes the file.
+! standing combine -12
+* Return to {flagship} -> end
+
+=== vane_1
+title: The Harbourmaster of Sefira
+when: arriving
+where: port Sefira
+days: 10+
+chance: 35%
+art: port
+
+--- start
+Commodore Tomas Vane-Smythe wears a Directorate armband and the face of a man who would like to take it off. He reads your papers aloud for the benefit of the observer in the corner.
+
+When the observer steps out he says, without changing his voice: "A wise fish knows which nights the nets are out. Thursday's nets will be thin."
+
+* Take his meaning -> take
+* Pretend not to have heard -> end
+
+--- take
+! rp +6
+! flag met_vane
+! log "The harbourmaster of Sefira passed on a Vargan convoy's sailing"
+* Return to {flagship} -> end
+
+=== vane_2
+title: Old Debts in Sefira
+when: arriving
+where: port Sefira
+days: 160+
+chance: 25%
+needs: flag met_vane
+art: port
+
+--- start
+Vane-Smythe is waiting on the mole in the rain, alone. Strelsk suspects him. He does not ask anything for himself. He asks whether {flagship} has room for a woman and two children, tonight, with no names in the log.
+
+* Take them -> take
+* You cannot risk it -> refuse
+
+--- take
+They come aboard with one trunk. He stays on the mole until you are out of sight.
+! standing ombria +8
+! standing directorate -8
+! flag vane_family
+! log "Took the harbourmaster of Sefira's family out of the Protectorate"
+* Sail -> end
+
+--- refuse
+He nods as if you had told him the time.
+! standing ombria -4
+* Return to {flagship} -> end
+
+# ============================================================ A squadron, a harbour, a flag
+
+=== mid_prize_crew
+title: The Mutiny of the Prize Crew
+when: at sea
+days: 60+
+chance: 5%
+needs: ships >= 3
+art: contact
+
+--- start
+A veteran prize captain comes aboard {flagship} uninvited. He wants an equal split of salvage for the prize crews, or he takes his ship and half your fuel to Port Saffron.
+
+* [credits >= 4000] Pay the split (4,000) -> pay
+* Face him down in front of his own men -> face
+
+--- pay
+! credits -4000
+* Carry on -> end
+
+--- face
+He backs down. Some of his men do not, and are put ashore at the next harbour.
+! crew -10
+* Carry on -> end
+
+=== mid_wolfpack
+title: Wolfpack in the Fog
+when: at sea
+days: 90+
+chance: 4%
+needs: ships >= 3
+art: storm
+
+--- start
+For three days hydrophones have held faint screws astern that stop when you stop. Somebody's submarines are shadowing the squadron and waiting for a straggler.
+
+* [class freighter] Strip a freighter for bait and spring an ambush -> bait
+* Turn on them now -> turn
+* Work up to full speed and outrun them -> outrun
+
+--- bait
+! fight directorate ss ss "Wolfpack" -> bait_won
+
+--- bait_won
+! credits +6000
+! rp +15
+! log "Ambushed a submarine flotilla with a decoy freighter"
+* Carry on -> end
+
+--- turn
+! fight directorate ss ss ss "Wolfpack" -> turn_won
+
+--- turn_won
+! rp +15
+* Carry on -> end
+
+--- outrun
+! fuel -40
+* Carry on -> end
+
+=== late_ultimatum
+title: The Blockade Ultimatum
+when: at sea
+chance: 6%
+needs: ports >= 1
+art: flag
+
+--- start
+Two notes arrive in the same week. The Concord and the Directorate each demand exclusive coaling rights and a radar station at your harbour. Each note says that the other power's presence there would be regarded as a hostile act.
+
+* Accept the Concord's terms -> concord
+* Accept the Directorate's terms -> directorate
+* Refuse them both -> refuse
+
+--- concord
+! credits +10000
+! standing concord +15
+! standing directorate -15
+* Carry on -> end
+
+--- directorate
+! credits +10000
+! standing directorate +15
+! standing concord -15
+* Carry on -> end
+
+--- refuse
+Neither note is answered. Both powers remember it.
+! standing concord -10
+! standing directorate -10
+! flag embargoed
+! log "Refused both the Concord and the Directorate a station at your harbour"
+* Carry on -> end
+
+=== late_refugees
+title: The Refugee Fleet
+when: at sea
+chance: 6%
+needs: ports >= 1
+art: port
+
+--- start
+Twelve leaking trawlers have come in under your harbour wall: survivors of a raid in the Outer Isles, with no money and nowhere else to go.
+
+* Take them in -> take
+* Turn them away -> turn
+
+--- take
+It strains the stores for a month. The men among them know boats, and they do not forget who opened the gate.
+! food -40
+! fuel -20
+! crew +120
+! standing isles +10
+! log "Took in a refugee fleet from the Outer Isles"
+* Carry on -> end
+
+--- turn
+They go out again on the evening tide, slowly.
+! standing isles -10
+* Carry on -> end
+
+=== end_missile_test
+title: The Missile Test
+when: at sea
+chance: 8%
+needs: ports >= 1, era >= 3, year >= 1950
+art: flag
+
+--- start
+Your engineers have fired a guided missile from a ship's deck and hit what they aimed at: the first such weapon under no great power's flag. Within two days every admiralty has offered you a pact. Within three, somebody has tried to kill your lead designer.
+
+* [credits >= 10000] Guard the designers properly (10,000) -> guard
+* Sign what is offered and trust to it -> sign
+
+--- guard
+! credits -10000
+! rp +30
+! log "Test-fired a guided missile under your own flag, and kept the designers alive"
+* Carry on -> end
+
+--- sign
+The pacts are signed. Two of your designers do not live to see them ratified.
+! standing concord +5
+! standing directorate +5
+! standing pacific +5
+! rp -15
+! log "Test-fired a guided missile under your own flag"
+* Carry on -> end
+
+=== end_second_armistice
+title: The Second Armistice
+when: at sea
+where: near Tarsa 400
+chance: 10%
+needs: ports >= 2, ships >= 8, year >= 1952
+art: flag
+
+--- start
+A collision at the Tarsene Gate has become an exchange of fire, and both battle fleets are putting to sea with missiles on their rails. Yours is the only force near enough, and large enough, to close the Gate to both of them.
+
+* Blockade the Gate, and call them both to {flagship} -> host
+* Stand aside -> aside
+
+--- host
+They come, because the alternative is each other. The talks are held in your wardroom. What is signed there carries your flag's name beside theirs.
+! credits +50000
+! standing concord +15
+! standing directorate +15
+! standing republic +10
+! flag second_armistice
+! log "The Second Armistice was signed aboard {flagship}"
+* Carry on -> end
+
+--- aside
+! log "Stood aside from the crisis at the Tarsene Gate"
+* Carry on -> end

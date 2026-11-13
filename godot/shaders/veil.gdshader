@@ -14,6 +14,8 @@ uniform vec2 screen = vec2(1400.0, 860.0);
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float noise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+// a hash that holds for cell numbers into the thousands
+float rhash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void fragment() {
 	vec2 px = SCREEN_UV * screen;
 	float clear = 0.0;
@@ -32,8 +34,10 @@ void fragment() {
 	// rain: slanting streaks in two layers, moving fast
 	if (rain > 0.0) {
 		vec2 q = vec2(px.x + px.y * 0.35, px.y);
-		float s1 = hash(vec2(floor(q.x / 2.0), floor((q.y + rt * 1900.0) / 70.0)));
-		float s2 = hash(vec2(floor(q.x / 1.5) + 7.0, floor((q.y + rt * 2600.0) / 46.0)));
+		// (cell numbers are kept small: the first hash lost its precision with large ones, and the rain thinned out
+		// across the screen and as the clock ran on - the owner saw it on one side only, 13 Nov 2026)
+		float s1 = rhash(vec2(mod(floor(q.x / 2.0), 1024.0), mod(floor((q.y + mod(rt * 1900.0, 70.0 * 512.0)) / 70.0), 512.0)));
+		float s2 = rhash(vec2(mod(floor(q.x / 1.5) + 7.0, 1024.0), mod(floor((q.y + mod(rt * 2600.0, 46.0 * 512.0)) / 46.0), 512.0) + 517.0));
 		float st = step(0.985, s1) * 0.5 + step(0.99, s2) * 0.35;
 		float ra = st * rain * 0.3;
 		col = mix(col, vec3(0.8, 0.84, 0.88), ra / max(0.001, a + ra)); a = 1.0 - (1.0 - a) * (1.0 - ra);

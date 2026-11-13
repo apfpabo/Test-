@@ -89,6 +89,27 @@ Type 212 (Strelsk), Kuznetsov and Yasen (Korvagrad), Kongo and Mogami (Amakura),
 container ship (Combine Marine), Perry and Independence (Tidewater). **To decide:** which of these, and whether the
 frigates should be a class of their own.
 
+## 7. Prices of the new designs (13 Nov 2026). Moved twice by measurement; his to judge
+
+`tests/duel_measure.tscn` fights each new warship against an established design of her era at about equal money, four
+times, and reports what each side has left. Two passes moved these prices (hull only, before guns):
+
+| Design | First guess | Now | Why |
+|---|---|---|---|
+| Wraith (Zumwalt) | 260,000 | 215,000 | two lost to three Guardians at equal money; one beats one |
+| Umbra (Sea Shadow) | 95,000 | 45,000 | no guns: she loses any duel; she is a stealth missile boat, not a fighter |
+| Trident (Independence) | 120,000 | 60,000 | lightly armed for her size, as the real ship |
+| Kasumi (Mogami) | 130,000 | 90,000 | lost at equal money |
+| Ammiraglio (Thaon di Revel) | 165,000 | 88,000 | lost heavily |
+| Thunderhead (rail-gun cruiser) | 420,000 | 240,000 | lost to two Bastions; the rail gun itself went from 45 damage every 12 s to 55 every 9 s |
+| Luchs, Falchetto (missile boats) | 45,000, 30,000 | 33,000, 18,000 | now even against destroyers at equal money |
+| Wayfarer (patrol vessel) | 40,000 | 12,000 | anti-aircraft guns only |
+| Steadfast, Borough, Hansa, Skorpion | 70,000, 95,000, 80,000, 85,000 | 100,000, 125,000, 110,000, 115,000 | each beat her peer at equal money |
+
+Four fights a pair is a small sample, and submarines cannot be priced this way (a boat that meets destroyers in the open
+loses). **To decide:** whether these stand, and whether any of the losers should be given more to fight with instead of
+being made cheaper.
+
 ## Older lists still open
 
 - The realism review of 11 Nov 2026 (gun and torpedo ranges, a few designs' armament): [`ROADMAP.md`](ROADMAP.md),

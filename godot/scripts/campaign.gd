@@ -1756,12 +1756,24 @@ func call_fleet(f: Dictionary) -> String:
     return "The %s answers your call and alters course to close you, %d km off." % [Campaign.fname(f), int(d * KM_PER_UNIT)]
 
 ## The nearest harbour open to you, by sea.
+## The open harbour nearest by sea (13 Nov 2026: it was the nearest as the crow flies, and a tow was once begun for one on
+## the far side of a continent, forty days round): of the five nearest in a straight line, the one with the shortest course.
 func nearest_open_port():
-    var best = null; var bd := INF
-    for p in G.ports:
-        if hostile(p.fac): continue
-        var d := mdist(p.sx, p.sy, G.player.x, G.player.y)
-        if d < bd: bd = d; best = p
+    var open: Array = G.ports.filter(func(p): return not hostile(p.fac))
+    if open.is_empty(): return null
+    var P: Dictionary = G.player
+    open.sort_custom(func(x, y): return mdist(x.sx, x.sy, P.x, P.y) < mdist(y.sx, y.sy, P.x, P.y))
+    var best = open[0]; var bd := INF
+    for p in open.slice(0, 5):
+        var d: float = mdist(p.sx, p.sy, P.x, P.y)
+        if d >= bd: continue   # even dead straight she is no nearer than the best found
+        var len := d
+        if not sight_line(P.x, P.y, p.sx, p.sy):
+            var pts: Array = find_path(Vector2(P.x, P.y), Vector2(p.sx, p.sy))
+            if pts.is_empty(): continue
+            len = 0.0; var at := Vector2(P.x, P.y)
+            for q in pts: len += mdist(at.x, at.y, q.x, q.y); at = q
+        if len < bd: bd = len; best = p
     return best
 
 ## The fee for a tow to the nearest open port: by the distance, and by what the flag of the ship that tows you thinks

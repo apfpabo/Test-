@@ -11,6 +11,10 @@ var speeds = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]   # times BattleSim.BT: real time, 
 var speed_i = 1
 var paused = false
 var cam_free = false
+var shot_on := false        # the gun-shot camera is riding a shell (its key is held)
+var shot_sh = null          # the shell it rides
+var shot_at := Vector2.ZERO
+var shot_stay := 0.0        # seconds it stays on the fall of shot
 var sel: Array = []          # ships of yours picked out to be given their own orders (empty: orders go to the whole squadron)
 var drag = {}
 var world: Node2D
@@ -251,7 +255,30 @@ func _process(delta: float) -> void:
         var sub = int(ceil(v * BattleSim.BT / 0.04))
         for i in n * sub: sim.step(v / sub)
         sim.fx(dt * cs)
-        if sim.flag != null and not cam_free:
+        # the gun-shot camera (the owner's wish, 13 Nov 2026): while its key is held the camera rides the heaviest shell
+        # last fired by the ship picked out (the flagship if none is) until it lands, stays a moment on the fall of shot,
+        # then takes the next; let go, and it comes back to the ship, centred
+        if Settings.held("battle", KEY_E) and not hud.results_shown:
+            var who = sel[0] if not sel.is_empty() else sim.flag
+            if shot_sh != null and not sim.shells.has(shot_sh): shot_sh = null; shot_stay = 1.4
+            if shot_sh == null and shot_stay <= 0.0 and who != null:
+                var rank := {"S": 0, "M": 1, "L": 2, "H": 3}
+                for i in range(sim.shells.size() - 1, -1, -1):
+                    var sh: Dictionary = sim.shells[i]
+                    if sh.get("who") != who: continue
+                    if shot_sh == null or int(rank[sh.size]) > int(rank[shot_sh.size]) or (sh.size == shot_sh.size and float(sh.t) < float(shot_sh.t)): shot_sh = sh
+            shot_on = true
+            if shot_sh != null:
+                var kk: float = float(shot_sh.t) / float(shot_sh.T)
+                shot_at = shot_sh.pos - Vector2(0, sin(PI * kk) * minf(600.0, shot_sh.s.distance_to(shot_sh.e) * 0.08))   # where it is drawn: lifted by the arc of its flight
+                camera.position = camera.position.lerp(shot_at, minf(1.0, dt * 9.0))
+            elif shot_stay > 0.0: shot_stay -= dt; camera.position = camera.position.lerp(shot_at, minf(1.0, dt * 9.0))
+            elif who != null: camera.position = camera.position.lerp(who.pos, minf(1.0, dt * 4.0))   # waiting for her next salvo
+        elif shot_on:
+            shot_on = false; shot_sh = null; shot_stay = 0.0; cam_free = false   # let go: back to the ship
+            var back = sel[0] if not sel.is_empty() else sim.flag
+            if back != null: camera.position = back.pos
+        elif sim.flag != null and not cam_free:
             var f = sim.flag; var look = minf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 0.18 / zoom()
             camera.position = camera.position.lerp(f.pos + Vector2.from_angle(f.a) * look, minf(1.0, dt * cs * 1.5))
     if sim.finished and not hud.results_shown: hud.show_results()

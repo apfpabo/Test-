@@ -787,6 +787,10 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
                 draw_set_transform(p, m.ta, Vector2(sc, sc) * 1.04)
                 draw_texture(GameData.mount_ao(m.wid), o, Color(1, 1, 1, 0.75))
                 var reach: float = GameData.turret_h(m.w) * 0.85 + 2.8 * lvl
+                # the shadow falls on whatever is under it: on a deckhouse or a bridge it lands nearer than on the open deck
+                # (the owner, 13 Nov 2026: a raised turret's shadow lay far off across the deckhouse's side)
+                var under: float = GameData.ship_h_at(s.rec.type, p.x + sun.x * reach, p.y + sun.y * reach)
+                if under > 0.3: reach = maxf(reach * 0.35, reach - under * 0.85)
                 draw_set_transform(p + sun * reach, m.ta, Vector2(sc, sc))
                 var shc = Color(0, 0, 0, 0.42 if lvl else 0.36)
                 if split: _barrels(bt, m, info, o, shc)
@@ -1069,26 +1073,27 @@ class Drawer extends Node2D:
             # out from it, a crown of thrown water with the droplets showing in it, lit hard on the sun's side and shaded on
             # the other, and a spray of droplets about it rather than a soft mist
             if not sea and h > 0.5:
-                var lean: Vector2 = wind * h * 0.08; var c: Vector2 = q.pos + lean; var r: float = R * (0.75 + 0.35 * rise) * (1.0 + 0.6 * fallK)
-                var a: float = clampf(h / (H * 0.15), 0.0, 1.0); var foam: Texture2D = GameData.fx_tex("foam")
-                _rpuff(foam, c, r * 1.3, q.a, Color(0.82 * nk, 0.9 * nk, 0.9 * nk, 0.3 * a))   # droplets thrown wide
-                _rpuff(foam, c, r * 1.0, q.a + 2.3, Color(0.9 * nk, 0.96 * nk, 0.96 * nk, 0.42 * a))   # and nearer in, thicker
+                # the top of the column, seen from above (the owner, 13 Nov 2026: it stood still while it rose, and thin
+                # rays stuck out of it). It boils: lumps of thrown water roll outward and turn as it climbs, swell as it
+                # tops out, then slump and spread as it falls back, leaning downwind. No rays.
+                var lean: Vector2 = wind * h * 0.08; var c: Vector2 = q.pos + lean
+                var grow: float = 0.75 + 0.35 * rise + 0.25 * clampf(e / (1.6 + stand), 0.0, 1.0)
+                var r: float = R * grow * (1.0 + 0.35 * fallK)
+                var a: float = clampf(h / (H * 0.15), 0.0, 1.0) * pow(1.0 - fallK, 1.5); var foam: Texture2D = GameData.fx_tex("foam")
+                _rpuff(foam, c, r * 1.35, q.a + e * 0.08, Color(0.82 * nk, 0.9 * nk, 0.9 * nk, 0.26 * a))   # droplets thrown wide
+                _rpuff(foam, c, r * 1.0, q.a + 2.3 - e * 0.1, Color(0.9 * nk, 0.96 * nk, 0.96 * nk, 0.38 * a))   # and nearer in, thicker
                 if fine:
-                    for i in 14:   # streaks of water flung out from it: faint, soft and of every length, lit on the sun's side
-                        var j: float = _hash(float(i) + 21.0, float(q.v) + float(q.side) * 0.29); var an: float = q.a + i * TAU / 14.0 + (j - 0.5) * 0.35
-                        var dir := Vector2.from_angle(an); var litk: float = clampf(0.6 - 0.4 * dir.dot(sun), 0.25, 1.0)
-                        var r0: float = r * 0.35; var r1: float = r * (0.75 + 0.6 * j)
-                        var cb := Color(0.9 * nk * litk + 0.08, 0.95 * nk * litk + 0.08, 0.96 * nk * litk + 0.08, 0.26 * a * (1.0 - fallK))
-                        draw_polygon(PackedVector2Array([c + dir * r0 + Vector2(-dir.y, dir.x) * r * 0.06, c + dir * r1, c + dir * r0 - Vector2(-dir.y, dir.x) * r * 0.06]), PackedColorArray([cb, Color(cb, 0.0), cb]))
-                    for i in 9:   # a lumpy crown of thrown water, not a ball: puffs round the middle, each its own size
+                    for i in 11:   # lumps of water rolling outward from the middle, each its own size, pace and turn
                         var j: float = _hash(float(i) + 3.0, float(q.v) + float(q.side) * 0.53); var j2: float = _hash(float(i) + 11.0, float(q.side) * 0.61)
-                        var an: float = q.a + i * TAU / 9.0 + (j2 - 0.5) * 0.9
-                        _rpuff(GameData.fx_tex("cloud%d" % (i % 4)), c + Vector2.from_angle(an) * r * (0.2 + 0.4 * j), r * (0.26 + 0.3 * j2), an * 1.7, Color(0.92 * nk, 0.97 * nk, 0.97 * nk, (0.7 + 0.3 * j) * a))
-                _rpuff(cl, c, r * 0.72, q.a + 1.0, Color(0.97 * nk, 0.99 * nk, 0.99 * nk, a))
+                        var an: float = q.a + i * TAU / 11.0 + (j2 - 0.5) * 0.9 + e * (j - 0.5) * 0.25
+                        var out: float = (0.12 + 0.3 * j) + minf(e, 3.0) * (0.04 + 0.05 * j2) + 0.2 * fallK
+                        var rad: float = r * (0.18 + 0.22 * j2) * (0.85 + 0.25 * sin(e * (1.3 + j) + j2 * 6.0)) * (1.0 - 0.4 * fallK)
+                        _rpuff(GameData.fx_tex("cloud%d" % (i % 4)), c + Vector2.from_angle(an) * r * out, rad, an * 1.7 + e * (j2 - 0.5), Color(0.9 * nk, 0.95 * nk, 0.96 * nk, (0.35 + 0.25 * j) * a))
+                _rpuff(cl, c, r * 0.68 * (1.0 - 0.3 * fallK), q.a + 1.0 + e * 0.12, Color(0.97 * nk, 0.99 * nk, 0.99 * nk, a))
                 if fine:
-                    _rpuff(cl, c + sun * r * 0.28, r * 0.6, q.a + 2.0, Color(0.36 * nk, 0.48 * nk, 0.55 * nk, 0.55 * a))   # its shaded side, firmly
-                    _rpuff(cl, c - sun * r * 0.2, r * 0.38, q.a + 3.0, Color(nk, nk, nk, 0.9 * a))                       # its lit crown
-                    _rpuff(foam, c, r * 0.85, q.a * 2.0, Color(0.6 * nk, 0.72 * nk, 0.76 * nk, 0.25 * a))                # the droplets in it: water, not vapour
+                    _rpuff(cl, c + sun * r * 0.28, r * 0.58, q.a + 2.0 - e * 0.1, Color(0.36 * nk, 0.48 * nk, 0.55 * nk, 0.5 * a))   # its shaded side
+                    _rpuff(cl, c - sun * r * 0.2, r * 0.36, q.a + 3.0 + e * 0.15, Color(nk, nk, nk, 0.85 * a))                      # its lit crown
+                    _rpuff(foam, c, r * 0.85, q.a * 2.0 + e * 0.2, Color(0.6 * nk, 0.72 * nk, 0.76 * nk, 0.22 * a))                 # the droplets in it
 
     ## The sea sinking round the shot (the owner's reference, 12 Nov 2026): one quad a splash for its first five seconds,
     ## lit as a surface by shaders/sink.gdshader (a bowl, a ragged lip, ripples). The progress, a seed and the light ride
@@ -1125,12 +1130,14 @@ class Drawer extends Node2D:
             var ak: float = minf(1.0, e / 1.5) * (1.0 - k)
             _puff(glow, q.pos, sz * (1.8 + 0.05 * e), Color(0.25 * nk, 0.55 * nk, 0.52 * nk, 0.3 * ak))   # aerated water, paler green
             var t0: float = (1.6 + BattleSim.col_stand(sz)) * 0.8
-            if e > t0:
-                var la: float = minf(1.0, (e - t0) / 2.5) * pow(1.0 - k, 1.4) * 0.85; var r: float = sz * (3.0 + 2.5 * k)
+            if e > t0:   # the foam left behind: soft broken patches drifting downwind and thinning (the owner found the crackled lace weird, 13 Nov 2026)
+                var la: float = minf(1.0, (e - t0) / 2.5) * pow(1.0 - k, 1.4) * 0.55; var r: float = sz * (2.2 + 2.0 * k)
                 if la > 0.01 and r * battle.zoom() > 1.0:
-                    draw_set_transform(q.pos, wind.angle() + q.a * 0.15, Vector2(1.45, 0.85))
-                    draw_texture_rect(GameData.lace_tex(maxi(0, q.v) % 3), Rect2(-r, -r, 2 * r, 2 * r), false, Color(0.92 * nk, 0.97 * nk, 0.95 * nk, la))
-                    draw_set_transform(Vector2.ZERO)
+                    var foam_t: Texture2D = GameData.fx_tex("foam")
+                    for i in 7:
+                        var j: float = _hash(float(i) + 31.0, float(q.side) * 0.37); var j2: float = _hash(float(i) + 47.0, float(q.side) * 0.19)
+                        var off: Vector2 = Vector2.from_angle(q.a + i * TAU / 7.0 + j * 1.2) * r * (0.15 + 0.55 * j2) + wind * r * 0.35 * k
+                        _rpuff(foam_t, q.pos + off, r * (0.35 + 0.3 * j) * (1.0 + 0.4 * k), q.a + i * 1.9 + e * 0.02, Color(0.9 * nk, 0.96 * nk, 0.95 * nk, la * (0.5 + 0.5 * j2)))
 
     ## Columns of water thrown up by shells and depth charges: one quad each, drawn by shaders/burst.gdshader (the
     ## progress, a seed and whether it is a depth charge ride in the quad's colour).

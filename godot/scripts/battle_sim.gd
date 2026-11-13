@@ -168,6 +168,7 @@ class Part:
     var done = false
     var drag = 0.16       # fraction of speed kept per second
     var spin = 0.0        # radians per second (smoke and fireballs turn as they roll)
+    var s0 = 0.0          # the size a splash began at: what it may grow to is reckoned from this, not from what it has grown to
 
 var AW = 26000.0
 var AH = 22000.0
@@ -1206,7 +1207,8 @@ func fx_splash_new(p: Vector2, size: float) -> void:
     # and grows a little; the sea's bowl stays one bowl, kept deep while the hits go on
     var merged: Part = _near_part(splash_cols, p, size, 1.0, 1.6 + col_stand(size) + 0.4)
     if merged != null:
-        merged.size = minf(maxf(merged.size, size) * 1.06, maxf(merged.size, size) * 1.5)
+        if merged.s0 <= 0.0: merged.s0 = merged.size
+        merged.size = minf(maxf(merged.size, size) * 1.06, maxf(merged.s0, size) * 1.5)   # (capped from where it began: shells on one spot grew it without end)
         if merged.life > 1.6: merged.life = 1.6   # standing again, from the top of its rise: no shrinking, no jump
         merged.mx = col_life(merged.size)
     else:
@@ -1215,7 +1217,8 @@ func fx_splash_new(p: Vector2, size: float) -> void:
     if fl != null:
         var d: float = fl.pos.distance_to(p)
         fl.pos = fl.pos.lerp(p, 0.35)   # centred among the shells that made it
-        fl.size = minf(maxf(fl.size, size) * 1.02 + d * 0.1, maxf(fl.size, size) * 1.25)   # (it grew to swallow the salvo)
+        if fl.s0 <= 0.0: fl.s0 = fl.size
+        fl.size = minf(maxf(fl.size, size) * 1.02 + d * 0.1, maxf(fl.s0, size) * 1.25)   # (it grows to swallow the salvo, but never past a quarter more than it began: the owner saw it grow without end under fire on one spot)
         fl.life = minf(fl.life, 2.0)   # the bowl held deep while the shells keep coming; its slick starts when they stop
     else: var l := part(P.LACE, p, 10.0 + size * 1.2, size, Vector2.ZERO, true); l.v = randi() % 3; l.a = randf() * TAU; l.side = randi() % 997; splash_laces.append(l)
     for i in 3 + int(size * 0.25):   # droplets thrown out at the first instant

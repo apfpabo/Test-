@@ -77,10 +77,14 @@ func _retune_hunters() -> void:
 			for q in Campaign.perk("hunted", []): if q.name == f.name: h = q
 			var cap: float = float(h.get("budget", 50000)) * (1.0 + G.day / 200.0)
 			var tl = Campaign.enemy_tech(Campaign.fac_era(f.fac)); var pool: Array = Campaign.C.PATROL_POOL.get(f.fac, Campaign.C.PATROL_POOL.raiders)
-			var ships: Array = Campaign.build_to_strength(pool, clampf(hunt_scale * Campaign.hunt_k() * Campaign.strength(G.fleet), minf(Campaign.HUNT_FLOOR, cap), cap), 4, f.fac, tl)
+			var ships: Array = Campaign.build_to_strength(pool, clampf(hunt_scale * Campaign.hunt_k() * Campaign.own_strength(), minf(Campaign.HUNT_FLOOR, cap), cap), 4, f.fac, tl)
 			if not ships.is_empty(): f.ships = ships
 		if not rec.has("hunters"): rec["hunters"] = []
-		rec.hunters.append({"day": int(G.day), "name": f.name, "ships": f.ships.size(), "tons": _tons(f.ships), "ratio": Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))})
+		rec.hunters.append({"day": int(G.day), "name": f.name, "ships": f.ships.size(), "tons": _tons(f.ships), "ratio": Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength())})
+
+## A prudent captain takes a prize or raises a wreck only if the squadron stays four-fifths manned (the prize screen's
+## warning, 13 Nov 2026); otherwise he scuttles her for a tenth of her worth.
+func _will_crew(type: String) -> bool: return Campaign.manned_with(int(GameData.hulls[type].crew)) >= 0.8
 
 func _near_port_name() -> String:
 	var P: Dictionary = Campaign.G.player; var best = null
@@ -129,7 +133,7 @@ func _daily() -> void:
 func _met(f: Dictionary) -> void:
 	var G: Dictionary = Campaign.G; var P: Dictionary = G.player
 	if Campaign.hostile_fleet(f):
-		var ratio: float = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
+		var ratio: float = Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength())
 		var evade: float = clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0 + Campaign.trait_evade(), Campaign.EVADE_FLOOR, 0.92)
 		tried = false
 		if ratio > 0.8:
@@ -145,13 +149,13 @@ func _met(f: Dictionary) -> void:
 
 ## Outgunned and caught all the same, he orders the squadron to withdraw (as the battle screen's retreat order does).
 func _orders(sim: BattleSim, f: Dictionary) -> void:
-	if Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(Campaign.G.fleet)) > 1.0: sim.order = "retreat"; sim.hold_fire = false
+	if Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength()) > 1.0: sim.order = "retreat"; sim.hold_fire = false
 
 func _fight(f: Dictionary) -> void:
 	var G: Dictionary = Campaign.G; var c0 := float(G.credits); var mine := _tons(G.fleet)
 	var kinds := {}
 	for s in f.ships: var k: String = GameData.hulls[s.type].klass if GameData.hulls.has(s.type) else "?"; kinds[k] = int(kinds.get(k, 0)) + 1
-	var ratio0: float = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
+	var ratio0: float = Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength())
 	var n_e: int = f.ships.size(); var t_e := _tons(f.ships); var b0: int = st.battles; var w0: int = st.won; var s0: int = st.sunk; var l0: int = st.lost_ships
 	super(f)
 	if Campaign.G.is_empty(): return

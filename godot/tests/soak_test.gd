@@ -161,10 +161,15 @@ func _fight(f: Dictionary) -> void:
 	ok(shifted or G.fleet.size() == before - r.lost.size(), "after a battle the squadron is the ships that were not lost (%d before, %d lost, %d now)" % [before, r.lost.size(), G.fleet.size()])
 	for w in r.get("wrecks", []):   # raise what wrecks can be raised, as the aftermath screen offers
 		G.cargo.steel = maxf(float(G.cargo.steel), float(Campaign.recover_cost(w.rec).steel))
-		if Campaign.can_recover(w) == "": Campaign.recover(w); st["raised"] = int(st.get("raised", 0)) + 1
+		if Campaign.can_recover(w) == "" and _will_crew(String(w.rec.type)): Campaign.recover(w); st["raised"] = int(st.get("raised", 0)) + 1
 	for s in r.prizes:   # take prizes into the squadron while there is room, as the aftermath screen offers
-		if G.fleet.size() < 10: s.pal = "player"; G.fleet.append(s); Campaign.study_prize(s); st.prizes += 1
+		if G.fleet.size() < 10 and _will_crew(String(s.type)): s.pal = "player"; G.fleet.append(s); Campaign.study_prize(s); st.prizes += 1
+		elif G.fleet.size() < 10: G.credits += round(Campaign.ship_value(s) * 0.1)   # scuttled, as the aftermath screen offers
 	if not sim.finished: f.cool = 30.0
+
+## A hook for scripts built on this one: whether to take a prize or raise a wreck of this design (the soak tops up his
+## crew, so always; the tuning probe's purser does not).
+func _will_crew(_type: String) -> bool: return true
 
 ## A hook for scripts built on this one (tests/tune_probe.gd): orders for the squadron as the action opens.
 func _orders(_sim: BattleSim, _f: Dictionary) -> void: pass

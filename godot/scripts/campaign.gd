@@ -442,14 +442,18 @@ func refit_text(ships: Array) -> String:
     if n == 0: return ""
     return "%d of them %s been refitted (%s)." % [n, "has" if n == 1 else "have", ", ".join(kinds.keys())]
 ## Motor torpedo boats count for PT_STRENGTH_MULT times their price (the owner, 13 Nov 2026, decision 8d: three boats
-## sank a destroyer the contact panel called their equal), on either side.
+## sank a destroyer the contact panel called their equal) in a force that comes at you; your own squadron's boats count
+## at their price (own_strength; the owner, 13 Nov 2026: a hunter group of corvettes read as the weaker side against the
+## Hijacker's two boats, and sank them).
 const PT_STRENGTH_MULT := 2.0
 ## The least chance of breaking off from a contact, whatever the speeds (was 0.1; the owner, 13 Nov 2026).
 const EVADE_FLOOR := 0.22
-func strength(ships: Array) -> float:
+func strength(ships: Array, boats: float = PT_STRENGTH_MULT) -> float:
     var t = 0.0
-    for s in ships: t += ship_value(s) * (0.3 + 0.7 * s.hullFrac) * (PT_STRENGTH_MULT if hull(s).klass == "pt" else 1.0)
+    for s in ships: t += ship_value(s) * (0.3 + 0.7 * s.hullFrac) * (boats if hull(s).klass == "pt" else 1.0)
     return t
+## The strength of the squadron you sail with, its torpedo boats at their price (see PT_STRENGTH_MULT).
+func own_strength() -> float: return strength(G.fleet, 1.0)
 func cargo_cap() -> int:
     var t = 0
     for s in all_ships(): t += int(hull(s).cargo)
@@ -484,6 +488,9 @@ func crew_need() -> int:
     var t = 0
     for s in all_ships(): t += int(hull(s).crew)
     return t
+## How well manned the squadron would be with `extra` more berths to fill (a prize taken, say), 0..1. A ship short of
+## crew steams, reloads and fights fires slowly (crew_frac).
+func manned_with(extra: int) -> float: return minf(1.0, G.crew / maxf(1.0, crew_need() + extra))
 func crew_frac() -> float: return minf(1.0, G.crew / maxf(1.0, crew_need()))
 func fuel_use() -> float:
     var t = 0.0
@@ -1130,7 +1137,7 @@ func spawn_fleet(kind: String, fac: String, initial := false, mission = null) ->
         f.captain = ["\"Hook\" Marlowe", "Ysolde Crane", "\"Bosun\" Teague", "Anika Vell", "Black Corwin", "Mother Grist", "\"Lantern\" Pike", "Severin Oakes"].pick_random()
         f.name = "Bounty: " + f.captain
         # sized to the squadron it is posted against (BOUNTY_SIZE): some can be taken, some should be left alone
-        var want: float = clampf(randf_range(BOUNTY_SIZE.x, BOUNTY_SIZE.y) * strength(G.fleet), BOUNTY_FLOOR, BOUNTY_CEIL)
+        var want: float = clampf(randf_range(BOUNTY_SIZE.x, BOUNTY_SIZE.y) * own_strength(), BOUNTY_FLOOR, BOUNTY_CEIL)
         f.ships = build_to_strength(["pt", "dd", "ss", "cl", "ca", "bb"], want / 1.1, 6, "raiders", tl)   # (a tenth kept back for their refits: make_variant below)
         f.reward = round(strength(f.ships) * 0.35 / 500.0) * 500
     if f.ships.is_empty(): f.ships.append(new_ship("pt" if fac == "raiders" else "corvette", null, f.fac, tl))
@@ -1174,7 +1181,7 @@ func spawn_hunter(h: Dictionary) -> Dictionary:
     var tl = enemy_tech(fac_era(fac)); var pool: Array = C.PATROL_POOL.get(fac, C.PATROL_POOL.raiders)
     # sized to the squadron it is sent after (HUNT_K), no bigger than the origin's budget for it (which grows with the date)
     var cap: float = float(h.budget) * (1.0 + G.day / 200.0)
-    f.ships = build_to_strength(pool, clampf(hunt_k() * strength(G.fleet), minf(HUNT_FLOOR, cap), cap), 4, fac, tl)
+    f.ships = build_to_strength(pool, clampf(hunt_k() * own_strength(), minf(HUNT_FLOOR, cap), cap), 4, fac, tl)
     if f.ships.is_empty(): f.ships.append(new_ship("dd", null, fac, tl))
     f.capt = randi_range(4, 7)   # they send a good man after you
     G.fleets.append(f)
@@ -1490,7 +1497,7 @@ func update(dt: float) -> void:
     else: coast(P, dt)
     Diplomacy.clash_tick(dt)
     Structures.tick(dt)
-    var ps = strength(G.fleet)
+    var ps = own_strength()
     var pr := strike_reach(G.fleet, Weather.air_ok(weather_here(), has_tech("jets")))
     # per tick, not per fleet: how far you see, and which flags are at war with you (this loop runs for every fleet in
     # the world on every tick, eight times a frame at 8x, so nothing in it is worked out twice)

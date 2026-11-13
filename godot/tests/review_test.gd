@@ -1245,7 +1245,7 @@ func _grace() -> void:
 	for want in [["co_flower"], ["dd_fletcher", "dd_fletcher", "cl_cleveland"], ["bb_iowa", "ca_baltimore", "ca_baltimore", "cl_cleveland", "dd_fletcher", "dd_fletcher"]]:
 		G.fleet = []
 		for t in want: G.fleet.append(Campaign.new_ship(t, null, "player", []))
-		var me: float = Campaign.strength(G.fleet); var lo := INF; var hi := 0.0
+		var me: float = Campaign.own_strength(); var lo := INF; var hi := 0.0
 		for i in 12:
 			var f := Campaign.spawn_fleet("bounty", "raiders"); var k: float = Campaign.strength(f.ships) / me
 			lo = minf(lo, k); hi = maxf(hi, k); G.fleets.erase(f)
@@ -1257,7 +1257,7 @@ func _grace() -> void:
 	ok(not G.fleets.any(func(f): return f.get("hunter", false)), "no hunters are sent after a Survivor before day %d" % Campaign.HUNT_GRACE)
 	G.day = Campaign.HUNT_GRACE + 5; Campaign.maintain_fleets(false)
 	var hs: Array = G.fleets.filter(func(f): return f.get("hunter", false))
-	var hk: float = Campaign.strength(hs[0].ships) / Campaign.strength(G.fleet) if not hs.is_empty() else 0.0
+	var hk: float = Campaign.strength(hs[0].ships) / Campaign.own_strength() if not hs.is_empty() else 0.0
 	ok(not hs.is_empty() and hk > 0.8 and hk < 3.0, "after that they come, about %.1f times as strong as her destroyer (%.2f)" % [Campaign.HUNT_K, hk])
 	# officers on half pay while you serve no one (tuning: a warship captain could not pay his way)
 	Campaign.new_game("disgraced"); G = Campaign.G
@@ -1766,6 +1766,9 @@ func _traits() -> void:
 	# the balance preset
 	var pt: Dictionary = Campaign.new_ship("pt_elco", "P", "raiders", []); var dd: Dictionary = Campaign.new_ship("dd_fletcher", "D", "raiders", [])
 	ok(is_equal_approx(Campaign.strength([pt]), Campaign.ship_value(pt) * Campaign.PT_STRENGTH_MULT) and is_equal_approx(Campaign.strength([dd]), Campaign.ship_value(dd)), "a motor torpedo boat counts double in a force's strength; a destroyer as she is")
+	var keep: Array = G.fleet.duplicate(); G.fleet = [pt]
+	ok(is_equal_approx(Campaign.own_strength(), Campaign.ship_value(pt)), "your own torpedo boat counts at her price in your squadron's strength, not double")
+	G.fleet = keep
 	G.day = Campaign.HUNT_GRACE
 	var k0: float = Campaign.hunt_k(); G.day = Campaign.HUNT_GRACE + 200; var k1: float = Campaign.hunt_k(); G.day = 2000
 	ok(is_equal_approx(k0, 1.15) and is_equal_approx(k1, 1.30) and is_equal_approx(Campaign.hunt_k(), 1.45), "hunters come at 1.15 times your strength, rising to 1.45 and no more (%.2f, %.2f, %.2f)" % [k0, k1, Campaign.hunt_k()])

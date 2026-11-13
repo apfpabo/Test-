@@ -1022,6 +1022,11 @@ func max_gun_range(s: CShip) -> float:
 func has_kind(s: CShip, k: String) -> bool:
     for m in s.mounts: if m.w.kind == k and not m.dead: return true
     return false
+## As has_kind, and with something left to fire (13 Nov 2026: two missile ships with their cells empty kept 5 km apart
+## for the rest of the action, out of gun range, and it ended without a shot).
+func has_loaded(s: CShip, k: String) -> bool:
+    for m in s.mounts: if m.w.kind == k and not m.dead and m.ammo != 0: return true
+    return false
 
 ## Whether a mount can bear on a local bearing: x is 1 if it can, y is the bearing clamped to its arc.
 ## A fixed bow or stern tube fires on a gyro angle: the torpedo leaves the tube and turns onto her course, so the tube
@@ -2496,7 +2501,7 @@ func _ai_auto(s: CShip, dt: float) -> void:
     if s.d.kind == "carrier": pref = 15000.0
     elif s.d.kind == "merchant": pref = 9000.0
     elif s.sub or s.d.kind == "pt": pref = 6000.0 if s.torp_run_t > 0 else 2600.0
-    elif has_kind(s, "ssm"): pref = 9000.0
+    elif has_loaded(s, "ssm"): pref = 9000.0   # (missiles still in her cells: once they are fired she closes to gun range)
     else: pref = max_gun_range(s) * 0.78
     if s.d.kind != "carrier" and s.d.kind != "merchant": pref *= maxf(0.5, 1 - t / 1500.0) * temper_k(s, 0.75, 1.0, 1.2)   # a bold captain closes, a cautious one keeps the range open
     s.torp_run_t -= dt; s.side_t -= dt

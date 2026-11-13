@@ -1242,7 +1242,7 @@ func _counts(ships: Array) -> String:
 
 func _on_encounter(f: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; P.tx = null; P.route = null; P.follow = null
-    var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
+    var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength())
     var odds = "They badly outgun you." if ratio > 1.6 else ("They have the heavier squadron." if ratio > 1.1 else ("It would be an even fight." if ratio > 0.75 else "You outgun them."))
     var evade = int(round(clampf(0.4 + (Campaign.fleet_map_speed(G.fleet) - Campaign.fleet_map_speed(f.ships)) / 40.0 + float(Campaign.perk("evade", 0)) / 100.0 + Campaign.trait_evade(), Campaign.EVADE_FLOOR, 0.92) * 100))
     open_panel(func(box):
@@ -1285,7 +1285,7 @@ func _hail(f: Dictionary) -> void:
 func _hail_body(box: Control, f: Dictionary) -> void:
     var G: Dictionary = Campaign.G; var P: Dictionary = G.player; f.answering = false
     var en = Campaign.enemies_of(f.fac)
-    var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))
+    var ratio = Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength())
     var odds = "They badly outgun you." if ratio > 1.6 else ("They have the heavier squadron." if ratio > 1.1 else ("It would be an even fight." if ratio > 0.75 else "You outgun them."))
     box.add_child(UI.title(f.name)); box.add_child(_lead_pic(f)); _p(box, "%s ships close to signalling distance: %s." % [GameData.fac[f.fac].name, _counts(f.ships)])
     var merchant: bool = f.kind == "convoy" or f.ships.all(func(s): return Campaign.hull(s).kind == "merchant")
@@ -1406,7 +1406,10 @@ func _show_aftermath(r: Dictionary) -> void:
             for s in r.prizes:
                 var h: Dictionary = GameData.hulls[s.type]
                 if s.get("taken", "") != "": _p(box, "%s · %s · %s" % [s.name, h.name, s.taken], UI.GREEN); continue
-                box.add_child(UI.row([UI.label("%s · %s · %d%% · needs %d crew" % [s.name, h.name, int(s.hullFrac * 100), h.crew]),
+                # what a prize crew costs the rest (the owner, 13 Nov 2026: warn, do not refuse)
+                var mn: float = Campaign.manned_with(int(h.crew)); var plab: String = "%s · %s · %d%% · needs %d crew" % [s.name, h.name, int(s.hullFrac * 100), h.crew]
+                if mn < 0.9: plab += ". Taking her leaves your squadron %d%% manned." % int(mn * 100)
+                box.add_child(UI.row([UI.label(plab, UI.RED if mn < 0.6 else (UI.GOLD if mn < 0.9 else UI.INK)),
                     UI.button("Take as prize", func(): _take_prize(s), true, Campaign.can_add_ship(s.type) != ""),
                     UI.button("Scuttle for " + Campaign.fmt(Campaign.ship_value(s) * 0.1), func(): s.taken = "Scuttled"; Campaign.G.credits += round(Campaign.ship_value(s) * 0.1); _show_aftermath(r))]))
         var wr: Array = r.get("wrecks", [])

@@ -29,7 +29,7 @@ if (world.stats.leaks.length) { console.error('choke points fail:', world.stats.
 // Routes and lanes keep this many mask cells (two chart units each) clear of the chart's top and bottom edges: the game counts
 // the outermost rows as land, and a course along the very top lay hidden under the chart's top bar (the owner's report and a
 // test campaign's squadron jammed there for six months, 13 Nov 2026).
-const EDGE = 20;
+const EDGE = 6;
 const onLand = (x, y) => { if (y < 2 || y >= MH - 2) return true; return mask[Math.floor(y / MASK_RES) * CW + Math.floor(wrapX(x) / MASK_RES)] === 1; };
 const landNear = (x, y, pad) => { if (onLand(x, y)) return true; if (!pad) return false; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; if (onLand(x + Math.cos(a) * pad, y + Math.sin(a) * pad)) return true; } return false; };
 function nearestWater(x, y, maxR = 60) {

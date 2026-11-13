@@ -95,7 +95,16 @@ func _pick_course() -> void:
 	if open.is_empty(): open = G.ports.filter(func(p): return Campaign.mdist(p.sx, p.sy, P.x, P.y) > 20.0)
 	open.sort_custom(func(x, y): return Campaign.mdist(x.sx, x.sy, P.x, P.y) < Campaign.mdist(y.sx, y.sy, P.x, P.y))
 	var p: Dictionary = open[randi() % mini(6, open.size())]   # one of the nearer harbours, so the year is spent in several seas
-	if Campaign.set_course(P, p.sx, p.sy):
+	# (near by sea, not as the crow flies: a harbour across a neck of land may be weeks round, and he ran his bunkers dry
+	# making for such ones, 13 Nov 2026; nor one beyond what his fuel will fetch, while a nearer is to be had)
+	var reach: float = INF
+	if Campaign.fuel_use() > 0.0: reach = (float(G.cargo.fuel) + Campaign.reserve()) / maxf(0.01, Campaign.fuel_burn()) * Campaign.player_speed() * 10.0 * 0.8
+	for k in 6:
+		if not Campaign.set_course(P, p.sx, p.sy): break
+		var far: float = Campaign.route_remaining(P)
+		if (far <= 2.5 * Campaign.mdist(p.sx, p.sy, P.x, P.y) + 150.0 and far <= reach) or k == 5: break
+		p = open[k % mini(6, open.size())]
+	if P.get("route") != null or Campaign.set_course(P, p.sx, p.sy):
 		P.destPort = int(p.id)
 		if verbose: print("  [%d] course for %s, %d km, %d kn on the chart" % [int(G.day), p.name, int(Campaign.route_remaining(P) * Campaign.KM_PER_UNIT), int(Campaign.player_speed() / 0.576 * 0.7)])
 	else:

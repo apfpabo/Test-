@@ -232,7 +232,8 @@ func _process(delta: float) -> void:
     if not free_cam: cam = Vector2(G.player.x, G.player.y)
     var vs = get_viewport_rect().size
     cam.x = Campaign.wrap_x(cam.x)
-    cam.y = clampf(cam.y, vs.y / 2 / zoom - 40, Campaign.MH - vs.y / 2 / zoom + 40) if vs.y / zoom < Campaign.MH else Campaign.MH / 2
+    var over: float = maxf(40.0, 120.0 / zoom)   # room to bring the chart's very top and bottom out from under the bars (the Northern Passage runs 40 units from the edge)
+    cam.y = clampf(cam.y, vs.y / 2 / zoom - over, Campaign.MH - vs.y / 2 / zoom + over) if vs.y / zoom < Campaign.MH else Campaign.MH / 2
     world.scale = Vector2(zoom, zoom); world.position = vs / 2 - cam * zoom
     if absf(zoom - last_coast_zoom) / maxf(last_coast_zoom, 0.01) > 0.4:  # coast lines keep roughly a pixel wide; redrawing 16k points per wheel step was slow
         last_coast_zoom = zoom

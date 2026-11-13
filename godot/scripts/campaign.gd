@@ -170,7 +170,7 @@ func open_sea(x: float, y: float) -> bool:
     return false
 ## A squadron lying on the chart's outermost rows, or on a course that runs along them, cannot move (older charts had
 ## lanes there): she is put back on the nearest lane and her course dropped. Run when a game is loaded and each day.
-const EDGE_Y := 12.0
+const EDGE_Y := 8.0   # (lanes come no nearer the edge than 12 units)
 func off_edge(o: Dictionary) -> bool:
     var bad: bool = float(o.y) < EDGE_Y or float(o.y) > MH - EDGE_Y
     var r = o.get("route")

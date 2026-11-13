@@ -32,6 +32,7 @@
       { "pts": [[-109.7, -5.4]], "r": 0.4 }
     ],
     "carve": [
+      { "note": "The Northern Passage (the owner, 13 Nov 2026: can the North path be made so that it is still usable?): open water along the top of the world, where the land ran up to the chart's edge and left a sliver one cell wide. In the pack ice for much of the year: slow and hard on fuel, but a way round.", "pts": [[-72, 80.2], [-30, 80.2], [20, 80.2], [70, 80.2], [122, 80.2]], "r": 1.25 },
       { "note": "the Gulf of Strelsk, behind the Strelsk Sounds", "pts": [[7.5, 59.9], [3, 59.3], [-3, 58.6], [-9, 58], [-14, 57.2]], "r": [1.0, 1.9, 2.6, 2.6, 1.7] },
       { "note": "the isle south-east of Kotaraya, given bays so it is not a plain capsule", "pts": [[-103.5, -5.7], [-104.2, -4.5]], "r": 0.7 },
       { "pts": [[-99.6, 3.7], [-99.2, 2.1]], "r": 0.65 },

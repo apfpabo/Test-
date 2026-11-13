@@ -649,6 +649,7 @@ class Keel extends Node2D:
             var a1 := Vector2(a.x, hi * (a.y + off * 0.25 * ka)); var b1 := Vector2(b.x, hi * (b.y + off * 0.25 * kb))
             var a2 := Vector2(a.x, hi * (a.y + off * ka)); var b2 := Vector2(b.x, hi * (b.y + off * kb))
             var grey := Color(0.3, 0.32, 0.34); var red := Color(0.5, 0.15, 0.12); var deep := Color(0.3, 0.1, 0.09)
+            if view.s.d.p.get("stealth", {}).has("dark"): grey = Color(0.1, 0.105, 0.115)   # a ship painted near black shows a dark side too (the Sea Shadow)
             draw_primitive(PackedVector2Array([a0, b0, b1, a1]), PackedColorArray([grey, grey, grey.darkened(0.25), grey.darkened(0.25)]), PackedVector2Array())
             draw_primitive(PackedVector2Array([a1, b1, b2, a2]), PackedColorArray([red, red, deep, deep]), PackedVector2Array())
             draw_line(a1, b1, Color(0.08, 0.08, 0.08, 0.8), 0.25)   # the boot-topping

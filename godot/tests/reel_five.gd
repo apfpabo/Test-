@@ -138,7 +138,7 @@ func _init_sinking() -> void:
 	marks = {"cam": B.pos, "zoom": 0.78 * 1080.0 / float(B.d.L), "hits": [3.0, 6.5], "h": 0, "sunk": false}
 func _torp(s, side_: float, along: float) -> void:
 	var p: Vector2 = s.pos + Vector2(along * float(s.d.L), side_ * float(s.d.B) * 0.45).rotated(s.a)
-	sim.hit_systems(s, p, 420.0, "torp"); sim.damage(s, 420.0, "torp"); sim.part(BattleSim.P.GEYSER, p, 1.6, 40.0); sim.fx_boom(p, 30.0, 1.0)
+	sim.hit_systems(s, p, 420.0, "torp"); sim.damage(s, 420.0, "torp"); sim.part(BattleSim.P.GEYSER, p, 1.6, 40.0); sim.fx_boom(p, 30.0, 1.0); sim.sound("torp_hit", p, 0.9)
 func _run_sinking(d: float, vw: float) -> float:
 	if B.alive: B.v = maxf(0.0, 6.0 - t * 0.5)
 	var h: int = int(marks.h)

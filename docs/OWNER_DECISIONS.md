@@ -69,7 +69,7 @@ jamming. Candidates, levelled to one loudness, are on the listening page "Iron M
 (https://claude.ai/artifact/PZL2UfbDwiHdz4hAXYCh3T) and in `tools/sound_candidates.json` ("gaps_12_nov"). None is in
 the game until the owner has chosen.
 
-## 6. More Era III and Era IV designs, by shipyard (13 Nov 2026). Decided: the first batch is built, frigates are a class of their own; the rest of the table is still open
+## 6. More Era III and Era IV designs, by shipyard (13 Nov 2026). Decided and built: the whole table, frigates a class of their own
 
 Only Tidewater and Korvagrad build past Era II (Calder has one Era IV corvette). Proposed, each after a real design, in the
 classes the game has (a frigate goes in as a missile destroyer or corvette, a light carrier as a carrier):

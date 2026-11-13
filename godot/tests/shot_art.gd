@@ -32,6 +32,11 @@ func _process(_d: float) -> void:
             for i in s1.d.slots.size(): if s1.d.slots[i].s == "M" and float(s1.d.slots[i].y) != 0.0: s1.rec.fit[i] = OS.get_environment("WING")
             sim.fit_mounts(s1); battle.rebuild_view(s1)
             for m in s1.mounts: m.ta = 0.0 if m.slot.x > 0 else PI if m.slot.y == 0 else float(m.slot.arcs[0][0])
+        if OS.get_environment("SLOT") != "":   # SLOT=<n>=<weapon>[,<n>=<weapon>]: those mounts of the last ship refitted
+            var s2 = mine[mine.size() - 1]
+            for kv in OS.get_environment("SLOT").split(","): s2.rec.fit[int(kv.split("=")[0])] = kv.split("=")[1]
+            sim.fit_mounts(s2); battle.rebuild_view(s2)
+            for m in s2.mounts: m.ta = 0.0 if m.slot.x > 0 else PI if m.slot.y == 0 else float(m.slot.arcs[0][0])
         if OS.get_environment("SLIDE") != "": for k in int(float(OS.get_environment("SLIDE")) * 10.0): sim._boxes(0.1)   # SLIDE=<seconds>: deck cargo left to slide that long in her list
         for s in sim.ships: if s.side == 1: s.pos = Vector2(9000, 9000)
         battle.cam_free = true; battle.camera.position = Vector2.from_angle(hd) * (float(args[4]) if args.size() > 4 else 0.0); battle.camera.zoom = Vector2.ONE * float(args[1] if args.size() > 1 else "2.5")

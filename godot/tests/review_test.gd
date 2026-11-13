@@ -1684,7 +1684,9 @@ func _ew() -> void:
 		if sl.s == "M" and float(sl.y) != 0.0 and wing == null: wing = sl
 		if sl.s == "M" and float(sl.y) == 0.0 and mid == null: mid = sl
 	ok(wing != null and not BattleSim.room_for(wing, "g152") and not BattleSim.room_for(wing, "g150t") and BattleSim.room_for(wing, "g130t") and BattleSim.room_for(wing, String(wing.def)) and BattleSim.room_for(wing, ""), "a cruiser's side mount refuses a 6-inch triple and takes a gun of its own size")
-	ok(mid == null or BattleSim.room_for(mid, "g152"), "a centreline mount is as free as before")
+	ok(mid == null or (BattleSim.room_for(mid, "g150t") and not BattleSim.room_for(wing, "g150t")), "a centreline mount has more room: it takes a 150 mm twin the side mount refuses")
+	var tub: Dictionary = GameData.hulls["cve_casa"].slots[0]
+	ok(not BattleSim.room_for(tub, "g152") and BattleSim.room_for(tub, String(tub.def)), "but not a 6-inch triple on an escort carrier's stern gun tub")
 	var all_std := true
 	for id in GameData.hulls: for sl in GameData.hulls[id].slots: if not BattleSim.room_for(sl, String(sl.def)): all_std = false
 	ok(all_std, "every design's own guns fit her mounts")

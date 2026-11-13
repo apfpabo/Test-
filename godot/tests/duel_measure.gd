@@ -10,6 +10,7 @@ const PAIRS := {   # new design: [the established design she is set against, era
 	"ddg_doria": ["ddg_burke", 4], "ff_sachsen": ["ddg_burke", 4], "co_braunschweig": ["ddg_adams", 4], "co_karakurt": ["ddg_adams", 4],
 	"co_steregushchiy": ["ddg_kashin", 4], "ddg_hatsuyuki": ["ddg_adams", 3], "co_gepard": ["dd_gearing", 3], "co_sparviero": ["dd_fletcher", 3],
 	"ff_thaon": ["ddg_sovremenny", 4], "cg_thunder": ["cg_tico", 4], "co_opv": ["co_castle", 4],
+	"ddg_sovremenny": ["ddg_burke", 3], "cg_slava": ["cg_tico", 3], "cg_kirov": ["cg_tico", 3],   # the Directorate's big ships, after the 130 mm automatic gun and the heavy missile (13 Nov 2026)
 	"ssn_yasen": ["ddg_burke", 4], "ssn_astute": ["ddg_burke", 4], "ssn_trafalgar": ["ddg_adams", 3], "ss_212": ["ddg_adams", 4], "ss_206": ["dd_gearing", 3], "ss_harushio": ["ddg_adams", 3], "ss_soryu": ["ddg_adams", 4],
 }
 const RUNS := 4

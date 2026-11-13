@@ -377,11 +377,14 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
 ## no gun whose house is much bigger than the one she was built with there; on the centreline the yard is as free as before.
 const ROOM_W := 0.8
 const ROOM_L := 1.2
+const ROOM_MID_W := 2.0   # on the centreline there is more room, but not for a house half as big again (a 6-inch triple
+const ROOM_MID_L := 2.6   # on an escort carrier's stern gun tub hung out over her wake)
 static func room_for(slot: Dictionary, wid: String) -> bool:
-    if wid == "" or wid == String(slot.def) or float(slot.y) == 0.0 or not GameData.weapons.has(wid): return true
+    if wid == "" or wid == String(slot.def) or not GameData.weapons.has(wid): return true
     var w: Dictionary = GameData.weapons[wid]; var std: Dictionary = GameData.weapons.get(String(slot.def), {})
     if w.kind != "gun" or not std.has("tw") or not w.has("tw"): return true
-    return float(w.tw) <= float(std.tw) + ROOM_W and float(w.tl) <= float(std.tl) + ROOM_L
+    var mid: bool = float(slot.y) == 0.0
+    return float(w.tw) <= float(std.tw) + (ROOM_MID_W if mid else ROOM_W) and float(w.tl) <= float(std.tl) + (ROOM_MID_L if mid else ROOM_L)
 
 ## Her mounts from her record's fit (at the start, and again when the editor refits her in mid-action).
 func fit_mounts(s: CShip) -> void:

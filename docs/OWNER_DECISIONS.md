@@ -106,6 +106,13 @@ times, and reports what each side has left. Two passes moved these prices (hull 
 | Wayfarer (patrol vessel) | 40,000 | 12,000 | anti-aircraft guns only |
 | Steadfast, Borough, Hansa, Skorpion | 70,000, 95,000, 80,000, 85,000 | 100,000, 125,000, 110,000, 115,000 | each beat her peer at equal money |
 
+**The Directorate's big ships, after the 130 mm automatic gun and the heavy missile (13 Nov 2026).** Fought at equal
+money against their American peers, all three won heavily (they kept 91–94% of their worth), so their hulls were
+re-priced until the fights were even: Bastion-type destroyer (Sovremenny) 135,000 to 210,000; Slava 185,000 to 225,000;
+Kirov 320,000 to 500,000. After: Sovremenny 40% left against the Burkes' 43%; Slava 24% against 16%; Kirov 38% against
+11% (still a shade cheap). The Kuznetsov and the two submarines that carry the heavy missile were not measured (a
+carrier's and a boat's worth do not show in a gun-and-missile duel).
+
 Four fights a pair is a small sample, and submarines cannot be priced this way (a boat that meets destroyers in the open
 loses). **To decide:** whether these stand, and whether any of the losers should be given more to fight with instead of
 being made cheaper.

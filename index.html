@@ -482,7 +482,7 @@ const DESIGN_LIST = [
   { id: 'ddg_burke', cls: 'ddg', tech: 'vls', yard: 'tidewater', dn: 'Guardian', model: 'Arleigh Burke-class destroyer', year: 1991, era: 3, L: 153.9, B: 20.1, t: 8300, kn: 31, td: 760, armor: 20, crew: 323, price: 150000,
     p: { bow: .38, run: .2, stern: 't', tw: .62, sup: [[22, 30, 17, 4], [-24, 16, 15, 2]], fun: [[4, 3, 2.4], [-22, 3, 2.4]], mast: [[18, 'l']], helo: [[-63, 7.5]], boats: [[-9, 1]] },
     slots: [sl('M', 60, 0, FWD, 'g127a'), sl('V', 46, 0, ALL, 'sam'), sl('V', -12.5, 0, ALL, 'ssm'), sl('V', -44, 0, ALL, 'sam'), sl('V', -51, 0, ALL, 'ssm'), sl('A', 39, 0, FWD, 'ciws'), sl('A', -36, 0, AFT, 'ciws'), sl('T', -3.5, 0, BEAM, 'torh')] },   // (her tubes clear of the cells and the after deckhouse: the owner, 13 Nov 2026)
-  { id: 'ddg_sovremenny', cls: 'ddg', tech: 'vls', yard: 'neva', dn: 'Burevestnik', model: 'Sovremenny-class destroyer', year: 1980, era: 3, L: 156, B: 17.3, t: 6600, kn: 32.7, td: 800, armor: 10, crew: 350, price: 135000,
+  { id: 'ddg_sovremenny', cls: 'ddg', tech: 'vls', yard: 'neva', dn: 'Burevestnik', model: 'Sovremenny-class destroyer', year: 1980, era: 3, L: 156, B: 17.3, t: 6600, kn: 32.7, td: 800, armor: 10, crew: 350, price: 210000,
     p: { bow: .36, run: .2, stern: 't', tw: .5, sup: [[30, 22, 13, 4], [-30, 18, 11, 2]], fun: [[-6, 3.6, 2.8]], mast: [[26, 'l'], [-24, 'l']], boats: [[6, 1]] },
     slots: [sl('M', 59, 0, FWD, 'g130a'), sl('M', -63, 0, AFT, 'g130a'), sl('V', 47, 0, ALL, 'sam'), sl('V', -50, 0, ALL, 'sam'), ...pair('V', 36, 7.2, 'ssmh'), ...pair('A', 14, 6.6, 'ciws'), sl('T', 4, 0, BEAM, 'torh')] },
   // ---------------------------------------------------------------- nuclear submarines (Era II)
@@ -667,10 +667,10 @@ const DESIGN_LIST = [
   { id: 'cg_tico', cls: 'cg', yard: 'tidewater', dn: 'Bastion', model: 'Ticonderoga-class cruiser', year: 1983, era: 3, L: 172.8, B: 16.8, t: 9600, kn: 32.5, td: 800, armor: 25, crew: 330, price: 190000,
     p: { bow: .34, run: .22, stern: 't', tw: .55, sup: [[22, 44, 14, 4]], fun: [[4, 3, 2.2, -2.6], [-16, 3, 2.2, -2.6]], mast: [[16, 'l'], [-10, 'l']], boats: [[-30, 1]] },
     slots: [sl('M', 70, 0, FWD, 'g127a'), sl('V', 56, 0, ALL, 'ssm'), sl('V', -54, 0, ALL, 'sam'), sl('V', 44, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'ssm'), sl('M', -78, 0, AFT, 'g127a'), sl('A', 38, -5, PORT, 'ciws'), sl('A', -40, 5, STBD, 'ciws'), sl('T', -24, 0, BEAM, 'torh')] },
-  { id: 'cg_slava', cls: 'cg', yard: 'neva', dn: 'Gromoboi', model: 'Slava-class cruiser', year: 1982, era: 3, L: 186.4, B: 20.8, t: 9380, kn: 32, td: 880, armor: 25, crew: 476, price: 185000,
+  { id: 'cg_slava', cls: 'cg', yard: 'neva', dn: 'Gromoboi', model: 'Slava-class cruiser', year: 1982, era: 3, L: 186.4, B: 20.8, t: 9380, kn: 32, td: 880, armor: 25, crew: 476, price: 225000,
     p: { bow: .36, run: .2, stern: 't', tw: .5, sup: [[40, 24, 13, 4], [-18, 30, 11, 2]], fun: [[-10, 3.4, 2.4, -4], [-10, 3.4, 2.4, 4]], mast: [[32, 'l'], [-30, 'l']], boats: [[0, 1]] },
     slots: [sl('M', 76, 0, FWD, 'g130a'), ...pair('V', 24, 8, 'ssmh'), sl('V', -52, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'sam'), ...pair('A', -38, 7.6, 'ciws'), sl('T', -24, 0, BEAM, 'torh')] },
-  { id: 'cg_kirov', cls: 'cg', name: 'Nuclear Battlecruiser', nuc: true, yard: 'neva', dn: 'Admiral Volkov', model: 'Kirov-class battlecruiser', year: 1980, era: 3, L: 252, B: 28.5, t: 24300, kn: 32, td: 1100, armor: 76, crew: 710, price: 320000,
+  { id: 'cg_kirov', cls: 'cg', name: 'Nuclear Battlecruiser', nuc: true, yard: 'neva', dn: 'Admiral Volkov', model: 'Kirov-class battlecruiser', year: 1980, era: 3, L: 252, B: 28.5, t: 24300, kn: 32, td: 1100, armor: 76, crew: 710, price: 500000,
     p: { bow: .36, run: .2, stern: 't', tw: .55, sup: [[18, 44, 18, 5], [-48, 30, 15, 3]], fun: [[-12, 4.5, 3.6]], mast: [[14, 'l'], [-40, 'l']], helo: [[-108, 9]], boats: [[-22, 1]] },
     slots: [...pair('V', 73, 4, 'ssmh'), ...pair('V', 63, 4, 'ssmh'), sl('V', 88, 0, ALL, 'sam'), sl('V', 50, 0, ALL, 'sam'), sl('V', -72, 0, ALL, 'sam'), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 44, 9.4, 'ciws'), ...pair('A', -70, 9.6, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
 ];

@@ -27,7 +27,7 @@ const ACTIONS := {
 		[KEY_1, "Order: engage"], [KEY_2, "Order: form on the flagship"], [KEY_3, "Order: withdraw"], [KEY_4, "Order: line ahead"], [KEY_5, "Hold fire / open fire"], [KEY_6, "Order: line abreast"], [KEY_7, "Order: screen"], [KEY_8, "Squadron: make smoke"], [KEY_9, "Torpedo attack"], [KEY_0, "Back under squadron orders"],
 		[KEY_F1, "Pick out the light ships"], [KEY_F2, "Pick out the heavy ships"], [KEY_F3, "Orders to the whole squadron"],
 		[KEY_G, "Star shell"], [KEY_B, "Damage control priority"], [KEY_N, "Flood a burning magazine"], [KEY_J, "Counter-flood"], [KEY_K, "Flagship: make smoke"],
-		[KEY_Y, "Radar on / off"], [KEY_U, "Sonar on / off"], [KEY_R, "Sensor ranges shown / hidden"], [KEY_H, "Hide the interface"], [KEY_P, "Pause"], [KEY_M, "Sound on / off"], [KEY_TAB, "Next ship"], [KEY_SPACE, "Camera back on the flagship"], [KEY_E, "Hold: the camera follows your shell"]],
+		[KEY_Y, "Radar on / off"], [KEY_U, "Sonar on / off"], [KEY_R, "Sensor ranges shown / hidden"], [KEY_H, "Hide the interface"], [KEY_P, "Pause"], [KEY_M, "Sound on / off"], [KEY_TAB, "Next ship"], [KEY_SPACE, "Camera back on the flagship"], [KEY_E, "Hold: the camera follows your shell"], [KEY_O, "Your orders stand / left to her captain"]],
 	"chart": [[KEY_W, "Pan north"], [KEY_S, "Pan south"], [KEY_A, "Pan west"], [KEY_D, "Pan east"], [KEY_SPACE, "Pause the clock"], [KEY_Q, "Engines slower"], [KEY_E, "Engines faster"],
 		[KEY_1, "Clock 1×"], [KEY_2, "Clock 2×"], [KEY_3, "Clock 4×"], [KEY_4, "Clock 8×"], [KEY_C, "Camera back on your squadron"], [KEY_R, "Sensor ranges shown / hidden"], [KEY_H, "Hide the interface"]],
 }

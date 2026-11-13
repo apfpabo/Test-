@@ -128,6 +128,14 @@ class CShip:
     var ord_pt := Vector2.ZERO   # where "goto" sends her
     var ord_tgt: CShip = null    # whom a torpedo attack is made on (or the nearest enemy)
     var hold = false       # her own hold-fire
+    # the owner's wish (13 Nov 2026): a ship of yours is either left to her captain, or kept under your own orders,
+    # which she then holds whatever happens, also after you have shifted your flag to another ship
+    var own := false             # your orders stand: her captain does not change her course, speed, waypoints, dive or target
+    var own_wps: Array = []      # the waypoints she was left with
+    var own_course = null        # the course she was left on (when she had no waypoints)
+    var own_thr := 3             # the engine order she was left at
+    var lead: CShip = null       # the ship she forms on (null: the flagship). Several ships may each lead a division
+    var st_off = null            # her own station in her lead's frame, x ahead and y to starboard (null: the standard one)
     var ai_off = false     # (editor) she keeps her helm and engines as set: her captain does nothing
     var force_tgt: CShip = null   # (editor) the ship she is to fire on, whatever its flag
     var god = false        # (editor) takes no damage
@@ -208,6 +216,24 @@ var order = "engage"
 ## (`ord`) follows it instead of the squadron's; formations are made among the ships that share an order, so three
 ## destroyers told to form line abreast do so by themselves. "goto" sends her to a point to hold there; "torp" is a
 ## torpedo attack: run in, turn and fire, then take the squadron's order again.
+## The ship one of yours forms on: the lead she was given while that ship is afloat and in the action, else the flagship.
+func lead_of(s: CShip) -> CShip:
+    if s.lead != null and s.lead != s and s.lead.side == 0 and active(s.lead): return s.lead
+    return flag
+## You shift your flag (Tab): the ship you leave keeps what she had if she is under your own orders, and the one you take
+## gives you back the waypoints she was keeping.
+func take_command(n: CShip) -> void:
+    var old: CShip = flag
+    if old != null and old != n:
+        if old.own: old.own_wps = waypoints.duplicate(); old.own_course = old.a if waypoints.is_empty() else null; old.own_thr = old.throttle
+        else: old.shell_mode = "auto"
+    waypoints.clear(); flag = n
+    if n != null and n.own: waypoints = n.own_wps.duplicate(); n.own_wps = []
+## Under your own orders or back to her captain (the O key, the ship menu).
+func set_own(s: CShip, on: bool) -> void:
+    s.own = on
+    if on and s != flag: s.own_course = s.a; s.own_thr = s.throttle; s.own_wps = []
+    if not on: s.own_wps = []; s.own_course = null
 func ord_of(s: CShip) -> String: return s.ord if s.side == 0 and s.ord != "" else order
 func holding(s: CShip) -> bool: return (s.side == 0 and hold_fire) or s.hold
 func has_torps(s: CShip) -> bool:
@@ -2256,9 +2282,10 @@ func helm(s: CShip, desired: float) -> float:
 
 ## Where a ship of yours belongs in the standing formation, in the flagship's frame (x ahead, y to starboard).
 func station(s: CShip) -> Vector2:
+    if s.st_off != null: return s.st_off   # a station you gave her yourself
     var mine: Array = []
-    var o: String = ord_of(s)
-    for x in ships: if x.side == 0 and x != flag and active(x) and ord_of(x) == o: mine.append(x)   # a formation is made by the ships that share the order
+    var o: String = ord_of(s); var ld: CShip = lead_of(s)
+    for x in ships: if x.side == 0 and x != ld and x != flag and active(x) and ord_of(x) == o and lead_of(x) == ld and x.st_off == null: mine.append(x)   # a formation is made by the ships that share the order and the lead
     var idx: int = maxi(0, mine.find(s)); var wing: float = 1.0 if idx % 2 else -1.0; var rank: float = floor(idx / 2.0)
     match o:
         "abreast": return Vector2(0.0, wing * 500.0 * (rank + 1.0))
@@ -2275,6 +2302,7 @@ func station(s: CShip) -> Vector2:
 ## Steer and steam to hold a station on the flagship: far off, run for where the station will be; close, take her
 ## course and speed, easing ahead or astern and in or out to stay on it.
 func keep_station(s: CShip, off: Vector2) -> void:
+    var flag: CShip = lead_of(s)   # (the ship she forms on: in this function `flag` is her lead, which may be a division's leader)
     var fd := Vector2.from_angle(flag.a); var g: Vector2 = flag.pos + off.rotated(flag.a); var dd := s.pos.distance_to(g)
     var along: float = (g - s.pos).dot(fd); var cross: float = (g - s.pos).dot(Vector2(-fd.y, fd.x))   # ahead of us, and to starboard of us
     if dd > 350.0:
@@ -2289,15 +2317,24 @@ func keep_station(s: CShip, off: Vector2) -> void:
 ## Her captain's temper as a factor: one value for a bold captain, one for a steady one, one for a cautious one.
 func temper_k(s: CShip, bold: float, steady: float, cautious: float) -> float: return bold if s.tm == "bold" else (cautious if s.tm == "cautious" else steady)
 func ai_ship(s: CShip, dt: float) -> void:
+    _ai_auto(s, dt)
+    if s.side == 0 and s.own and s != flag and not s.struck and s.alive:
+        # under your own orders: whatever her captain thought best, she steers the waypoints or the course you left her
+        # and keeps the engine order you gave (she still keeps clear of the land and of other ships)
+        s.v_cmd = -1.0
+        while not s.own_wps.is_empty() and s.pos.distance_to(s.own_wps[0]) < maxf(150.0, s.d.L * 1.2): s.own_wps.pop_front()
+        var want: float = (s.own_wps[0] - s.pos).angle() if not s.own_wps.is_empty() else (float(s.own_course) if s.own_course != null else s.a)
+        s.rudder = helm(s, steer_avoid(s, want)); s.throttle = s.own_thr
+func _ai_auto(s: CShip, dt: float) -> void:
     if s.struck: s.throttle = 0; s.rudder = 0; return
     s.v_cmd = -1.0; s.brake = -1.0
     # a cautious captain of yours, badly hurt and left to fight as he sees fit, takes his ship out of it
-    if s.side == 0 and s != flag and s.tm == "cautious" and s.hull / s.max_hull < 0.35 and ord_of(s) == "engage":
+    if s.side == 0 and s != flag and not s.own and s.tm == "cautious" and s.hull / s.max_hull < 0.35 and ord_of(s) == "engage":
         s.ord = "retreat"; say("The %s is badly hurt. Her captain takes her out of the fight." % s.rec.name, 2.0)
     # smoke: a ship that is running, or badly hurt with the enemy in sight, covers herself (and those behind her)
     if not s.smoke_on and s.smoke_left > SMOKE_CHARGE * 0.8 and can_smoke(s) and ((s.flee if s.side == 1 else ord_of(s) == "retreat") or s.hull / s.max_hull < temper_k(s, 0.2, 0.4, 0.6)):
         if nearest_enemy(s.pos, s.side, 10000.0) != null: make_smoke(s, true)
-    if s.sub: s.want_dive = nearest_enemy(s.pos, s.side, 8000.0) != null
+    if s.sub and not (s.side == 0 and s.own): s.want_dive = nearest_enemy(s.pos, s.side, 8000.0) != null   # (a boat under your own orders stays as you left her)
     var o: String = ord_of(s)
     var retreat = (o == "retreat") if s.side == 0 else s.flee
     if retreat:
@@ -2359,7 +2396,7 @@ func ai_ship(s: CShip, dt: float) -> void:
             if halted: s.throttle = 0 if (dd < 250.0 or s.pos.distance_to(lead.pos) < gap + 200.0) else (3 if dd > 900.0 else 1)   # near enough is on station: a ship cannot hit a point exactly, and would circle it
             else: s.throttle = 4 if dd > 500.0 else (clampi(lead.throttle + (1 if dd > 200.0 else 0), 1, 4) if dd > 80.0 else maxi(1, lead.throttle - 1))
             return
-    if s.side == 0 and flag != null and flag != s and flag.side == 0 and (o == "escort" or o == "abreast" or o == "screen"):
+    if s.side == 0 and flag != null and flag != s and flag.side == 0 and lead_of(s) != null and lead_of(s) != s and (o == "escort" or o == "abreast" or o == "screen"):
         # formations: every ship has a station on the flagship and keeps it, turning and changing speed with her.
         # "Form on flag" breaks off to fight what comes within 3 km; line abreast and the screen hold station and
         # fire as their guns bear.

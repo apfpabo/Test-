@@ -439,6 +439,13 @@ func _ship_menu(s: BattleSim.CShip, at: Vector2) -> void:
     if s.chaff > 0 or sim.can_jam(s): ship_menu.add_item("Chaff: %d rounds (fired by itself at a missile coming in)" % s.chaff, 92); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
     if sim.has_sonar(s): ship_menu.add_item("Sonar: go passive (listen only; nothing hears her)" if s.sonar_on else "Sonar: start pinging (finds dived boats; gives her away)", 2)
     else: ship_menu.add_item("No sonar", 91); ship_menu.set_item_disabled(ship_menu.get_item_count() - 1, true)
+    ship_menu.add_separator("Her orders")
+    ship_menu.add_item("Left to her captain: give her your own orders, which she will keep" if not s.own else "Under your own orders: leave her to her captain", 8)
+    var pk: Array = sel.filter(func(x): return x != s)
+    if not pk.is_empty(): ship_menu.add_item("The %d picked out: form on her" % pk.size() if pk.size() > 1 else "%s: form on her" % pk[0].rec.name, 9)
+    if s.lead != null: ship_menu.add_item("Form on the flagship again", 10)
+    ship_menu.add_item("Keep present stations (%s)" % ("the ships picked out" if not sel.is_empty() else "every ship in formation"), 11)
+    if sim.ships.any(func(x): return x.side == 0 and x.st_off != null): ship_menu.add_item("Standard stations again", 12)
     ship_menu.add_separator("The squadron")
     ship_menu.add_item("All radar off", 3); ship_menu.add_item("All radar on", 4); ship_menu.add_item("All sonar passive", 5); ship_menu.add_item("All sonar pinging", 6)
     ship_menu.position = Vector2i(at) + Vector2i(get_window().position if not get_window().is_embedded() else Vector2i.ZERO); ship_menu.reset_size(); ship_menu.popup()
@@ -452,6 +459,25 @@ func _sensor_cmd(id: int, s) -> void:
         3, 4:
             for o in all: o.radar_on = id == 4
             sim.say("All ships: radar %s." % ("on" if id == 4 else "off"), 1.6)
+        8:
+            if s != null: sim.set_own(s, not s.own); sim.say(("%s: your orders stand. She keeps her course, speed, waypoints and target, whatever happens." if s.own else "%s: left to her captain's judgement.") % s.rec.name, 2.2)
+        9:   # a second lead ship: the ships picked out form on this one, as others do on the flagship
+            if s != null:
+                for x in sel: if x != s: x.lead = s; x.st_off = null; if not ["escort", "abreast", "screen"].has(sim.ord_of(x)): x.ord = "escort"
+                sim.say("%s leads a division of her own." % s.rec.name, 2.0)
+        10:
+            if s != null: s.lead = null; sim.say("%s forms on the flagship again." % s.rec.name, 1.8)
+        11:  # mould the formation: each ship's place now, in her lead's frame, becomes her station
+            var who: Array = sel.duplicate() if not sel.is_empty() else all.filter(func(x): return x != sim.flag and ["escort", "abreast", "screen"].has(sim.ord_of(x)))
+            for x in who:
+                var ld = sim.lead_of(x)
+                if ld == null or ld == x: continue
+                x.st_off = (x.pos - ld.pos).rotated(-ld.a)
+                if not ["escort", "abreast", "screen"].has(sim.ord_of(x)): x.ord = "abreast"
+            sim.say("Stations as they lie: %d ship%s will keep her present place on her lead." % [who.size(), "" if who.size() == 1 else "s"], 2.2)
+        12:
+            for x in all: x.st_off = null
+            sim.say("Standard stations.", 1.5)
         7:
             if s != null: s.jam_on = not s.jam_on; sim.say("%s: jammer %s." % [s.rec.name, "on" if s.jam_on else "off"], 1.6)
         5, 6:
@@ -544,6 +570,12 @@ func _key(k: int) -> void:
                 elif k == KEY_U and sim.has_sonar(o): _sensor_cmd(2, o)
                 else: sim.say("%s has no %s." % [o.rec.name, "radar" if k == KEY_Y else "sonar"], 1.2)
         KEY_F9: if editor != null: editor.panel.visible = not editor.panel.visible
+        KEY_O:   # your orders stand, or her captain's judgement: for the ships picked out, else the flagship
+            var who: Array = sel.duplicate() if not sel.is_empty() else ([s] if s else [])
+            if not who.is_empty():
+                var on: bool = not who[0].own
+                for x in who: sim.set_own(x, on)
+                sim.say(("%s: your orders stand. She keeps her course, speed, waypoints and target, whatever happens." if on else "%s: left to her captain's judgement.") % (who[0].rec.name if who.size() == 1 else "%d ships" % who.size()), 2.2)
         KEY_K:
             if s == null or not sim.can_smoke(s): sim.say("This ship cannot make smoke.", 1.2)
             elif s.smoke_on: sim.make_smoke(s, false); sim.say("Stop making smoke.", 1.2)
@@ -569,9 +601,8 @@ func _key(k: int) -> void:
             var mine: Array = []
             for x in sim.ships: if (x.side == 0 or sim.editor) and sim.engageable(x): mine.append(x)   # (in the editor: every ship in turn)
             if mine.size() > 1 or (sim.flag == null and mine.size() > 0):
-                sim.waypoints.clear()
-                if sim.flag != null: sim.flag.shell_mode = "auto"
-                sim.flag = mine[(mine.find(sim.flag) + 1) % mine.size()]; sim.say("You take command of the " + sim.flag.rec.name + ".", 1.5)
+                sim.take_command(mine[(mine.find(sim.flag) + 1) % mine.size()])   # (the ship you leave keeps her orders if she is under your own)
+                sim.say("You take command of the " + sim.flag.rec.name + (". She is under your own orders." if sim.flag.own else "."), 1.5)
         KEY_M: Sfx.muted = not Sfx.muted
         KEY_R: Settings.sensors = not Settings.sensors; Settings.save(); sim.say("Sensor ranges and radar sweep " + ("shown." if Settings.sensors else "hidden."), 1.5)
 

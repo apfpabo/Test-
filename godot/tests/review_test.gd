@@ -1495,6 +1495,23 @@ func _levels() -> void:
 	var lane_top := 0
 	for id in Campaign.nav.get_point_ids(): if Campaign.nav.get_point_position(id).y < 12.0 or Campaign.nav.get_point_position(id).y > Campaign.MH - 12.0: lane_top += 1
 	ok(lane_top == 0 and Campaign.nav_main.size() > 30000, "no sea lane runs within the chart's edge margin, and the open sea is one network (%d points)" % Campaign.nav_main.size())
+	# standing orders, division leads and moulded stations (the owner, 13 Nov 2026)
+	var os := BattleSim.new(); os.setup([Campaign.new_ship("ca_baltimore", "A", "player", []), Campaign.new_ship("dd_fletcher", "B", "player", []), Campaign.new_ship("dd_fletcher", "C", "player", []), Campaign.new_ship("dd_fletcher", "D", "player", [])], [Campaign.new_ship("dd_narvik", "E", "raiders", [])], [], [], 0)
+	var fa: BattleSim.CShip = os.ships[0]; var fb: BattleSim.CShip = os.ships[1]; var fc: BattleSim.CShip = os.ships[2]; var fd: BattleSim.CShip = os.ships[3]
+	os.flag = fa; os.set_own(fa, true); fa.throttle = 2; os.waypoints = [fa.pos + Vector2(4000, 0), fa.pos + Vector2(4000, 4000)]
+	os.take_command(fb)
+	ok(os.flag == fb and fa.own and fa.own_wps.size() == 2 and fa.own_thr == 2 and os.waypoints.is_empty(), "a ship under your own orders keeps her waypoints and engine order when you shift your flag")
+	var far0: float = fa.pos.distance_to(fa.own_wps[0])
+	for i in 1500: os.step(0.1)
+	ok(fa.throttle == 2 and (fa.own_wps.size() < 2 or fa.pos.distance_to(fa.own_wps[0]) < far0 - 300.0), "and steers for them herself, at the speed you left her")
+	os.take_command(fa)
+	ok(os.flag == fa and not os.waypoints.is_empty(), "taking her back gives you her waypoints again")
+	fd.lead = fc; fd.ord = "escort"; fc.ord = "goto"; fc.ord_pt = fc.pos + Vector2(0, -6000)
+	ok(os.lead_of(fd) == fc and os.lead_of(fb) == os.flag, "a ship can form on a lead of her own, the rest on the flagship")
+	fd.st_off = Vector2(-200.0, 300.0)
+	ok(os.station(fd) == Vector2(-200.0, 300.0), "and keep a station you gave her")
+	fc.alive = false
+	ok(os.lead_of(fd) == os.flag, "her lead lost, she forms on the flagship")
 	ok(preload("res://scripts/skirmish.gd").ERA_TECH.has(4) and preload("res://scripts/skirmish.gd").ERA_TECH[4].has("stealth"), "the quick battle has Era IV")
 	ok(BattleSim.calibre_mm("g510t") == 510 and BattleSim.calibre_mm("aa40") == 0 and sp.shell_splash({"mm": 510}, 3.4) > sp.shell_splash({"mm": 356}, 3.4) * 1.3 and sp.shell_splash({"mm": 152}, 1.5) == 9.0, "heavy guns' splashes go by calibre, lighter ones by their class")
 	sections += 1

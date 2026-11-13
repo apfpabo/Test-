@@ -28,7 +28,10 @@ func _ready() -> void:
     if Settings.fx_modern and Settings.splash != "classic": GameData.lace_tex(0)   # the new splash's foam, made before the first shell lands
     sim = BattleSim.new(); sim.modern = Settings.fx_modern
     sim.on_boom = _boom
-    sim.on_sound = func(kind: String, p: Vector2, vol: float): Sfx.event(kind, vol * _near(p)); if (kind == "gun_H" or kind == "blast") and vol >= 0.4: shake = maxf(shake, vol * _near(p) * _near(p) * 6.0)
+    sim.on_sound = func(kind: String, p: Vector2, vol: float):
+        var h := _hear(kind, p)
+        Sfx.event(kind, vol * h.x, h.y)
+        if (kind == "gun_H" or kind == "blast") and vol >= 0.4: shake = maxf(shake, vol * _near(p) * _near(p) * 6.0)
     sim.on_pop = func(p: Vector2, vol: float, wid: String): Sfx.auto_fire(wid, vol * _near(p))
     var pt: Array = cfg.get("player_tech", []); var et: Array = cfg.get("enemy_tech", [])
     var mine: Array = cfg.get("player", ["dd_fletcher", "dd_fletcher"]); var theirs: Array = cfg.get("enemy", ["dd_narvik", "dd_narvik"])
@@ -187,6 +190,19 @@ func _near(p: Vector2) -> float:
     var vs := get_viewport_rect().size / camera.zoom.x
     var reach := maxf(2500.0, vs.length() * 0.6)
     return clampf(1.0 - p.distance_to(camera.position) / reach, 0.0, 1.0)
+## How far a sound carries (the owner, 13 Nov 2026: a 20-inch gun 3.5 km off was not heard). The listener is the camera.
+## Each kind has its own reach in metres: a heavy gun or a magazine going up is heard right across the battle area, a
+## light gun a few kilometres. Within it the level falls off smoothly, and far reports come duller (played a little
+## slower). Close to the camera, the old reckoning by the view still holds, so nothing near got quieter.
+const HEAR := {"gun_H": 40000.0, "blast": 40000.0, "gun_L": 24000.0, "hit_big": 18000.0, "torp_hit": 16000.0, "depth": 14000.0,
+    "gun_M": 14000.0, "launch": 12000.0, "hit": 9000.0, "gun_S": 8000.0, "splash": 5000.0, "dive": 4000.0}
+func _hear(kind: String, p: Vector2) -> Vector2:
+    var near := _near(p)
+    var reach: float = HEAR.get(kind, 0.0)
+    if reach <= 0.0: return Vector2(near, 1.0)
+    var d := p.distance_to(camera.position); var f := clampf(1.0 - d / reach, 0.0, 1.0)
+    var far := pow(f, 1.6)
+    return Vector2(maxf(near, far), lerpf(0.85, 1.0, f) if near < far else 1.0)
 func _boom(p: Vector2, vol: float, freq: float, rate: float) -> void:
     var k := _near(p)
     Sfx.boom(vol * k, freq, rate)

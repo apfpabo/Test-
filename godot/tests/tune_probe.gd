@@ -15,6 +15,11 @@ var day_cash := 0.0
 var cls_cache := {}
 var hook := 0.0             # money the hooks below have accounted for during the current chart tick
 var tried := false          # he tried to break off from this contact and failed
+## Test-only knobs for trying the origins' hunters at other settings (the game's numbers are not changed): HUNT_SCALE
+## (environment) rebuilds each hunter group at that multiple of the strength the game sized it to, and HUNT_MAX caps
+## how many of one origin's hunter groups may be out at once. Unset, the probe plays the game as it is.
+var hunt_scale := float(OS.get_environment("HUNT_SCALE")) if OS.get_environment("HUNT_SCALE") != "" else 1.0
+var hunt_max := int(OS.get_environment("HUNT_MAX")) if OS.get_environment("HUNT_MAX") != "" else 0
 
 func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -50,6 +55,7 @@ func _ready() -> void:
 		var c0 := float(G.credits); var d0 := int(G.day); var wage: float = Campaign.wages() + Campaign.supply_upkeep(); hook = 0.0
 		Campaign.update(0.05)
 		if Campaign.G.is_empty(): continue
+		_retune_hunters()
 		var dd: float = float(Campaign.G.credits) - c0 - hook
 		if int(Campaign.G.day) != d0: dd += wage
 		if absf(dd) >= 0.5: rec.money.append({"day": int(Campaign.G.day), "src": "commission pay" if int(Campaign.G.day) != d0 and dd > 0 else ("contracts paid at sea or on arrival" if dd > 0 else "charges at sea"), "amt": dd})
@@ -58,6 +64,23 @@ func _ready() -> void:
 	print("tune probe: %s/%s seed %s: %d days, %d battles (%d won), %d docks, credits %.0f -> %s" % [origin, navy, rec.start.seed, rec.days, st.battles, st.won, st.docks, rec.start.credits, Campaign.fmt(int(Campaign.G.credits)) if not Campaign.G.is_empty() else "?"])
 	WM.free()
 	get_tree().quit(0)
+
+func _retune_hunters() -> void:
+	var G: Dictionary = Campaign.G
+	for f in G.fleets.duplicate():
+		if not f.get("hunter", false) or f.has("probe_tuned"): continue
+		f.probe_tuned = true
+		if hunt_max > 0 and G.fleets.filter(func(q): return q.get("hunter", false) and q.name == f.name).size() > hunt_max:
+			G.fleets.erase(f); continue
+		if hunt_scale != 1.0:
+			var h: Dictionary = {}
+			for q in Campaign.perk("hunted", []): if q.name == f.name: h = q
+			var cap: float = float(h.get("budget", 50000)) * (1.0 + G.day / 200.0)
+			var tl = Campaign.enemy_tech(Campaign.fac_era(f.fac)); var pool: Array = Campaign.C.PATROL_POOL.get(f.fac, Campaign.C.PATROL_POOL.raiders)
+			var ships: Array = Campaign.build_to_strength(pool, clampf(hunt_scale * Campaign.hunt_k() * Campaign.strength(G.fleet), minf(Campaign.HUNT_FLOOR, cap), cap), 4, f.fac, tl)
+			if not ships.is_empty(): f.ships = ships
+		if not rec.has("hunters"): rec["hunters"] = []
+		rec.hunters.append({"day": int(G.day), "name": f.name, "ships": f.ships.size(), "tons": _tons(f.ships), "ratio": Campaign.strength(f.ships) / maxf(1.0, Campaign.strength(G.fleet))})
 
 func _near_port_name() -> String:
 	var P: Dictionary = Campaign.G.player; var best = null

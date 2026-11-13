@@ -13,7 +13,8 @@ const PAIRS := {   # new design: [the established design she is set against, era
 	"ddg_sovremenny": ["ddg_burke", 3], "cg_slava": ["cg_tico", 3], "cg_kirov": ["cg_tico", 3],   # the Directorate's big ships, after the 130 mm automatic gun and the heavy missile (13 Nov 2026)
 	"ssn_yasen": ["ddg_burke", 4], "ssn_astute": ["ddg_burke", 4], "ssn_trafalgar": ["ddg_adams", 3], "ss_212": ["ddg_adams", 4], "ss_206": ["dd_gearing", 3], "ss_harushio": ["ddg_adams", 3], "ss_soryu": ["ddg_adams", 4],
 }
-const RUNS := 4
+## Fights each way round (environment DUEL_RUNS for a larger sample; 4 by default).
+var RUNS := int(OS.get_environment("DUEL_RUNS")) if OS.get_environment("DUEL_RUNS") != "" else 4
 func _worth(id: String, tech: Array) -> float:
 	var d: Dictionary = GameData.hulls[id]; var w: float = float(d.price)
 	for wid in BattleSim.default_fit(d, tech): if wid != null and wid != "": w += float(GameData.weapons[wid].price)

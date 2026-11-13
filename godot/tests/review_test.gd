@@ -282,6 +282,17 @@ func _chart() -> void:
 	for f in G.fleets.duplicate(): if f.kind == "raiders" and not f.has("home"): G.fleets.erase(f)
 	ok(most > 10 and most <= Campaign.SHIPS_MAX and Campaign.supply_need() <= int(Campaign.supply_cap() * 1.5), "hulks found on surveys join only while supply allows, counting a detached division (%d ships, supply %d of %d)" % [most, Campaign.supply_need(), Campaign.supply_cap()])
 	map.queue_free()
+	# docking a little short of the roads ends the passage: putting to sea does not "arrive" and open the port again
+	var pm = map
+	if is_instance_valid(pm):
+		var Gp: Dictionary = Campaign.G; var Pp: Dictionary = Gp.player; var hp: Dictionary = Gp.ports[0]
+		var was := [Pp.x, Pp.y, Campaign.paused, Pp.get("cool", 0.0)]
+		for q in Gp.ports: if not Campaign.hostile(q.fac): hp = q; break
+		Pp.x = hp.sx + 8.0; Pp.y = hp.sy; Pp.destPort = int(hp.id); Campaign.set_course(Pp, hp.sx, hp.sy); Pp.destPort = int(hp.id)
+		pm.open_port(hp, false)
+		ok(Pp.get("destPort") == null and Pp.get("route") == null, "entering a harbour you were making for ends the passage")
+		pm.cur_port = {}; pm.close_panel()
+		Pp.x = was[0]; Pp.y = was[1]; Campaign.paused = was[2]; Pp.cool = was[3]; Pp.route = null; Pp.tx = null
 	sections += 1
 
 ## The owner's report: a large squadron got "no sea route" near the Strelsk Sounds. A full squadron of carriers and
@@ -1670,6 +1681,19 @@ func _ew() -> void:
 	var heavy_dead: int = ym.mounts.filter(func(m): return m.dead and m.w.kind == "gun" and (m.w.size == "H" or m.w.size == "L")).size()
 	ok(ym.fires.size() == f0 + 6 and ym.mounts.filter(func(m): return not m.dead).size() < alive0 - 3 and heavy_dead == 0, "every missile hit starts a fire and wrecks light mounts near it (%d of %d left), never an armoured turret" % [ym.mounts.filter(func(m): return not m.dead).size(), alive0])
 	ok(kv.mounts.any(func(m): return m.wid == "ssmh") and GameData.weapons.ssmh.get("heavy", false) and float(GameData.weapons.ssmh.speed) > 1.9 * float(GameData.weapons.ssm.speed), "the Kirov carries the heavy missile, twice as fast as the other")
+	# a salvo's later missiles leave from the cell, wherever the ship has got to by then (the owner, 13 Nov 2026)
+	var ls := BattleSim.new(); ls.setup([Campaign.new_ship("ddg_burke", "B", "player", tech)], [Campaign.new_ship("ca_hipper", "H", "directorate", [])], tech, [], 0)
+	var lb: BattleSim.CShip = ls.ships[0]; var lh: BattleSim.CShip = ls.ships[1]; lb.ai_off = true; lh.ai_off = true; lb.pos = Vector2(5000, 5000); lb.a = 0.0; lh.pos = Vector2(5000, 12000)
+	var cellm = null
+	for m in lb.mounts: if m.w.kind == "ssm" and cellm == null: cellm = m
+	ls.fire_missile(lb, cellm, lh)
+	var late: Dictionary = ls.missiles.back(); var worst := 0.0
+	for i in 200:
+		lb.v = 15.0; ls.step(0.05)
+		if not ls.missiles.has(late): break
+		if float(late.delay) > 0.0: worst = maxf(worst, late.pos.distance_to(ls.world_pt(lb, cellm.slot.x, cellm.slot.y)))
+		else: break
+	ok(ls.missiles.size() >= 2 and worst < 1.5 and lb.pos.x > 5020.0, "the last missile of a salvo waits in her cell as the ship steams on (never more than %.1f m from it; the ship moved %d m)" % [worst, int(lb.pos.x - 5000.0)])
 	# guns by era: no design of the missile age carries a wartime mount as built, and the reverse
 	var wrong := []
 	for id in GameData.hulls:

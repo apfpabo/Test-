@@ -1705,6 +1705,11 @@ func buy_price(p: Dictionary, gid: String) -> int: return int(ceil(port_price(p,
 func sell_price(p: Dictionary, gid: String) -> int: return int(floor(port_price(p, gid) * 0.93 * (0.9 if Campaign.restricted(p.fac) else 1.0) * (1.0 + float(Campaign.perk("trade", 0.0)))))
 
 func open_port(p: Dictionary, tales := true) -> void:
+    # entering a harbour you were making for ends that passage (the owner, 13 Nov 2026: docking by the button or a click
+    # a little short of the roads left the course standing, and on putting to sea the squadron "arrived" and the port
+    # opened again)
+    var Pl: Dictionary = Campaign.G.player
+    if Pl.get("destPort") != null and int(Pl.destPort) == int(p.id): Pl.destPort = null; Pl.route = null; Pl.tx = null
     if tales and Tales.on_arrive(p) != "": _open_tale(p); return   # a tale waiting in this harbour comes first; the port's page after it
     Sfx.cue("gong", 0.4)   # the bell: alongside
     if not Campaign.hostile(p.fac) and Campaign.G.day - p.get("offDay", -99) > 20: # the officers' mess turns over every few weeks

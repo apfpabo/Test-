@@ -1509,7 +1509,8 @@ func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
     for i in int(w.count) + (1 + (1 if tech_lv(s.tech, "vls") >= 2 else 0) if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
-        missiles.append({"pos": p, "a": s.a + (randf() - 0.5) * 0.6, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "hv": w.get("heavy", false), "delay": i * 2.0,
+        var off: float = (randf() - 0.5) * 0.6
+        missiles.append({"pos": p, "cell": Vector2(m.slot.x, m.slot.y), "rel": off, "a": s.a + off, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "hv": w.get("heavy", false), "delay": i * 2.0,
             "prof": missile_profile(s, tg), "sk": 0.1 * (tech_lv(s.tech, "precision") if s.tech.has("precision") else 0) + (0.1 if s.tech.has("netcentric") else 0.0)})
     if s.sub: s.reveal_t = 25.0
 
@@ -2664,7 +2665,8 @@ func update_air(dt: float) -> void:
                 # a jet strike with stand-off missiles: one from each machine, let go well outside the guns, running in low
                 var wm: Dictionary = GameData.weapons["ssm"]
                 for k in int(q.up):
-                    missiles.append({"pos": q.pos + Vector2(randf() - 0.5, randf() - 0.5) * 160.0, "a": (tg.pos - q.pos).angle() + (randf() - 0.5) * 0.15, "v": 220.0, "speed": float(wm.speed), "life": AIR_MSL_RANGE / float(wm.speed) * 1.8,
+                    var wg := Vector2(randf() - 0.5, randf() - 0.5) * 160.0
+                    missiles.append({"pos": q.pos + wg, "wing": wg, "grp": q, "a": (tg.pos - q.pos).angle() + (randf() - 0.5) * 0.15, "v": 220.0, "speed": float(wm.speed), "life": AIR_MSL_RANGE / float(wm.speed) * 1.8,
                         "dmg": float(wm.dmg) * AIR_MSL_DMG, "side": q.side, "target": tg, "kind": "ssm", "delay": k * 0.5, "prof": "skim", "sk": 0.05 * int(q.get("ju", 0))})
                 q.state = "home"; _log("air missiles")
             elif q.type == "db" and d < 120:
@@ -2929,7 +2931,17 @@ func step(dtv: float) -> void:
     for i in range(missiles.size() - 1, -1, -1):
         var m: Dictionary = missiles[i]
         if m.get("dead", false): missiles.remove_at(i); continue
-        if m.delay > 0: m.delay -= dt; continue
+        if m.delay > 0:
+            # waiting her turn in the salvo: she is still in her cell (or under her aircraft's wing), and goes where the
+            # ship goes (the owner, 13 Nov 2026: the last of a salvo left from where the ship had been when the first
+            # was fired - from the sea, or out of the bridge)
+            m.delay -= dt
+            var from = m.get("who")
+            if from != null and m.has("cell"):
+                if not from.alive: missiles.remove_at(i); continue   # her ship is lost before her turn comes
+                m.pos = world_pt(from, m.cell.x, m.cell.y); m.a = from.a + float(m.get("rel", 0.0))
+            elif m.has("wing") and m.get("grp") != null: m.pos = m.grp.pos + m.wing
+            continue
         var age: float = m.get("age", -1.0)
         if age < 0.0: # leaving the rail: a burst of flame, a white cloud and some dark smoke from the booster
             var back = Vector2.from_angle(m.a + PI)

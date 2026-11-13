@@ -277,6 +277,7 @@ func hud_text(ci: CanvasItem, at: Vector2, text: String, col: Color, mn: float) 
     ci.draw_set_transform(Vector2.ZERO)
 
 # ------------------------------------------------------------------ input
+var mini_drag := false   # the left button went down on the minimap
 func _unhandled_input(e: InputEvent) -> void:
     if sim.finished: return
     if hud != null and is_instance_valid(hud.menu) and hud.menu.visible:   # the pause menu is up: nothing reaches the battle but Esc
@@ -286,6 +287,11 @@ func _unhandled_input(e: InputEvent) -> void:
     if e is InputEventMouseButton:
         var mb = e as InputEventMouseButton
         if editor != null and editor.over(mb.position): sim.mouse_down = false; return   # the panel takes its own clicks
+        if mb.button_index == MOUSE_BUTTON_LEFT and hud != null and hud.visible and hud.minimap_rect().has_point(mb.position):
+            mini_drag = mb.pressed; sim.mouse_down = false   # the minimap: the camera goes there, at the zoom it has
+            if mb.pressed: cam_free = true; camera.position = hud.minimap_world(mb.position)
+            return
+        if not mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT: mini_drag = false
         if editor != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and editor.click(world.get_global_mouse_position(), mb.alt_pressed): return
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
             if mb.pressed:
@@ -319,6 +325,8 @@ func _unhandled_input(e: InputEvent) -> void:
             if mb.pressed:
                 if not _lock_at_mouse(): sim.mouse_down = true # click an enemy to engage it; hold on open water to fire there
             else: sim.mouse_down = false
+    elif e is InputEventMouseMotion and mini_drag and hud != null:   # dragged along the minimap, the camera follows
+        cam_free = true; camera.position = hud.minimap_world(e.position)
     elif e is InputEventMouseMotion and not drag.is_empty():
         var mm = e as InputEventMouseMotion; var dlt: Vector2 = mm.position - drag.at
         if not drag.moved and dlt.length() < 6: return

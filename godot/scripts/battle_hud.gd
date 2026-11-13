@@ -291,7 +291,7 @@ func _draw() -> void:
     _reticle()
     _ff_plate()
     # minimap
-    var mw: float = Settings.minimap_width(); var mh = mw * sim.AH / sim.AW; var mx = W - mw - 16; var my = H - mh - 16; var k = mw / sim.AW
+    var mr := minimap_rect(); var mw: float = mr.size.x; var mh = mr.size.y; var mx = mr.position.x; var my = mr.position.y; var k = mw / sim.AW
     draw_rect(Rect2(mx, my, mw, mh), PANEL); draw_rect(Rect2(mx, my, mw, mh), Color(GOLD, 0.55), false, 1)
     for is_ in sim.islands: draw_circle(Vector2(mx, my) + is_.c * k, is_.r * k, Color("#56703f"))
     for s in sim.ships:
@@ -579,3 +579,12 @@ func _draw_tip(t: String) -> void:
 
 ## A battle action's key as the player has it (Settings.binds), for the readouts.
 func kn(c: int) -> String: return OS.get_keycode_string(Settings.bound("battle", c))
+
+## The minimap's place on the screen (bottom right), and the point of the battle area under a point on it. A click on
+## the minimap moves the camera there and keeps the zoom (the owner, 13 Nov 2026).
+func minimap_rect() -> Rect2:
+    var mw: float = Settings.minimap_width(); var mh: float = mw * battle.sim.AH / battle.sim.AW
+    return Rect2(size.x - mw - 16, size.y - mh - 16, mw, mh)
+func minimap_world(p: Vector2) -> Vector2:
+    var r := minimap_rect()
+    return ((p - r.position) / r.size.x * battle.sim.AW).clamp(Vector2.ZERO, Vector2(battle.sim.AW, battle.sim.AH))

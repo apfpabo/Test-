@@ -1628,7 +1628,7 @@ class Drawer extends Node2D:
                 # the shell itself
                 var head: Vector2 = sh.pos - Vector2(0, hgt); var dir: Vector2 = (sh.e - sh.s).normalized()
                 var big: float = {"S": 0.0, "M": 0.35, "L": 0.7, "H": 1.0}[sh.size]
-                var tail_len: float = r * (10.0 + 10.0 * big)
+                var tail_len: float = maxf(0.6, minf(r * (10.0 + 10.0 * big), sh.pos.distance_to(sh.s)))   # (no longer than she has flown: close in, a shell just out of the muzzle drew its streak back through the ship)
                 var back: Vector2 = head - dir * tail_len + Vector2(0, (sin(PI * minf(1.0, (sh.t + 0.05) / sh.T)) - sin(PI * k)) * minf(600.0, sh.s.distance_to(sh.e) * 0.08))
                 var axis: Vector2 = (head - back).normalized(); var nrm: Vector2 = axis.orthogonal(); var mid: Vector2 = back.lerp(head, 0.55)
                 var hot := Color(1.0, 0.97, 0.86); var cool := Color(1.0, 0.45, 0.2) if sh.side else Color(1.0, 0.62, 0.25)

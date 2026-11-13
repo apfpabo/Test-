@@ -173,3 +173,29 @@ Resolved by diplomacy ([`DIPLOMACY.md`](DIPLOMACY.md)): the Federation is now co
 - The Amakura Black Archives and Dry Dock Zero as story missions; the Halvards restricting access to the Skarn Strait wrecks; signals from the Throat anchorage and the Austral Barrier stations.
 - The Quiet Race: research as intelligence that makes you interesting to every service on the map.
 - Hardliners and moderates in the Concord; the Concord's aim to absorb the Republic; the Combine selling to both sides.
+
+## The expansion and the narrative bible (13 Nov 2026)
+
+The owner's expansion is appended to [`lore/foundational_lore.md`](lore/foundational_lore.md) word for word (its title
+line and the two notes addressed to the agent are left out), and the Survivor's blurb names Task Force Kestrel, as his
+note asked. `tools/lore_to_json.py` reads the new sections: the Ombrian Protectorate and the Outer Isles League
+(profiles and homes), the Halcyon lost fleet as an eighth mystery, the two declassified truths, and the years after 1946.
+
+**In the game:** the Codex's Powers tab shows all nine; Mysteries shows a declassified truth once you have surveyed its
+site or from 1947 on; a new tab, After 1946, shows each period once its first year has come. The Isles' capital is
+renamed Port Vesper to match (it was Tamaru). Each power's contracts open in its own voice
+(`godot/data/contract_templates.json`: his sample lines where a kind fits them, the rest drafted to his voice rules).
+Six origins have an opening tale (`godot/data/tales/origin_openings.txt`: his premises, the agent's draft scenes).
+
+**Where the new canon and the owner's own tales differ (his to settle; nothing was changed):**
+- *Dry Dock Zero.* The bible: the super-battleship *Leviathan*, her turrets replaced by missile tubes. His tale
+  `dry_dock_zero`: rocket rails and radar "onto a salvaged cruiser hull".
+- *The Throat.* The expansion: an automated buoy network, "not ghosts or stranded scientists". His tale
+  `throat_whispers`: ragged technicians packing crates, and a junior commissar short of generator fuel.
+- *The Lost Squadron.* The expansion: an ambush by a Directorate cruiser-submarine's wire-guided torpedoes. His tale
+  `lost_squadron_2`: telemetry of a guided weapon test "fired by both sides' scientists working under a joint
+  black-site code".
+
+**Not built from the bible yet:** the five three-part mystery chains, the six named figures, the mid and late game
+chains, and new openings for the Survivor and the Disgraced Officer (each already has a tale of the owner's).
+The two powers' descriptions on the game's own panels (`FAC` in `src/game.html`) are still the agent's placeholders.

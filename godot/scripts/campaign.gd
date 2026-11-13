@@ -2100,7 +2100,7 @@ func do_survey(poi: Dictionary) -> Dictionary:
     var out = {"lines": [], "ambush": null}
     if POI_TEXT2.has(poi.type): out.lines.append(poi_text(poi)); return out   # (a den, an island or a scuttled fleet is not surveyed: see its own panel)
     if G.day < poi.next: out.lines.append("Your divers have picked this site over recently. Come back in %d days." % (poi.next - G.day)); return out
-    poi.next = G.day + 60
+    poi.next = G.day + 60; poi.surveyed = true   # (the Codex's declassified truths ask whether you have been there)
     var roll = randf(); var rp = 0; var coin = 0
     if poi.type == "wreck": rp = randi_range(6, 16); coin = randi_range(3, 12) * 1000; out.lines.append("Divers bring up range-keeping clocks, shell fragments and a sealed chart case.")
     elif poi.type == "base":

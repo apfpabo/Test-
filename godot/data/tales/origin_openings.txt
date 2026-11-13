@@ -1,0 +1,229 @@
+# Opening tales for six origins (13 Nov 2026).
+# The premise of each is the owner's, from section 3 of his narrative bible. The scenes, choices and effects are
+# Claude's draft to that premise, for the owner to rewrite: this is not his text. Each comes up once, on the first
+# day at sea (or the first arrival) from day 3 on, for a captain of that origin.
+
+=== origin_hijacker
+title: The Price of the Ashen Wake
+when: at sea
+days: 3+
+needs: origin hijacker
+art: contact
+
+--- start
+Three days out, the bosun asks you down to the after hold. A plank of the bulkhead has sprung in the swell, and behind it there is a second wall, newer than the ship.
+
+The ship you stole was not carrying ordinary cargo. Behind the false bulkhead sits a single crate stencilled in Combine script: prototype gyro-stabilisers, packed in grease and horsehair. It explains the bounty notices better than a stolen freighter ever did. Three different flags want this crate back, and none of them will ask politely.
+
+* Keep it hidden and say nothing to the crew -> keep
+* Break it open and let your own men study the things -> study
+* Heave it over the side: no crate, no reason to hunt you -> ditch
+
+--- keep
+You have the plank nailed back and the bosun sworn to silence. The crate is worth more than the ship. Somebody in a freeport will know its price.
+! flag ashen_crate
+! log "Found a Combine crate of gyro-stabilisers hidden in the hold"
+* Carry on -> end
+
+--- study
+By lamplight your engineer strips one of the units down on the mess table. He does not understand all of it, but he draws what he sees.
+! rp +12
+! flag ashen_crate
+! log "Opened the Combine crate hidden in the hold and studied what was in it"
+* Carry on -> end
+
+--- ditch
+It takes four men to get it to the rail. It goes down without a sound worth the name. Whether anyone will believe it is gone is another matter.
+! log "Put a Combine crate of gyro-stabilisers over the side"
+* Carry on -> end
+
+
+=== origin_merchant
+title: The Requisition Warrant
+when: at sea
+days: 3+
+needs: origin merchant
+art: contact
+
+--- start
+A cruiser comes up on your quarter at dawn and signals you to heave to. Her boarding officer is polite, tired and in a hurry. He lays a paper on your chart table: an emergency requisition, wartime form, never repealed.
+
+You are to take on ammunition from the cruiser's lighter and carry it through raider waters to the next harbour. The pay is a fixed rate, set in 1943. The escort he promises is one armed trawler.
+
+* Sign it and take the shells aboard -> haul
+* Take the shells, lose the trawler in the night, and sell the lot in a freeport -> sell
+* Refuse, and cite the armistice -> refuse
+
+--- haul
+The lighter is alongside for two hours. Your holds ride low and every man aboard knows what is in them.
+! munitions +30
+! credits +1500
+! flag requisitioned
+! log "Requisitioned to carry ammunition through raider waters"
+* Get under way -> end
+
+--- sell
+The trawler's lamp falls astern a little after midnight. By morning you are alone, with thirty tons of somebody else's shells and a paper that says you are a thief.
+! munitions +30
+! standing concord -8
+! standing freeport +4
+! flag requisition_broken
+! log "Took requisitioned ammunition and slipped its escort"
+* Shape a course for a freeport -> end
+
+--- refuse
+The officer reads your face, folds his paper and writes your ship's name in a notebook. "As you like, Captain. We keep lists."
+! standing concord -4
+* Carry on -> end
+
+
+=== origin_privateer
+title: Ink and Iron
+when: arriving
+days: 3+
+needs: origin privateer
+art: port
+
+--- start
+A clerk is waiting on the quay at {port} with a summons. Your sponsor's enemies have challenged the legality of your letter of marque before a neutral tribunal, and until it sits your commission is "under review".
+
+The tribunal is three merchants and a retired harbour master in a room above a chandler's. Nobody in it has ever heard a shot fired. The other side has a lawyer.
+
+* [credits >= 2000] Hire an advocate and defend the commission (2,000) -> defend
+* Speak for yourself: the paper is good and so are your guns -> speak
+* Tear up the summons and walk out -> walk
+
+--- defend
+Your advocate talks for an hour about prize law and precedent. The merchants nod. The letter stands, with a seal on it now that it did not have before.
+! credits -2000
+! standing republic +5
+! flag marque_upheld
+! log "Defended the letter of marque before a tribunal in {port}"
+* Return to {flagship} -> end
+
+--- speak
+You tell them what the war was like on the Gate, and what a letter of marque is for. Two of the four believe you. The matter is adjourned, which is not the same as won.
+! standing republic +2
+! flag marque_adjourned
+! log "Spoke for the letter of marque before a tribunal in {port}"
+* Return to {flagship} -> end
+
+--- walk
+The clerk calls after you down the stairs. By evening the word in every tavern is that your paper is worthless and your flag is whatever you say it is.
+! standing republic -6
+! standing freeport +4
+! flag marque_torn
+! log "Walked out of the tribunal in {port}"
+* Return to {flagship} -> end
+
+
+=== origin_defector
+title: The Cipher in Your Head
+when: arriving
+days: 3+
+needs: origin defector
+art: port
+
+--- start
+You are alongside at {port} when the watch finds a man in the wardroom flat who is not on the muster. He has a knife, a Vargan service pistol and no papers. He was looking for your cabin.
+
+Your new patrons have begun to suspect that you did not give them everything when you crossed over. Your old service evidently agrees. Both want what is in your head: one in an interrogation room, the other on the deck.
+
+* Hand him to your patrons' people ashore and tell them the rest of what you know -> tell
+* Question him yourself, then put him ashore somewhere quiet -> question
+* Say nothing to anyone, and double the watch -> silent
+
+--- tell
+They take the man away without a word. Then they sit you down for six hours with a stenographer. When it is over they are friendlier, and you have nothing left to sell.
+! credits +3000
+! flag cipher_given
+! log "Gave the rest of what you knew to your patrons after an attempt on your life in {port}"
+* Return to the bridge -> end
+
+--- question
+He tells you little, but he tells you who sent him and that he is not the only one. You put him over the side into a fishing boat before dawn.
+! rp +8
+! flag cipher_kept
+! log "Questioned an assassin from the old service in {port}"
+* Return to the bridge -> end
+
+--- silent
+The crew are told he was a thief. The officers are not fooled. You still hold what both sides want, and now you know they both know it.
+! flag cipher_kept
+! log "An attempt on your life in {port}; nothing was reported"
+* Return to the bridge -> end
+
+
+=== origin_smuggler
+title: The Unmarked Passenger
+when: arriving
+days: 3+
+needs: origin smuggler
+art: port
+
+--- start
+A Syndicate fixer finds you before your lines are fast at {port}. He offers triple your usual rate to carry one passenger through the Tarsene Gate. No name in the log. No questions at the gangway.
+
+The passenger comes aboard hooded, after dark, with one small case. He speaks to nobody. On the second night your steward hears him muttering figures in his sleep, in Strelsk-accented Vargan: burn times, chamber pressures.
+
+Your cargo is a rocket scientist, and he is running.
+
+* Carry him through as agreed, and take the fee -> carry
+* Tell him you know, and ask what the Directorate would pay to have him back -> bargain
+* Put him ashore here: this is more than you signed for -> ashore
+
+--- carry
+You run him through as you have run everything else. On the far side he shakes your hand, which nobody in this trade does, and is gone.
+! credits +6000
+! standing freeport +5
+! standing directorate -5
+! flag passenger_delivered
+! log "Carried an unnamed passenger from {port} through the Tarsene Gate"
+* Carry on -> end
+
+--- bargain
+He goes very still. Then he opens the small case and shows you why he is worth more alive and free than returned: a notebook, close-written, which he lets your engineer copy three pages of.
+! credits +3000
+! rp +15
+! flag passenger_delivered
+! log "Carried a defecting rocket scientist out of {port}, and copied part of his notebook"
+* Carry on -> end
+
+--- ashore
+The fixer is not pleased. The passenger says nothing at all. You watch him walk up the quay with his case, and wonder who picks him up.
+! standing freeport -5
+* Return to {flagship} -> end
+
+
+=== origin_academy
+title: The Instructor's Wager
+when: arriving
+days: 3+
+needs: origin academy
+art: port
+
+--- start
+There is a letter waiting for you at the harbour office in {port}, in a hand you know from red ink on your tactics papers.
+
+Your old professor is a desk captain now, and tired of it. He has slipped you an off-the-books patrol sector: raiders working a lane his admirals have written off. He has also, he writes, bet his pension that a green officer with a battered corvette can succeed where their flagships did not. "Do not make me poor."
+
+* Take the sector -> take
+* Write back for whatever charts and intelligence he can spare first -> ask
+* Decline: you have a ship to keep afloat -> decline
+
+--- take
+The sector is a pencilled box on a chart and a list of sinkings. It is not much. It is the first order anyone has given you that was meant to be carried out.
+! flag instructors_wager
+! log "Took an off-the-books patrol sector from an old instructor"
+* Return to {flagship} -> end
+
+--- ask
+A week's worth of signals logs arrives by the next mail packet, with his notes in the margins. He has been thinking about these raiders for some time.
+! rp +8
+! flag instructors_wager
+! log "An old instructor sent his notes on a raider lane"
+* Return to {flagship} -> end
+
+--- decline
+You write a careful letter. The reply, when it comes, is one line: "Then I shall bet on someone else."
+* Return to {flagship} -> end

@@ -417,8 +417,31 @@ func _make(p: Dictionary) -> Dictionary:
 			c.merge({"target": foe, "need": 3, "got": 0, "days": 60, "reward": int(round((14000.0 + randf() * 8000.0) / 500.0) * 500), "rep": 10,
 				"title": "Sink %s shipping" % GameData.fac[foe].short})
 			c.text = "The %s is at war with the %s. Sink or take three of their ships within two months. Signing makes you a combatant in their eyes." % [GameData.fac[fac].name, GameData.fac[foe].name]
+	c.text = voiced(c) + String(c.get("text", ""))
 	c.deadline = 0
 	return c
+
+## A contract's opening line in the voice of the power that offers it (the owner's narrative bible, 13 Nov 2026;
+## data/contract_templates.json), with a blank line after it; "" where that power has no line for that kind.
+var _voices: Dictionary = {}
+func voiced(c: Dictionary) -> String:
+	if _voices.is_empty():
+		var f := FileAccess.open("res://data/contract_templates.json", FileAccess.READ)
+		var d = JSON.parse_string(f.get_as_text()) if f != null else null
+		_voices = d if d is Dictionary else {"_none": true}
+	var line: String = String(_voices.get(String(c.fac), {}).get(String(c.kind), "")) if _voices.get(String(c.fac), {}) is Dictionary else ""
+	if line == "": return ""
+	var G: Dictionary = Campaign.G
+	var vals := {"from": String(c.get("from", "")), "qty": str(int(c.get("qty", 0)))}
+	if c.has("dest"): vals["port"] = String(G.ports[int(c.dest)].name)
+	if c.has("good"):
+		for g in Campaign.C.GOODS: if String(g.id) == String(c.good): vals["good"] = String(g.name).to_lower()
+	if c.has("x"): vals["where"] = where(float(c.x), float(c.y))
+	if c.has("poi"): vals["site"] = String(G.pois[int(c.poi)].name)
+	if c.has("struct"): vals["target"] = String(Structures.all()[int(c.struct)].name)
+	if c.has("target") and GameData.fac.has(String(c.target)): vals["foe"] = String(GameData.fac[String(c.target)].name)
+	for k in vals: line = line.replace("{" + k + "}", vals[k])
+	return line + "\n\n" if not line.contains("{") else ""   # (a word that could not be filled in: the plain terms alone)
 
 func can_accept(c: Dictionary) -> String:
 	var G := g()

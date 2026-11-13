@@ -1,0 +1,84 @@
+{
+ "_note": "Each power's voice for its contracts, from the owner's narrative bible (13 Nov 2026), section 5. The line is shown above the contract's terms. Words filled in: {port} the destination, {from} the harbour that offers it, {good}, {qty}, {where}, {site}, {target}, {foe}. The owner's own sample lines are used where a kind fits them, with the place put in; the rest are the agent's drafts to his voice rules, for him to rewrite.",
+ "concord": {
+  "delivery": "By authority of the Admiralty at {from}, your vessel is retained to convey {qty} tons of {good} to {port}. Manifests will be presented on arrival and demurrage is not payable.",
+  "hunt": "By authority of the Gatehold Admiralty, your vessel is retained to interdict and neutralise raider commerce operating {where}. Strict adherence to prize law is expected.",
+  "survey": "The Hydrographic Office requires an independent inspection of {site}. You will report by wireless and disturb nothing that is not yours to disturb.",
+  "escort": "A convoy under Concord charter sails for {port}. Your vessel is retained as close escort. Neutral shipping is to be given a wide berth.",
+  "smuggle": "This office has no knowledge of {qty} tons of {good} bound for {port}, and will have none. Unlawful maritime actors hold that harbour; discretion is expected.",
+  "strike": "Elements in breach of the Skarn Armistice hold the {target}. You are authorised to reduce its defences. Collateral damage to neutral property will be deducted from your fee.",
+  "war": "A state of hostilities exists with the {foe}. You are commissioned to take or sink three of their vessels. Prizes are to be condemned in a Concord court."
+ },
+ "directorate": {
+  "delivery": "Directive 31-A. {qty} tons of {good} for {port}. Deliver on schedule. Losses will be investigated.",
+  "hunt": "Directive 88-B. Enemy raiders violate sovereign Vargan waters {where}. Sink them. Leave no salvage for the oceanic scavengers.",
+  "survey": "Directive 52. {site} is to be examined and reported on. What you find belongs to the Directorate.",
+  "escort": "Directive 17. A state convoy sails for {port}. You will stay with it. Imperialist corsairs are expected on the route.",
+  "smuggle": "Directive unnumbered. {qty} tons of {good} are to reach {port} past the oceanic blockaders. This order does not exist.",
+  "strike": "Directive 90. The {target} serves the blockade. Destroy its defences. Do not report partial results.",
+  "war": "Directive 101. The {foe} is at war with the people of Varga. Sink three of their ships. Sunk is preferred to taken."
+ },
+ "pacific": {
+  "delivery": "The Amakura Maritime Exchange would be obliged if {qty} tons of {good} were to reach {port} in good order. A retainer has been set aside.",
+  "hunt": "The Amakura Maritime Exchange notes an unfortunate spike in uninsured piracy {where}. A discreet clearing of the channel would merit a generous retainer.",
+  "survey": "A navigational review of {site} is overdue. The Exchange would value an outside opinion, quietly given.",
+  "escort": "A Federation convoy for {port} would travel more comfortably in company. The underwriters have approved your name.",
+  "smuggle": "Certain goods, {qty} tons of {good}, are awaited at {port} by parties who prefer not to trouble the customs house. The Exchange takes no position.",
+  "strike": "The {target} has become an obstacle to navigation. A navigational clearance is requested, with the usual discretion.",
+  "war": "Regrettably, relations with the {foe} now require an insurance adjustment: three of their hulls. The Exchange will honour the claim."
+ },
+ "combine": {
+  "delivery": "Contract #MC-2210. Transit of {qty} tons of {good} to {port}. Late delivery is a non-performing transit and will be invoiced.",
+  "hunt": "Contract #MC-3107. Unlicensed operators are degrading freight margins {where}. Liability mitigation is authorised.",
+  "survey": "Contract #MC-4092. An asset review of {site} is required. Recover data intact. Standard indemnification clauses apply.",
+  "escort": "Contract #MC-1876. A Combine freight movement to {port} requires third-party risk cover. You are the cover.",
+  "smuggle": "Contract #MC-0000. Off-ledger placement of {qty} tons of {good} at {port}. The Combine is not a party to this contract.",
+  "strike": "Contract #MC-5521. The {target} is a non-performing asset held by a hostile counterparty. Write it down.",
+  "war": "Contract #MC-6004. Market conditions with the {foe} have deteriorated. Remove three units of their tonnage from circulation."
+ },
+ "republic": {
+  "delivery": "Tarsa needs {qty} tons of {good} landed at {port}, and needs it now. Every hold that gets through is a day the Republic stays free.",
+  "hunt": "Raiders are bleeding our coasters {where} while the great powers look the other way. Hunt them down for us, Captain.",
+  "survey": "Something lies at {site} that the tyrants do not want found. Go and look, and tell Tarsa first.",
+  "escort": "The Concord thinks they can starve Tarsa into folding! See this convoy through to {port} and prove the Free Republic still has teeth.",
+  "smuggle": "Our friends in {port} are waiting on {qty} tons of {good}. The customs launches there answer to our enemies. Run it in.",
+  "strike": "The guns of the {target} are pointed at free men. Silence them, and Tarsa will not forget your name.",
+  "war": "The {foe} has chosen war with the Republic. Take three of their ships and show them what that costs."
+ },
+ "freeport": {
+  "delivery": "{qty} tons of {good} for {port}. No paperwork, half up front, half when it lands. Don't open the crates.",
+  "hunt": "Somebody's been working our lanes {where} without paying the Table its share. Keep your guns hot and fix that.",
+  "survey": "A buyer wants to know what's really at {site}. Go and look, and bring the story back to us before anyone else hears it.",
+  "escort": "Fat convoy bound for {port}, and every wolf between here and there knows it. Ride along and earn your half.",
+  "smuggle": "Keep your lights dark. {qty} tons of {good} go into {port} tonight, and the customs men there are not on our payroll.",
+  "strike": "The {target} is bad for business. Knock it flat and nobody at the Table will ask how.",
+  "war": "The {foe} forgot who holds their markers. Three of their ships, sunk or sold, and the debt's settled."
+ },
+ "enclave": {
+  "delivery": "{port} is short of {good}. {qty} tons. The ice does not wait, and neither will we.",
+  "hunt": "Raiders work the lanes {where}. They take from men who have little. Stop them. We pay in coin and clean charts.",
+  "survey": "{site} has not been sounded since the war. Go carefully, and tell us what the cold has kept.",
+  "escort": "A convoy for {port}. The pack is moving. Keep them together and bring them all in.",
+  "smuggle": "{qty} tons of {good} for {port}. The men who hold that harbour would let it rot on the quay. We owe a debt there.",
+  "strike": "The {target} fires on ships that have done it no harm. End that. We respect work done properly.",
+  "war": "The {foe} broke its word to us. Three of their ships. Then the account is closed."
+ },
+ "ombria": {
+  "delivery": "Official notice: {qty} tons of {good} for the stores at {port}, per the harbour schedule. [In pencil: not all of it need be counted on arrival.]",
+  "hunt": "Official notice: unlicensed craft reported {where}; patrol requested. [Tucked inside: they are raiders, and Strelsk will not spare us a hull. Sink them.]",
+  "survey": "Official notice: a routine inspection is required at {site}. [In the margin: bring what you find to Sefira before the advisers hear of it.]",
+  "escort": "Official notice: a coastal convoy for {port} requests an escort. [Handwritten: it carries more than the manifest says. Lose none of it.]",
+  "smuggle": "Official notice: nothing is scheduled for {port}. [Handwritten note tucked inside: {qty} tons of {good}, at night, out of Strelsk's sight.]",
+  "strike": "Official notice: gunnery exercises are authorised near the {target}. [In the margin: make sure nothing there still works when you leave.]",
+  "war": "Official notice: the Protectorate regrets hostilities with the {foe}. [Handwritten: three of their ships. The junta must be seen to fight.]"
+ },
+ "isles": {
+  "delivery": "We are out of {good} at {port}, and nobody else is coming. {qty} tons. We'll pay what we have.",
+  "hunt": "Raiders have the lanes {where} pinned down, and Amakura stopped answering our calls months ago. Break them and we'll empty the island treasury to pay you.",
+  "survey": "Our fishermen will not go near {site} any more. Find out why. We can't spare a boat of our own.",
+  "escort": "A convoy for {port}: trawlers and one tired destroyer. Without you, half of it won't arrive.",
+  "smuggle": "{qty} tons of {good} for our people in {port}. The flag over that harbour would seize it. Get it in to them.",
+  "strike": "The {target} has shelled our boats one time too many. Put it out of action. We were left out of the armistice; we remember who helps.",
+  "war": "The {foe} thinks the outer islands don't count. Sink three of their ships and they'll learn to count."
+ }
+}

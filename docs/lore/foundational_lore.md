@@ -194,7 +194,7 @@ In the chaotic winter of 1945 you and a handful of desperate men took the freigh
 You own the *Southern Trader*, a hard-used but reliable freighter that somehow survived six years of unrestricted submarine warfare. The armistice has not restored safe routes. You are free, solvent for the moment, and completely exposed.
 
 **Survivor of the Lost Fleet**  
-You were a junior officer or senior rating on one of the ships of the vanished Central Hesperian squadron (or the Directorate’s 4th Battle Division). You and a handful of others made it out in a damaged escort or launch. Officially the squadron was lost to enemy action. You know the official story is incomplete. Certain people would prefer you stopped looking.
+You were a junior officer or senior rating on one of the ships of the vanished Central Hesperian squadron (or the Directorate’s 4th Battle Division, or the Halcyon Federation’s Task Force Kestrel). You and a handful of others made it out in a damaged escort or launch. Officially the squadron was lost to enemy action. You know the official story is incomplete. Certain people would prefer you stopped looking.
 
 **Privateer (Tarsene or Syndicate)**  
 The Free Republic (or a Syndicate letter-broker) gave you a letter of marque and a tired destroyer-escort in exchange for a share of prizes and a promise to harass the enemies of your sponsor. The paper is only as good as the guns behind it.
@@ -207,3 +207,44 @@ You ran the Gate and the Canal while the great fleets were busy killing each oth
 
 **Academy Cast-Off**  
 You graduated near the top of your class in the last wartime intake. Instead of a proper posting you were given a worn-out corvette and orders that amounted to “make yourself useful somewhere far from headquarters.” You have the training. You do not yet have the reputation, the enemies, or the scars.
+
+---
+
+## Expansion (1946–1955+)
+
+### Additional Faction Profiles (1946)
+
+**Ombrian Protectorate**  
+Home: Sefira (Southern Varga / Cradle Sea)  
+- **Personality**: Proud, courtly, resentful, and dangerously two-faced. An old mercantile and maritime culture living under a foreign boot.  
+- **Doctrine**: Coastal defence ships, fast torpedo craft, and mine-layers built to guard the Cradle Sea shore under Directorate supervision.  
+- **Current Goals**: Survive Strelsk’s occupation without losing its naval identity, quietly sabotage Directorate ambitions where it cannot be proved, and rebuild secret trade links across the Cradle Sea.  
+- **Attitude toward independents**: Publicly strict and bureaucratic to satisfy Directorate observers in Sefira; privately eager to deal with smugglers, blockade runners, and anyone willing to carry messages or cargo out of Strelsk’s sight.
+
+**Outer Isles League**  
+Home: Port Vesper (Outer Archipelago)  
+- **Personality**: Stubborn, salt-bitten, pragmatic, and deeply bitter toward the great powers.  
+- **Doctrine**: Converted trawlers, ageing destroyers, and long-range seaplane tenders cobbled together for convoy escort and anti-raider patrols.  
+- **Current Goals**: Keep the island sea lanes open against pirate flotillas, secure fuel and spare parts without surrendering sovereignty, and make the Concord regret leaving the outer archipelagos out of the 1945 armistice guarantees.  
+- **Attitude toward independents**: Desperate and welcoming. Anyone who hunts raiders or delivers medicine and ammunition gets paid in full and asked few questions about their past.
+
+---
+
+### Updates to Mysteries & Origins (1946)
+
+#### The Halcyon Lost Fleet: *Task Force Kestrel*
+In October 1945, during the final weeks of the war, the Halcyon Federation dispatched **Task Force Kestrel**—a fast cruiser-carrier raiding group—to interdict Directorate supply convoys slipping through the misty eastern approaches to the Lantern Strait. After transmitting a single garbled contact report citing *"unknown radar echoes and high-speed surface wakes,"* the entire formation vanished. No lifeboats reached Amakura. Neither the Directorate nor the Meridian Combine claimed the kills.
+
+#### Declassified Truths (1946–1947 Codex Updates)
+- **The Central Hesperian Lost Squadron (Resolved):** Salvage divers working the western Hesperian abyssal shelf in late 1946 recovered the armoured conning tower of the Concord battlecruiser *HMS Vanguardia* alongside the shattered pressure hull of an uncatalogued Directorate cruiser-submarine. The squadron did not vanish into myth; it walked into an ambush by prototype wire-guided acoustic torpedoes. Both admiralties buried the findings to keep hardliners from tearing up the Skarn armistice.
+- **The Throat Research Anchorage (Resolved):** Intercepted radio traffic from the inner Sable Sea proved not to be ghosts or stranded scientists, but an automated Directorate acoustic-buoy network powered by an experimental radioisotope generator—left running by Strelsk to track every Concord hull entering the eastern Cradle Sea under cover of the armistice.
+
+---
+
+### Beyond 1946: The Missile Horizon (1947–1955+)
+
+The armistice signed aboard a Halvard icebreaker in November 1945 bought the world time, not peace. By 1947, the **Quiet Race** ceased to be quiet.
+
+- **1947–1949 — The Proxy Years:** Exhausted treasuries prevented another immediate clash of grand battle-lines, so the great powers fought through deniable means. Raider flotillas surged in the Saffron Sea and Outer Isles. Privateers clashed at the Tarsene Gate. Independent squadrons with no flag—or their own flag—became the preferred instruments of Concord and Directorate intelligence alike.
+- **1950–1952 — The Death of the Gunline:** The operational debut of ship-launched anti-ship guided missiles, carrier-borne swept-wing strike jets, and long-range homing torpedoes ended six centuries of naval doctrine. Massive dreadnoughts became expensive targets unless shielded by radar picket frigates, electronic countermeasures, and fleet air defence.
+- **1953–1955+ — The Cold Meridian:** With long-range ballistic rockets capable of striking coastal capitals across the Hesperian and Sable seas, total war became mutual suicide. The world hardened into a permanent, razor-edged Cold War. Control of choke points, early-warning stations on the Austral Barrier, and deep-water salvage rights replaced fleet battles as the true measure of power.

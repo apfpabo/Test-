@@ -2,7 +2,19 @@ class_name Codex
 ## The codex: the owner's foundational lore (data/lore.json "world", parsed word for word from
 ## docs/lore/foundational_lore.md by tools/lore_to_json.py), shown on the title screen and in the Command panel.
 
-const TABS := [["world", "The world"], ["history", "The Meridian War"], ["powers", "The powers"], ["mysteries", "Mysteries"], ["race", "The Quiet Race"], ["manual", "Manual"]]
+const TABS := [["world", "The world"], ["history", "The Meridian War"], ["powers", "The powers"], ["mysteries", "Mysteries"], ["race", "The Quiet Race"], ["horizon", "After 1946"], ["manual", "Manual"]]
+## What the owner's expansion (13 Nov 2026) keeps back until the campaign has earned it: a declassified truth is
+## shown once you have surveyed its site, or from 1947 on; each period after 1946 once its first year has come. On
+## the title screen, with no campaign running, nothing of either is shown.
+const TRUTH_SITE := {"lost_squadron": "Lost Squadron", "throat": "Throat"}
+static func year_now() -> int:
+	return int(Campaign.year()) if not Campaign.G.is_empty() and Campaign.G.has("day") else 0
+static func declassified(key: String) -> bool:
+	if year_now() == 0: return false
+	if year_now() >= 1947: return true
+	for q in Campaign.G.get("pois", []):
+		if String(q.get("name", "")).contains(String(TRUTH_SITE.get(key, "\u0000"))) and q.get("surveyed", false): return true
+	return false
 ## The Manual (the owner, 13 Nov 2026): how the game's deeper systems work, a short page each (data/manual.json: the
 ## agent's text, not the owner's lore). `manual_page` is the page shown.
 static var _manual: Array = []
@@ -72,11 +84,23 @@ static func build(box: Container, tab: String, on_tab: Callable) -> void:
 		"powers":
 			for k in W.powers:
 				var p: Dictionary = W.powers[k]; var col := Color(GameData.fac[k].map) if GameData.fac.has(k) else UI.GOLD
-				box.add_child(UI.label(p.name, col, 20)); box.add_child(UI.label("Home: " + p.home, UI.DIM, 13)); box.add_child(rich(p.text, UI.INK, 14))
+				box.add_child(UI.label(p.name, col, 20)); box.add_child(UI.label("Home: " + p.home, UI.DIM, 13))
+				if String(p.text) != "": box.add_child(rich(p.text, UI.INK, 14))
 				var pr: Dictionary = profile(k)
 				for f in pr: box.add_child(rich("**%s:** %s" % [f, pr[f]], UI.DIM, 13))
 		"mysteries":
 			for m in W.mysteries: box.add_child(UI.label(m.name, UI.GOLD, 17)); box.add_child(rich(m.text, UI.INK, 14))
+			var open_now: Array = W.get("declassified", []).filter(func(d): return declassified(String(d.key)))
+			if not open_now.is_empty():
+				box.add_child(UI.label("DECLASSIFIED", UI.DIM, 12))
+				for d in open_now: box.add_child(UI.label(String(d.name), UI.GOLD, 17)); box.add_child(rich(String(d.text), UI.INK, 14))
+		"horizon":
+			var hz: Dictionary = W.get("horizon", {})
+			box.add_child(UI.label("Beyond 1946: The Missile Horizon", UI.GOLD, 20)); box.add_child(rich(String(hz.get("intro", ""))))
+			var yn: int = year_now(); var shown := 0
+			for y in hz.get("years", []):
+				if yn >= int(y.from): box.add_child(UI.label(String(y.title), UI.GOLD, 17)); box.add_child(rich(String(y.text), UI.INK, 14)); shown += 1
+			if shown < hz.get("years", []).size(): box.add_child(UI.label("What follows has not happened yet." if yn > 0 else "The years to come are written as a campaign reaches them.", UI.DIM, 13))
 		"race":
 			box.add_child(rich(W.quiet_race))
 

@@ -1822,6 +1822,25 @@ func _traits() -> void:
 	Campaign.career_battle({"victory": true, "lost": [1, 2]})
 	ok(int(cr.battles) == 1 and int(cr.won) == 1 and int(cr.lost) == 2 and cr.seen.has("won1"), "an action is entered in the record")
 	Campaign.save(); Campaign.load_game(); ok(Campaign.career().marks.size() == cr.marks.size(), "and the record is saved with the campaign")
+	# the lore expansion: what the Codex keeps back, each power's voice on its contracts, the origins' opening tales
+	var Wd: Dictionary = Codex.world()
+	ok(Wd.powers.has("ombria") and Wd.powers.has("isles") and String(Wd.powers.isles.home).contains("Port Vesper") and Campaign.G.ports.any(func(q): return q.name == "Port Vesper" and q.fac == "isles" and q.capital), "the Codex has all nine powers, and the Isles' capital is Port Vesper on the chart too")
+	Campaign.G.day = 30
+	ok(not Codex.declassified("lost_squadron") and not Codex.declassified("throat"), "in 1946 the declassified truths are kept back")
+	for q in Campaign.G.pois: if String(q.name).contains("Throat"): q.surveyed = true
+	ok(Codex.declassified("throat") and not Codex.declassified("lost_squadron"), "a site surveyed opens its own truth")
+	Campaign.G.day = 320
+	ok(Campaign.year() == 1947 and Codex.declassified("lost_squadron"), "and from 1947 both are open")
+	Campaign.G.day = 30
+	var cv: Dictionary = {"fac": "directorate", "kind": "hunt", "x": Campaign.G.player.x, "y": Campaign.G.player.y, "from": "Strelsk"}
+	var cvt: String = Diplomacy.voiced(cv)
+	ok(cvt.begins_with("Directive 88-B") and not cvt.contains("{"), "a Directorate hunt opens in the Directorate's voice (%s)" % cvt.substr(0, 60))
+	ok(Diplomacy.voiced({"fac": "raiders", "kind": "hunt"}) == "", "a flag with no voice gives the plain terms alone")
+	var miss := []
+	for fc in Diplomacy.POWERS: for kd in ["delivery", "hunt", "survey", "escort", "smuggle", "strike", "war"]: if String(Diplomacy._voices.get(fc, {}).get(kd, "")) == "": miss.append(fc + "/" + kd)
+	ok(miss.is_empty(), "every power has a line for every kind of contract %s" % str(miss.slice(0, 4)))
+	for og in ["hijacker", "merchant", "privateer", "defector", "smuggler", "academy"]: if not Tales.T.has("origin_" + og): miss.append(og)
+	ok(miss.is_empty() and Tales.errors.is_empty(), "six origins have an opening tale, and no tale file has a mistake")
 	var man: Array = Codex.manual()
 	ok(man.size() >= 10 and man.all(func(pg): return String(pg.get("title", "")) != "" and String(pg.get("text", "")).length() > 200), "the Codex has a Manual of %d pages" % man.size())
 	Campaign.new_game("academy")

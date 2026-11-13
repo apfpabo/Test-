@@ -118,6 +118,13 @@ the least chance of breaking off 22% (was 10%); hunters at 1.15 times your stren
 range; CIWS 900 m inside the Bofors' 1,250 m. Not yet measured by test campaigns. Still open from his realism table:
 national 5-inch mounts (`g127_jp`, `g133_uk`) and the Typhoon's loadout, which his prompt did not ask for.
 
+**Measured after the preset (32 campaigns, 13 Nov 2026):** 11 lost, against 16 in the round before (and 11 and 15 in
+the two before that, so the count alone is within chance). What moved clearly is when: the earliest loss was day 62
+(before: day 23), and seven of the eleven came after day 150 (before: one of sixteen). Raiders ended 4 (before: 8),
+hunters 4 (before: 2), patrols 3. The Survivor and the Disgraced Officer lost none (before: 2 each); the Defector lost
+all four, to hunters and patrols, though on days 72 to 234 rather than 23 to 76; the Hijacker three of four.
+Break-off succeeded in about half of the attempts in both rounds. **Open:** the Defector's and the Hijacker's hunters.
+
 What was found, for the record:
 
 Thirty-two unattended campaigns of 240 days (eight origins, four seeds, the honest-money captain) were played three

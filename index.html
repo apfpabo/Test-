@@ -174,6 +174,7 @@ const WEAPONS = {
   g150s: { name: '150 mm single',              size: 'M', kind: 'gun', dmg: 55,  range: 3600, rel: 7.5, speed: 340, spread: .009, barrels: 1, aa: 0,   price: 5000,  tw: 4,   tl: 5.6, bl: 7,   bw: .44 },
   g150t: { name: '150 mm twin',                size: 'M', kind: 'gun', dmg: 55,  range: 3600, rel: 7.5, speed: 340, spread: .009, barrels: 2, aa: 0,   price: 10000, tw: 6,   tl: 7.6, bl: 7,   bw: .44, gap: 1.8 },
   g152t: { name: '6-inch twin',                size: 'M', kind: 'gun', dmg: 58,  range: 4000, rel: 7,   speed: 350, spread: .009, barrels: 2, aa: 0,   price: 9000,  tw: 6,   tl: 7.6, bl: 7.4, bw: .44, gap: 1.8 },
+  g152c: { name: '6-inch casemate',            size: 'M', kind: 'gun', dmg: 58,  range: 3800, rel: 10,  speed: 350, spread: .010, barrels: 1, aa: 0,   price: 4000,  tw: 1.8, tl: 1.6, bl: 6.6, bw: .42, look: 'casemate' },   // a single 6-inch in a casemate in the hull side (the Fuso; the owner, 14 Nov 2026): the barrel and its embrasure, nothing on deck; 6 rounds a minute
   g152:  { name: '6-inch triple',              size: 'M', kind: 'gun', dmg: 58,  range: 4000, rel: 8,   speed: 350, spread: .009, barrels: 3, aa: 0,   price: 12000, tw: 7,   tl: 8.6, bl: 7.4, bw: .44, gap: 1.7 },
   g203t: { name: '8-inch twin',                size: 'L', kind: 'gun', dmg: 105, range: 4600, rel: 16,  speed: 370, spread: .008, barrels: 2, aa: 0,   price: 22000, tw: 7,   tl: 9.5, bl: 10,  bw: .56, gap: 2.2 },
   g203:  { name: '8-inch triple',              size: 'L', kind: 'gun', dmg: 105, range: 4600, rel: 18,  speed: 370, spread: .008, barrels: 3, aa: 0,   price: 30000, tw: 8.4, tl: 10.5, bl: 10, bw: .56, gap: 2.2 },
@@ -374,8 +375,8 @@ const DESIGN_LIST = [
     p: { bow: .32, run: .22, stern: 't', tw: .4, sup: [[28, 20, 12, 4], [-34, 10, 9, 2]], fun: [[12, 3, 2.5], [-6, 3, 2.5]], mast: [[22, 't'], [-27, 't']], boats: [[3, 2]], crane: [[3, 0]] },
     slots: [sl('M', 57, 0, FWD, 'g152'), sl('M', 46, 0, FWD, 'g152'), sl('M', -49, 0, AFT, 'g152'), sl('M', -60, 0, AFT, 'g152'), ...pair('S', 6, 7.6, 'g102t'), ...pair('S', -14, 7.6, 'g102t'), ...pair('A', 20, 7, 'aa2p'), ...pair('A', -28, 6.4, 'aa2p'), ...pair('T', -21, 8, 'tor')] },
   { id: 'cl_cleveland', cls: 'cl', yard: 'tidewater', dn: 'Arbiter', model: 'Cleveland-class cruiser', year: 1942, era: 1, L: 186, B: 20.2, t: 11800, kn: 32.5, td: 820, armor: 127, crew: 1255, price: 42000,
-    p: { bow: .3, run: .2, stern: 't', tw: .55, deck: 'teak', sup: [[28.2, 18.4, 13, 4], [-26, 14, 10, 2]], fun: [[10, 3.2, 2.6], [-6, 3.2, 2.6]], mast: [[22, 't'], [-17, 'p']], boats: [[2, 2]], cat: [[-80, -5], [-80, 5]], crane: [[-88, 0]] },
-    slots: [sl('M', 65, 0, FWD, 'g152'), sl('M', 53, 0, FWD, 'g152'), sl('M', -52, 0, AFT, 'g152'), sl('M', -64, 0, AFT, 'g152'), sl('M', 41, 0, FWD, 'g127'), ...pair('M', 16, 8.2, 'g127'), ...pair('M', -8, 8.2, 'g127'), sl('M', -39, 0, AFT, 'g127'), ...pair('A', 26, 8.4, 'aa40'), ...pair('A', -20, 9, 'aa40')] },
+    p: { outline: [[93.0, 0.47], [89.11, 1.76], [81.21, 4.04], [72.92, 5.76], [66.71, 6.77], [59.97, 7.69], [48.05, 8.94], [34.71, 9.74], [24.74, 10.1], [-9.84, 9.83], [-20.34, 9.98], [-40.41, 9.66], [-48.7, 9.77], [-54.53, 9.61], [-70.2, 8.82], [-78.36, 8.04], [-80.05, 7.71], [-82.25, 7.55], [-83.67, 7.29], [-85.75, 7.35], [-87.17, 6.87], [-89.24, 6.56], [-90.15, 6.22], [-91.19, 5.57], [-93.0, 3.55]], stern: 't', tw: .55, deck: 'teak', house: [[0, 77, 14]], sup: [[19, 18, 11, 4], [-25, 14, 10, 2]], fun: [[4.6, 2.6, 2.2], [-7.1, 2.6, 2.2]], mast: [[9.8, 't'], [-10.8, 'p']], boats: [[-1, 2]], cat: [[-80.8, -7.5], [-80.8, 7.5]], crane: [[-88, 0]] },
+    slots: [sl('M', 54.9, 0, FWD, 'g152'), sl('M', 44.2, 0, FWD, 'g152'), sl('M', -45.1, 0, AFT, 'g152'), sl('M', -55.4, 0, AFT, 'g152'), sl('M', 33.5, 0, FWD, 'g127'), ...pair('M', 16.2, 7.2, 'g127'), ...pair('M', -14, 7.2, 'g127'), sl('M', -29, 0, AFT, 'g127'), ...pair('A', 26.9, 4.5, 'aa40'), ...pair('A', -5.1, 8, 'aa40'), ...pair('A', 10.9, 7.2, 'aa40'), ...pair('A', -37.2, 5.1, 'aa40')] },
   { id: 'cl_atlanta', cls: 'cl', name: 'Anti-Aircraft Cruiser', yard: 'tidewater', dn: 'Palisade', model: 'Atlanta-class cruiser', year: 1941, era: 1, L: 165, B: 16.2, t: 6700, kn: 32.5, td: 760, armor: 89, crew: 673, price: 38000,
     p: { bow: .33, run: .2, stern: 'c', sup: [[24, 14, 10, 4], [-24, 10, 8, 2]], fun: [[9, 2.8, 2.2], [-6, 2.8, 2.2]], mast: [[18, 't'], [-15, 'p']], boats: [[1, 1]] },
     slots: [sl('M', 58, 0, FWD, 'g127'), sl('M', 50, 0, FWD, 'g127'), sl('M', 42, 0, FWD, 'g127'), sl('M', -42, 0, AFT, 'g127'), sl('M', -50, 0, AFT, 'g127'), sl('M', -58, 0, AFT, 'g127'), ...pair('M', -32, 6.2, 'g127'), sl('T', -15, 0, BEAM, 'tor'), ...pair('A', 14, 6.4, 'aa40'), ...pair('A', -22, 6.6, 'aa20')] },
@@ -443,6 +444,11 @@ const DESIGN_LIST = [
   { id: 'bb_nelson', cls: 'bb', yard: 'clydemouth', dn: 'Rodmoor', model: 'Nelson-class battleship', year: 1927, era: 1, L: 216.4, B: 32.3, t: 33300, kn: 23, td: 800, armor: 356, crew: 1314, price: 120000,
     p: { outline: [[108.2, 0.58], [100.33, 3.37], [89.91, 6.31], [83.26, 7.85], [76.83, 9.16], [66.85, 10.91], [53.77, 12.78], [39.91, 14.31], [22.28, 15.74], [16.85, 16.07], [8.31, 16.3], [-35.03, 16.3], [-36.25, 16.19], [-40.46, 16.19], [-49.67, 15.85], [-60.2, 14.67], [-67.07, 13.69], [-77.49, 11.84], [-84.48, 10.3], [-89.8, 8.89], [-94.34, 7.47], [-99.44, 5.55], [-105.43, 2.69], [-108.2, 0.9]], deck: 'teak', school: 'tower', house: [[-30, 46, 17], [-64, 22, 8]], sup: [[-14, 15, 14, 6], [-70, 8, 7, 2]], fun: [[-48, 3.4, 3]], mast: [[-12, 'p'], [-70, 't']], boats: [[-40, 2]], crane: [[-29, -11]] },
     slots: [sl('H', 43, 0, FWD, 'g406'), sl('H', 22, 0, FWD, 'g406'), Object.assign(sl('H', 0, 0, FWD, 'g406'), { low: true }), ...[...pair('M', -57, 11.9, 'g152t'), ...pair('M', -66, 10.2, 'g152t'), ...pair('M', -73, 9.2, 'g152t')].map(q => Object.assign(q, { low: true })), ...pair('S', -36, 6, 'g102'), ...pair('S', -46, 6.5, 'g102'), ...pair('A', -25, 7.5, 'aa2p'), ...pair('A', -82, 5, 'aa2p')] },
+  { id: 'bb_fuso', cls: 'bb', yard: 'seto', dn: 'Hachiman', model: 'Fuso-class battleship', year: 1944, era: 1, L: 212.75, B: 33.1, t: 34700, kn: 24.5, td: 800, armor: 305, crew: 1900, price: 110000,
+    // after the owner's plate (14 Nov 2026): the hull traced from its top view (bulges and all), six twin 14-inch, No. 3 between the
+    // pagoda and the funnel facing forward, No. 4 abaft the funnel facing aft, the 6-inch in casemates (six a side, as the plate has them) in the hull above the blisters, the Type 89 twins and grouped 25 mm
+    p: { outline: [[106.38, 0.71], [104.82, 1.08], [101.97, 2.05], [97.31, 3.36], [89.79, 5.12], [85.39, 6.02], [79.17, 7.07], [75.02, 7.15], [70.36, 7.5], [66.47, 8.34], [60.77, 9.31], [51.18, 10.66], [48.07, 10.95], [41.85, 11.9], [38.74, 12.2], [33.3, 12.99], [26.56, 13.58], [24.49, 13.58], [21.64, 13.83], [18.27, 13.83], [15.42, 14.09], [1.94, 14.1], [-0.91, 14.35], [-2.2, 14.35], [-5.05, 14.1], [-26.56, 14.12], [-29.41, 13.87], [-32.52, 13.87], [-35.37, 13.61], [-38.48, 13.61], [-47.81, 12.88], [-56.36, 11.98], [-67.76, 9.97], [-68.8, 9.89], [-71.65, 9.95], [-79.17, 8.58], [-91.09, 5.79], [-92.12, 5.49], [-94.97, 4.08], [-100.41, 2.8], [-103.52, 2.44], [-106.38, 1.4]], bulge: [-68, 58, 2.2], stern: 'c', deck: 'teak', house: [[-8, 26, 16]], sup: [[27, 15, 12, 7], [-44, 10, 9, 4]], fun: [[-12.3, 4, 3.4]], mast: [[-43.5, 'p']], cat: [[-84, -8]], crane: [[-92, 3]] },
+    slots: [sl('H', 54.4, 0, FWD, 'g356t'), sl('H', 43.3, 0, FWD, 'g356t'), sl('H', 3.7, 0, BEAM, 'g356t'), sl('H', -24, 0, BEAM, 'g356t'), sl('H', -51.8, 0, AFT, 'g356t'), sl('H', -64.4, 0, AFT, 'g356t'), ...[...pair('M', 43, 11.3, 'g152c'), ...pair('M', 27.6, 13.1, 'g152c'), ...pair('M', 15.7, 13.7, 'g152c'), ...pair('M', 1.6, 13.7, 'g152c'), ...pair('M', -12.5, 13.7, 'g152c'), ...pair('M', -27.1, 13.7, 'g152c')].map(q => Object.assign(q, { low: true, fixed: true })), ...pair('M', 19.5, 9, 'g127j'), ...pair('M', -16, 9.2, 'g127j'), ...pair('A', 31, 7.5, 'aa25'), ...pair('A', -6, 8.5, 'aa25'), ...pair('A', -38, 7.5, 'aa25'), ...pair('A', 68, 6.5, 'aa25'), ...pair('A', -78, 7.5, 'aa25'), ...pair('A', 9, 9.5, 'aa25')] },
   { id: 'bb_scharnhorst', cls: 'bb', name: 'Fast Battleship', yard: 'ostsee', dn: 'Markgraf', model: 'Scharnhorst-class battleship', year: 1938, era: 1, L: 234.9, B: 30, t: 32100, kn: 31, td: 950, armor: 350, crew: 1669, price: 105000,
     p: { outline: [[117.45, 0.57], [115.56, 0.84], [105.06, 3.65], [102.36, 4.06], [95.9, 5.39], [92.94, 6.13], [74.08, 9.23], [68.96, 9.88], [63.3, 10.84], [60.34, 11.13], [57.38, 11.64], [45.53, 12.77], [42.56, 13.21], [26.4, 14.47], [25.05, 14.47], [22.09, 14.74], [14.28, 14.74], [11.31, 15.0], [-11.58, 14.98], [-14.55, 14.71], [-18.05, 14.71], [-21.01, 14.43], [-24.24, 14.43], [-30.71, 13.89], [-39.87, 13.34], [-45.79, 12.8], [-55.49, 12.26], [-64.11, 11.51], [-72.73, 10.47], [-76.23, 9.93], [-86.47, 8.1], [-94.55, 6.5], [-106.94, 3.37], [-115.29, 0.96], [-117.45, 0.7]], deck: 'teak', house: [[-14, 90, 15]], sup: [[29, 14, 13, 5], [-50, 20, 11, 3]], fun: [[-6.5, 4.6, 3.6]], mast: [[30, 'p'], [-20, 'p']], boats: [[6, 1]], cat: [[-34, 0]], crane: [[-29, -9.5], [-29, 9.5]] },
     slots: [sl('H', 64, 0, FWD, 'g283'), sl('H', 43, 0, FWD, 'g283'), sl('H', -68, 0, AFT, 'g283'), ...pair('M', 18, 11.6, 'g150t'), ...pair('M', -37, 11.6, 'g150t'), ...pair('M', -5, 12.8, 'g150s'), ...pair('S', -44, 11.2, 'g102t'), ...pair('S', -53, 10.4, 'g102t'), ...pair('A', 35, 9, 'aa37'), ...pair('A', -20, 6, 'aa37'), ...pair('M', -17, 12.8, 'g150s')] },   // her model had four single 150s, not two: the second pair is added last, so saved ships' fits keep their places
@@ -687,7 +693,7 @@ const HULL_K = 1; // overall toughness, tuned against measured battle lengths
 const ARMOUR = {
   bb_kgv: { deck: 152, tur: 324, cit: .60 }, bb_bismarck: { deck: 110, tur: 360, cit: .70 }, bb_littorio: { deck: 162, tur: 350, cit: .64 },
   bb_yamato: { deck: 200, tur: 650, cit: .53 }, bb_iowa: { deck: 153, tur: 432, cit: .60 }, bb_vanguard: { deck: 152, tur: 343, cit: .60 },
-  bb_nelson: { deck: 159, tur: 406, cit: .55 }, bb_scharnhorst: { deck: 105, tur: 360, cit: .70 }, bb_montana: { deck: 185, tur: 457, cit: .60 },
+  bb_nelson: { deck: 159, tur: 406, cit: .55 }, bb_fuso: { deck: 97, tur: 305, cit: .60 }, bb_scharnhorst: { deck: 105, tur: 360, cit: .70 }, bb_montana: { deck: 185, tur: 457, cit: .60 },
   bb_alsace: { deck: 170, tur: 430, cit: .55 }, bb_soyuz: { deck: 180, tur: 495, cit: .60 }, bb_h39: { deck: 120, tur: 385, cit: .70 },
   bb_lion: { deck: 152, tur: 381, cit: .60 }, bb_a150: { deck: 230, tur: 700, cit: .53 },
   cl_fiji: { deck: 51, tur: 51, cit: .55 }, cl_cleveland: { deck: 51, tur: 165, cit: .60 }, cl_atlanta: { deck: 32, tur: 32, cit: .50 },
@@ -960,6 +966,9 @@ function drawMount(g, wid, ta, P, recoil, stowed, shadow, part, st = 'us') {
       else { g.fillStyle = shade(S, -0.2); for (const sy of [-1, 1]) g.fillRect(rear + tl * 0.16, sy * tw * 0.2 - 0.18, tl * 0.3, 0.36); }   // the rail gun's power leads
       g.restore(); return; }
     if (w.look === 'round') { drawRoundShield(g, w, shadow, S, hR); g.restore(); return; }
+    if (w.look === 'casemate') { // a gun in the hull side: only its embrasure shows, flush with the deck edge, and the barrel out of it
+      if (!shadow && !HM.on) { g.fillStyle = 'rgba(12,14,15,.55)'; g.fillRect(-0.15, -w.tw * 0.3, 0.5, w.tw * 0.6); }   // the gun port the barrel runs out of; the gun itself is inside the hull
+      g.restore(); return; }
     if (w.open || (wid === 'g120t' && (st === 'uk' || st === 'it' || st === 'de'))) { drawShield(g, w, st, shadow, S, hR); g.restore(); return; }
     const f = turretForm(st, w), outer = filletPoly(f.pts);
     const inner = insetPoly(outer, (nx, ny) => Math.max(0, nx) ** 2 * f.face + ny * ny * f.side + Math.max(0, -nx) ** 2 * f.rear);
@@ -1171,6 +1180,7 @@ function drawPlan(g, d, P, part = 'all') {
   // a twin-hulled ship's pontoons, seen through the water beside her (the Sea Shadow; `swath` on the plan tells the game where they lie, for when she lists)
   if (p.swath && p.stealth && p.stealth.art && SHADOW_ART.sub.complete && SHADOW_ART.sub.naturalWidth) g.drawImage(SHADOW_ART.sub, SHADOW_ART.x0, SHADOW_ART.y0, SHADOW_ART.w, SHADOW_ART.h);
   // hull, deck and planking
+  drawSideWorks(g, d, P, edge);
   hullPath(g, d); g.fillStyle = shade(P.hull, -0.12); g.fill(); g.lineWidth = 0.3; g.strokeStyle = edge; g.stroke();
   const tumble = p.stealth && p.stealth.tumble;   // sides that lean inboard from the waterline to a narrower deck
   const inset = tumble ? B * 0.085 : Math.min(0.7, B * 0.045);
@@ -1405,6 +1415,16 @@ function tub(g, P, x, y, r, h) { // an AA tub: a ring of plating round the gun
   else { g.fillStyle = shade(P.deck, -0.2); g.fill(); g.fillStyle = shade(P.sup, -0.3); g.fillRect(x - r * 0.1, y - r * 0.5, r * 0.85, r * 0.12); g.fillRect(x - r * 0.1, y + r * 0.38, r * 0.85, r * 0.12); g.beginPath(); g.arc(x - r * 0.15, y, r * 0.3, 0, TAU); g.fill(); }
 }
 // Half-beam of the hull at x, for keeping wings and platforms over the deck.
+function drawSideWorks(g, d, P, edge) { // below the deck edge: anti-torpedo blisters (`bulge`: [x aft, x forward, metres out]) and casemate housings
+  const p = d.p, hb = x => p.outline ? outlineHalf(d, x) : halfBeamAt(d, x);
+  if (p.bulge) { const [x0, x1, out] = p.bulge, ramp = Math.min(14, (x1 - x0) / 4);   // the Fuso's (the owner, 14 Nov 2026): they swell out of the hull and run back in at each end
+    for (const sy of [-1, 1]) { g.beginPath(); g.moveTo(x0, sy * hb(x0) * 0.98);
+      for (let x = x0; x <= x1 + 0.01; x += 1) { const t = Math.min(1, (x - x0) / ramp, (x1 - x) / ramp); g.lineTo(x, sy * (hb(x) + out * Math.sin(Math.max(0, t) * Math.PI / 2))); }
+      g.lineTo(x1, sy * hb(x1) * 0.98); g.closePath(); g.fillStyle = shade(P.hull, -0.3); g.fill(); g.lineWidth = 0.25; g.strokeStyle = edge; g.stroke(); } }
+  for (const s of d.slots || []) if ((WEAPONS[s.def] || {}).look === 'casemate') {   // a casemate: a box let into the hull side, its embrasure facing out
+    const sy = Math.sign(s.y) || 1, e = hb(s.x); g.beginPath(); g.rect(s.x - 1.8, sy > 0 ? e - 0.6 : -e - 0.9, 3.6, 1.5); g.fillStyle = shade(P.hull, -0.12); g.fill(); g.lineWidth = 0.2; g.strokeStyle = edge; g.stroke();
+    g.fillStyle = 'rgba(10,12,13,.7)'; g.fillRect(s.x - 1.1, sy > 0 ? e + 0.55 : -e - 0.85, 2.2, 0.3); }
+}
 function halfBeamAt(d, x) { const h = d.L / 2, fe = (d.p.bow || .33) * d.L, fr = (d.p.run || .2) * d.L; let half = d.B / 2;
   if (x > h - fe) half *= Math.sqrt(Math.max(0, (h - x) / fe)); else if (x < -h + fr) half *= Math.max(d.p.stern === 't' ? (d.p.tw || .5) : 0.2, Math.sqrt(Math.max(0, (x + h) / fr))); return half; }
 

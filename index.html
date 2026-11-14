@@ -497,7 +497,7 @@ const DESIGN_LIST = [
     p: { sail: [[10, 13, 3]], casing: .3, smooth: true, tear: true, tubes: [[36, 24, 4, 2.7]] },
     slots: [sl('T', 40, -1, BOW, 'torh'), sl('T', 40, 1, BOW, 'torh'), sl('V', 32, 0, ALL, 'ssm'), sl('V', 24, 0, ALL, 'ssm')] },
   { id: 'ssn_la', cls: 'ssn', tech: 'reactors', yard: 'tidewater', dn: 'Mako', model: 'Los Angeles-class submarine', year: 1976, era: 3, L: 110.3, B: 10, t: 6082, kn: 20, subKn: 33, td: 520, armor: 0, crew: 129, price: 190000,
-    p: { sail: [[20, 9, 2.4]], casing: .22, smooth: true, tear: true, tubes: [[47, 41, 3, 1.5]], pod: 1 },
+    p: { outline: [[55.15, 0.69], [54.25, 1.57], [53.41, 2.15], [52.09, 2.79], [50.59, 3.31], [46.34, 4.34], [41.18, 4.99], [-28.23, 5.0], [-36.03, 4.39], [-41.84, 3.48], [-43.76, 3.3], [-45.92, 2.83], [-46.28, 2.98], [-47.12, 3.89], [-50.35, 3.91], [-51.01, 4.2], [-51.73, 1.1], [-53.11, 0.62], [-53.71, 1.25], [-54.37, 0.37], [-55.15, 0.23]], sail: [[20, 9, 2.4]], casing: .22, smooth: true, tear: true, tubes: [[47, 41, 3, 1.5]], pod: 1 },
     slots: [sl('T', 34, -1.4, BOW, 'torh'), sl('T', 34, 1.4, BOW, 'torh'), sl('V', 44, 0, ALL, 'ssm')] },
   { id: 'ssn_akula', cls: 'ssn', tech: 'reactors', yard: 'neva', dn: 'Kasatka', model: 'Akula-class submarine', year: 1984, era: 3, L: 110.3, B: 13.6, t: 8140, kn: 10, subKn: 33, td: 540, armor: 0, crew: 73, price: 200000,
     p: { sail: [[6, 24, 4.2]], casing: .3, smooth: true, tear: true, pod: 2 },
@@ -506,8 +506,8 @@ const DESIGN_LIST = [
     p: { sail: [[14, 30, 5]], casing: .5, smooth: true, tubes: [[46, -20, 12, 6.3]], pod: 1 },
     slots: [sl('T', 64, -2, BOW, 'torh'), sl('T', 64, 2, BOW, 'torh'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 10, 0, ALL, 'ssm'), sl('V', -16, 0, ALL, 'ssm')] },
   { id: 'ssn_typhoon', cls: 'ssn', name: 'Heavy Missile Submarine', tech: 'reactors', yard: 'neva', dn: 'Polyarnik', model: 'Typhoon-class submarine', year: 1981, era: 3, L: 175, B: 23, t: 23200, kn: 12, subKn: 27, td: 800, armor: 0, crew: 160, price: 330000,
-    p: { sail: [[-24, 32, 7]], casing: .55, smooth: true, tubes: [[58, -2, 10, 3.6]], pod: 1 },
-    slots: [sl('T', 72, -2.5, BOW, 'torh'), sl('T', 72, 2.5, BOW, 'torh'), sl('T', 72, 0, BOW, 'torh'), sl('V', 48, 0, ALL, 'ssmh'), sl('V', 30, 0, ALL, 'ssmh'), sl('V', 12, 0, ALL, 'ssmh'), sl('V', -4, 0, ALL, 'ssmh')] },
+    p: { outline: [[87.5, 0.15], [87.13, 2.04], [86.02, 4.0], [84.21, 5.81], [81.79, 7.4], [78.83, 8.7], [75.46, 9.66], [71.8, 10.26], [68.0, 10.46], [7.26, 10.64], [6.15, 10.79], [-69.27, 10.61], [-71.12, 11.39], [-80.56, 11.39], [-81.58, 11.5], [-82.13, 11.38], [-85.09, 11.37], [-86.11, 8.16], [-86.2, 8.17], [-86.67, 0.46], [-86.76, 0.15], [-87.5, 0.15]], sail: [[-8, 29, 7]], casing: .55, smooth: true, tubes: [[52, 12, 10, 3.6]], screws: [[-84.5, -6.9, 3.3], [-84.5, 6.9, 3.3]] },
+    slots: [sl('T', 72, -2.5, BOW, 'torh'), sl('T', 72, 2.5, BOW, 'torh'), sl('T', 72, 0, BOW, 'torh'), sl('V', 50, 0, ALL, 'ssmh'), sl('V', 38, 0, ALL, 'ssmh'), sl('V', 26, 0, ALL, 'ssmh'), sl('V', 14, 0, ALL, 'ssmh')] },
   // ---------------------------------------------------------------- fleet carriers (Era II)
   { id: 'cv_shokaku', cls: 'cv', yard: 'seto', dn: 'Tsurugi', model: 'Shokaku-class carrier', year: 1941, era: 1, L: 257.5, B: 26, t: 25675, kn: 34, td: 1000, armor: 46, crew: 1660, hangar: 4, price: 150000,
     p: { bow: .32, run: .2, stern: 'c', fd: { w: 29, len: .94, x: -1, isl: [44, 14, 4.2], sidefun: [2, -10], wood: true } },
@@ -669,10 +669,10 @@ const DESIGN_LIST = [
     p: { bow: .34, run: .22, stern: 't', tw: .55, house: [[-3, 70, 13]], sup: [[22, 20, 15, 4], [-32, 14, 14, 3]], fun: [[3.5, 6, 3], [-21, 6, 3]], mast: [[13, 'l'], [-12, 'l']], boats: [[-6, 1]], helo: [[-45, 6]] },
     slots: [sl('M', 70, 0, FWD, 'g127a'), sl('V', 56, 0, ALL, 'ssm'), sl('V', -54, 0, ALL, 'sam'), sl('V', 44, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'ssm'), sl('M', -78, 0, AFT, 'g127a'), sl('A', 38, -5, PORT, 'ciws'), sl('A', -36, 5, STBD, 'ciws'), sl('T', -31, 0, BEAM, 'torh')] },
   { id: 'cg_slava', cls: 'cg', yard: 'neva', dn: 'Gromoboi', model: 'Slava-class cruiser', year: 1982, era: 3, L: 186.4, B: 20.8, t: 9380, kn: 32, td: 880, armor: 25, crew: 476, price: 225000,
-    p: { bow: .36, run: .2, stern: 't', tw: .5, sup: [[40, 24, 13, 4], [-18, 30, 11, 2]], fun: [[-10, 3.4, 2.4, -4], [-10, 3.4, 2.4, 4]], mast: [[32, 'l'], [-30, 'l']], boats: [[0, 1]] },
-    slots: [sl('M', 76, 0, FWD, 'g130a'), ...pair('V', 24, 8, 'ssmh'), sl('V', -52, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'sam'), ...pair('A', -38, 7.6, 'ciws'), sl('T', -24, 0, BEAM, 'torh')] },
+    p: { outline: [[93.2, 0.55], [87.13, 3.11], [84.04, 4.19], [73.33, 7.31], [67.03, 8.61], [60.73, 9.59], [56.44, 10.01], [50.26, 10.37], [-65.6, 10.4], [-76.55, 9.81], [-81.54, 9.37], [-88.8, 8.36], [-91.89, 7.8], [-93.2, 7.34]], sup: [[19, 27, 10, 4], [-13, 38, 12, 2], [-64, 16, 11, 2]], fun: [[-24, 3.5, 2.5, -4.5], [-24, 3.5, 2.5, 4.5]], mast: [[15, 'l'], [-8, 'l']], boats: [[-18, 1]], helo: [[-83, 7]] },
+    slots: [sl('M', 63, 0, FWD, 'g130a'), ...pair('V', 37, 7, 'ssmh'), sl('V', -42, 0, ALL, 'sam'), sl('V', -52, 0, ALL, 'sam'), ...pair('A', -55, 7.5, 'ciws'), sl('T', -34, 0, BEAM, 'torh')] },
   { id: 'cg_kirov', cls: 'cg', name: 'Nuclear Battlecruiser', nuc: true, yard: 'neva', dn: 'Admiral Volkov', model: 'Kirov-class battlecruiser', year: 1980, era: 3, L: 252, B: 28.5, t: 24300, kn: 32, td: 1100, armor: 76, crew: 710, price: 540000,
-    p: { bow: .36, run: .2, stern: 't', tw: .55, sup: [[18, 44, 18, 5], [-48, 30, 15, 3]], fun: [[-12, 4.5, 3.6]], mast: [[14, 'l'], [-40, 'l']], helo: [[-108, 9]], boats: [[-22, 1]] },
+    p: { outline: [[126.0, 0.75], [125.3, 1.0], [123.18, 2.1], [116.29, 4.89], [109.39, 6.66], [102.07, 8.09], [85.17, 10.41], [75.18, 11.14], [71.09, 11.31], [62.08, 12.2], [41.67, 13.84], [35.34, 14.11], [-62.23, 14.25], [-68.28, 13.99], [-71.52, 13.99], [-77.01, 13.72], [-81.23, 13.31], [-99.53, 12.76], [-104.46, 12.35], [-120.23, 11.87], [-121.35, 11.53], [-124.17, 10.18], [-126.0, 7.99]], bow: .36, run: .2, stern: 't', tw: .55, sup: [[18, 44, 18, 5], [-48, 30, 15, 3]], fun: [[-12, 4.5, 3.6]], mast: [[14, 'l'], [-40, 'l']], helo: [[-108, 9]], boats: [[-22, 1]] },
     slots: [...pair('V', 73, 4, 'ssmh'), ...pair('V', 63, 4, 'ssmh'), sl('V', 88, 0, ALL, 'sam'), sl('V', 50, 0, ALL, 'sam'), sl('V', -72, 0, ALL, 'sam'), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 44, 9.4, 'ciws'), ...pair('A', -70, 9.6, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
 ];
 const HULL_K = 1; // overall toughness, tuned against measured battle lengths
@@ -1035,7 +1035,7 @@ function shade(hex, k) { // k > 0 lightens towards white, k < 0 darkens towards 
 function rrect(g, x, y, w, h, r) { r = Math.max(0, Math.min(r, w / 2, h / 2)); g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r); g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath(); }
 function hullPath(g, d, inset = 0) {
   const p = d.p || {}; const h = d.L / 2 - inset, b = d.B / 2 - inset; g.beginPath();
-  if (d.kind === 'sub') {
+  if (d.kind === 'sub' && !p.outline) {
     if (p.tear) { g.moveTo(h, 0); g.bezierCurveTo(h, -b * 0.85, h * 0.7, -b, h * 0.35, -b); g.lineTo(-h * 0.15, -b); g.bezierCurveTo(-h * 0.65, -b, -h, -b * 0.3, -h, 0); g.bezierCurveTo(-h, b * 0.3, -h * 0.65, b, -h * 0.15, b); g.lineTo(h * 0.35, b); g.bezierCurveTo(h * 0.7, b, h, b * 0.85, h, 0); }
     else { g.moveTo(h, 0); g.bezierCurveTo(h * 0.96, -b * 0.7, h * 0.78, -b, h * 0.5, -b); g.lineTo(-h * 0.45, -b); g.bezierCurveTo(-h * 0.82, -b, -h, -b * 0.4, -h, 0); g.bezierCurveTo(-h, b * 0.4, -h * 0.82, b, -h * 0.45, b); g.lineTo(h * 0.5, b); g.bezierCurveTo(h * 0.78, b, h * 0.96, b * 0.7, h, 0); }
     g.closePath(); return;
@@ -1123,6 +1123,12 @@ function drawPlan(g, d, P, part = 'all') {
     hullPath(g, d); crownFill(g, shade(P.hull, -0.45), b); g.lineWidth = 0.25; g.strokeStyle = edge; g.stroke();
     if (!p.smooth || p.casing) { const cw = B * (p.casing || .4); rrect(g, -h * 0.72, -cw / 2, L * 0.78, cw, cw / 2); crownFill(g, shade(P.deck, -0.25), cw / 2);
       g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.15; g.beginPath(); for (let x = -h * 0.7; x < h * 0.06; x += 2.2) { g.moveTo(x, -cw / 2 + 0.2); g.lineTo(x, cw / 2 - 0.2); } g.stroke(); }
+    for (const [sx, sy, sr] of p.screws || []) {   // twin screws in shrouds at the stern ([x, y, radius]; the Typhoon, the owner, 14 Nov 2026)
+      g.fillStyle = shade(P.hull, -0.5); g.fillRect(sx, sy - 0.25, h * 0.08, 0.5);   // the shaft out of the hull
+      rrect(g, sx - sr * 0.7, sy - sr, sr * 1.4, sr * 2, sr * 0.35); g.fillStyle = shade(P.hull, -0.58); g.fill(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.12; g.stroke();
+      rrect(g, sx - sr * 0.45, sy - sr * 0.78, sr * 0.9, sr * 1.56, sr * 0.25); g.fillStyle = shade(P.hull, -0.75); g.fill();   // the open duct
+      g.strokeStyle = 'rgba(176,138,72,.85)'; g.lineWidth = 0.32; g.beginPath();   // bronze blades seen edge-on in the duct
+      for (const k of [-0.55, 0, 0.55]) { g.moveTo(sx - sr * 0.2, sy + k * sr); g.lineTo(sx + sr * 0.2, sy + k * sr * 0.6); } g.stroke(); }
     if (p.pod) { g.fillRect(-h * 0.97, -0.25, h * 0.14, 0.5); if (p.pod === 2) { g.beginPath(); g.ellipse(-h * 0.93, 0, 3.2, 0.9, 0, 0, TAU); g.fillStyle = shade(P.hull, -0.35); g.fill(); } }
     for (const [x0, x1, n, y] of p.tubes || []) for (let i = 0; i < n; i++) for (const sy of y ? [-1, 1] : [0]) {   // missile tube hatches
       const tx = x0 + (x1 - x0) * i / Math.max(1, n - 1), ty = sy * y, r = Math.min(1.5, Math.abs(x1 - x0) / Math.max(1, n - 1) * 0.36 + 0.3);

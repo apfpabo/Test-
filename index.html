@@ -506,7 +506,7 @@ const DESIGN_LIST = [
     p: { sail: [[14, 30, 5]], casing: .5, smooth: true, tubes: [[46, -20, 12, 6.3]], pod: 1 },
     slots: [sl('T', 64, -2, BOW, 'torh'), sl('T', 64, 2, BOW, 'torh'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 10, 0, ALL, 'ssm'), sl('V', -16, 0, ALL, 'ssm')] },
   { id: 'ssn_typhoon', cls: 'ssn', name: 'Heavy Missile Submarine', tech: 'reactors', yard: 'neva', dn: 'Polyarnik', model: 'Typhoon-class submarine', year: 1981, era: 3, L: 175, B: 23, t: 23200, kn: 12, subKn: 27, td: 800, armor: 0, crew: 160, price: 330000,
-    p: { outline: [[87.5, 0.15], [87.13, 2.04], [86.02, 4.0], [84.21, 5.81], [81.79, 7.4], [78.83, 8.7], [75.46, 9.66], [71.8, 10.26], [68.0, 10.46], [7.26, 10.64], [6.15, 10.79], [-69.27, 10.61], [-71.12, 11.39], [-80.56, 11.39], [-81.0, 11.44], [-81.6, 3.4], [-86.0, 3.0], [-87.5, 1.6]], sail: [[-8, 29, 7]], casing: .55, smooth: true, tubes: [[52, 12, 10, 3.6]], screws: [[-84.5, -6.9, 3.3], [-84.5, 6.9, 3.3]] },
+    p: { outline: [[87.5, 0.15], [87.13, 2.04], [86.02, 4.0], [84.21, 5.81], [81.79, 7.4], [78.83, 8.7], [75.46, 9.66], [71.8, 10.26], [68.0, 10.46], [7.26, 10.64], [6.15, 10.79], [-69.27, 10.61], [-71.12, 11.39], [-80.56, 11.39], [-81.0, 11.44], [-81.6, 3.4], [-86.0, 3.0], [-87.5, 1.6]], sail: [[-8, 29, 7]], casing: .55, smooth: true, tubes: [[52, 12, 10, 3.6]], screws: [[-82.2, -6.9, 3.3], [-82.2, 6.9, 3.3]] },
     slots: [sl('T', 72, -2.5, BOW, 'torh'), sl('T', 72, 2.5, BOW, 'torh'), sl('T', 72, 0, BOW, 'torh'), sl('V', 50, 0, ALL, 'ssmh'), sl('V', 38, 0, ALL, 'ssmh'), sl('V', 26, 0, ALL, 'ssmh'), sl('V', 14, 0, ALL, 'ssmh')] },
   // ---------------------------------------------------------------- fleet carriers (Era II)
   { id: 'cv_shokaku', cls: 'cv', yard: 'seto', dn: 'Tsurugi', model: 'Shokaku-class carrier', year: 1941, era: 1, L: 257.5, B: 26, t: 25675, kn: 34, td: 1000, armor: 46, crew: 1660, hangar: 4, price: 150000,
@@ -1115,12 +1115,13 @@ function drawPlan(g, d, P, part = 'all') {
   if (d.kind === 'sub') {
     // diving planes: tapered fins, swept back, rooted under the hull so only the part outboard of it shows (the owner,
     // 13 Nov 2026: they were flat bars laid across the hull)
-    g.fillStyle = shade(P.hull, -0.55);
+    g.fillStyle = shade(P.hull, -0.42);   // the hull's own tone, so the fin reads against the sea
     for (const [sx, k] of p.pod ? [[-h * 0.9, 1.0]] : [[h * 0.8, 0.75], [-h * 0.9, 1.0]]) for (const sg of [-1, 1]) {
-      const c = Math.max(1.0, L * 0.032) * k, span = b * (0.35 + 0.4 * k), sw = c * 0.35;
+      const c = Math.max(1.0, L * 0.032) * k, span = Math.min(b * (0.35 + 0.4 * k), 3.4), sw = c * 0.35;   // (capped inside the 4 m margin the bake leaves round a hull: a beamy boat's fin tips were cut off at its edge)
       g.beginPath(); g.moveTo(sx + c / 2, sg * b * 0.4); g.lineTo(sx + c / 2 - sw, sg * (b + span)); g.lineTo(sx + c / 2 - sw - c * 0.5, sg * (b + span));
-      g.lineTo(sx - c / 2, sg * b * 0.4); g.closePath(); g.fill(); g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = Math.max(0.18, c * 0.06); g.lineJoin = 'round'; g.stroke();
-      g.strokeStyle = 'rgba(200,206,206,.22)'; g.lineWidth = Math.max(0.1, c * 0.03); g.beginPath(); g.moveTo(sx + c / 2 - sw, sg * (b + span)); g.lineTo(sx + c / 2 - sw - c * 0.5, sg * (b + span)); g.stroke(); g.lineJoin = 'miter'; }   // (the owner, 14 Nov 2026: the tips read as if they had no edge)
+      g.lineTo(sx - c / 2, sg * b * 0.4); g.closePath(); g.fill(); g.lineJoin = 'round';
+      g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = Math.max(0.22, c * 0.07); g.stroke();
+      g.strokeStyle = 'rgba(214,220,220,.34)'; g.lineWidth = Math.max(0.1, c * 0.03); g.stroke(); g.lineJoin = 'miter'; }   // a light rim all round (the owner, 14 Nov 2026: the tips read as if they had no edge)   // (the owner, 14 Nov 2026: the tips read as if they had no edge)
     hullPath(g, d); crownFill(g, shade(P.hull, -0.45), b); g.lineWidth = 0.25; g.strokeStyle = edge; g.stroke();
     if (!p.smooth || p.casing) { const cw = B * (p.casing || .4); rrect(g, -h * 0.72, -cw / 2, L * 0.78, cw, cw / 2); crownFill(g, shade(P.deck, -0.25), cw / 2);
       g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.15; g.beginPath(); for (let x = -h * 0.7; x < h * 0.06; x += 2.2) { g.moveTo(x, -cw / 2 + 0.2); g.lineTo(x, cw / 2 - 0.2); } g.stroke(); }

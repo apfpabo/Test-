@@ -210,6 +210,11 @@ back to the campaign in place of the numbers. Open question for when it is taken
 deciding in that fight (duel the battery and judge when to pull out before the planes come, or a full action with escorts
 and a defending patrol). A new system: not started.
 
+**A visual ship editor (raised 14 Nov 2026; parked by the owner).** A page in the browser, outside the game, drawing a
+design's top view with the same code as the bake (`src/game.html`), where funnels, masts, superstructure blocks, mounts
+and the hull outline could be dragged and resized, faults (a mount off the deck) shown as they arise, and the result saved
+for the agent to bake. Not started.
+
 ## Older lists still open
 
 - The realism review of 11 Nov 2026 (gun and torpedo ranges, a few designs' armament): [`ROADMAP.md`](ROADMAP.md),

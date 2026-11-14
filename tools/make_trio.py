@@ -7,6 +7,7 @@ CLIPS = {
     "trailer": ["t_bismarck", "t_vanguard", "t_line", "t_kgv", "t_yamato"],
     "fletchers": ["f_column", "f_a150", "f_straddle", "f_end"],
     "generations": ["g_iowa", "g_montana", "g_tico", "g_thunder"],
+    "two_ages": ["e_yamato", "e_burke", "e_incoming", "e_hit"],
 }
 XF = 1.2           # seconds each crossfade lasts
 FONT = "/usr/share/fonts/opentype/inter/Inter-SemiBold.otf"

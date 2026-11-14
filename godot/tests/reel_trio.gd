@@ -18,7 +18,7 @@ const E3 := ["radar", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datali
 const E4 := ["radar", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datalink", "stealth", "netcentric", "precision", "railgun"]
 const LEN := {"t_bismarck": 7.5, "t_vanguard": 7.5, "t_line": 8.0, "t_kgv": 7.5, "t_yamato": 8.0,
 	"f_column": 8.0, "f_a150": 7.5, "f_straddle": 8.0, "f_end": 8.5,
-	"g_iowa": 8.0, "g_montana": 8.0, "g_tico": 8.5, "g_thunder": 8.5, "x_slava": 11.0}
+	"g_iowa": 8.0, "g_montana": 8.0, "g_tico": 8.5, "g_thunder": 8.5, "x_slava": 11.0, "e_yamato": 8.0, "e_burke": 8.0, "e_incoming": 9.0, "e_hit": 9.0}
 
 func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -257,3 +257,48 @@ func _run_x(s: String, d: float, vs: Vector2) -> void:
 		for m in A.mounts:
 			if m.wid == "ssmh": sim.fire_missile(A, m, B)
 	_cam(A.pos + Vector2(0, lerpf(-30.0, -120.0, smoothstep(1.0, 11.0, t))), lerpf(_fit(A, 0.7, vs.y), _fit(A, 0.45, vs.y), smoothstep(3.0, 11.0, t)), 1.0)
+
+# ---------------------------------------------------------------- two ages in one action: the Yamato against a missile destroyer
+func _e_pair(yai: bool, off := Vector2(3600, -1400)) -> void:
+	A = _put("bb_yamato", 0, C, -PI / 2, ["radar"], 12.0, yai); A.god = true; A.hold = true
+	B = _put("ddg_burke", 1, C + off, -PI / 2, E3, 14.0); B.god = true
+	_train(A, B.pos, 1.0); mk["mps"] = 0.0
+func _burke_salvo() -> void:
+	for m in B.mounts:
+		if m.w.kind == "ssm": sim.fire_missile(B, m, A)
+func _init_e(s: String) -> void:
+	match s:
+		"e_yamato":     # the biggest guns there were, firing
+			_e_pair(false); _speed_of(B)
+			battle.camera.position = A.pos; battle.camera.zoom = Vector2.ONE * 2.4
+		"e_burke":      # forty years on: the answer comes out of her cells
+			_e_pair(false)
+			battle.camera.position = B.pos; battle.camera.zoom = Vector2.ONE * _fit(B, 0.62, 1920.0)
+		"e_incoming":   # the missiles come in; her light guns fill the sky
+			_e_pair(true); _burke_salvo()
+			for i in 600:
+				sim.step(0.05)
+				var near := false
+				for q in sim.missiles: if q.get("who") == B and float(q.delay) <= 0.0 and q.pos.distance_to(A.pos) < 1700.0: near = true
+				if near: break
+			battle.camera.position = A.pos; battle.camera.zoom = Vector2.ONE * 2.3
+		"e_hit":        # and her shells come down on the destroyer
+			_e_pair(false, Vector2(1800, -500)); _speed_of(B); B.god = false
+			_shoot(A, B); _land(1.2)
+			battle.camera.position = B.pos; battle.camera.zoom = Vector2.ONE * 2.6
+func _run_e(s: String, d: float, vs: Vector2) -> void:
+	A.v = 12.0; B.v = 14.0; _train(A, B.pos, minf(1.0, d * 2.0))
+	match s:
+		"e_yamato":
+			if _at("y1", 1.4): _shoot(A, B, ["H"])
+			if _at("y2", 5.0): _shoot(A, B, ["H", "M"])
+			_cam(A.pos, lerpf(2.4, _fit(A, 0.6, vs.y), smoothstep(0.0, 8.0, t)), 1.0)
+		"e_burke":
+			if _at("m1", 1.2): _burke_salvo()
+			_cam(B.pos + Vector2(0, lerpf(0.0, -160.0, smoothstep(2.0, 8.0, t))), lerpf(_fit(B, 0.62, vs.y), _fit(B, 0.32, vs.y), smoothstep(2.0, 8.0, t)), 1.0)
+		"e_incoming":
+			if _at("god", 2.5): A.god = false
+			_cam(A.pos, lerpf(2.3, 1.8, smoothstep(0.0, 9.0, t)), 1.0)
+		"e_hit":
+			if _at("h2", 4.2): _shoot(A, B, ["H", "M"])
+			_cam(B.pos, lerpf(2.6, 2.0, smoothstep(0.0, 9.0, t)), 1.0)

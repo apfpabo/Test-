@@ -16,7 +16,7 @@ var mk := {}
 const DAY := {"sea": 1, "fog": false, "night": false, "moon": 0.5}
 const E3 := ["radar", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datalink"]
 const E4 := ["radar", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datalink", "stealth", "netcentric", "precision", "railgun"]
-const LEN := {"t_bismarck": 7.5, "t_iowa": 7.5, "t_line": 8.0, "t_kgv": 7.5, "t_yamato": 8.0,
+const LEN := {"t_bismarck": 7.5, "t_vanguard": 7.5, "t_line": 8.0, "t_kgv": 7.5, "t_yamato": 8.0,
 	"f_column": 8.0, "f_a150": 7.5, "f_straddle": 8.0, "f_end": 8.5,
 	"g_iowa": 8.0, "g_montana": 8.0, "g_tico": 8.5, "g_thunder": 8.5}
 
@@ -79,8 +79,8 @@ func _init_t(s: String) -> void:
 		"t_bismarck":   # alone at speed; the camera draws back along her
 			A = _put("bb_bismarck", 0, C, -PI / 2, [], 13.0); A.god = true
 			battle.camera.position = A.pos + Vector2(0, -80); battle.camera.zoom = Vector2.ONE * 3.2
-		"t_iowa":       # a broadside to starboard, the camera drifting aft along her
-			A = _put("bb_iowa", 0, C, -PI / 2, ["radar"], 10.0); B = _put("bb_yamato", 1, C + Vector2(16000, -2000), PI / 2, [], 8.0)
+		"t_vanguard":   # a broadside to starboard, the camera drifting aft along her
+			A = _put("bb_vanguard", 0, C, -PI / 2, ["radar"], 10.0); B = _put("bb_yamato", 1, C + Vector2(16000, -2000), PI / 2, [], 8.0)
 			A.god = true; B.god = true; _train(A, B.pos)
 			battle.camera.position = A.pos + Vector2(0, -70); battle.camera.zoom = Vector2.ONE * 2.2
 		"t_line":       # the lines, wide, both firing
@@ -103,7 +103,7 @@ func _run_t(s: String, d: float, vs: Vector2) -> void:
 	match s:
 		"t_bismarck":
 			A.v = 13.0; _cam(A.pos + Vector2(0, lerpf(-80.0, 0.0, t / 7.5)), lerpf(3.2, _fit(A, 0.62, vs.y), smoothstep(0.0, 7.5, t)), 1.0)
-		"t_iowa":
+		"t_vanguard":
 			A.v = 10.0; _train(A, B.pos + Vector2(0, -600), minf(1.0, d * 2.0))
 			if _at("s1", 1.6): _fire(A, B.pos, B, ["H"])
 			if _at("s2", 4.6): _fire(A, B.pos, B, ["H"])

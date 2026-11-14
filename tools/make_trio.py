@@ -4,7 +4,7 @@
 # black, the in-development tag, -14 LUFS.   python3 tools/make_trio.py <shots dir> <out dir> [clip ...]
 import subprocess, sys, os, json
 CLIPS = {
-    "trailer": ["t_bismarck", "t_iowa", "t_line", "t_kgv", "t_yamato"],
+    "trailer": ["t_bismarck", "t_vanguard", "t_line", "t_kgv", "t_yamato"],
     "fletchers": ["f_column", "f_a150", "f_straddle", "f_end"],
     "generations": ["g_iowa", "g_montana", "g_tico", "g_thunder"],
 }

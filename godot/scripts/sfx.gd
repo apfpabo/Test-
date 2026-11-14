@@ -48,7 +48,7 @@ func _ready() -> void:
 		var p = AudioStreamPlayer.new(); p.bus = "Effects"; add_child(p); _pool.append(p)
 	var names = {"gun_H": ["gun_heavy_1", "gun_heavy_2"], "gun_L": ["gun_heavy_1", "gun_heavy_2"], "gun_M": ["gun_medium"], "gun_S": ["gun_small"],
 		"ping": ["ping"], "hit": ["hit_1", "hit_2"], "hit_big": ["hit_big"], "splash": ["splash_1", "splash_2", "splash_3", "splash_4"], "blast": ["blast"], "launch": ["launch"],
-		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa25": ["oerlikon"], "aa40": ["bofors"]}
+		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa25": ["oerlikon"], "aa20q": ["oerlikon"], "aa2p": ["bofors"], "aa37": ["bofors"], "aa40": ["bofors"]}
 	for k in names:
 		var bank = []
 		for n in names[k]:
@@ -210,7 +210,7 @@ func _auto(rate: float, dur: float, shot: float, cutoff: float, gatling: bool) -
 func auto_fire(wid: String, vol: float) -> void:
 	if muted or vol < 0.01: return
 	if _rec.has(wid): _play(_rec[wid].pick_random(), vol, randf_range(0.96, 1.04)); return
-	var bank: Array = _gat if wid == "ciws" else (_bof if wid == "aa40" else _oer)
+	var bank: Array = _gat if wid == "ciws" else (_bof if wid in ["aa40", "aa2p", "aa37"] else _oer)
 	_play(bank.pick_random(), vol, randf_range(0.95, 1.05))
 
 ## Light AA and point-defence fire.

@@ -932,7 +932,7 @@ func nearest_any(from: Vector2, side: int) -> CShip:
 ## standard fit and has a small margin beyond it. Past the margin she is slower and slow on the helm; a little
 ## further and no yard will send her to sea. What is carried high (AA, directors, radar) counts more towards
 ## topweight: a top-heavy ship rolls, and her salvos spread, worst in a sea.
-const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g76a": 12, "g127a": 22, "g130a": 60, "ssmh": 30, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
+const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g76a": 12, "g127a": 22, "g130a": 60, "ssmh": 30, "g120t": 26, "g127s": 20, "g127": 45, "g127j": 40, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
     "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500, "g381q": 2000, "g406t": 1150, "g510t": 2700,
     "g57s": 8, "g155s": 60, "rail": 110,
     "aa20": 1, "aa25": 3, "aa20q": 3, "aa37": 4, "aa2p": 16, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}

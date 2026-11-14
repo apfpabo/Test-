@@ -165,6 +165,7 @@ const WEAPONS = {
   g57s:  { name: '57 mm stealth gun',          size: 'S', kind: 'gun', dmg: 7,   range: 2300, rel: 0.4, speed: 340, spread: .009, barrels: 1, aa: .07, price: 5000,  tw: 3,   tl: 5.6, bl: 4.2, bw: .24, hide: true, tech: 'stealth' },
   g155s: { name: '155 mm stealth gun',         size: 'M', kind: 'gun', dmg: 60,  range: 4400, rel: 6,   speed: 360, spread: .008, barrels: 1, aa: 0,   price: 16000, tw: 4.6, tl: 9.6, bl: 8.2, bw: .44, hide: true, tech: 'stealth' },
   rail:  { name: 'Rail gun',                   size: 'M', kind: 'gun', dmg: 55,  range: 6500, rel: 9,   speed: 900, spread: .004, barrels: 1, aa: .04, price: 60000, tw: 4.8, tl: 8.6, bl: 9.4, bw: .8, rail: true, power: true, pen: 520, tech: 'railgun' },
+  g127j: { name: 'Type 89 12.7 cm twin HA',    size: 'M', kind: 'gun', dmg: 29,  range: 2900, rel: 5,   speed: 300, spread: .011, barrels: 2, aa: .055, price: 5600, tw: 4.8, tl: 6,  bl: 5.0, bw: .36, gap: 0.9, look: 'round' },   // the Japanese navy's high-angle twin, in its round shield (the owner, 14 Nov 2026); 12 rounds a minute a barrel
   g127:  { name: '5-inch twin DP',             size: 'M', kind: 'gun', dmg: 30,  range: 3000, rel: 4,   speed: 320, spread: .010, barrels: 2, aa: .06, price: 6000,  tw: 4.8, tl: 6,  bl: 5.2, bw: .38, gap: 1.4 },
   g130t: { name: '130 mm twin',                size: 'M', kind: 'gun', dmg: 33,  range: 3100, rel: 4.3, speed: 320, spread: .010, barrels: 2, aa: .02, price: 7000,  tw: 5,   tl: 6.4, bl: 6.2, bw: .4, gap: 1.5 },
   g150s: { name: '150 mm single',              size: 'M', kind: 'gun', dmg: 55,  range: 3600, rel: 7.5, speed: 340, spread: .009, barrels: 1, aa: 0,   price: 5000,  tw: 4,   tl: 5.6, bl: 7,   bw: .44 },
@@ -393,14 +394,14 @@ const DESIGN_LIST = [
     slots: [...pair('A', 90, 13, 'aa2p'), ...pair('A', 30, 13, 'aa2p'), ...pair('A', -40, 13, 'aa2p'), ...pair('A', -92, 12, 'aa2p')] },
   { id: 'cve_ryujo', cls: 'cve', name: 'Light Carrier', yard: 'seto', dn: 'Hayate', model: 'Ryujo light carrier', year: 1933, era: 1, L: 179.9, B: 20.3, t: 10600, kn: 29, td: 760, armor: 0, crew: 924, hangar: 2, price: 62000,
     p: { bow: .34, run: .2, stern: 'c', fd: { w: 23, len: .86, x: -11.5, sidefun: [-12, -22], wood: true } },
-    slots: [...pair('M', 30, 12.6, 'g127'), ...pair('M', -52, 12.6, 'g127'), ...pair('A', 2, 12.4, 'aa25'), ...pair('A', -76, 11, 'aa25')] },
+    slots: [...pair('M', 30, 12.6, 'g127j'), ...pair('M', -52, 12.6, 'g127j'), ...pair('A', 2, 12.4, 'aa25'), ...pair('A', -76, 11, 'aa25')] },
   // ---------------------------------------------------------------- heavy cruisers
   { id: 'ca_zara', cls: 'ca', yard: 'tirreno', dn: 'Gonfalone', model: 'Zara-class cruiser', year: 1931, era: 1, L: 182.8, B: 20.6, t: 11870, kn: 32, td: 820, armor: 150, crew: 841, price: 62000,
     p: { bow: .32, run: .2, stern: 'c', deck: 'teak', sup: [[30, 18, 12, 4], [-28, 10, 8, 2]], fun: [[8, 3.2, 2.6], [-8, 3.2, 2.6]], mast: [[25, 't'], [-20, 'p']], boats: [[0, 2]], cat: [[80, 0]] },
     slots: [sl('L', 61, 0, FWD, 'g203t'), sl('L', 51, 0, FWD, 'g203t'), sl('L', -49, 0, AFT, 'g203t'), sl('L', -59, 0, AFT, 'g203t'), ...pair('S', 15, 9, 'g102t'), ...pair('S', 1, 9.4, 'g102t'), ...pair('S', -15, 9, 'g102t'), ...pair('A', 24, 8, 'aa37'), ...pair('A', -36, 7.6, 'aa37')] },
   { id: 'ca_takao', cls: 'ca', yard: 'seto', dn: 'Hotaka', model: 'Takao-class cruiser', year: 1932, era: 1, L: 203.8, B: 19, t: 13400, kn: 35.5, td: 880, armor: 102, crew: 773, price: 64000,
     p: { outline: [[101.9, 0.76], [101.14, 1.52], [99.62, 2.28], [98.64, 2.28], [98.42, 2.93], [98.2, 3.03], [97.55, 3.04], [97.44, 2.82], [96.68, 2.82], [95.27, 3.26], [91.47, 3.84], [85.81, 4.56], [79.73, 5.15], [18.21, 9.28], [5.6, 9.84], [-6.25, 10.03], [-19.08, 9.85], [-33.64, 9.28], [-51.25, 8.26], [-65.6, 7.11], [-72.88, 6.35], [-79.73, 5.46], [-89.51, 3.89], [-95.27, 2.71], [-95.81, 2.7], [-95.92, 2.59], [-97.44, 2.59], [-98.53, 2.05], [-99.94, 1.72], [-100.49, 1.72], [-101.9, 0.96]], deck: 'lino', sup: [[23, 20, 13, 5]], fun: [[1, 7, 4]], mast: [[17, 't'], [-34, 'p']], boats: [[-16, 2]], cat: [[-40, -5], [-40, 5]], crane: [[-47, 0]] },
-    slots: [sl('L', 69, 0, FWD, 'g203t'), sl('L', 59, 0, FWD, 'g203t'), sl('L', 49, 0, AFT, 'g203t'), sl('L', -57, 0, AFT, 'g203t'), sl('L', -67, 0, AFT, 'g203t'), ...pair('M', 4, 8, 'g127'), ...pair('M', -14, 8, 'g127'), ...pair('T', -26, 8, 'tor93'), ...pair('A', 14, 7, 'aa25')] },
+    slots: [sl('L', 69, 0, FWD, 'g203t'), sl('L', 59, 0, FWD, 'g203t'), sl('L', 49, 0, AFT, 'g203t'), sl('L', -57, 0, AFT, 'g203t'), sl('L', -67, 0, AFT, 'g203t'), ...pair('M', 4, 8, 'g127j'), ...pair('M', -14, 8, 'g127j'), ...pair('T', -26, 8, 'tor93'), ...pair('A', 14, 7, 'aa25')] },
   { id: 'ca_hipper', cls: 'ca', yard: 'ostsee', dn: 'Feldherr', model: 'Admiral Hipper-class cruiser', year: 1939, era: 1, L: 202.8, B: 21.3, t: 14050, kn: 32, td: 900, armor: 80, crew: 1382, price: 66000,
     p: { outline: [[101.4, 0.39], [101.15, 0.77], [100.9, 0.77], [99.76, 1.39], [99.39, 1.39], [99.01, 1.64], [98.63, 1.64], [98.51, 1.77], [98.13, 1.77], [97.88, 2.01], [96.87, 2.14], [96.75, 2.4], [96.24, 2.63], [95.49, 2.15], [94.86, 2.2], [94.73, 2.42], [94.23, 2.58], [93.98, 2.98], [92.72, 3.09], [89.83, 3.88], [83.03, 5.42], [74.23, 7.11], [65.42, 8.44], [56.11, 9.46], [46.3, 10.14], [35.6, 10.52], [22.65, 10.65], [-31.7, 10.41], [-44.54, 10.04], [-55.86, 9.34], [-62.78, 8.7], [-69.45, 7.9], [-76.11, 6.91], [-82.65, 5.76], [-94.98, 3.12], [-96.75, 2.52], [-97.63, 2.4], [-99.14, 1.91], [-99.51, 1.67], [-99.89, 1.67], [-101.4, 0.69]], deck: 'teak', sup: [[29, 26, 13, 4], [-35, 17, 10, 2]], fun: [[9, 4.4, 3.4]], mast: [[28, 't'], [-24, 'p']], boats: [[16, 1]], cat: [[-10, 0]], crane: [[-17, -6.5], [-17, 6.5]] },
     slots: [sl('L', 59, 0, FWD, 'g203t'), sl('L', 47, 0, FWD, 'g203t'), sl('L', -49, 0, AFT, 'g203t'), sl('L', -60, 0, AFT, 'g203t'), ...pair('S', 30, 9.4, 'g102t'), ...pair('S', -11.5, 9.4, 'g102t'), ...pair('S', -29, 8.4, 'g102t'), ...pair('A', 44, 7, 'aa37'), ...pair('A', -42, 8, 'aa37'), ...pair('T', -38, 9.4, 'tor')] },
@@ -427,9 +428,9 @@ const DESIGN_LIST = [
     // the hull traced from the owner's plan drawing (12 Nov 2026): the long fine bow, the steps down to the quarterdeck
     p: { outline: [[131.5, 0.75], [130.8, 3.47], [130.2, 4.39], [128.8, 5.38], [126.8, 6.02], [104.4, 8.89], [72.6, 14.29], [60.2, 16.2], [50.5, 17.42], [33.1, 18.97], [26.8, 19.28], [-56.5, 19.44], [-73.3, 19.25], [-74.3, 18.96], [-76.3, 17.95], [-77.6, 17.7], [-96, 17.59], [-99.7, 17.37], [-100, 17.21], [-101.1, 15.34], [-101.4, 15.01], [-102.4, 14.74], [-105.7, 14.49], [-106.1, 14.17], [-107.1, 12.29], [-107.4, 12.12], [-114.1, 10.25], [-117.8, 9.03], [-123.1, 6.83], [-127.5, 4.71], [-128.8, 3.81], [-129.8, 2.82], [-130.5, 1.79], [-131.2, 0.3]],
       bow: .32, run: .2, bowK: [0.5, 0.45], stern: 'c', teak: [-70, 89, 6, -8], house: [[-18, 46, 26]], sup: [[-3, 18, 15, 6], [-33, 12, 12, 3]], fun: [[-23.5, 5.8, 4.4]], mast: [[-36, 'p']], boats: [[-80, 2]], cat: [[-112, -8], [-112, 8]], crane: [[-122, 0]] },
-    slots: [sl('H', 50, 0, FWD, 'g460'), sl('H', 28, 0, FWD, 'g460'), sl('H', -62, 0, AFT, 'g460'), sl('M', 11, 0, FWD, 'g152'), sl('M', -48, 0, AFT, 'g152'), ...pair('M', -7.7, 14, 'g127'), ...pair('M', -17.7, 13.7, 'g127'), ...pair('M', -27.4, 14, 'g127'), ...pair('A', 5.8, 9.5, 'aa25'), ...pair('A', 17.7, 9.5, 'aa25'), ...pair('A', 37, 11, 'aa25'),
+    slots: [sl('H', 50, 0, FWD, 'g460'), sl('H', 28, 0, FWD, 'g460'), sl('H', -62, 0, AFT, 'g460'), sl('M', 11, 0, FWD, 'g152'), sl('M', -48, 0, AFT, 'g152'), ...pair('M', -7.7, 14, 'g127j'), ...pair('M', -17.7, 13.7, 'g127j'), ...pair('M', -27.4, 14, 'g127j'), ...pair('A', 5.8, 9.5, 'aa25'), ...pair('A', 17.7, 9.5, 'aa25'), ...pair('A', 37, 11, 'aa25'),
       ...pair('A', -5.8, 19, 'aa25'), ...pair('A', -11.6, 19, 'aa25'), ...pair('A', -16.8, 19, 'aa25'), ...pair('A', -22.6, 19, 'aa25'), ...pair('A', -28.4, 19, 'aa25'), ...pair('A', -49.7, 9.5, 'aa25'), ...pair('A', -44, 11, 'aa25'),
-      ...pair('M', -11.3, 8.2, 'g127'), ...pair('M', -23, 8.2, 'g127'), ...pair('M', -32, 9.5, 'g127')] },
+      ...pair('M', -11.3, 8.2, 'g127j'), ...pair('M', -23, 8.2, 'g127j'), ...pair('M', -32, 9.5, 'g127j')] },
   { id: 'bb_iowa', cls: 'bb', yard: 'tidewater', dn: 'Constellation', model: 'Iowa-class battleship', year: 1943, era: 1, L: 270.4, B: 33, t: 45000, kn: 33, td: 1100, armor: 307, crew: 2700, price: 160000,
     p: { outline: [[135.2, 1.03], [134.28, 1.27], [132.83, 2.81], [132.57, 2.93], [131.91, 2.94], [130.46, 2.5], [126.52, 3.15], [123.88, 3.29], [122.44, 3.55], [119.94, 3.73], [116.25, 4.45], [111.12, 5.24], [102.96, 5.79], [91.51, 7.05], [80.07, 8.64], [63.36, 11.63], [56.12, 12.79], [43.49, 14.48], [40.59, 14.67], [37.83, 15.02], [26.78, 15.82], [19.41, 16.12], [15.86, 16.14], [13.09, 16.42], [-11.12, 16.52], [-13.88, 16.66], [-17.96, 16.55], [-32.7, 16.6], [-72.57, 16.39], [-75.33, 16.23], [-80.2, 16.22], [-82.96, 15.95], [-86.65, 15.8], [-93.49, 15.29], [-101.25, 14.3], [-105.2, 14.01], [-112.57, 12.59], [-113.88, 12.15], [-119.8, 9.63], [-121.38, 9.09], [-122.96, 8.71], [-128.36, 6.81], [-129.15, 6.63], [-130.99, 6.9], [-131.91, 6.76], [-132.57, 6.42], [-133.09, 5.97], [-134.54, 2.74], [-135.2, 2.2]], bow: .4, run: .2, stern: 'c', deck: 'teak', house: [[-15, 79, 17]], sup: [[12, 25, 15, 5], [-42, 20, 12, 2]], fun: [[-3, 5, 3.4], [-27, 5, 3.4]], mast: [[5, 't'], [-33, 'p']], boats: [[-47, 1]], cat: [[-122, -6], [-122, 6]], crane: [[-131, 0]], tubs: [[104, 0, 1.9], [26, 5, 1.6], [26, -5, 1.6], [-15, 6, 1.6], [-15, -6, 1.6]] },
     slots: [sl('H', 56, 0, FWD, 'g406'), sl('H', 34, 0, FWD, 'g406'), sl('H', -65, 0, AFT, 'g406'), ...pair('M', 18, 12.2, 'g127'), ...pair('M', 6, 13.6, 'g127'), ...pair('M', -10, 13.6, 'g127'), ...pair('M', -24, 13.6, 'g127'), ...pair('M', -38, 12.6, 'g127'), ...pair('A', 42, 11.4, 'aa40'), ...pair('A', -53, 11, 'aa40'), ...pair('A', -96, 9, 'aa40')] },
@@ -511,7 +512,7 @@ const DESIGN_LIST = [
   // ---------------------------------------------------------------- fleet carriers (Era II)
   { id: 'cv_shokaku', cls: 'cv', yard: 'seto', dn: 'Tsurugi', model: 'Shokaku-class carrier', year: 1941, era: 1, L: 257.5, B: 26, t: 25675, kn: 34, td: 1000, armor: 46, crew: 1660, hangar: 4, price: 150000,
     p: { bow: .32, run: .2, stern: 'c', fd: { w: 29, len: .94, x: -1, isl: [44, 14, 4.2], sidefun: [2, -10], wood: true } },
-    slots: [...pair('M', 80, 15.6, 'g127'), ...pair('M', 62, 15.8, 'g127'), ...pair('M', -64, 15.8, 'g127'), ...pair('M', -84, 15.4, 'g127'), ...pair('A', 20, 15.6, 'aa25'), ...pair('A', -30, 15.6, 'aa25')] },
+    slots: [...pair('M', 80, 15.6, 'g127j'), ...pair('M', 62, 15.8, 'g127j'), ...pair('M', -64, 15.8, 'g127j'), ...pair('M', -84, 15.4, 'g127j'), ...pair('A', 20, 15.6, 'aa25'), ...pair('A', -30, 15.6, 'aa25')] },
   { id: 'cv_essex', cls: 'cv', yard: 'tidewater', dn: 'Paragon', model: 'Essex-class carrier', year: 1942, era: 1, L: 265.8, B: 28.3, t: 27100, kn: 33, td: 1050, armor: 102, crew: 2600, hangar: 4, price: 175000,
     p: { bow: .3, run: .2, stern: 'c', fd: { w: 33, len: .97, x: 0, isl: [22, 38, 6.5], edge: -4 } },
     slots: [sl('M', 58, 13, STBD, 'g127'), sl('M', 49, 13, STBD, 'g127'), sl('M', -5, 13, STBD, 'g127'), sl('M', -14, 13, STBD, 'g127'), sl('S', 76, -17.4, PORT, 'g127s'), sl('S', -72, -17.4, PORT, 'g127s'), ...pair('A', 104, 14.6, 'aa40'), ...pair('A', -44, 17.6, 'aa40'), ...pair('A', -112, 14, 'aa40')] },
@@ -955,6 +956,7 @@ function drawMount(g, wid, ta, P, recoil, stowed, shadow, part, st = 'us') {
       if (w.hide) { g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.05; g.strokeRect(cxm - tl * 0.1, -w.bw * 0.9, front - cxm - tl * 0.02, w.bw * 1.8); g.beginPath(); g.moveTo(cxm - tl * 0.1, 0); g.lineTo(front - tl * 0.12, 0); g.stroke(); }   // the doors shut over the barrel's trough: seams only (a dark slot read as the barrel lying on the roof; the owner, 13 Nov 2026)
       else { g.fillStyle = shade(S, -0.2); for (const sy of [-1, 1]) g.fillRect(rear + tl * 0.16, sy * tw * 0.2 - 0.18, tl * 0.3, 0.36); }   // the rail gun's power leads
       g.restore(); return; }
+    if (w.look === 'round') { drawRoundShield(g, w, shadow, S, hR); g.restore(); return; }
     if (w.open || (wid === 'g120t' && (st === 'uk' || st === 'it' || st === 'de'))) { drawShield(g, w, st, shadow, S, hR); g.restore(); return; }
     const f = turretForm(st, w), outer = filletPoly(f.pts);
     const inner = insetPoly(outer, (nx, ny) => Math.max(0, nx) ** 2 * f.face + ny * ny * f.side + Math.max(0, -nx) ** 2 * f.rear);
@@ -1015,6 +1017,22 @@ function drawMount(g, wid, ta, P, recoil, stowed, shadow, part, st = 'us') {
 }
 // Open mounts behind a gun shield: a front plate with angled side wings and an open back, the breeches and the
 // loading platform visible behind it (British 4.7" CP XIX, German 10.5 cm, Italian 120 mm, 4-inch HA).
+// A round enclosed shield (the Type 89 12.7 cm twin, after the owner's picture, 14 Nov 2026): a low drum with a domed top, its
+// back cut flat with a hatch, a raised housing to one side for the sights, and the two barrels close together out of one
+// slot in the face.
+function drawRoundShield(g, w, shadow, S, hR) {
+  const R = w.tw * 0.5, cx = -w.tl * 0.06, back = cx - R * 0.78, sh = 'rgba(0,0,0,.26)';
+  const shape = k => { g.beginPath(); const a = Math.acos(Math.max(-1, Math.min(1, (back - cx) / (R * k)))); g.arc(cx, 0, R * k, a, -a, true); g.closePath(); };
+  if (shadow) { shape(1); g.fillStyle = sh; g.fill(); return; }
+  if (HM.on) { for (let i = 0; i <= 10; i++) { const t = i / 10; shape(1 - 0.35 * t); pfill(g, null, hR * (0.55 + 0.45 * Math.sin(t * Math.PI / 2))); } return; }   // a drum whose top rounds over
+  shape(1); const gr = g.createRadialGradient(cx - R * 0.15, -R * 0.2, R * 0.1, cx, 0, R); gr.addColorStop(0, shade(S, 0.08)); gr.addColorStop(1, shade(S, -0.16)); g.fillStyle = gr; g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = Math.max(0.05, R * 0.03); g.stroke();
+  shape(0.86); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = Math.max(0.04, R * 0.02); g.stroke();   // the seam where the roof plates meet the wall
+  const sw = (w.gap || 0.9) + w.bw * 2.2; g.fillStyle = 'rgba(12,14,15,.72)'; g.fillRect(cx + R * 0.35, -sw / 2, R * 0.62, sw);   // the slot the barrels run out through
+  g.fillStyle = shade(S, -0.08); g.fillRect(cx + R * 0.05, R * 0.25, R * 0.5, R * 0.42); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.05; g.strokeRect(cx + R * 0.05, R * 0.25, R * 0.5, R * 0.42);   // the sight housing
+  g.fillStyle = shade(S, -0.2); g.fillRect(back + 0.05, -R * 0.28, R * 0.18, R * 0.56);   // the rear hatch
+  g.fillStyle = 'rgba(0,0,0,.3)'; for (const [dx, dy] of [[-0.45, -0.55], [-0.15, -0.62], [0.15, -0.6], [-0.5, 0.5], [-0.2, 0.62]]) { g.beginPath(); g.arc(cx + dx * R, dy * R, Math.max(0.05, R * 0.04), 0, TAU); g.fill(); }   // vents and fittings
+}
 function drawShield(g, w, st, shadow, S, hR) {
   const tw = w.tw, tl = w.tl, sh = 'rgba(0,0,0,.26)', fill = (col, h) => { if (shadow) { g.fillStyle = sh; g.fill(); } else pfill(g, col, h); };
   g.beginPath(); g.arc(-tl * 0.12, 0, tw * 0.48, 0, TAU); fill(shade(S, -0.22), 0.3);                              // platform

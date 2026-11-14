@@ -527,8 +527,8 @@ const DESIGN_LIST = [
   // ---------------------------------------------------------------- Era IV · Network age (the owner's go-ahead, 11 Nov 2026)
   { id: 'ddg_zumwalt', cls: 'ddg', tech: 'stealth', yard: 'tidewater', dn: 'Wraith', model: 'Zumwalt-class destroyer', year: 2016, era: 4, L: 190, B: 24.6, t: 15700, kn: 30, td: 900, armor: 25, crew: 175, price: 235000, power: true,
     // a wave-piercing hull, widest abaft amidships, its sides leaning inboard; one great slab-sided deckhouse and nothing else standing
-    p: { outline: [[95, 0.3], [91, 1.5], [72, 5.0], [48, 8.6], [24, 11.0], [2, 12.1], [-40, 12.3], [-78, 11.7], [-95, 10.7]], stealth: { tumble: true, up: [[-10, 30, 12.5, 2]] }, sup: [[-14, 52, 19.5, 3]], helo: [[-78, 9]] },
-    slots: [sl('M', 62, 0, FWD, 'g155s'), sl('M', 42, 0, FWD, 'g155s'), sl('V', 30, -6, ALL, 'ssm'), sl('V', 30, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
+    p: { outline: [[95.0, 0.86], [93.39, 1.15], [85.83, 1.29], [81.87, 1.55], [16.97, 12.3], [-95.0, 12.3]], stealth: { tumble: true, up: [[-10, 33, 12.5, 2]] }, sup: [[-16, 63, 19.5, 3]], helo: [[-71, 9]] },
+    slots: [sl('M', 55, 0, FWD, 'g155s'), sl('M', 31, 0, FWD, 'g155s'), sl('V', 43, -6, ALL, 'ssm'), sl('V', 43, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
   { id: 'ddg_gorshkov', cls: 'ff', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 95000,
     p: { bow: .38, run: .2, stern: 't', tw: .6, stealth: { up: [[17, 15, 8.5, 2]] }, sup: [[14, 30, 13, 2]], fun: [[-8, 3.2, 2.4]], mast: [[15, 'l']], helo: [[-55, 7]] },
     slots: [sl('M', 52, 0, FWD, 'g130a'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 32, 0, ALL, 'sam'), sl('V', -30, 0, ALL, 'sam'), ...pair('A', -20, 5.6, 'ciws'), sl('T', -17.5, 0, BEAM, 'torh')] },

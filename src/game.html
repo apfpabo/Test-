@@ -528,7 +528,7 @@ const DESIGN_LIST = [
   { id: 'ddg_zumwalt', cls: 'ddg', tech: 'stealth', yard: 'tidewater', dn: 'Wraith', model: 'Zumwalt-class destroyer', year: 2016, era: 4, L: 190, B: 24.6, t: 15700, kn: 30, td: 900, armor: 25, crew: 175, price: 235000, power: true,
     // a wave-piercing hull, widest abaft amidships, its sides leaning inboard; one great slab-sided deckhouse and nothing else standing
     p: { outline: [[95.0, 0.86], [93.39, 1.15], [85.83, 1.29], [81.87, 1.55], [16.97, 12.3], [-95.0, 12.3]], stealth: { tumble: true, up: [[-10, 33, 12.5, 2]] }, sup: [[-16, 63, 19.5, 3]], helo: [[-71, 9]] },
-    slots: [sl('M', 55, 0, FWD, 'g155s'), sl('M', 31, 0, FWD, 'g155s'), sl('V', 43, -6, ALL, 'ssm'), sl('V', 43, 6, ALL, 'sam'), sl('V', -58, -7.5, ALL, 'sam'), sl('V', -58, 7.5, ALL, 'ssm'), sl('A', -47, 0, ALL, 'ciws')] },
+    slots: [sl('M', 55, 0, FWD, 'g155s'), sl('M', 31, 0, FWD, 'g155s'), Object.assign(sl('V', 40, -7.4, ALL, 'ssm'), { look: 'pvls', len: 20, n: 5, ang: 0.147 }), Object.assign(sl('V', 40, 7.4, ALL, 'sam'), { look: 'pvls', len: 20, n: 5, ang: 0.147 }), Object.assign(sl('V', -42, -11, ALL, 'sam'), { look: 'pvls', len: 10, n: 2, wd: 2 }), Object.assign(sl('V', -42, 11, ALL, 'ssm'), { look: 'pvls', len: 10, n: 2, wd: 2 }), sl('A', -47, 0, ALL, 'ciws')] },
   { id: 'ddg_gorshkov', cls: 'ff', tech: 'stealth', yard: 'neva', dn: 'Admiral', model: 'Admiral Gorshkov-class frigate', year: 2018, era: 4, L: 135, B: 16, t: 5400, kn: 29.5, td: 640, armor: 10, crew: 210, price: 95000,
     p: { bow: .38, run: .2, stern: 't', tw: .6, stealth: { up: [[17, 15, 8.5, 2]] }, sup: [[14, 30, 13, 2]], fun: [[-8, 3.2, 2.4]], mast: [[15, 'l']], helo: [[-55, 7]] },
     slots: [sl('M', 52, 0, FWD, 'g130a'), sl('V', 40, 0, ALL, 'ssm'), sl('V', 32, 0, ALL, 'sam'), sl('V', -30, 0, ALL, 'sam'), ...pair('A', -20, 5.6, 'ciws'), sl('T', -17.5, 0, BEAM, 'torh')] },
@@ -667,10 +667,10 @@ const DESIGN_LIST = [
     slots: [sl('M', 70, 0, FWD, 'g127a'), sl('V', 56, 0, ALL, 'ssm'), sl('V', -54, 0, ALL, 'sam'), sl('V', 44, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'ssm'), sl('M', -78, 0, AFT, 'g127a'), sl('A', 38, -5, PORT, 'ciws'), sl('A', -36, 5, STBD, 'ciws'), sl('T', -31, 0, BEAM, 'torh')] },
   { id: 'cg_slava', cls: 'cg', yard: 'neva', dn: 'Gromoboi', model: 'Slava-class cruiser', year: 1982, era: 3, L: 186.4, B: 20.8, t: 9380, kn: 32, td: 880, armor: 25, crew: 476, price: 225000,
     p: { outline: [[93.2, 0.55], [87.13, 3.11], [84.04, 4.19], [73.33, 7.31], [67.03, 8.61], [60.73, 9.59], [56.44, 10.01], [50.26, 10.37], [-65.6, 10.4], [-76.55, 9.81], [-81.54, 9.37], [-88.8, 8.36], [-91.89, 7.8], [-93.2, 7.34]], sup: [[19, 27, 10, 4], [-13, 38, 12, 2], [-64, 16, 11, 2]], fun: [[-24, 3.5, 2.5, -4.5], [-24, 3.5, 2.5, 4.5]], mast: [[15, 'l'], [-8, 'l']], boats: [[-18, 1]], helo: [[-83, 7]] },
-    slots: [sl('M', 63, 0, FWD, 'g130a'), ...pair('V', 37, 7, 'ssmh'), sl('V', -42, 0, ALL, 'sam'), sl('V', -52, 0, ALL, 'sam'), ...pair('A', -55, 7.5, 'ciws'), sl('T', -34, 0, BEAM, 'torh')] },
+    slots: [sl('M', 63, 0, FWD, 'g130a'), ...pair('V', 37, 7, 'ssmh').map(q => Object.assign(q, { look: 'canister', n: 4, rows: 2, tl: 9 })), Object.assign(sl('V', -42, 0, ALL, 'sam'), { look: 'revolver', nx: 4, ny: 2 }), Object.assign(sl('V', -52, 0, ALL, 'sam'), { look: 'hatch' }), ...pair('A', -55, 7.5, 'ciws'), sl('T', -34, 0, BEAM, 'torh')] },
   { id: 'cg_kirov', cls: 'cg', name: 'Nuclear Battlecruiser', nuc: true, yard: 'neva', dn: 'Admiral Volkov', model: 'Kirov-class battlecruiser', year: 1980, era: 3, L: 252, B: 28.5, t: 24300, kn: 32, td: 1100, armor: 76, crew: 710, price: 540000,
     p: { outline: [[126.0, 0.75], [125.3, 1.0], [123.18, 2.1], [116.29, 4.89], [109.39, 6.66], [102.07, 8.09], [85.17, 10.41], [75.18, 11.14], [71.09, 11.31], [62.08, 12.2], [41.67, 13.84], [35.34, 14.11], [-62.23, 14.25], [-68.28, 13.99], [-71.52, 13.99], [-77.01, 13.72], [-81.23, 13.31], [-99.53, 12.76], [-104.46, 12.35], [-120.23, 11.87], [-121.35, 11.53], [-124.17, 10.18], [-126.0, 7.99]], bow: .36, run: .2, stern: 't', tw: .55, sup: [[8, 40, 18, 5], [-40, 56, 15, 3], [-74, 12, 12, 2]], fun: [[-10, 4.5, 3.6]], mast: [[6, 'l'], [-30, 'l']], helo: [[-112, 9]], boats: [[-22, 1]] },
-    slots: [...pair('V', 45, 4.5, 'ssmh'), ...pair('V', 35, 4.5, 'ssmh'), sl('V', 80, 0, ALL, 'sam'), sl('V', 60, 0, ALL, 'sam'), sl('V', -97, 0, ALL, 'sam'), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 31, 9, 'ciws'), ...pair('A', -62, 9, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
+    slots: [...[...pair('V', 45, 3.2, 'ssmh'), ...pair('V', 35, 3.2, 'ssmh')].map(q => Object.assign(q, { look: 'grid', nx: 3, ny: 2, c: 2.8 })), Object.assign(sl('V', 80, 0, ALL, 'sam'), { look: 'quad' }), Object.assign(sl('V', 60, 0, ALL, 'sam'), { look: 'revolver', nx: 3, ny: 4, r: 1.1 }), Object.assign(sl('V', -97, 0, ALL, 'sam'), { look: 'quad' }), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 31, 9, 'ciws'), ...pair('A', -62, 9, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
 ];
 const HULL_K = 1; // overall toughness, tuned against measured battle lengths
 // Armour by place (the owner's go-ahead, 12 Nov 2026): the belt is each design's `armor`; here are the armoured deck,
@@ -1204,7 +1204,36 @@ function drawPlan(g, d, P, part = 'all') {
     else if (s.s === 'A') { const r = s.def === 'aa40' ? 1.5 : s.def === 'ciws' ? 1.3 : s.def === 'aa25' ? 1.2 : 0.8; g.beginPath(); g.arc(s.x, s.y, r, 0, TAU); g.fillStyle = shade(P.sup, -0.1);   // (a small tub, under the mount: a large dark disc read as a shadow off to one side, the owner, 13 Nov 2026)
        g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 0.15; g.stroke(); }
     else if (s.s === 'V') {
-      if (d.era >= 3) { const cw = 6, ch = 5; contact(g, k => rrect(g, s.x - cw / 2 - k, s.y - ch / 2 - k, cw + 2 * k, ch + 2 * k, 0.3), 0.4); g.fillStyle = shade(P.deck, -0.3); g.fillRect(s.x - cw / 2, s.y - ch / 2, cw, ch);
+      // a launcher drawn as the real one looked, chosen per slot (look; the owner, 14 Nov 2026): 'none' (drawn by another slot),
+      // 'canister' (rows of long tubes on deck, the Slava's), 'revolver' (round lids in a grid, an S-300 battery), 'grid' (a big
+      // square of lids under the deck, the Kirov's Granit), 'pvls' (cell modules in a strip along the deck edge, angled to it, the
+      // Zumwalt's), 'quad' (four small round lids), 'hatch' (one round lid). Looks only: what is fired is the weapon's.
+      const lk = s.look;
+      const lid = (x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fillStyle = shade(P.deck, -0.36); g.fill(); g.strokeStyle = 'rgba(205,210,210,.28)'; g.lineWidth = 0.12; g.stroke();
+        g.beginPath(); g.arc(x, y, r * 0.55, 0, TAU); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.1; g.stroke(); };
+      if (lk === 'none') { }
+      else if (lk === 'canister') { const n = s.n || 4, rows = s.rows || 2, tl = s.tl || 9, tr = s.tr || 0.85, step = tl + (s.gap || 1.0);
+        for (let i = 0; i < n; i++) for (let r = 0; r < rows; r++) { const cx = s.x + (i - (n - 1) / 2) * step, cy = s.y + (r - (rows - 1) / 2) * (tr * 2 + 0.3);
+          contact(g, k => rrect(g, cx - tl / 2 - k, cy - tr - k, tl + 2 * k, tr * 2 + 2 * k, tr + k), 0.35);
+          rrect(g, cx - tl / 2, cy - tr, tl, tr * 2, tr); crownFill(g, P.sup, tr, -0.04); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.12; g.stroke();
+          g.beginPath(); g.arc(cx + tl / 2 - tr * 0.9, cy, tr * 0.8, 0, TAU); g.fillStyle = shade(P.sup, -0.25); g.fill();   // the forward cap
+          g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 0.1; g.beginPath(); for (const f of [-0.15, 0.2]) { g.moveTo(cx + f * tl, cy - tr); g.lineTo(cx + f * tl, cy + tr); } g.stroke(); } }
+      else if (lk === 'revolver' || lk === 'quad' || lk === 'hatch') { const nx = lk === 'hatch' ? 1 : lk === 'quad' ? 2 : (s.nx || 4), ny = lk === 'hatch' ? 1 : lk === 'quad' ? 2 : (s.ny || 2);
+        const r = s.r || (lk === 'hatch' ? 1.7 : lk === 'quad' ? 0.95 : 1.15), st = r * 2 + (s.gap || 0.55);
+        for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) lid(s.x + (i - (nx - 1) / 2) * st, s.y + (j - (ny - 1) / 2) * st, r); }
+      else if (lk === 'grid') { const nx = s.nx || 5, ny = s.ny || 4, c = s.c || 2.6, w = nx * c, h = ny * c;
+        contact(g, k => rrect(g, s.x - w / 2 - k, s.y - h / 2 - k, w + 2 * k, h + 2 * k, 0.4), 0.3);
+        g.fillStyle = shade(P.deck, -0.28); g.fillRect(s.x - w / 2, s.y - h / 2, w, h);
+        for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) { const x0 = s.x - w / 2 + i * c + 0.18, y0 = s.y - h / 2 + j * c + 0.18; g.fillStyle = shade(P.deck, -0.12); g.fillRect(x0, y0, c - 0.36, c - 0.36);
+          g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 0.1; g.strokeRect(x0, y0, c - 0.36, c - 0.36); } }
+      else if (lk === 'pvls') { const len = s.len || 12, n = s.n || 4, wd = s.wd || 2.4, ang = -Math.sign(s.y || 1) * (s.ang || 0);
+        g.save(); g.translate(s.x, s.y); g.rotate(ang);
+        contact(g, k => rrect(g, -len / 2 - k, -wd / 2 - k, len + 2 * k, wd + 2 * k, 0.3), 0.3);
+        g.fillStyle = shade(P.deck, -0.3); g.fillRect(-len / 2, -wd / 2, len, wd);
+        g.strokeStyle = 'rgba(205,210,210,.22)'; g.lineWidth = 0.1; g.beginPath();
+        for (let i = 1; i < n * 2; i++) { const x = -len / 2 + i * len / (n * 2); g.moveTo(x, -wd / 2); g.lineTo(x, wd / 2); } g.moveTo(-len / 2, 0); g.lineTo(len / 2, 0); g.stroke();
+        g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.14; g.beginPath(); for (let i = 0; i <= n; i++) { const x = -len / 2 + i * len / n; g.moveTo(x, -wd / 2); g.lineTo(x, wd / 2); } g.stroke(); g.restore(); }
+      else if (d.era >= 3) { const cw = 6, ch = 5; contact(g, k => rrect(g, s.x - cw / 2 - k, s.y - ch / 2 - k, cw + 2 * k, ch + 2 * k, 0.3), 0.4); g.fillStyle = shade(P.deck, -0.3); g.fillRect(s.x - cw / 2, s.y - ch / 2, cw, ch);
         g.strokeStyle = 'rgba(200,205,205,.18)'; g.lineWidth = 0.1; g.beginPath(); for (let i = 1; i < 6; i++) { g.moveTo(s.x - cw / 2 + i, s.y - ch / 2); g.lineTo(s.x - cw / 2 + i, s.y + ch / 2); } for (let i = 1; i < 5; i++) { g.moveTo(s.x - cw / 2, s.y - ch / 2 + i); g.lineTo(s.x + cw / 2, s.y - ch / 2 + i); } g.stroke(); }
       else if (s.def === 'sam') { contact(g, k => { g.beginPath(); g.arc(s.x, s.y, 2.6 + k, 0, TAU); }, 0.5); g.beginPath(); g.arc(s.x, s.y, 2.6, 0, TAU); crownFill(g, P.sup, 2.6, -0.05);
         g.fillStyle = shade(P.sup, -0.3); g.fillRect(s.x - 0.5, s.y - 1.3, 5, 0.45); g.fillRect(s.x - 0.5, s.y + 0.85, 5, 0.45); g.fillStyle = '#c9cbc6'; g.fillRect(s.x + 0.6, s.y - 1.25, 3.6, 0.35); g.fillRect(s.x + 0.6, s.y + 0.9, 3.6, 0.35); }

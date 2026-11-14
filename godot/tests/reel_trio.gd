@@ -106,17 +106,18 @@ func _init_t(s: String) -> void:
 			var mine := ["bb_iowa", "bb_montana", "bb_kgv"]; var theirs := ["bb_yamato", "bb_bismarck", "bb_a150"]
 			var L0: Array = []; var L1: Array = []
 			for i in 3:
-				var p = _put(mine[i], 0, C + Vector2(-1700, 950 * i), -PI / 2, ["radar"], 10.0); p.god = true; L0.append(p)
-				var q = _put(theirs[i], 1, C + Vector2(1700, 950 * i - 300), -PI / 2, [], 10.0); q.god = true; L1.append(q)
+				var p = _put(mine[i], 0, C + Vector2(500 - 650 * i, 1400), 0.0, ["radar"], 10.0); p.god = true; L0.append(p)   # in line ahead, heading east
+				var q = _put(theirs[i], 1, C + Vector2(700 - 650 * i, -1400), 0.0, [], 10.0); q.god = true; L1.append(q)
 			mk["L0"] = L0; mk["L1"] = L1; _speed_of(L0[0])
 			for i in 3: _train(L0[i], L1[i].pos); _train(L1[i], L0[i].pos)
 			for i in 3: _shoot(L1[i], L0[i])
 			_land(1.2)
-			battle.camera.position = C + Vector2(0, 950); battle.camera.zoom = Vector2.ONE * 0.4
+			battle.camera.position = (L0[1].pos + L1[1].pos) * 0.5; battle.camera.zoom = Vector2.ONE * 0.42
 		"t_kgv":        # shells coming down round her, and hitting
-			A = _put("bb_kgv", 0, C, -PI / 2, ["radar"], 10.0); B = _put("bb_bismarck", 1, C + Vector2(-13000, -3000), -PI / 2, [], 10.0)
+			A = _put("bb_kgv", 0, C, -PI / 2, ["radar"], 10.0); B = _put("bb_bismarck", 1, C + Vector2(-4300, -1200), -PI / 2, [], 10.0)
 			A.god = true; B.god = true; _train(B, A.pos); _speed_of(A)
-			_shoot(B, A); _land(1.0)
+			_shoot(B, A)
+			_land(1.0)
 			battle.camera.position = A.pos; battle.camera.zoom = Vector2.ONE * 2.6
 		"t_yamato":     # the biggest guns: close, then drawing away as she fires
 			A = _put("bb_yamato", 0, C, -PI / 2, [], 9.0); B = _put("bb_iowa", 1, C + Vector2(-17000, 1500), -PI / 2, [], 9.0)
@@ -138,7 +139,7 @@ func _run_t(s: String, d: float, vs: Vector2) -> void:
 			if _at("l2", 4.2):
 				for i in 3: _shoot(mk.L1[i], mk.L0[i])
 			var mid: Vector2 = (mk.L0[1].pos + mk.L1[1].pos) * 0.5
-			_cam(mid, lerpf(0.4, 0.46, smoothstep(0.0, 8.0, t)), 1.0)
+			_cam(mid, lerpf(0.42, 0.48, smoothstep(0.0, 8.0, t)), 1.0)
 		"t_kgv":
 			A.v = 10.0
 			if _at("god", 2.5): A.god = false
@@ -153,7 +154,7 @@ func _run_t(s: String, d: float, vs: Vector2) -> void:
 func _init_f(s: String) -> void:
 	var d1 = _put("dd_fletcher", 0, C, -PI / 2, ["radar"], 17.0); var d2 = _put("dd_fletcher", 0, C + Vector2(0, 520), -PI / 2, ["radar"], 17.0)
 	d1.god = true; d2.god = true; A = d1; mk["d2"] = d2
-	B = _put("bb_a150", 1, C + Vector2(14000, -6000), -PI / 2 - 0.4, [], 10.0); B.god = true
+	B = _put("bb_a150", 1, C + Vector2(4400, -2200), -PI / 2 - 0.4, [], 10.0); B.god = true
 	_train(B, A.pos, 1.0); _speed_of(A)
 	match s:
 		"f_column":     # the two at full speed, the first fall of shot arriving

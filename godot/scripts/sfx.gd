@@ -48,7 +48,7 @@ func _ready() -> void:
 		var p = AudioStreamPlayer.new(); p.bus = "Effects"; add_child(p); _pool.append(p)
 	var names = {"gun_H": ["gun_heavy_1", "gun_heavy_2"], "gun_L": ["gun_heavy_1", "gun_heavy_2"], "gun_M": ["gun_medium"], "gun_S": ["gun_small"],
 		"ping": ["ping"], "hit": ["hit_1", "hit_2"], "hit_big": ["hit_big"], "splash": ["splash_1", "splash_2", "splash_3", "splash_4"], "blast": ["blast"], "launch": ["launch"],
-		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa40": ["bofors"]}
+		"ciws": ["ciws_1", "ciws_2"], "aa20": ["oerlikon"], "aa25": ["oerlikon"], "aa40": ["bofors"]}
 	for k in names:
 		var bank = []
 		for n in names[k]:

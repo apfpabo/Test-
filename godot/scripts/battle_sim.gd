@@ -356,7 +356,7 @@ static func default_fit(design: Dictionary, tech: Array) -> Array:
         var w: String = s.def
         if w == "tor" and tech.has("homing") and design.kind != "pt": w = "torh"
         if w == "torh" and not tech.has("homing"): w = "tor"
-        if (w == "aa40" or w == "aa20") and tech.has("ciws") and randf() < 0.5: w = "ciws"
+        if (w == "aa40" or w == "aa20" or w == "aa25") and tech.has("ciws") and randf() < 0.5: w = "ciws"
         if w == "ciws" and not tech.has("ciws") and int(design.get("era", 1)) < 3: w = "aa40"   # (a missile-age design keeps the close-in guns she was built with, as she keeps her missiles)
         if w == "g76" and not tech.has("missiles"): w = "g102t"
         if not tech.has("missiles") and int(design.get("era", 1)) < 3:   # the missile age's guns on an old hull, before their time
@@ -557,7 +557,7 @@ func engageable(s: CShip) -> bool: return s.alive and not s.escaped and not s.st
 static func full_ammo(wid: String, w: Dictionary) -> int:
     match String(w.kind):
         "gun": return int(w.get("barrels", 1)) * int({"H": 100, "L": 150, "M": 250, "S": 300}[w.size])
-        "aa": return 60 if wid == "ciws" else (600 if wid == "aa20" else 400)
+        "aa": return 60 if wid == "ciws" else (600 if wid == "aa20" else (500 if wid == "aa25" else 400))
         "torp": return 2
         "ssm": return 4
         "sam": return 40
@@ -932,7 +932,7 @@ func nearest_any(from: Vector2, side: int) -> CShip:
 const TONS := {"g102": 10, "g102t": 20, "g76": 16, "g76a": 12, "g127a": 22, "g130a": 60, "ssmh": 30, "g120t": 26, "g127s": 20, "g127": 45, "g130t": 55, "g150s": 28, "g150t": 85, "g152t": 95, "g152": 155,
     "g203t": 250, "g203": 310, "g203r": 350, "g283": 750, "g356t": 900, "g356": 1150, "g356q": 1500, "g381t": 1020, "g381": 1500, "g406": 1700, "g460": 2500, "g381q": 2000, "g406t": 1150, "g510t": 2700,
     "g57s": 8, "g155s": 60, "rail": 110,
-    "aa20": 1, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}
+    "aa20": 1, "aa25": 3, "aa40": 11, "ciws": 2, "tor": 20, "tor93": 28, "torh": 20, "ssm": 16, "sam": 30}
 const HEIGHT := {"A": 1.5, "V": 0.8, "T": 0.9}        # how high a mount sits, guns on the deck being 1
 const TOP_SLACK := 1.10                                # topweight a hull bears before it tells
 const TOP_LIMIT := 1.30

@@ -1004,6 +1004,9 @@ class MountLayer extends Node2D:   # turrets of one level: their contact and cas
                 # (the owner, 13 Nov 2026: a raised turret's shadow lay far off across the deckhouse's side)
                 var under: float = GameData.ship_h_at(s.rec.type, p.x + sun.x * reach, p.y + sun.y * reach)
                 if under > 0.3: reach = maxf(reach * 0.35, reach - under * 0.85)
+                # never further than half the mount's own size, so the shadow stays joined to its foot (the owner, 14 Nov 2026:
+                # a destroyer's guns cast their shadows clear of themselves and looked to float)
+                reach = minf(reach, 0.5 * minf(float(m.w.get("tw", 2.0)), float(m.w.get("tl", 2.0))) * GameData.mount_scale(s.rec.type, m.wid))
                 draw_set_transform(p + sun * reach, m.ta, Vector2(sc, sc))
                 var shc = Color(0, 0, 0, 0.42 if lvl else 0.36)
                 if split: _barrels(bt, m, info, o, shc)

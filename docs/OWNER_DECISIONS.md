@@ -196,6 +196,14 @@ at sea are not grounded anyway); (c) size raiders to the captain for his first m
 (d) count torpedo boats for more in the strength shown on the contact panel, so "an even fight" is honest.
 The agent's recommendation: (b) and (d).
 
+## ~~Historical light AA: every mount or grouped~~ Decided 14 Nov 2026: grouped
+
+Tried on the Yamato (1945): all forty Type 96 triples her plan shows, against twenty grouped ones. Against missiles it
+changed almost nothing (light guns are reckoned per ship, by fire control: 14 of 40 stopped against 15). Against aircraft
+it doubled her flak (counted per mount), more than the record bears out (aircraft sank her with 52 triples aboard). **His
+choice: grouped.** Real ships carry fewer, heavier light-AA mounts that look busy and keep the balance. Still open: whether
+real ships keep free refits, get only their historical refits, or are locked (with a design editor for invented ships).
+
 ## Parked by the owner
 
 The oblique (2.5D) battle view, difficulty settings and mod support (parked earlier). And:

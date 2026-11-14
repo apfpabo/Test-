@@ -55,6 +55,25 @@ func _missiles(s, tg, n: int) -> void:
 	for i in n:
 		var from: Vector2 = s.pos + Vector2(float(s.d.L) * (0.3 - 0.06 * i), 0).rotated(s.a)
 		sim.missiles.append({"pos": from, "a": s.a - PI / 2 + randf_range(-0.2, 0.2), "v": 60.0, "speed": float(w.speed), "life": 60.0, "dmg": float(w.dmg), "side": s.side, "target": tg, "kind": "ssm", "delay": 0.25 * i, "prof": "skim", "sk": 0.0, "who": s})
+## Fire `src`'s guns of these sizes at where `tgt` will be when the shells arrive (a shell flies straight to its aim
+## point, distance over speed).
+func _shoot(src, tgt, sizes := ["H"], off := Vector2.ZERO) -> void:
+	var vel: Vector2 = Vector2.from_angle(tgt.a) * float(mk.get("mps", 0.0))
+	for m in src.mounts:
+		if m.w.kind != "gun" or not sizes.has(m.w.size) or m.dead: continue
+		var aim: Vector2 = tgt.pos + off
+		for i in 3: aim = tgt.pos + off + vel * (aim.distance_to(src.pos) / float(m.w.speed))
+		sim.fire_gun(src, m, aim, m.w, tgt)
+## Her speed over the ground in metres a second (the sim's own units), measured by running it a second.
+func _speed_of(s) -> void:
+	var p0: Vector2 = s.pos; _warm(1.0); mk["mps"] = p0.distance_to(s.pos)
+## Run the action on, unseen, until the first shell in the air is `lead` seconds from its fall.
+func _land(lead: float) -> void:
+	for i in 2000:
+		var soon := INF
+		for sh in sim.shells: soon = minf(soon, float(sh.T) - float(sh.t))
+		if sim.shells.is_empty() or soon <= lead: return
+		sim.step(0.05)
 func _at(k: String, when: float) -> bool:
 	if t >= when and not mk.has(k): mk[k] = true; return true
 	return false
@@ -82,19 +101,23 @@ func _init_t(s: String) -> void:
 		"t_vanguard":   # a broadside to starboard, the camera drifting aft along her
 			A = _put("bb_vanguard", 0, C, -PI / 2, ["radar"], 10.0); B = _put("bb_yamato", 1, C + Vector2(16000, -2000), PI / 2, [], 8.0)
 			A.god = true; B.god = true; _train(A, B.pos)
-			battle.camera.position = A.pos + Vector2(0, -70); battle.camera.zoom = Vector2.ONE * 2.2
+			battle.camera.position = A.pos + Vector2(0, -70); battle.camera.zoom = Vector2.ONE * 3.0
 		"t_line":       # the lines, wide, both firing
 			var mine := ["bb_iowa", "bb_montana", "bb_kgv"]; var theirs := ["bb_yamato", "bb_bismarck", "bb_a150"]
+			var L0: Array = []; var L1: Array = []
 			for i in 3:
-				var p = _put(mine[i], 0, C + Vector2(-1500, 900 * i), -PI / 2, ["radar"], 10.0, true); p.god = true
-				var q = _put(theirs[i], 1, C + Vector2(1500, 900 * i - 400), -PI / 2, [], 10.0, true); q.god = true
-			sim.flag = null; _warm(30.0)
-			for x in sim.ships: x.v = 10.0
-			battle.camera.position = C + Vector2(0, 1000); battle.camera.zoom = Vector2.ONE * 0.36
+				var p = _put(mine[i], 0, C + Vector2(-1700, 950 * i), -PI / 2, ["radar"], 10.0); p.god = true; L0.append(p)
+				var q = _put(theirs[i], 1, C + Vector2(1700, 950 * i - 300), -PI / 2, [], 10.0); q.god = true; L1.append(q)
+			mk["L0"] = L0; mk["L1"] = L1; _speed_of(L0[0])
+			for i in 3: _train(L0[i], L1[i].pos); _train(L1[i], L0[i].pos)
+			for i in 3: _shoot(L1[i], L0[i])
+			_land(1.2)
+			battle.camera.position = C + Vector2(0, 950); battle.camera.zoom = Vector2.ONE * 0.4
 		"t_kgv":        # shells coming down round her, and hitting
 			A = _put("bb_kgv", 0, C, -PI / 2, ["radar"], 10.0); B = _put("bb_bismarck", 1, C + Vector2(-13000, -3000), -PI / 2, [], 10.0)
-			A.god = true; B.god = true; _train(B, A.pos)
-			battle.camera.position = A.pos; battle.camera.zoom = Vector2.ONE * 2.0
+			A.god = true; B.god = true; _train(B, A.pos); _speed_of(A)
+			_shoot(B, A); _land(1.0)
+			battle.camera.position = A.pos; battle.camera.zoom = Vector2.ONE * 2.6
 		"t_yamato":     # the biggest guns: close, then drawing away as she fires
 			A = _put("bb_yamato", 0, C, -PI / 2, [], 9.0); B = _put("bb_iowa", 1, C + Vector2(-17000, 1500), -PI / 2, [], 9.0)
 			A.god = true; B.god = true; _train(A, B.pos)
@@ -107,16 +130,19 @@ func _run_t(s: String, d: float, vs: Vector2) -> void:
 			A.v = 10.0; _train(A, B.pos + Vector2(0, -600), minf(1.0, d * 2.0))
 			if _at("s1", 1.6): _fire(A, B.pos, B, ["H"])
 			if _at("s2", 4.6): _fire(A, B.pos, B, ["H"])
-			_cam(A.pos + Vector2(0, lerpf(-70.0, 60.0, t / 7.5)), lerpf(2.2, 1.7, smoothstep(0.0, 7.5, t)), 1.0)
+			_cam(A.pos + Vector2(0, lerpf(-70.0, 60.0, t / 7.5)), lerpf(3.0, 2.3, smoothstep(0.0, 7.5, t)), 1.0)
 		"t_line":
 			for x in sim.ships: x.v = 10.0
-			_cam(C + Vector2(0, 1000 - 10.0 * t * 10.0), lerpf(0.36, 0.42, t / 8.0), 1.0)
+			if _at("l1", 0.6):
+				for i in 3: _shoot(mk.L0[i], mk.L1[i])
+			if _at("l2", 4.2):
+				for i in 3: _shoot(mk.L1[i], mk.L0[i])
+			var mid: Vector2 = (mk.L0[1].pos + mk.L1[1].pos) * 0.5
+			_cam(mid, lerpf(0.4, 0.46, smoothstep(0.0, 8.0, t)), 1.0)
 		"t_kgv":
 			A.v = 10.0
-			if _at("b1", 0.1): _fire(B, A.pos + Vector2(0, -260), A)
-			if _at("b2", 2.2): _fire(B, A.pos + Vector2(0, -220), A)
-			if _at("god", 3.5): A.god = false
-			_cam(A.pos, lerpf(2.0, 1.6, smoothstep(0.0, 7.5, t)), 1.0)
+			if _at("god", 2.5): A.god = false
+			_cam(A.pos, lerpf(2.6, 2.0, smoothstep(0.0, 7.5, t)), 1.0)
 		"t_yamato":
 			A.v = 9.0; _train(A, B.pos, minf(1.0, d * 2.0))
 			if _at("y1", 1.4): _fire(A, B.pos, B, ["H"])
@@ -128,38 +154,37 @@ func _init_f(s: String) -> void:
 	var d1 = _put("dd_fletcher", 0, C, -PI / 2, ["radar"], 17.0); var d2 = _put("dd_fletcher", 0, C + Vector2(0, 520), -PI / 2, ["radar"], 17.0)
 	d1.god = true; d2.god = true; A = d1; mk["d2"] = d2
 	B = _put("bb_a150", 1, C + Vector2(14000, -6000), -PI / 2 - 0.4, [], 10.0); B.god = true
-	_train(B, A.pos, 1.0)
+	_train(B, A.pos, 1.0); _speed_of(A)
 	match s:
 		"f_column":     # the two at full speed, the first fall of shot arriving
-			battle.camera.position = A.pos + Vector2(0, 260); battle.camera.zoom = Vector2.ONE * 2.4
+			_shoot(B, A, ["H"], Vector2(0, 120)); _land(1.5)
+			battle.camera.position = A.pos + Vector2(0, 260); battle.camera.zoom = Vector2.ONE * 2.2
 		"f_a150":       # the A-150 herself, her 18.1-inch triples firing
 			battle.camera.position = B.pos; battle.camera.zoom = Vector2.ONE * 1.9
 		"f_straddle":   # straddled, and hit
-			for i in 2: _fire(B, A.pos + Vector2(0, -17.0 * 20.0), A); _warm(18.0)
-			battle.camera.position = A.pos + Vector2(0, 260); battle.camera.zoom = Vector2.ONE * 2.0
+			_shoot(B, A); _land(0.8)
+			battle.camera.position = A.pos + Vector2(0, 130); battle.camera.zoom = Vector2.ONE * 3.0
 		"f_end":        # burning, still running, the camera drawing away
-			for i in 3: _fire(B, A.pos + Vector2(0, -17.0 * 20.0), A); _warm(18.0)
 			A.god = false; d2.god = false
-			sim.damage(A, A.max_hull * 0.45, "shell"); sim.damage(d2, d2.max_hull * 0.3, "shell")
-			battle.camera.position = A.pos + Vector2(0, 260); battle.camera.zoom = Vector2.ONE * 2.2
+			for i in 2:   # hit, and burning
+				_shoot(B, A); _land(0.0); _warm(3.0); _shoot(B, d2); _land(0.0); _warm(3.0)
+			A.god = true; d2.god = true; _shoot(B, A, ["H"], Vector2(0, -150)); _land(2.5)
+			battle.camera.position = A.pos + Vector2(0, 260); battle.camera.zoom = Vector2.ONE * 2.6
 func _run_f(s: String, d: float, vs: Vector2) -> void:
 	A.v = 17.0; mk.d2.v = 17.0
-	var lead: Vector2 = A.pos + Vector2(0, -17.0 * 20.0)
-	_train(B, lead, minf(1.0, d * 2.0))
+	_train(B, A.pos, minf(1.0, d * 2.0))
 	match s:
 		"f_column":
-			if _at("p", 0.0): _fire(B, lead, A); _warm(16.5)   # the shells are in the air as the shot opens
-			_cam(A.pos + Vector2(0, 260), lerpf(2.4, 1.5, smoothstep(0.0, 8.0, t)), 1.0)
+			_cam(A.pos + Vector2(0, 260), lerpf(2.2, 1.6, smoothstep(0.0, 8.0, t)), 1.0)
 		"f_a150":
-			if _at("a1", 1.2): _fire(B, lead, A)
-			if _at("a2", 4.4): _fire(B, lead, A, ["H", "M"])
+			if _at("a1", 1.2): _shoot(B, A)
+			if _at("a2", 4.4): _shoot(B, A, ["H", "M"])
 			_cam(B.pos + Vector2.from_angle(B.a) * lerpf(-30.0, 40.0, t / 7.5), lerpf(1.9, 1.5, smoothstep(0.0, 7.5, t)), 1.0)
 		"f_straddle":
-			if _at("god", 2.5): A.god = false
-			_cam(A.pos + Vector2(0, 260), lerpf(2.0, 1.7, smoothstep(0.0, 8.0, t)), 1.0)
+			if _at("god", 0.4): A.god = false
+			_cam(A.pos + Vector2(0, 130), lerpf(3.0, 2.4, smoothstep(0.0, 8.0, t)), 1.0)
 		"f_end":
-			if _at("e1", 0.5): _fire(B, lead, A)
-			_cam(A.pos + Vector2(0, 260), lerpf(2.2, 0.9, smoothstep(0.0, 8.5, t)), 1.0)
+			_cam(A.pos + Vector2(0, 260), lerpf(2.6, 1.1, smoothstep(0.0, 8.5, t)), 1.0)
 
 # ---------------------------------------------------------------- the generations: one ship of each era, centred
 func _init_g(s: String) -> void:

@@ -1,0 +1,121 @@
+batch,category,ship_class,fit_year,loa_m,loa_ft,beam_m,scale_px_per_m,primary_plan_source,direct_url
+Batch 1: Wartime Warships,Battleships,Yamato,1945 (Ten-Go),263.0,862.9,38.9,10,Skulski Anatomy of the Ship / Wikimedia,https://upload.wikimedia.org/wikipedia/commons/0/08/Yamato1945.png
+Batch 1: Wartime Warships,Battleships,Littorio,1943,237.8,780.2,32.9,10,US Navy ONI 202 Italian Naval Vessels,http://www.ibiblio.org/hyperwar/USN/ref/ONI/ONI-202/img/oni202-10.png
+Batch 1: Wartime Warships,Battleships,Scharnhorst,1943 (Atlantic bow),234.9,770.7,30.0,10,US Navy ONI 204 German Naval Vessels,https://upload.wikimedia.org/wikipedia/commons/b/b6/Scharnhorst-1-A503-FM30-50.jpg
+Batch 1: Wartime Warships,Battleships,Vanguard,1946 (As completed),248.2,814.3,32.9,10,Royal Navy As-Fitted Rig Plan 1946 / Raven & Roberts,
+Batch 1: Wartime Warships,Paper Battleships,A-150 Super Yamato,1941 (Design),285.0,935.0,38.9,10,Garzke & Dulin Axis and Neutral Battleships Design Plan,
+Batch 1: Wartime Warships,Paper Battleships,Alsace (Project No. 3),1940 (3x3 380mm Design),265.0,869.4,35.5,10,Jordan & Dumas French Battleships Type 3 Plan,
+Batch 1: Wartime Warships,Paper Battleships,H-39,1939 (Laid down),277.8,911.4,37.0,10,Groner / Breyer Battleships and Battlecruisers H-39 Plan,
+Batch 1: Wartime Warships,Paper Battleships,Lion,1938 / 1942 (Design),239.3,785.1,32.0,10,DNC 1938 General Arrangement & 1942 Revision Sheet,
+Batch 1: Wartime Warships,Paper Battleships,Sovetsky Soyuz (Project 23),1939 (Laid down),269.4,883.9,38.9,10,TsKB-4 Project 23 General Arrangement Blueprint,
+Batch 1: Wartime Warships,Heavy Cruisers,Admiral Hipper,1941 (Atlantic bow),202.8,665.4,21.3,10,US Navy ONI 204 German Naval Vessels Plate CA 1,https://upload.wikimedia.org/wikipedia/commons/0/0b/Admiral_Hipper_ONI.jpg
+Batch 1: Wartime Warships,Heavy Cruisers,Baltimore (CA-68),1944,205.3,673.5,21.6,10,US Navy ONI 222-US / BuShips Booklet of General Plans,
+Batch 1: Wartime Warships,Heavy Cruisers,Zara,1941 (Matapan),182.8,599.7,20.6,10,US Navy ONI 202 Italian Naval Vessels Plate CA 1-4,http://www.ibiblio.org/hyperwar/USN/ref/ONI/ONI-202/img/oni202-14.png
+Batch 1: Wartime Warships,Heavy Cruisers,Des Moines (CA-134),1948 (As completed),218.4,716.5,23.0,10,BuShips CA-134 Booklet of General Plans 1948,
+Batch 1: Wartime Warships,Light Cruisers,Agano,1943,174.1,571.2,15.2,10,US Navy ONI 41-42 Japanese Naval Vessels / Lacroix & Wells,http://pwencycl.kgbudge.com/images/A/g/Agano__class_schematic_full.jpg
+Batch 1: Wartime Warships,Light Cruisers,Atlanta (CL-51),1942,165.0,541.5,16.2,10,US Navy ONI 222-US / CL-51 Booklet of General Plans,
+Batch 1: Wartime Warships,Light Cruisers,Cleveland (CL-55),1944,185.9,610.1,20.2,10,US Navy ONI 222-US / CL-55 Booklet of General Plans,
+Batch 1: Wartime Warships,Light Cruisers,Duca degli Abruzzi,1942,187.0,613.5,18.9,10,US Navy ONI 202 Condottieri V Class Plate,
+Batch 1: Wartime Warships,Light Cruisers,Fiji (Crown Colony),1941,169.3,555.5,18.9,10,US Navy ONI 201 British Naval Vessels / Raven & Roberts,
+Batch 1: Wartime Warships,Light Cruisers,Sverdlov (Project 68bis),1952,210.0,689.0,22.0,10,US Navy ONI 222-R Soviet Naval Vessels,
+Batch 1: Wartime Warships,Destroyers,Fletcher (DD-445),1943 (Square bridge),114.7,376.5,12.1,10,US Navy ONI 222-US / DD-445 Booklet of General Plans,
+Batch 1: Wartime Warships,Destroyers,Fubuki (Special Type),1942,118.4,388.5,10.4,10,US Navy ONI 41-42 Special Type Destroyer Plate,
+Batch 1: Wartime Warships,Destroyers,Gearing (DD-710),1945,119.0,390.5,12.5,10,US Navy ONI 222-US / DD-710 Booklet of General Plans,
+Batch 1: Wartime Warships,Destroyers,J/K/N Class,1941,108.7,356.5,10.9,10,US Navy ONI 201 Javelin/Kelly Class Plate,
+Batch 1: Wartime Warships,Destroyers,Kagero,1942,118.5,388.8,10.8,10,US Navy ONI 41-42 Kagero Class Plate,
+Batch 1: Wartime Warships,Destroyers,Soldati,1942,106.7,350.1,10.2,10,US Navy ONI 202 Camicia Nera / Soldati Class Plate,
+Batch 1: Wartime Warships,Destroyers,Type 1936A (Narvik),1942 (Z23-Z30),127.0,416.7,12.0,10,US Navy ONI 204 German Naval Vessels Z23 Plate,
+Batch 1: Wartime Warships,Destroyers,Daring (1949),1952 (As completed),118.9,390.0,13.1,10,Royal Navy Daring-Class As-Fitted Plan 1952,
+Batch 1: Wartime Warships,Destroyers,Skory (Project 30bis),1950,120.5,395.3,12.0,10,US Navy ONI 222-R Skoryy Class Plate,
+Batch 1: Wartime Warships,Carriers,Essex (CV-9),1944 (Short-hull),265.8,872.0,45.0,10,US Navy ONI 222-US / CV-9 Booklet of General Plans,
+Batch 1: Wartime Warships,Carriers,Shokaku,1942,257.5,844.8,26.0,10,US Navy ONI 41-42 Shokaku Class Plate,
+Batch 1: Wartime Warships,Carriers,Ryujo,1942 (2nd refit),179.9,590.2,20.8,10,US Navy ONI 41-42 Ryujo Plate,
+Batch 1: Wartime Warships,Carriers,Casablanca (CVE-55),1944,156.1,512.3,33.0,10,US Navy ONI 222-US / CVE-55 Booklet of General Plans,
+Batch 1: Wartime Warships,Carriers,Colossus,1945,211.8,695.0,24.4,10,US Navy ONI 201 1944 Supplement Light Fleet Carriers,
+Batch 1: Wartime Warships,Carriers,Audacious (HMS Eagle R05),1951 (Axial deck),245.0,803.8,34.3,10,Royal Navy HMS Eagle R05 1951 Axial-Deck Plan,
+Batch 1: Wartime Warships,Carriers,Midway (CVB-41),1945 (Axial deck),295.0,968.0,34.4,10,BuShips CVB-41 Booklet of General Plans 1945,
+Batch 1: Wartime Warships,Carriers,Forrestal (CVA-59),1955 (As completed),325.2,1067.0,76.8,10,BuShips CVA-59 General Arrangement Plan 1955,
+Batch 2: Escorts Boats & Subs,Escorts,Flower Class Corvette,1941 (Short forecastle),62.5,205.1,10.1,10,Admiralty As-Fitted Plan HMS Honeysuckle K27,https://www.taubmansonline.com/LFCC26SETS_files/image001.jpg
+Batch 2: Escorts Boats & Subs,Escorts,Castle Class Corvette,1944 (Squid ASW fit),76.8,252.0,11.2,10,Royal Navy DNC 1943 General Arrangement Plan,
+Batch 2: Escorts Boats & Subs,Escorts,River Class Frigate,1943 (North Atlantic fit),91.8,301.3,11.2,10,Admiralty / RCN 1941 Booklet of General Plans,https://i0.wp.com/laststandonzombieisland.com/wp-content/uploads/2020/04/river-class-e28093-booklet-of-general-plans-1941.jpg
+Batch 2: Escorts Boats & Subs,Escorts,Tacoma (PF-3),1944 (Lend-Lease fit),92.7,304.0,11.4,10,US Navy ONI 222-US / USMC Type S2-S2-AQ1 Plan,
+Batch 2: Escorts Boats & Subs,Escorts,Riga (Project 50),1955 (Gornostay class),91.0,298.6,10.2,10,US Navy ONI 222-R / TsKB-53 Project 50 Plan,
+Batch 2: Escorts Boats & Subs,Torpedo Boats,Elco 80-ft PT Boat,1943 (PT-103 class),24.4,80.0,6.3,20,Elco Naval Division Plan #3008 & #496341,http://www.pt103.com/images/PT_Boat_Elco_103_Class_Day_Room_Cabin_Trunk_Gridded_Port.jpg
+Batch 2: Escorts Boats & Subs,Torpedo Boats,MAS 500 (501-555),1941 (Baglietto Serie 1-4),21.0,68.9,4.5,20,US Navy ONI 202 Minor Combatants / Baglietto Plan,
+Batch 2: Escorts Boats & Subs,Torpedo Boats,S-38 Schnellboot,1941 / 1943 (Skullcap),34.9,114.7,5.3,20,Lurssen Werft S-38 General Plan / ONI 204,https://live.staticflickr.com/65535/50589841343_1a706e8d5f_b.jpg
+Batch 2: Escorts Boats & Subs,Submarines,Gato (SS-212 / SS-383),1943 (Mod 3 fairwater),95.0,311.8,8.3,10,BuShips Booklet of General Plans USS Pampanito SS-383,https://maritime.org/doc/plans/ss383p01.gif
+Batch 2: Escorts Boats & Subs,Submarines,Type VIIC U-Boat,1942 (Single wintergarten),67.1,220.1,6.2,10,Germaniawerft Kiel Type VIIC Plan / ONI 204,https://www.communitystories.ca/v2/tragic-sinking-ss-caribou_naufrage-tragique/wp-content/uploads/sites/135/2021/05/Type-VIIC-Uboat-layout-wiki.jpg
+Batch 2: Escorts Boats & Subs,Submarines,Type XXI Elektroboot,1945 (As built U-2540),76.7,251.6,6.6,10,Blohm & Voss Type XXI General Arrangement,https://i.redd.it/8shxacw3ukw51.png
+Batch 2: Escorts Boats & Subs,Submarines,Foxtrot (Project 641),1962 (B-427 fit),91.3,299.5,7.5,10,Rubin TsKB-18 Project 641 External & Deck Casing Plan,https://deanoinamerica.wordpress.com/wp-content/uploads/2015/04/soviet-foxtrot-class-sub-technical-drawing.jpg
+Batch 2: Escorts Boats & Subs,Submarines,Tang (SS-563),1952 (As built) / 1967,82.0,269.0,8.3,10,Portsmouth Naval Shipyard SS-563 Booklet of General Plans,
+Batch 2: Escorts Boats & Subs,Submarines,Whiskey (Project 613),1954 (Series III clean sail),76.0,249.3,6.3,10,Lazurit TsKB-112 Project 613 General Arrangement,
+Batch 2: Escorts Boats & Subs,Submarines,November (Project 627A),1959 (Kit class SSN),107.4,352.4,7.9,10,Malakhit SKB-143 Project 627A Top & Profile Plan,
+Batch 2: Escorts Boats & Subs,Submarines,Skipjack (SSN-585),1959 (Teardrop hull),76.7,251.8,9.6,10,Electric Boat SSN-585 General Arrangement Plan,https://i.redd.it/eqsh54in9sic1.jpeg
+Batch 2: Escorts Boats & Subs,Submarines,Charlie I (Project 670),1968 (Skat SSGN),95.5,313.3,9.9,10,Lazurit Project 670 Top Casing & Profile Plan,
+Batch 3: Modern Surface,Cruisers,Kirov (Project 1144.2),1980 / 1998 (Pyotr Velikiy),252.0,826.8,28.5,10,Severnoye PKB Project 1144.2 Orlan General Plan,
+Batch 3: Modern Surface,Cruisers,Slava (Project 1164),1983 (Slava / Moskva fit),186.4,611.5,20.8,10,Severnoye PKB Project 1164 Atlant Top & Profile,http://www.ww2.dk/new/navy/images/pr.1164-variant2.jpg
+Batch 3: Modern Surface,Cruisers,Ticonderoga (CG-52 VLS),1983 (Mk26) / 1994 (VLS),172.8,567.0,16.8,10,USN NAVSEA CG-52 VLS Recognition Drawing 1994,https://upload.wikimedia.org/wikipedia/commons/5/52/Ticonderoga_class_cruiser_line_drawing_with_weapons_and_sensors_1994.png
+Batch 3: Modern Surface,Paper Cruisers,CG(X) Thunderhead,2008 (CGN(X) BMD Study),218.0,715.2,26.5,10,USN 2008 MAMDJF AoA / Shipbucket CGN(X) Study,
+Batch 3: Modern Surface,Destroyers,Charles F. Adams (DDG-2),1962 (Tartar + ASROC fit),133.2,437.0,14.3,10,BuShips SCB-155 / DDG-2 Booklet of General Plans,
+Batch 3: Modern Surface,Destroyers,County Class,1962 (Batch 1) / 1974 (Batch 2),158.7,520.5,16.5,10,Royal Navy DNC HMS Devonshire As-Fitted Plan,
+Batch 3: Modern Surface,Destroyers,Kashin (Project 61),1964 (Baseline),144.0,472.4,15.8,10,Severnoye TsKB-53 Project 61 Top & Side Plan,
+Batch 3: Modern Surface,Destroyers,Arleigh Burke (DDG-51),1991 (Fl.I) / 2000 (Fl.IIA),153.9,505.0,20.1,10,NAVSEA DDG-51 Flight I & IIA 5-View Orthographic Plan,https://upload.wikimedia.org/wikipedia/commons/7/7b/Arleigh_Burke_class_destroyer_Flight_1_line_drawing.png
+Batch 3: Modern Surface,Destroyers,Hatsuyuki (DD-122),1982 (JMSDF As-built fit),130.0,426.5,13.6,10,JMSDF TRDI DD-122 General Arrangement Plan,
+Batch 3: Modern Surface,Destroyers,Kongo (DDG-173),1993 (Baseline) / 2008 (BMD),161.0,528.2,21.0,10,Mitsubishi Heavy Industries 63DDG General Plan,
+Batch 3: Modern Surface,Destroyers,Sovremenny (Project 956),1985 (Baseline 2x AK-130),156.0,511.8,17.3,10,Severnoye PKB Project 956 Sarych Top & Side Plan,
+Batch 3: Modern Surface,Destroyers,Type 42 (Sheffield),1975 (B1 125m) / 1982 (B3 141.1m),125.0,410.1,14.3,10,Royal Navy Vickers Type 42 Batch 1 & Batch 3 Plans,
+Batch 3: Modern Surface,Destroyers,Andrea Doria (Horizon),2007 (Marina Militare D 553),152.9,501.6,20.3,10,Fincantieri / Horizon JV Orizzonte General Plan,
+Batch 3: Modern Surface,Destroyers,Type 45 (Daring D32),2009 (Royal Navy Baseline),152.4,500.0,21.2,10,BAE Systems Surface Ships Type 45 Arrangement,
+Batch 3: Modern Surface,Destroyers,Zumwalt (DDG-1000),2016 (2x 155mm AGS fit),185.9,609.9,24.6,10,Bath Iron Works / NAVSEA DDG-1000 Blueprint,
+Batch 3: Modern Surface,Frigates,Bremen (Type 122),1982 (Bundesmarine F207),130.5,428.1,14.6,10,Bremer Vulkan F122 General Arrangement Plan,
+Batch 3: Modern Surface,Frigates,Maestrale (F 570),1982 (Marina Militare fit),122.7,402.6,12.9,10,Cantieri Navali Riuniti Maestrale Top & Profile,
+Batch 3: Modern Surface,Frigates,Oliver Hazard Perry (FFG-7),1977 (Short) / 1983 (Long),138.1,453.0,13.7,10,Bath Iron Works / USN FFG-60 Long-Hull Profile,https://upload.wikimedia.org/wikipedia/commons/4/4e/Oliver_Hazard_Perry-class_frigate_%28long_hull%29_outboard_profile.jpg
+Batch 3: Modern Surface,Frigates,Admiral Gorshkov (Pr. 22350),2018 (16-cell UKSK VLS),135.0,442.9,16.4,10,Severnoye PKB Project 22350 General Plan,
+Batch 3: Modern Surface,Frigates,Independence (LCS-2),2010 (Baseline) / 2020 (NSM),127.4,418.0,31.6,10,Austal USA Trimaran LCS-2 Top & Elevation Plan,
+Batch 3: Modern Surface,Frigates,Mogami (30FFM),2022 (FFM-1 UNICORN mast),133.0,436.4,16.3,10,ATLA / Mitsubishi 30FFM Schematic,
+Batch 3: Modern Surface,Frigates,Sachsen (Type 124),2004 (Deutsche Marine F219),143.0,469.2,17.4,10,Blohm + Voss ARGE F124 General Plan,
+Batch 3: Modern Surface,Frigates,Thaon di Revel (PPA),2022 (PPA Light/Full fit),143.0,469.2,16.5,10,Fincantieri / OCCAR PPA Wave-Piercing Bow Plan,
+Batch 4: Small Carriers & Subs,Small Combatants,Gepard (Type 143A),1984 (RAM + Exocet fit),57.6,189.0,7.8,20,Lurssen Werft Type 143A S71 Gepard General Plan,
+Batch 4: Small Carriers & Subs,Small Combatants,Sparviero (P 420 Hydrofoil),1974 (76mm + 2x Otomat),23.0,75.3,10.8,20,Alinavi / CNR P 420 Sparviero Hydrofoil Sheet,
+Batch 4: Small Carriers & Subs,Small Combatants,Braunschweig (Type K130),2008 (Batch 1 F260),89.1,292.4,13.3,10,Blohm + Voss ARGE K130 Corvette Arrangement,
+Batch 4: Small Carriers & Subs,Small Combatants,Karakurt (Project 22800),2020 (Pantsir-M + UKSK),67.0,219.8,11.0,20,Almaz Central Marine Design Bureau Pr. 22800 Plan,
+Batch 4: Small Carriers & Subs,Small Combatants,River Class OPV,2003 (B1 79.5m) / 2018 (B2 90.5m),90.5,296.9,13.6,10,Vosper Thornycroft Batch 1 & BAE Batch 2 Plans,
+Batch 4: Small Carriers & Subs,Small Combatants,Steregushchiy (Pr. 20380),2007 (Kashtan) / 2011 (Redut),104.5,342.8,13.0,10,Almaz TsMKB Project 20380 Top & Profile Sheet,
+Batch 4: Small Carriers & Subs,Small Combatants,Visby (K31),2009 (Stealth FRP fit),72.7,238.5,10.4,20,Kockums / FMV Visby-Class Hull Plan,
+Batch 4: Small Carriers & Subs,Small Combatants,Sea Shadow (IX-529),1993 (Daylight testing fit),50.0,164.0,20.7,20,Lockheed Skunk Works / DARPA IX-529 5-View Plan,https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/68929dfc-41a6-4b7f-8fec-9a0489c24d53/d51xa9a-9ced8583-ebf1-4a1c-9223-7989396f83bb.png
+Batch 4: Small Carriers & Subs,Carriers,Kuznetsov (Project 1143.5),1991 (12x Granit bow VLS),305.0,1000.7,72.0,10,Nevskoye PKB Project 1143.5 Flight Deck & Profile,
+Batch 4: Small Carriers & Subs,Carriers,Nimitz (CVN-68),1975 (CVN-68) / 2003 (CVN-76),332.8,1092.0,76.8,10,Newport News / NAVSEA CVN-68 Flight Deck Plan,
+Batch 4: Small Carriers & Subs,Carriers,Cavour (550),2008 (Harrier) / 2021 (F-35B),244.0,800.5,39.0,10,Fincantieri Cavour 550 General Arrangement Sheet,
+Batch 4: Small Carriers & Subs,Carriers,Gerald R. Ford (CVN-78),2017 (EMALS baseline),337.0,1106.0,78.0,10,Huntington Ingalls / NAVSEA CVN-78 Flight Deck Plan,
+Batch 4: Small Carriers & Subs,Carriers,Queen Elizabeth (R08),2017 (Twin-island ski-jump),284.0,931.8,73.0,10,Aircraft Carrier Alliance R08 General Arrangement,
+Batch 4: Small Carriers & Subs,Carriers,Giuseppe Garibaldi (C 551),1985 (As built),180.2,591.2,30.4,10,Italcantieri Monfalcone C 551 4-View Blueprint,https://www.armyrecognition.com/media/yootheme/cache/e0/Giuseppe%20Garibaldi%20C%20551%20light%20aircraft%20carrier%20Italy%20Italian%20Navy%20line%20drawing%20blueprint%20001-e0c20a9d.jpg
+Batch 4: Small Carriers & Subs,Carriers,Invincible (R05),1980 (7-deg ramp) / 2000 (12-deg),209.1,686.0,35.0,10,Vickers Barrow HMS Invincible As-Fitted & Refit Plans,
+Batch 4: Small Carriers & Subs,Carriers,Izumo (DDH-183),2015 (DDH) / 2024 (F-35B bow),248.0,813.6,38.0,10,JMU Yokohama 22DDH Top Flight Deck & Side Plan,
+Batch 4: Small Carriers & Subs,Submarines,Harushio (SS-583),1990 (Baseline),77.0,252.6,10.0,10,Mitsubishi / Kawasaki Heavy Industries SS-583 Plan,
+Batch 4: Small Carriers & Subs,Submarines,Type 206 / 206A,1973 / 1990 (Type 206A Mod),48.6,159.4,4.6,20,IKL / HDW Type 206 Non-Magnetic Hull General Plan,
+Batch 4: Small Carriers & Subs,Submarines,Soryu (SS-501),2009 (Stirling AIP + X-rudder),84.0,275.6,9.1,10,JMSDF ATLA / Mitsubishi SS-501 Top & Profile Plan,
+Batch 4: Small Carriers & Subs,Submarines,Type 212A,2005 (B1 56m) / 2016 (B2 57.2m),56.0,183.7,7.0,20,HDW / John Jordan Type 212A Batch 1 & 2 Arrangement,https://i.redd.it/ai8gyllhwhbe1.jpg
+Batch 4: Small Carriers & Subs,Submarines,Akula (Project 971),1986 (Akula I) / 2001 (Gepard),110.3,361.9,13.6,10,Malakhit SPMBM Project 971 Shchuka-B Plan,
+Batch 4: Small Carriers & Subs,Submarines,Los Angeles (SSN-688i),1976 (Fl.I) / 1988 (688i VLS),110.3,362.0,10.1,10,Electric Boat / Newport News SSN-688 VLS Plan,https://upload.wikimedia.org/wikipedia/commons/f/f3/Los_Angeles_class_submarine_3D_drawing.svg
+Batch 4: Small Carriers & Subs,Submarines,Oscar II (Project 949A),1986 (24x P-700 Granit SSGN),154.0,505.2,18.2,10,Rubin TsKB-18 Project 949A Antey Top & Profile,https://upload.wikimedia.org/wikipedia/commons/9/9c/Oscar_II_class_SSGN.svg
+Batch 4: Small Carriers & Subs,Submarines,Trafalgar (S107),1983 (Pump-jet baseline),85.4,280.2,9.8,10,Vickers Shipbuilding VSEL S107 General Plan,
+Batch 4: Small Carriers & Subs,Submarines,Typhoon (Project 941),1981 (20x RSM-52 SLBM),175.0,574.1,23.3,10,Rubin TsKB-18 Project 941 Akula Multi-Hull Schema,https://upload.wikimedia.org/wikipedia/commons/3/30/Typhoon_class_Schema.svg
+Batch 4: Small Carriers & Subs,Submarines,Astute (S119),2010 (Royal Navy SSN baseline),97.0,318.2,11.3,10,BAE Systems Submarines Barrow S119 General Plan,
+Batch 4: Small Carriers & Subs,Submarines,Virginia (SSN-774),2004 (Blk I-IV) / 2026 (Blk V 140.2m),114.9,377.0,10.4,10,General Dynamics Electric Boat SSN-774 CAD Plan,https://www.nr.edu/edt/images/vaclasspage.jpg
+Batch 4: Small Carriers & Subs,Submarines,Yasen (Project 885 / 885M),2014 (885 139m) / 2021 (885M 130m),139.0,456.0,13.0,10,Malakhit SPMBM Project 885 & 885M Yasen Plans,
+Batch 5: Auxiliaries,WWII Cargo,Liberty Ship (EC2-S-C1),1943 (Armed Guard fit),134.6,441.5,17.3,10,US Maritime Commission EC2-S-C1 General Plan,https://upload.wikimedia.org/wikipedia/commons/e/e0/Libertyship_linedrawing_en.jpg
+Batch 5: Auxiliaries,WWII Cargo,Victory Ship (VC2-S-AP2/3),1944 (10800 DWT Cargo fit),138.8,455.3,18.9,10,USMC Design VC2-S-AP2 General Arrangement,
+Batch 5: Auxiliaries,Merchant,1970s Container Ship,1972 (Liverpool Bay 3rd-Gen),287.7,944.0,32.3,10,HDW / OCL Liverpool Bay Class 2961 TEU Plan,
+Batch 5: Auxiliaries,Attack Transport,Haskell (APA-117),1944 (VC2-S-AP5 Welin davits),138.7,455.0,18.9,10,USMC VC2-S-AP5 / BuShips APA-117 General Plans,
+Batch 5: Auxiliaries,Landing Ship,LST Mk 2 (LST-1 / LST-542),1944 (LST-542 Class),100.0,328.0,15.2,10,BuShips LST-983 & LST-1150 Booklet of General Plans,https://maritime.org/doc/plans/lst983.pdf
+Batch 5: Auxiliaries,Amphibious LPD,Austin (LPD-4),1965 (3in/50) / 1990 (CIWS),173.4,569.0,32.0,10,BuShips Project SCB 187B / LPD-4 General Plans,
+Batch 5: Auxiliaries,Amphibious BDK,Ivan Rogov (Project 1174),1978 (Nosorog bow-ramp fit),157.0,515.1,23.8,10,Nevskoye PKB Project 1174 Nosorog Top & Profile,
+Batch 5: Auxiliaries,Amphibious LHA,Tarawa (LHA-1),1976 (2x 5in/54 bow fit),249.9,820.0,32.3,10,Ingalls / NAVSEA LHA-1 Flight & Hangar Deck Plan,https://upload.wikimedia.org/wikipedia/commons/1/14/Wasp_class_amphibious_assault_ship_line_drawing_1995.png
+Batch 5: Auxiliaries,Amphibious LPD,Rotterdam (L800),1998 (L800) / 2007 (L801 176.4m),166.2,545.3,27.0,10,Royal Schelde Enforcer LPD General Arrangement,
+Batch 5: Auxiliaries,Amphibious LPD,San Antonio (LPD-17),2006 (Flight I AEM/S mast),208.5,684.0,31.9,10,Northrop Grumman Ingalls / NAVSEA LPD-17 Drawing,
+Batch 5: Auxiliaries,Fleet Oiler,Cimarron (AO-177),1981 (182.4m) / 1991 (Jumbo 216m),182.4,598.5,26.8,10,Avondale Shipyards AO-177 & Jumboized Plan,
+Batch 5: Auxiliaries,WWII Tanker,T2 Tanker (T2-SE-A1),1943 (Kennebec AO fit),159.4,523.0,20.7,10,Sun Shipbuilding / USMC T2-SE-A1 General Plan,
+Batch 5: Auxiliaries,Replenishment,Fort Victoria (A387),1994 (As built) / 1999 (CIWS),203.5,667.7,30.4,10,Harland & Wolff RFA Fort Victoria A387 General Plan,
+Batch 5: Auxiliaries,Ammunition Ship,Mount Hood (AE-11 / AE-29),1944 (AE-11 140m) / 1971 (AE-29 171.9m),140.0,459.2,19.2,10,USMC C2-S-AJ1 (AE-11) & SCB-703 (AE-29) Plans,
+Batch 5: Auxiliaries,Salvage Vessel,Diver (ARS-5),1943 (Basalt Rock steel ARS),65.1,213.5,11.9,10,Basalt Rock / BuShips ARS-5 Booklet of General Plans,
+Batch 5: Auxiliaries,Repair Ship,Vulcan (AR-5),1943 (4x 5in/38) / 1980 (FRAM),161.4,529.5,22.4,10,New York SB / BuShips AR-5 Booklet of General Plans,

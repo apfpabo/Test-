@@ -17,6 +17,9 @@ const PAIRS := [
 	{"name": "cg_iii", "era": 3, "a": ["cg_tico"], "b": ["cg_slava"]},
 	{"name": "ff_iv", "era": 4, "a": ["ff_sachsen"], "b": ["ff_thaon"]},
 	{"name": "ddg_iv", "era": 4, "a": ["ddg_type45"], "b": ["ddg_zumwalt"]},
+	{"name": "msl_night_ii", "era": 2, "a": ["ddg_adams"], "b": ["cl_sverdlov"], "wx": {"sea": 1, "fog": false, "night": true, "moon": 0.1}},
+	{"name": "msl_fog_ii", "era": 2, "a": ["ddg_kashin"], "b": ["dd_daring"], "wx": {"sea": 2, "fog": true, "night": false, "moon": 0.5}},
+	{"name": "msl_night_iii", "era": 3, "a": ["ddg_sovremenny"], "b": ["bb_iowa"], "wx": {"sea": 1, "fog": false, "night": true, "moon": 0.0}},
 ]
 func _ready() -> void:
 	var sk = preload("res://scripts/skirmish.gd")
@@ -35,6 +38,7 @@ func _ready() -> void:
 				for i in ids.size(): out.append({"type": ids[i], "name": "%s %d" % [pal, i], "hullFrac": 1.0, "fit": BattleSim.default_fit(GameData.hulls[ids[i]], tech), "pal": pal})
 				return out
 			var sim := BattleSim.new(); sim.sep = R
+			sim.wx = Weather.battle(pr.get("wx", {"sea": 1, "fog": false, "night": false, "moon": 0.5}))
 			sim.setup(recs.call(pr.a, "player"), recs.call(pr.b, "directorate"), tech, tech, 0)
 			sim.flag = null
 			var last_dmg := 0.0; var dmg_t := 0.0; var stalled := 0.0; var first_hit := -1.0

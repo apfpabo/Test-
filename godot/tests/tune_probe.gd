@@ -148,8 +148,11 @@ func _met(f: Dictionary) -> void:
 	super(f)
 
 ## Outgunned and caught all the same, he orders the squadron to withdraw (as the battle screen's retreat order does).
+## He always fires: the soak's scripted holds (every fifth action from the third) exercise the code, but no captain would
+## give them, and they cost the Defector seven of eight campaigns in the measurements of 14 Nov 2026.
 func _orders(sim: BattleSim, f: Dictionary) -> void:
-	if Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength()) > 1.0: sim.order = "retreat"; sim.hold_fire = false
+	sim.hold_fire = false; sim.order = "engage"
+	if Campaign.strength(f.ships) / maxf(1.0, Campaign.own_strength()) > 1.0: sim.order = "retreat"
 
 func _fight(f: Dictionary) -> void:
 	var G: Dictionary = Campaign.G; var c0 := float(G.credits); var mine := _tons(G.fleet)

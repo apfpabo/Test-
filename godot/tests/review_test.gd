@@ -1652,6 +1652,7 @@ func _ew() -> void:
 	ok(lured > 12 and lured < 40, "chaff leads %d of 60 missiles off" % lured)
 	# hand-laid light guns against missiles (the owner, 13 Nov 2026)
 	var shot := [0, 0]
+	seed(4242)   # the count is a draw (it averages about 10 of 40): fixed, so other sections' use of the random stream cannot move it
 	for k in 2:
 		var tk: Array = [] if k == 0 else ["radar", "missiles"]
 		var w2 := BattleSim.new(); w2.setup([Campaign.new_ship("bb_yamato", "Y", "player", tk)], [Campaign.new_ship("ddg_burke", "B", "directorate", tech)], tk, tech, 0)

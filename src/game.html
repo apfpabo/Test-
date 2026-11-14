@@ -667,7 +667,7 @@ const DESIGN_LIST = [
     slots: [sl('M', 70, 0, FWD, 'g127a'), sl('V', 56, 0, ALL, 'ssm'), sl('V', -54, 0, ALL, 'sam'), sl('V', 44, 0, ALL, 'sam'), sl('V', -68, 0, ALL, 'ssm'), sl('M', -78, 0, AFT, 'g127a'), sl('A', 38, -5, PORT, 'ciws'), sl('A', -36, 5, STBD, 'ciws'), sl('T', -31, 0, BEAM, 'torh')] },
   { id: 'cg_slava', cls: 'cg', yard: 'neva', dn: 'Gromoboi', model: 'Slava-class cruiser', year: 1982, era: 3, L: 186.4, B: 20.8, t: 9380, kn: 32, td: 880, armor: 25, crew: 476, price: 225000,
     p: { outline: [[93.2, 0.55], [87.13, 3.11], [84.04, 4.19], [73.33, 7.31], [67.03, 8.61], [60.73, 9.59], [56.44, 10.01], [50.26, 10.37], [-65.6, 10.4], [-76.55, 9.81], [-81.54, 9.37], [-88.8, 8.36], [-91.89, 7.8], [-93.2, 7.34]], sup: [[19, 27, 10, 4], [-13, 38, 12, 2], [-64, 16, 11, 2]], fun: [[-24, 3.5, 2.5, -4.5], [-24, 3.5, 2.5, 4.5]], mast: [[15, 'l'], [-8, 'l']], boats: [[-18, 1]], helo: [[-83, 7]] },
-    slots: [sl('M', 63, 0, FWD, 'g130a'), ...pair('V', 37, 7, 'ssmh').map(q => Object.assign(q, { look: 'canister', n: 4, rows: 2, tl: 9 })), Object.assign(sl('V', -42, 0, ALL, 'sam'), { look: 'revolver', nx: 4, ny: 2 }), Object.assign(sl('V', -52, 0, ALL, 'sam'), { look: 'hatch' }), ...pair('A', -55, 7.5, 'ciws'), sl('T', -34, 0, BEAM, 'torh')] },
+    slots: [sl('M', 63, 0, FWD, 'g130a'), ...pair('V', 37, 7, 'ssmh').map(q => Object.assign(q, { look: 'canister', n: 4, rows: 2, tl: 9, fixed: true })), Object.assign(sl('V', -42, 0, ALL, 'sam'), { look: 'revolver', nx: 4, ny: 2 }), Object.assign(sl('V', -52, 0, ALL, 'sam'), { look: 'hatch' }), ...pair('A', -55, 7.5, 'ciws'), sl('T', -34, 0, BEAM, 'torh')] },
   { id: 'cg_kirov', cls: 'cg', name: 'Nuclear Battlecruiser', nuc: true, yard: 'neva', dn: 'Admiral Volkov', model: 'Kirov-class battlecruiser', year: 1980, era: 3, L: 252, B: 28.5, t: 24300, kn: 32, td: 1100, armor: 76, crew: 710, price: 540000,
     p: { outline: [[126.0, 0.75], [125.3, 1.0], [123.18, 2.1], [116.29, 4.89], [109.39, 6.66], [102.07, 8.09], [85.17, 10.41], [75.18, 11.14], [71.09, 11.31], [62.08, 12.2], [41.67, 13.84], [35.34, 14.11], [-62.23, 14.25], [-68.28, 13.99], [-71.52, 13.99], [-77.01, 13.72], [-81.23, 13.31], [-99.53, 12.76], [-104.46, 12.35], [-120.23, 11.87], [-121.35, 11.53], [-124.17, 10.18], [-126.0, 7.99]], bow: .36, run: .2, stern: 't', tw: .55, sup: [[8, 40, 18, 5], [-40, 56, 15, 3], [-74, 12, 12, 2]], fun: [[-10, 4.5, 3.6]], mast: [[6, 'l'], [-30, 'l']], helo: [[-112, 9]], boats: [[-22, 1]] },
     slots: [...[...pair('V', 45, 3.2, 'ssmh'), ...pair('V', 35, 3.2, 'ssmh')].map(q => Object.assign(q, { look: 'grid', nx: 3, ny: 2, c: 2.8 })), Object.assign(sl('V', 80, 0, ALL, 'sam'), { look: 'quad' }), Object.assign(sl('V', 60, 0, ALL, 'sam'), { look: 'revolver', nx: 3, ny: 4, r: 1.1 }), Object.assign(sl('V', -97, 0, ALL, 'sam'), { look: 'quad' }), sl('M', -86, 0, AFT, 'g130a'), ...pair('A', 31, 9, 'ciws'), ...pair('A', -62, 9, 'ciws'), sl('T', -25, 0, BEAM, 'torh')] },
@@ -1212,7 +1212,9 @@ function drawPlan(g, d, P, part = 'all') {
       const lid = (x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fillStyle = shade(P.deck, -0.36); g.fill(); g.strokeStyle = 'rgba(205,210,210,.28)'; g.lineWidth = 0.12; g.stroke();
         g.beginPath(); g.arc(x, y, r * 0.55, 0, TAU); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.1; g.stroke(); };
       if (lk === 'none') { }
-      else if (lk === 'canister') { const n = s.n || 4, rows = s.rows || 2, tl = s.tl || 9, tr = s.tr || 0.85, step = tl + (s.gap || 1.0);
+      else if (lk === 'canister') { const n = s.n || 4, rows = s.rows || 2, tl = s.tl || 9, tr = s.tr || 0.85, step = tl + (s.gap || 1.0), w = n * step, hh = rows * (tr * 2 + 0.3);
+        contact(g, k => rrect(g, s.x - w / 2 - k, s.y - hh / 2 - k, w + 2 * k, hh + 2 * k, 0.4), 0.45); }   // its footing; the tubes are drawn standing, in the raised layer (canisterTop)
+      else if (lk === 'canister' && 0) { const n = s.n || 4, rows = s.rows || 2, tl = s.tl || 9, tr = s.tr || 0.85, step = tl + (s.gap || 1.0);
         for (let i = 0; i < n; i++) for (let r = 0; r < rows; r++) { const cx = s.x + (i - (n - 1) / 2) * step, cy = s.y + (r - (rows - 1) / 2) * (tr * 2 + 0.3);
           contact(g, k => rrect(g, cx - tl / 2 - k, cy - tr - k, tl + 2 * k, tr * 2 + 2 * k, tr + k), 0.35);
           rrect(g, cx - tl / 2, cy - tr, tl, tr * 2, tr); crownFill(g, P.sup, tr, -0.04); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.12; g.stroke();
@@ -1612,6 +1614,22 @@ function houseDetail(g, d, P, hx, hlen, hw2) {
   if (!HM.on) { g.save(); g.setLineDash([0.1, 0.8]); g.strokeStyle = 'rgba(225,225,215,.3)'; g.lineWidth = 0.09;
     for (const [sa, sb] of spans) for (const sy of [-1, 1]) { g.beginPath(); g.moveTo(sa + 1, sy * hw * 0.64); g.lineTo(sb - 1, sy * hw * 0.64); g.stroke(); } g.restore(); }
 }
+// A canister launcher (the Slava's P-500s; the owner, 14 Nov 2026): long tubes in rows on cradles, raised toward the bow as
+// they were (about 10 degrees), drawn in the raised layer so the height map gives them light, shade and a shadow on deck.
+function canisterTop(g, P, s) {
+  const n = s.n || 4, rows = s.rows || 2, tl = s.tl || 9, tr = s.tr || 0.85, step = tl + (s.gap || 1.0), S = P.sup, h0 = 1.6, h1 = 3.4, segs = 6;
+  for (let i = 0; i < n; i++) for (let r = 0; r < rows; r++) {
+    const cx = s.x + (i - (n - 1) / 2) * step, cy = s.y + (r - (rows - 1) / 2) * (tr * 2 + 0.3);
+    for (const f of [-0.32, 0.3]) { g.beginPath(); g.rect(cx + f * tl - 0.35, cy - tr * 1.12, 0.7, tr * 2.24); pfill(g, shade(S, -0.32), h0 + (h1 - h0) * (f + 0.5) - 0.3); }   // the cradles
+    for (let k = 0; k < segs; k++) {   // the tube, in steps so its height climbs toward the bow
+      const xa = cx - tl / 2 + k * tl / segs, hk = h0 + (h1 - h0) * (k + 0.5) / segs;
+      g.beginPath(); rrect(g, xa, cy - tr, tl / segs + 0.02, tr * 2, k === 0 || k === segs - 1 ? tr * 0.6 : 0); pfill(g, shade(S, -0.02 + 0.04 * (k / segs)), hk);
+      if (!HM.on) { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(xa, cy - tr * 0.75, tl / segs + 0.02, tr * 0.35); }   // the light along the crown
+    }
+    g.beginPath(); g.arc(cx + tl / 2 - tr * 0.85, cy, tr * 0.78, 0, TAU); pfill(g, shade(S, -0.24), h1 + 0.1);   // the forward cap
+    if (!HM.on) { g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.12; rrect(g, cx - tl / 2, cy - tr, tl, tr * 2, tr * 0.6); g.stroke(); }
+  }
+}
 function drawPlanTop(g, d, P) {
   const p = d.p || {}, L = d.L, B = d.B, h = L / 2, b = B / 2, ink = 'rgba(14,18,20,.85)', st = supSchool(d), S = P.sup;
   // boats in their crutches, cranes and catapults
@@ -1632,6 +1650,7 @@ function drawPlanTop(g, d, P) {
   // the long deckhouse (01 level) that the bridge, funnels and after control stand on
   for (const [x, len, w] of p.house || []) { level(g, P, x - len / 2, x + len / 2, w / 2, DECK_H * 0.8, { front: 'taper', rear: 'round' }); houseDetail(g, d, P, x, len, w); }
   for (const [x, y, r, hh] of p.tubs || []) tub(g, P, x, y, r, hh || 1.4);
+  for (const sl of d.slots) if (sl.s === 'V' && sl.look === 'canister') canisterTop(g, P, sl);
   // (a design's `boxes`, containers on deck, are not painted here: the game draws each stack itself, so they can slide off in a list)
   if (p.stealth) { stealthTop(g, d, P); return; }
   // superstructure blocks

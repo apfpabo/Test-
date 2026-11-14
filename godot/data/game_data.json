@@ -21883,7 +21883,8 @@
      "look": "canister",
      "n": 4,
      "rows": 2,
-     "tl": 9
+     "tl": 9,
+     "fixed": true
     },
     {
      "s": "V",
@@ -21899,7 +21900,8 @@
      "look": "canister",
      "n": 4,
      "rows": 2,
-     "tl": 9
+     "tl": 9,
+     "fixed": true
     },
     {
      "s": "V",

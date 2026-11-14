@@ -1714,6 +1714,8 @@ func _ew() -> void:
 	ok(mid == null or (BattleSim.room_for(mid, "g150t") and not BattleSim.room_for(wing, "g150t")), "a centreline mount has more room: it takes a 150 mm twin the side mount refuses")
 	var tub: Dictionary = GameData.hulls["cve_casa"].slots[0]
 	ok(not BattleSim.room_for(tub, "g152") and BattleSim.room_for(tub, String(tub.def)), "but not a 6-inch triple on an escort carrier's stern gun tub")
+	var fx: Array = GameData.hulls["cg_slava"].slots.filter(func(q): return q.get("fixed", false))
+	ok(fx.size() == 2 and fx.all(func(q): return q.def == "ssmh" and BattleSim.room_for(q, "ssmh") and not BattleSim.room_for(q, "") and not BattleSim.room_for(q, "ssm") and not BattleSim.room_for(q, "sam")), "the Slava's P-500 tubes are fixed: heavy anti-ship missiles only, never emptied")
 	var all_std := true
 	for id in GameData.hulls: for sl in GameData.hulls[id].slots: if not BattleSim.room_for(sl, String(sl.def)): all_std = false
 	ok(all_std, "every design's own guns fit her mounts")

@@ -149,7 +149,7 @@ func rebuild() -> void:
         for i in p.d.slots.size():
             var slot: Dictionary = p.d.slots[i]; var cur: String = p.rec.fit[i] if p.rec.fit[i] != null else ""
             var wb := OptionButton.new(); wb.focus_mode = Control.FOCUS_NONE; wb.fit_to_longest_item = false; wb.clip_text = true;  wb.custom_minimum_size.x = 200; wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-            wb.add_item("(empty)"); wb.set_item_metadata(0, "")
+            if not slot.get("fixed", false): wb.add_item("(empty)"); wb.set_item_metadata(0, "")
             for wid in GameData.weapons:
                 if not _fits(wid, slot.s) or not BattleSim.room_for(slot, wid) or (GameData.weapons[wid].get("power", false) and not p.d.get("power", false)): continue
                 wb.add_item(GameData.weapons[wid].name); wb.set_item_metadata(wb.item_count - 1, wid)

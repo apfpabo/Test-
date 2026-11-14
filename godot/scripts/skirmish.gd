@@ -126,7 +126,8 @@ func _edit(arr: Array, mods: Array, i: int) -> void:
         var sl: Dictionary = d.slots[si]; var sx: int = si
         var cur: String = m.fit[si] if m.fit[si] != null else ""; var was: String = std_fit[si] if std_fit[si] != null else ""
         var lab := UI.label(("▸ " if si == edit_sel else "") + "%s · %s" % [sizes.get(sl.s, sl.s), "fwd" if sl.x > 10 else ("aft" if sl.x < -10 else "mid")] + (" *" if cur != was else ""), UI.INK if si == edit_sel else UI.DIM, 14); lab.custom_minimum_size.x = 180
-        var ob := OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, ""); ob.custom_minimum_size.x = 290
+        var ob := OptionButton.new(); ob.custom_minimum_size.x = 290
+        if not sl.get("fixed", false): ob.add_item("(empty)"); ob.set_item_metadata(0, "")
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
             if not _fits(wid, sl.s) or not BattleSim.room_for(sl, wid) or (w.has("tech") and not tech.has(w.tech)) or (w.get("power", false) and not d.get("power", false)): continue

@@ -380,6 +380,7 @@ const ROOM_L := 1.2
 const ROOM_MID_W := 2.0   # on the centreline there is more room, but not for a house half as big again (a 6-inch triple
 const ROOM_MID_L := 2.6   # on an escort carrier's stern gun tub hung out over her wake)
 static func room_for(slot: Dictionary, wid: String) -> bool:
+    if slot.get("fixed", false): return wid == String(slot.def)   # built into her (the Slava's P-500 tubes): only what she was built with, and never empty
     if wid == "" or wid == String(slot.def) or not GameData.weapons.has(wid): return true
     var w: Dictionary = GameData.weapons[wid]; var std: Dictionary = GameData.weapons.get(String(slot.def), {})
     if w.kind != "gun" or not std.has("tw") or not w.has("tw"): return true

@@ -2295,7 +2295,8 @@ func _refit(box: Control) -> void:
     for i in d.slots.size():
         var sl: Dictionary = d.slots[i]; var cur: String = plan[i] if plan[i] != null else ""; var fitted: String = s.fit[i] if s.fit[i] != null else ""
         var lab: String = sizes[sl.s] + (" · fwd" if sl.x > 10 else (" · aft" if sl.x < -10 else " · mid"))
-        var ob = OptionButton.new(); ob.add_item("(empty)"); ob.set_item_metadata(0, "")
+        var ob = OptionButton.new()
+        if not sl.get("fixed", false): ob.add_item("(empty)"); ob.set_item_metadata(0, "")   # (a fixed launcher cannot be taken off)
         for wid in GameData.weapons:
             var w: Dictionary = GameData.weapons[wid]
             if not _fits(wid, sl.s) or (not BattleSim.room_for(sl, wid) and wid != cur and wid != fitted) or not Campaign.tech_ok(w.get("tech"), G.tech) or (w.get("power", false) and not d.get("power", false)): continue   # (a rail gun only where the hull has the power)

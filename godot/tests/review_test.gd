@@ -1716,6 +1716,15 @@ func _ew() -> void:
 	ok(not BattleSim.room_for(tub, "g152") and BattleSim.room_for(tub, String(tub.def)), "but not a 6-inch triple on an escort carrier's stern gun tub")
 	var fx: Array = GameData.hulls["cg_slava"].slots.filter(func(q): return q.get("fixed", false))
 	ok(fx.size() == 2 and fx.all(func(q): return q.def == "ssmh" and BattleSim.room_for(q, "ssmh") and not BattleSim.room_for(q, "") and not BattleSim.room_for(q, "ssm") and not BattleSim.room_for(q, "sam")), "the Slava's P-500 tubes are fixed: heavy anti-ship missiles only, never emptied")
+	var sv := BattleSim.new(); sv.setup([Campaign.new_ship("cg_slava", "S", "player", ["radar", "missiles", "vls"])], [Campaign.new_ship("ddg_burke", "B", "directorate", ["radar", "missiles"])], ["radar", "missiles", "vls"], ["radar", "missiles"], 0); sv.flag = null
+	var sl0 = sv.ships[0]; var tg0 = sv.ships[1]; tg0.pos = sl0.pos + Vector2.from_angle(sl0.a + PI / 2) * 9000.0
+	for m in sl0.mounts: if m.wid == "ssmh": sv.fire_missile(sl0, m, tg0)
+	var mine: Array = sv.missiles.filter(func(q): return q.get("who") == sl0)
+	var delays: Array = mine.map(func(q): return float(q.delay)); var cells := {}
+	for mq in mine: cells[mq.cell] = true
+	var straight := mine.all(func(q): return absf(wrapf(float(q.a) - sl0.a, -PI, PI)) < 0.001 and float(q.get("boost", 0.0)) > 0.0)
+	delays.sort()
+	ok(mine.size() >= 4 and cells.size() == mine.size() and straight and delays.all(func(x): return delays.count(x) == 1), "the Slava's missiles leave one at a time, each from her own tube, straight along it (%d rounds, %d tubes)" % [mine.size(), cells.size()])
 	var all_std := true
 	for id in GameData.hulls: for sl in GameData.hulls[id].slots: if not BattleSim.room_for(sl, String(sl.def)): all_std = false
 	ok(all_std, "every design's own guns fit her mounts")

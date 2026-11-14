@@ -18,7 +18,7 @@ const E3 := ["radar", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datali
 const E4 := ["radar", "missiles", "ciws", "jets", "aegis", "vls", "ecm", "datalink", "stealth", "netcentric", "precision", "railgun"]
 const LEN := {"t_bismarck": 7.5, "t_vanguard": 7.5, "t_line": 8.0, "t_kgv": 7.5, "t_yamato": 8.0,
 	"f_column": 8.0, "f_a150": 7.5, "f_straddle": 8.0, "f_end": 8.5,
-	"g_iowa": 8.0, "g_montana": 8.0, "g_tico": 8.5, "g_thunder": 8.5}
+	"g_iowa": 8.0, "g_montana": 8.0, "g_tico": 8.5, "g_thunder": 8.5, "x_slava": 11.0}
 
 func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -245,3 +245,15 @@ func _run_g(s: String, d: float, vs: Vector2) -> void:
 			if _at("1", 1.6): _fire(A, B.pos, B, ["H", "L", "M"])
 			if _at("2", 4.6): _fire(A, B.pos, B, ["H", "L", "M"])
 	_cam(A.pos, lerpf(_fit(A, 0.6, vs.y), _fit(A, 0.52, vs.y), smoothstep(0.0, 8.0, t)), 1.0)
+
+# ---------------------------------------------------------------- the Slava's P-500s, one tube after another
+func _init_x(s: String) -> void:
+	A = _put("cg_slava", 0, C, -PI / 2, E3, 7.0); A.god = true
+	B = _put("ddg_burke", 1, C + Vector2(9000, -3000), -PI / 2, E3, 7.0); B.god = true
+	battle.camera.position = A.pos + Vector2(0, -30); battle.camera.zoom = Vector2.ONE * _fit(A, 0.7, 1920.0)
+func _run_x(s: String, d: float, vs: Vector2) -> void:
+	A.v = 7.0; B.v = 7.0
+	if _at("fire", 1.0):
+		for m in A.mounts:
+			if m.wid == "ssmh": sim.fire_missile(A, m, B)
+	_cam(A.pos + Vector2(0, lerpf(-30.0, -120.0, smoothstep(1.0, 11.0, t))), lerpf(_fit(A, 0.7, vs.y), _fit(A, 0.45, vs.y), smoothstep(3.0, 11.0, t)), 1.0)

@@ -30,6 +30,7 @@ class Mount:
     var ammo := -1                    # rounds (guns: shells for all barrels; AA: bursts; torpedoes and missiles: salvos) left
     var ammo_max := -1
     var tgt: CShip = null
+    var tube := 0                     # a canister launcher's next tube (fire_missile): each round leaves from her own
     var tgt_t = 0.0
     var air: Dictionary = {}
     var st = ""
@@ -44,6 +45,7 @@ class Mount:
 
 class CShip:
     var boxes: Array = []   # deck cargo still aboard (deck_boxes)
+    var msl_free := 0.0     # when her canister launchers may next fire (one round at a time, ship-wide: fire_missile)
     var rec: Dictionary
     var d: Dictionary
     var pal: String
@@ -1523,11 +1525,29 @@ func fire_torps(s: CShip, m: Mount, aim: Vector2) -> void:
 func fire_missile(s: CShip, m: Mount, tg: CShip) -> void:
     if not use_round(m): return
     var w = m.w; var p = world_pt(s, m.slot.x, m.slot.y)
+    var can: bool = String(m.slot.get("look", "")) == "canister"
     for i in int(w.count) + (1 + (1 if tech_lv(s.tech, "vls") >= 2 else 0) if s.tech.has("vls") else 0):   # vertical launch: one more round in each salvo
         var off: float = (randf() - 0.5) * 0.6
-        missiles.append({"pos": p, "cell": Vector2(m.slot.x, m.slot.y), "rel": off, "a": s.a + off, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "hv": w.get("heavy", false), "delay": i * 2.0,
+        var cell := Vector2(m.slot.x, m.slot.y)
+        if can:   # a canister launcher (the Slava's): one tube after another, each round leaving from her own tube's mouth along it (the owner, 14 Nov 2026)
+            cell = canister_mouth(m.slot, m.tube); m.tube = (m.tube + 1) % canister_tubes(m.slot); off = 0.0
+        var dl: float = i * 2.0
+        if can: dl = maxf(0.0, s.msl_free - t); s.msl_free = t + dl + CANISTER_GAP   # the whole ship's tubes in one sequence
+        missiles.append({"pos": world_pt(s, cell.x, cell.y), "cell": cell, "rel": off, "a": s.a + off, "boost": CANISTER_BOOST if can else 0.0, "v": 80.0, "speed": w.speed, "life": gun_range(s, w) / w.speed * 1.4, "dmg": w.dmg, "side": s.side, "target": tg, "kind": "ssm", "who": s, "hv": w.get("heavy", false), "delay": dl,
             "prof": missile_profile(s, tg), "sk": 0.1 * (tech_lv(s.tech, "precision") if s.tech.has("precision") else 0) + (0.1 if s.tech.has("netcentric") else 0.0)})
     if s.sub: s.reveal_t = 25.0
+
+## A canister launcher's tubes (as drawn in src/game.html, canisterTop): n along her, rows across, each tl long and laid
+## fore and aft; a round leaves from a tube's forward mouth and flies CANISTER_BOOST seconds straight along it before her
+## seeker turns her (she does not swing round inside the tube).
+const CANISTER_BOOST := 1.4
+const CANISTER_GAP := 1.6     # seconds between one tube's round and the next
+static func canister_tubes(slot: Dictionary) -> int: return int(slot.get("n", 4)) * int(slot.get("rows", 2))
+static func canister_mouth(slot: Dictionary, k: int) -> Vector2:
+    var n: int = int(slot.get("n", 4)); var rows: int = int(slot.get("rows", 2)); var tl: float = float(slot.get("tl", 9.0)); var tr: float = float(slot.get("tr", 0.85))
+    var step: float = tl + float(slot.get("gap", 1.0)); var i: int = (k / rows) % n; var r: int = k % rows
+    i = n - 1 - i   # the forward tubes first
+    return Vector2(float(slot.x) + (i - (n - 1) / 2.0) * step + tl / 2.0, float(slot.y) + (r - (rows - 1) / 2.0) * (tr * 2.0 + 0.3))
 
 ## How a missile is flown at a ship: low over the sea, unless the target carries close-in guns (a steep dive is harder
 ## for them to follow) and no long-range SAMs (which a high diver would meet far out).
@@ -2989,6 +3009,7 @@ func step(dtv: float) -> void:
                         break
         if alive:
             var tpos: Vector2 = m.target.pos; var turn = 4.0 if m.kind == "sam" else 2.2
+            if float(m.get("age", 0.0)) < float(m.get("boost", 0.0)): turn = 0.0   # still on her boost, straight out of the tube
             m.a += clampf(ang_diff((tpos - m.pos).angle(), m.a), -turn * dt, turn * dt)
             var d: float = m.pos.distance_to(tpos)
             if m.kind == "sam" and d < 40:
